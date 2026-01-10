@@ -7,8 +7,6 @@ import { defineWorkspace } from 'vitest/config';
  */
 export default defineWorkspace([
   // Apps
-  'apps/scenergy-catalog',
-  'apps/scenery-next',
   'apps/scenergy-visualizer',
 
   // Packages

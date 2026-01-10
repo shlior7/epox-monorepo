@@ -18,12 +18,6 @@
   "references": [
     {
       "path": "./packages/scenergy-types"
-    },
-    {
-      "path": "./apps/scenergy-next"
-    },
-    {
-      "path": "./services/product-config-service"
     }
   ]
 }

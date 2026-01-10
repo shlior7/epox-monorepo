@@ -34,7 +34,6 @@
     "@types/supertest": "^6.0.2",
     "@types/woocommerce__woocommerce-rest-api": "^1.0.5",
     "jest": "^29.7.0",
-    "scenergy-types": "0.0.1",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",

@@ -12,7 +12,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'scenergy-imaginator.s3.amazonaws.com',
+        hostname: 'pub-b173dd19ec2840a5b068d4748260373f.r2.dev',
         port: '',
         pathname: '/**',
       },
