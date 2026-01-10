@@ -1,0 +1,51 @@
+{
+  "name": "visualizer-db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./errors": "./src/errors.ts",
+    "./schema": "./src/schema/index.ts",
+    "./utils/prompt-resolver": "./src/utils/prompt-resolver.ts"
+  },
+  "scripts": {
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:generate": "drizzle-kit generate",
+    "db:seed:admin": "tsx scripts/create-default-admin.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:db:start": "docker compose -f docker-compose.test.yml up -d --build",
+    "test:db:stop": "docker compose -f docker-compose.test.yml down",
+    "test:db:logs": "docker compose -f docker-compose.test.yml logs -f",
+    "test:db:push": "docker exec visualizer-db-test psql -U test -d visualizer_test -c 'DROP EXTENSION IF EXISTS pgtap CASCADE' && DATABASE_URL=postgresql://test:test@localhost:5433/visualizer_test npx drizzle-kit push --force && docker exec visualizer-db-test psql -U test -d visualizer_test -c 'CREATE EXTENSION IF NOT EXISTS pgtap'",
+    "test:pgtap": "npm run test:db:push && docker exec visualizer-db-test sh -c \"pg_prove -U test -d visualizer_test /sql-tests/*.sql\"",
+    "test:integration": "DATABASE_URL=postgresql://test:test@localhost:5433/visualizer_test vitest run",
+    "test:all": "npm run test:db:start && npm run test:pgtap && npm run test:integration && npm run test:db:stop",
+    "pretest": "npm run typecheck"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "bcrypt": "^6.0.0",
+    "drizzle-orm": "^0.38.3",
+    "uuid": "^13.0.0",
+    "visualizer-types": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/pg": "^8.11.10",
+    "@types/uuid": "^10.0.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "dotenv": "^17.2.1",
+    "drizzle-kit": "^0.30.1",
+    "pg": "^8.13.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
+  }
+}

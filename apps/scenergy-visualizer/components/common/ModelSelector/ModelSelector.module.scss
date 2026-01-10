@@ -1,0 +1,226 @@
+@use '../../../styles/variables' as *;
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #e0e0e0);
+}
+
+.selectWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.select {
+  width: 100%;
+  padding: 10px 36px 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text-primary, #e0e0e0);
+  background-color: var(--surface-secondary, #2a2a2a);
+  border: 1px solid var(--border-color, #404040);
+  border-radius: 8px;
+  cursor: pointer;
+  appearance: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover:not(:disabled) {
+    border-color: var(--border-hover, #606060);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary, #6366f1);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  option {
+    background-color: var(--surface-secondary, #2a2a2a);
+    color: var(--text-primary, #e0e0e0);
+    padding: 8px;
+  }
+}
+
+.chevron {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  color: var(--text-secondary, #a0a0a0);
+}
+
+.modelInfo {
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modelDescription {
+  font-size: 12px;
+  color: var(--text-secondary, #a0a0a0);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.modelBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.speedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+  background-color: var(--surface-tertiary, #333);
+  border-radius: 4px;
+  color: var(--text-secondary, #a0a0a0);
+}
+
+.speedIconFast {
+  color: #f59e0b;
+}
+
+.speedIconStandard {
+  color: #6366f1;
+}
+
+.speedIconSlow {
+  color: #8b5cf6;
+}
+
+.qualityBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  background-color: var(--surface-tertiary, #333);
+  color: var(--text-secondary, #a0a0a0);
+
+  &[data-quality='high'] {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+  }
+
+  &[data-quality='ultra'] {
+    background-color: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+  }
+}
+
+.tierBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 4px;
+  background-color: var(--surface-tertiary, #333);
+  color: var(--text-secondary, #a0a0a0);
+}
+
+.tierEconomy {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.tierStandard {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.tierPremium {
+  background-color: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+}
+
+.tierUltra {
+  background-color: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+}
+
+.costBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+.capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.capabilityBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 3px;
+  background-color: rgba(99, 102, 241, 0.1);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.upgradeHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #fbbf24;
+  background-color: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.3);
+  }
+
+  strong {
+    color: #fcd34d;
+    font-weight: 600;
+  }
+}
+
+.warning {
+  padding: 8px 12px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #f87171;
+  background-color: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  border-radius: 6px;
+}

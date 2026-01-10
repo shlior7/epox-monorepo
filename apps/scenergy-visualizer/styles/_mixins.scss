@@ -1,0 +1,119 @@
+@forward 'sass:map';
+@use 'sass:map';
+@use './variables' as vars;
+
+@mixin respond($breakpoint) {
+  $value: vars.breakpoint($breakpoint);
+
+  @if $value ==null {
+    @error "Unknown breakpoint `#{$breakpoint}`. Available: #{map.keys(vars.$breakpoints)}";
+  }
+
+  @media (max-width: $value) {
+    @content;
+  }
+}
+
+@mixin flex-center($gap: 0) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  @if $gap !=0 {
+    gap: $gap;
+  }
+}
+
+@mixin button-reset {
+  appearance: none;
+  border: none;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+@mixin icon-button($size: 32px) {
+  @include button-reset;
+  @include flex-center;
+
+  width: $size;
+  height: $size;
+  border-radius: vars.radius('md');
+  transition: background-color vars.spacing('xs');
+}
+
+@mixin focus-ring($color: vars.color('indigo', 500)) {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba($color, 0.2);
+}
+
+@mixin truncate($lines: 1) {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: $lines;
+}
+
+@mixin custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: vars.color('slate', 600) vars.color('slate', 900);
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: vars.color('slate', 900);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: vars.color('slate', 600);
+    border-radius: vars.radius('sm');
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: vars.color('slate', 500);
+  }
+}
+
+@mixin surface($background: vars.color('slate', 800), $border: vars.color('slate', 700)) {
+  background-color: $background;
+  border-radius: vars.radius('lg');
+  border: 1px solid $border;
+}
+
+@mixin glassy($blur: 12px, $bg: rgba(15, 23, 42, 0.4)) {
+  backdrop-filter: blur($blur);
+  background-color: $bg;
+}
+
+@mixin button {
+  padding: vars.spacing(md) vars.spacing(lg);
+  border-radius: vars.radius(xl);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+// Mobile breakpoint mixin (< 1024px)
+@mixin mobile {
+  @media (max-width: 1023px) {
+    @content;
+  }
+}
+
+// Tablet breakpoint mixin (< 768px)
+@mixin tablet {
+  @media (max-width: 767px) {
+    @content;
+  }
+}
+
+// Mobile header padding to account for hamburger menu
+@mixin mobile-header-padding {
+  @media (max-width: 768px) {
+    padding-left: calc(16px + 36px + 16px); // hamburger left + width + gap
+  }
+}

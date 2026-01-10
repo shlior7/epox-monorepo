@@ -1,0 +1,4601 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+// ===== STUDIO LAYOUT (Main container with sidebar) =====
+.studioLayout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background-color: semantic-color('background');
+}
+
+// ===== MAIN CONTENT AREA =====
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  position: relative;
+}
+
+// ===== LEGACY CONTAINER (for backwards compatibility) =====
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: semantic-color('background');
+}
+
+// ===== HEADER =====
+.header {
+  background-color: semantic-color('surface-deep');
+  border-bottom: 1px solid semantic-color('surface-strong');
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+// Header nav button (hamburger) for mobile/tablet
+.headerNavButton {
+  width: 40px;
+  height: 40px;
+  background-color: #333;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: semantic-color('text-primary');
+  flex-shrink: 0;
+  transition: background-color 0.2s, border-color 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+    border-color: semantic-color('text-muted');
+  }
+}
+
+// Header settings button for mobile/tablet
+.headerSettingsButton {
+  width: 40px;
+  height: 40px;
+  background-color: #333;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: semantic-color('text-primary');
+  flex-shrink: 0;
+  transition: background-color 0.2s, border-color 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+    border-color: semantic-color('text-muted');
+  }
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.headerRight {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 600;
+  color: semantic-color('white');
+  margin: 0;
+}
+
+.titleInput {
+  font-size: 20px;
+  font-weight: 600;
+  color: semantic-color('white');
+  background-color: semantic-color('surface-strong');
+  border: 1px solid semantic-color('primary');
+  border-radius: 4px;
+  padding: 2px 8px;
+  outline: none;
+  min-width: 200px;
+
+  &:focus {
+    box-shadow: 0 0 0 2px semantic-color('primary-outline');
+  }
+}
+
+.titleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background-color: transparent;
+  border: none;
+  border-radius: 4px;
+  color: semantic-color('text-secondary');
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+    color: semantic-color('text-primary');
+  }
+}
+
+.subtitle {
+  font-size: 14px;
+  color: semantic-color('text-secondary');
+  margin: 0;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iconButton {
+  padding: 8px;
+  background-color: transparent;
+  color: semantic-color('text-secondary');
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+    color: semantic-color('text-primary');
+  }
+}
+
+// ===== FLOWS CONTAINER =====
+.flowsContainer {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// ===== FLOW CARD =====
+.flowCard {
+  position: relative;
+  background-color: semantic-color('surface-deep');
+  border: 1px solid semantic-color('surface-strong');
+  border-radius: 12px;
+  padding: 16px;
+  padding-bottom: 20px; // Extra space for collapse button
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: semantic-color('surface-muted');
+  }
+
+  &.selected {
+    border-color: semantic-color('primary');
+    box-shadow: 0 0 0 1px semantic-color('primary');
+  }
+
+  &.dragOver {
+    border-color: semantic-color('success');
+    box-shadow: 0 0 0 2px semantic-color('success'), 0 0 20px semantic-color('success-outline');
+    background-color: semantic-color('success-ghost');
+  }
+
+  @include mobile {
+    flex-direction: column;
+  }
+}
+
+// ===== PRODUCT INPUT CONTAINER =====
+.productInputContainer {
+  width: 180px;
+  min-height: 120px;
+  background-color: semantic-color('background');
+  border: 2px dashed semantic-color('surface-muted');
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s, background-color 0.2s;
+  flex-shrink: 0;
+
+  &.hasProducts {
+    border-style: solid;
+    border-color: semantic-color('surface-muted');
+    padding: 8px;
+    justify-content: flex-start;
+    gap: 8px;
+    cursor: default;
+  }
+
+  @include mobile {
+    width: 100%;
+    min-height: 80px;
+  }
+}
+
+.addProductsLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: semantic-color('text-secondary');
+  font-size: 14px;
+  cursor: pointer;
+  padding: 16px;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+  transition: color 0.2s;
+
+  &:hover {
+    color: semantic-color('primary-hover');
+
+    svg {
+      color: semantic-color('primary-hover');
+    }
+  }
+
+  svg {
+    color: semantic-color('text-muted');
+    transition: color 0.2s;
+  }
+}
+
+.productThumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.productContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 48px; // for gallery mode
+  cursor: grab;
+  transition: transform 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px semantic-color('overlay-soft');
+    z-index: 2;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.productName {
+  font-size: 10px;
+  line-height: 1.2;
+  color: semantic-color('text-secondary');
+  font-weight: 500;
+  text-align: center;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.productThumbnail {
+  position: relative;
+  width: 100%;
+  height: 48px;
+  border-radius: 6px;
+  overflow: visible; // Allow delete button to overflow
+  border: 1px solid semantic-color('surface-muted');
+  cursor: pointer;
+  flex-grow: 1;
+
+  .productContainer:hover & {
+    //
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 6px;
+    pointer-events: none; // Prevent image from interfering with drag
+  }
+}
+
+.removeProductButton {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  background-color: semantic-color('error');
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid semantic-color('surface');
+  cursor: pointer;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.15s;
+  z-index: 3;
+
+  &:hover {
+    background-color: semantic-color('error-hover');
+    transform: scale(1.1);
+  }
+
+  svg {
+    width: 10px;
+    height: 10px;
+    color: semantic-color('white');
+  }
+
+  .productContainer:hover & {
+    opacity: 1;
+  }
+}
+
+// ===== RESPONSIVE PRODUCT DISPLAY =====
+
+.productThumbnails.singleLayout {
+  display: flex;
+  justify-content: center;
+}
+
+.productThumbnails.sideBySideLayout {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.productThumbnailLarge {
+  width: 100%;
+  height: 100px;
+  max-width: 140px;
+}
+
+.productThumbnailMedium {
+  width: calc(50% - 4px);
+  height: 70px;
+  max-width: 100px;
+}
+
+// ===== PRODUCT ACTIONS MENU =====
+
+.productActionsContainer {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 4;
+}
+
+.productMenuButton {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: semantic-color('overlay');
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background-color 0.2s;
+  color: semantic-color('text-inverse');
+
+  &:hover {
+    background-color: semantic-color('overlay-strong');
+  }
+
+  .productContainer:hover & {
+    opacity: 1;
+  }
+}
+
+.productMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background-color: semantic-color('surface');
+  border: 1px solid semantic-color('border-strong');
+  border-radius: 8px;
+  box-shadow: 0 4px 12px semantic-color('overlay-soft');
+  min-width: 160px;
+  padding: 4px;
+  z-index: 100;
+}
+
+.productMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font-size: font-size('sm');
+  color: semantic-color('text-primary');
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+  }
+}
+
+.productMenuItemDanger {
+  color: semantic-color('error');
+
+  &:hover {
+    background-color: semantic-color('error-ghost');
+  }
+}
+
+// ===== BASE IMAGE GALLERY POPUP =====
+
+.baseImagePopupOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: semantic-color('overlay');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.baseImagePopup {
+  background-color: semantic-color('surface');
+  border-radius: 12px;
+  box-shadow: 0 8px 32px semantic-color('overlay-strong');
+  max-width: 400px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.baseImagePopupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 8px;
+
+  h4 {
+    margin: 0;
+    font-size: font-size('lg');
+    font-weight: 600;
+    color: semantic-color('text-primary');
+  }
+}
+
+.baseImagePopupClose {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: semantic-color('text-muted');
+  transition: background-color 0.2s, color 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+    color: semantic-color('text-primary');
+  }
+}
+
+.baseImagePopupSubtitle {
+  margin: 0;
+  padding: 0 20px 12px;
+  font-size: font-size('sm');
+  color: semantic-color('text-muted');
+}
+
+.baseImageGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 12px 20px 20px;
+  overflow-y: auto;
+}
+
+.baseImageOption {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+  background: none;
+  padding: 0;
+  position: relative;
+
+  &:hover {
+    border-color: semantic-color('accent-soft');
+    transform: scale(1.03);
+  }
+
+  &.selected {
+    border-color: semantic-color('accent');
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.selectedBadge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: semantic-color('accent');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: semantic-color('text-inverse');
+}
+
+// ===== OUTPUT PREVIEW =====
+.outputPreview {
+  width: 144px;
+  height: 144px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-strong');
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @include mobile {
+    width: 100%;
+    height: 200px;
+  }
+
+  // Show favorite button on hover
+  &:hover .favoriteButton {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+// Favorite button for generated images
+.favoriteButton {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: none;
+  border-radius: 50%;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10;
+  background-color: semantic-color('overlay');
+  opacity: 0;
+  pointer-events: none;
+
+  // Show on mobile (no hover available)
+  @include tablet {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  // Always show if favorited
+  &.favorited {
+    opacity: 1;
+    pointer-events: auto;
+    background-color: semantic-color('warning-strong');
+  }
+
+  &:hover {
+    transform: scale(1.1);
+
+    &.favorited {
+      background-color: semantic-color('warning');
+    }
+
+    &:not(.favorited) {
+      background-color: semantic-color('overlay-heavy');
+    }
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: semantic-color('white');
+  }
+
+  &.favorited svg {
+    fill: semantic-color('white');
+  }
+}
+
+.outputPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: semantic-color('text-muted');
+  font-size: 12px;
+
+  svg {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+.outputStatus {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  padding: 6px 8px;
+  background-color: semantic-color('overlay-strong');
+  border-radius: 4px;
+  font-size: 12px;
+  color: semantic-color('white');
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusGenerating {
+  color: semantic-color('primary-hover');
+}
+
+.statusError {
+  color: semantic-color('error-soft');
+}
+
+// ===== FLOW CONFIG =====
+.flowConfig {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.settingsTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settingTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: semantic-color('primary-soft-strong');
+  border: 1px solid semantic-color('primary-outline');
+  border-radius: 16px;
+  font-size: 12px;
+  color: semantic-color('primary-muted');
+  cursor: grab;
+  transition: background-color 0.2s, transform 0.15s;
+  user-select: none;
+
+  &:hover {
+    background-color: semantic-color('primary-soft-stronger');
+  }
+
+  &:active {
+    cursor: grabbing;
+    transform: scale(1.05);
+  }
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+.allConfigTag {
+  background-color: semantic-color('success-soft-strong');
+  border-color: semantic-color('success-outline');
+  color: semantic-color('success');
+
+  &:hover {
+    background-color: semantic-color('success-soft-stronger');
+  }
+}
+
+.promptPreview {
+  font-size: 13px;
+  color: semantic-color('text-secondary');
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+// ===== FLOW ACTIONS =====
+.flowActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.executeButton {
+  width: 48px;
+  height: 48px;
+  background-color: semantic-color('primary-strong');
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+
+  svg {
+    width: 20px;
+    height: 20px;
+    color: semantic-color('white');
+  }
+
+  &:hover:not(:disabled) {
+    background-color: semantic-color('primary');
+    transform: scale(1.05);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.deleteFlowButton {
+  width: 48px;
+  height: 48px;
+  background-color: transparent;
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: semantic-color('text-secondary');
+  }
+
+  &:hover {
+    background-color: semantic-color('error-ghost');
+    border-color: semantic-color('error-hover');
+
+    svg {
+      color: semantic-color('error-soft');
+    }
+  }
+}
+
+// ===== ADD FLOW BUTTON =====
+.addFlowButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background-color: transparent;
+  border: 2px dashed semantic-color('surface-muted');
+  border-radius: 12px;
+  color: semantic-color('text-secondary');
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background-color 0.2s;
+
+  &:hover {
+    border-color: semantic-color('primary');
+    color: semantic-color('primary-hover');
+    background-color: semantic-color('primary-ghost');
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+// ===== EMPTY STATE =====
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: semantic-color('text-secondary');
+  text-align: center;
+  padding: 48px;
+}
+
+.emptyIcon {
+  width: 80px;
+  height: 80px;
+  background-color: semantic-color('primary-soft');
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 40px;
+    height: 40px;
+    color: semantic-color('primary-hover');
+  }
+}
+
+.emptyTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: semantic-color('white');
+  margin: 0;
+}
+
+.emptyText {
+  font-size: 14px;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+// ===== BOTTOM DRAWER =====
+.drawerOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: semantic-color('overlay');
+  z-index: 2000; // Higher than nav panel
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+
+  &.open {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.bottomDrawer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 70vh;
+  background-color: semantic-color('surface');
+  border-top: 1px solid semantic-color('surface-strong');
+  border-radius: 24px 24px 0 0;
+  z-index: 2001; // Higher than nav panel
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.3s ease-out;
+
+  &.open {
+    transform: translateY(0);
+  }
+}
+
+.drawerHandle {
+  width: 40px;
+  height: 4px;
+  background-color: semantic-color('surface-muted');
+  border-radius: 2px;
+  margin: 12px auto;
+  flex-shrink: 0;
+}
+
+.drawerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px 16px;
+  border-bottom: 1px solid semantic-color('surface-strong');
+  flex-shrink: 0;
+}
+
+.drawerTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: semantic-color('white');
+  margin: 0;
+}
+
+.drawerActions {
+  display: flex;
+  gap: 12px;
+}
+
+.addSelectedButton {
+  padding: 8px 16px;
+  background-color: semantic-color('primary-strong');
+  color: semantic-color('white');
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover:not(:disabled) {
+    background-color: semantic-color('primary');
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.cancelButton {
+  padding: 8px 16px;
+  background-color: transparent;
+  color: semantic-color('text-secondary');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+    border-color: semantic-color('text-muted');
+  }
+}
+
+// ===== PRODUCT GRID =====
+.productGrid {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 20px;
+  display: flex;
+  gap: 24px;
+}
+
+.productColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
+.productColumnHeader {
+  font-size: 14px;
+  font-weight: 600;
+  color: semantic-color('white');
+  padding-bottom: 8px;
+  border-bottom: 1px solid semantic-color('surface-strong');
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.productTypeLabel {
+  font-size: 11px;
+  color: semantic-color('text-muted');
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+.productImages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  max-height: calc(70vh - 180px);
+}
+
+.productImageItem {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+
+  &:hover {
+    border-color: semantic-color('text-muted');
+    transform: scale(1.02);
+  }
+
+  &.selected {
+    border-color: semantic-color('primary');
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 20px;
+      height: 20px;
+      background-color: semantic-color('primary');
+      border-radius: 50%;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+      background-size: 12px;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+// ===== NO PRODUCTS STATE =====
+.noProducts {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: semantic-color('text-secondary');
+  padding: 40px;
+
+  svg {
+    width: 48px;
+    height: 48px;
+    color: semantic-color('text-muted');
+  }
+}
+
+// ===== SPINNER =====
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ===== HISTORY BAR =====
+.historyBar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 0;
+  margin-top: 8px;
+  border-top: 1px solid semantic-color('surface-strong');
+}
+
+.historyThumbnail {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.2s, transform 0.2s;
+  opacity: 0.6;
+
+  &:hover {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+
+  &.active {
+    border-color: semantic-color('primary');
+    opacity: 1;
+    transform: scale(1.05);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.historyCount {
+  font-size: 11px;
+  color: semantic-color('text-muted');
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+// ===== SETTINGS DRAWER (Right Side) =====
+.settingsOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: semantic-color('overlay-light');
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+
+  &.open {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+.settingsDrawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 360px;
+  max-width: 90vw;
+  background-color: semantic-color('surface');
+  border-left: 1px solid semantic-color('surface-strong');
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-out;
+  box-shadow: -10px 0 30px semantic-color('overlay-soft');
+
+  &.open {
+    transform: translateX(0);
+  }
+}
+
+.settingsDrawerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid semantic-color('surface-strong');
+  flex-shrink: 0;
+}
+
+.settingsDrawerTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: semantic-color('white');
+  margin: 0;
+}
+
+.settingsDrawerContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settingsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settingsLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: semantic-color('text-secondary');
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settingsLabelRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settingsValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: semantic-color('primary-hover');
+}
+
+.settingsSelect {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  color: semantic-color('white');
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+
+  &:focus {
+    border-color: semantic-color('primary');
+  }
+}
+
+.settingsTextarea {
+  width: 100%;
+  padding: 12px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  color: semantic-color('white');
+  font-size: 14px;
+  outline: none;
+  resize: vertical;
+  min-height: 150px;
+  word-wrap: break-word;
+  font-family: inherit;
+  transition: border-color 0.2s;
+
+  &:focus {
+    border-color: semantic-color('primary');
+  }
+
+  &::placeholder {
+    color: semantic-color('text-muted');
+  }
+}
+
+.rangeSlider {
+  width: 100%;
+  height: 4px;
+  background: semantic-color('surface-strong');
+  border-radius: 2px;
+  appearance: none;
+  cursor: pointer;
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: semantic-color('primary');
+    border-radius: 50%;
+    cursor: pointer;
+  }
+}
+
+.toggleGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.toggleItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-strong');
+  border-radius: 8px;
+}
+
+.toggleLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: semantic-color('text-subtle');
+}
+
+.toggleButton {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.propTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-strong');
+  border-radius: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.propTag {
+  padding: 6px 12px;
+  background-color: semantic-color('surface');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 16px;
+  font-size: 12px;
+  color: semantic-color('text-secondary');
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: semantic-color('primary');
+    color: semantic-color('primary-hover');
+  }
+
+  &.active {
+    background-color: semantic-color('primary-strong');
+    border-color: semantic-color('primary-strong');
+    color: semantic-color('white');
+  }
+}
+
+.aspectRatioGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.aspectRatioButton {
+  padding: 10px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: semantic-color('text-secondary');
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: semantic-color('primary');
+    color: semantic-color('primary-hover');
+  }
+
+  &.active {
+    background-color: semantic-color('primary-strong');
+    border-color: semantic-color('primary-strong');
+    color: semantic-color('white');
+  }
+}
+
+.scenePreview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+
+  &:hover {
+    border-color: semantic-color('primary');
+  }
+}
+
+.scenePreviewText {
+  font-size: 14px;
+  color: semantic-color('white');
+}
+
+.scenePreviewPlaceholder {
+  font-size: 14px;
+  color: semantic-color('text-muted');
+}
+
+.scenePreviewAction {
+  font-size: 12px;
+  color: semantic-color('primary-hover');
+  font-weight: 500;
+}
+
+// Scene preview with image thumbnail
+.scenePreviewWithImage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+
+  &:hover {
+    border-color: semantic-color('primary');
+  }
+}
+
+.scenePreviewThumbnail {
+  width: 80px;
+  height: 50px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: semantic-color('surface-strong');
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.scenePreviewEmpty {
+  width: 80px;
+  height: 50px;
+  border-radius: 6px;
+  background-color: semantic-color('surface-strong');
+  border: 2px dashed semantic-color('surface-muted');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: semantic-color('text-muted');
+  flex-shrink: 0;
+}
+
+.scenePreviewInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+// ===== MODAL =====
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: semantic-color('overlay-strong');
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.sceneLibraryModal {
+  width: 100%;
+  max-width: 800px;
+  max-height: 80vh;
+  background-color: semantic-color('surface');
+  border: 1px solid semantic-color('surface-strong');
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+// Large modal with vertical tabs
+.sceneLibraryModalLarge {
+  width: 100%;
+  max-width: 1000px;
+  max-height: 85vh;
+  background-color: semantic-color('surface');
+  border: 1px solid semantic-color('surface-strong');
+  border-radius: 16px;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+
+  @include mobile {
+    flex-direction: column;
+    max-height: 95vh;
+  }
+}
+
+// Vertical tabs sidebar
+.sceneLibraryTabs {
+  width: 140px;
+  background-color: semantic-color('background');
+  border-right: 1px solid semantic-color('surface-strong');
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+  flex-shrink: 0;
+
+  @include mobile {
+    width: 100%;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid semantic-color('surface-strong');
+    padding: 0;
+  }
+}
+
+.sceneLibraryTab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
+  background: none;
+  border: none;
+  color: semantic-color('text-secondary');
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+
+  &:hover {
+    color: semantic-color('text-primary');
+    background-color: semantic-color('surface');
+  }
+
+  &.active {
+    color: semantic-color('primary-hover');
+    background-color: semantic-color('surface');
+    border-left-color: semantic-color('primary');
+  }
+
+  span {
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  @include mobile {
+    flex: 1;
+    flex-direction: row;
+    padding: 12px;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+
+    &.active {
+      border-left-color: transparent;
+      border-bottom-color: semantic-color('primary');
+    }
+  }
+}
+
+// Main content area
+.sceneLibraryContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+// Upload area
+.uploadArea {
+  display: flex;
+  justify-content: center;
+}
+
+.uploadButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: semantic-color('primary-strong');
+  border: none;
+  border-radius: 8px;
+  color: semantic-color('white');
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover:not(:disabled) {
+    background-color: semantic-color('primary-stronger');
+  }
+
+  &:disabled {
+    background-color: semantic-color('surface-muted');
+    cursor: not-allowed;
+  }
+}
+
+// Upload dropzone
+.uploadDropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 20px 16px;
+  padding: 32px 24px;
+  border: 2px dashed semantic-color('surface-muted');
+  border-radius: 12px;
+  background-color: semantic-color('background');
+  color: semantic-color('text-muted');
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+
+  &:hover:not(.disabled) {
+    border-color: semantic-color('primary-strong');
+    background-color: rgba(semantic-color('primary-strong'), 0.05);
+    color: semantic-color('text');
+  }
+
+  &.dragging {
+    border-color: semantic-color('primary-strong');
+    background-color: rgba(semantic-color('primary-strong'), 0.1);
+    color: semantic-color('primary-strong');
+    border-style: solid;
+  }
+
+  &.disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.dropzoneText {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.dropzoneHint {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+// Empty backdrop option
+.emptyBackdropOption {
+  padding: 16px 20px;
+  border-bottom: 1px solid semantic-color('surface-strong');
+  flex-shrink: 0;
+}
+
+.emptyBackdropButton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  background-color: semantic-color('background');
+  border: 2px dashed semantic-color('surface-muted');
+  border-radius: 8px;
+  color: semantic-color('text-secondary');
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: semantic-color('text-muted');
+    color: semantic-color('text-subtle');
+  }
+
+  &.selected {
+    border-color: semantic-color('primary');
+    border-style: solid;
+    color: semantic-color('primary-hover');
+    background-color: semantic-color('primary-soft');
+  }
+
+  span {
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+.emptyBackdropIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: semantic-color('surface-strong');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Loading state
+.loadingState {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 48px;
+  color: semantic-color('text-secondary');
+}
+
+// Scene card enhancements
+.sceneCardActions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.sceneCard:hover .sceneCardActions {
+  opacity: 1;
+}
+
+.sceneCardAction {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background-color: semantic-color('overlay');
+  border: none;
+  color: semantic-color('white');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: semantic-color('overlay-heavy');
+  }
+
+  &.active {
+    color: semantic-color('error-soft');
+  }
+
+  &.danger:hover {
+    background-color: semantic-color('error');
+  }
+}
+
+.sceneCardCredit {
+  font-size: 11px;
+  color: semantic-color('text-muted');
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+
+  &:hover {
+    color: semantic-color('primary-hover');
+  }
+}
+
+.noScenesHint {
+  font-size: 13px;
+  color: semantic-color('surface-muted');
+  margin-top: 4px;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid semantic-color('surface-strong');
+  flex-shrink: 0;
+}
+
+.modalTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: semantic-color('white');
+  margin: 0;
+}
+
+.sceneLibraryFilters {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-bottom: 1px solid semantic-color('surface-strong');
+  flex-shrink: 0;
+}
+
+.searchInputWrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  color: semantic-color('text-secondary');
+
+  &:focus-within {
+    border-color: semantic-color('primary');
+  }
+}
+
+.searchInput {
+  flex: 1;
+  background: none;
+  border: none;
+  color: semantic-color('white');
+  font-size: 14px;
+  outline: none;
+
+  &::placeholder {
+    color: semantic-color('text-muted');
+  }
+}
+
+.categoryTabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.categoryTab {
+  padding: 8px 16px;
+  background-color: transparent;
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 20px;
+  font-size: 13px;
+  color: semantic-color('text-secondary');
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: semantic-color('primary');
+    color: semantic-color('primary-hover');
+  }
+
+  &.active {
+    background-color: semantic-color('primary-strong');
+    border-color: semantic-color('primary-strong');
+    color: semantic-color('white');
+  }
+}
+
+.sceneGrid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.sceneCard {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+  background-color: semantic-color('background');
+
+  &:hover {
+    border-color: semantic-color('text-muted');
+    transform: scale(1.02);
+  }
+
+  &.selected {
+    border-color: semantic-color('primary');
+  }
+}
+
+.sceneCardImage {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.sceneCardInfo {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sceneCardName {
+  font-size: 14px;
+  font-weight: 500;
+  color: semantic-color('white');
+}
+
+.sceneCardType {
+  font-size: 12px;
+  color: semantic-color('text-muted');
+}
+
+.noScenesFound {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px;
+  color: semantic-color('text-muted');
+  text-align: center;
+}
+
+// ===== GENERATED TAB ACCORDION =====
+.generatedTabContent {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  grid-column: 1 / -1;
+}
+
+.accordionSection {
+  border-bottom: 1px solid semantic-color('border');
+}
+
+.accordionHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: semantic-color('white');
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    color: semantic-color('text-muted');
+  }
+}
+
+.accordionCount {
+  margin-left: auto;
+  font-size: 12px;
+  color: semantic-color('text-muted');
+  background-color: semantic-color('background-darker');
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.accordionContent {
+  padding: 16px;
+}
+
+.sceneGridInner {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.productAccordion {
+  margin-top: 8px;
+}
+
+.productAccordionHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  color: semantic-color('text-muted');
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    color: semantic-color('white');
+  }
+}
+
+.emptyAccordion {
+  font-size: 13px;
+  color: semantic-color('text-muted');
+  padding: 12px 16px;
+}
+
+// ===== FLOW ASSISTANT =====
+.assistantOverlay {
+  position: absolute;
+  inset: 0;
+  background-color: semantic-color('overlay-light');
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 16px;
+
+  @include mobile {
+    padding: 0;
+  }
+}
+
+.assistantPanel {
+  width: 400px;
+  max-width: 100%;
+  height: 500px;
+  max-height: calc(100vh - 32px);
+  background-color: semantic-color('surface');
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px semantic-color('overlay-light');
+  border: 1px solid semantic-color('surface-strong');
+  overflow: hidden;
+
+  @include mobile {
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+}
+
+.assistantHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid semantic-color('surface-strong');
+  background-color: semantic-color('background');
+}
+
+.assistantTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: semantic-color('white');
+}
+
+.assistantMessages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.assistantMessage {
+  display: flex;
+  gap: 10px;
+  max-width: 90%;
+
+  &.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+
+  &.assistant {
+    align-self: flex-start;
+  }
+}
+
+.messageAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: semantic-color('primary-strong');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: semantic-color('white');
+  flex-shrink: 0;
+}
+
+.messageContent {
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+
+  .user & {
+    background-color: semantic-color('primary-strong');
+    color: semantic-color('white');
+    border-bottom-right-radius: 4px;
+  }
+
+  .assistant & {
+    background-color: semantic-color('surface-strong');
+    color: semantic-color('text-primary');
+    border-bottom-left-radius: 4px;
+  }
+
+  p {
+    margin: 0;
+    white-space: pre-wrap;
+  }
+}
+
+.actionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.actionButton {
+  padding: 6px 12px;
+  background-color: semantic-color('primary-strong');
+  color: semantic-color('white');
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: semantic-color('primary-stronger');
+  }
+}
+
+.assistantInput {
+  display: flex;
+  gap: 10px;
+  padding: 16px;
+  border-top: 1px solid semantic-color('surface-strong');
+  background-color: semantic-color('background');
+
+  textarea {
+    flex: 1;
+    padding: 10px 14px;
+    background-color: semantic-color('background');
+    border: 1px solid semantic-color('surface-muted');
+    border-radius: 12px;
+    color: semantic-color('white');
+    font-size: 14px;
+    resize: none;
+    outline: none;
+    font-family: inherit;
+
+    &:focus {
+      border-color: semantic-color('primary');
+    }
+
+    &::placeholder {
+      color: semantic-color('text-muted');
+    }
+  }
+
+  .sendButton {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background-color: semantic-color('primary-strong');
+    color: semantic-color('white');
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+
+    &:hover:not(:disabled) {
+      background-color: semantic-color('primary-stronger');
+    }
+
+    &:disabled {
+      background-color: semantic-color('surface-muted');
+      cursor: not-allowed;
+    }
+  }
+}
+
+// ===== ASSISTANT FAB BUTTON =====
+.assistantFab {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, semantic-color('primary-strong'), semantic-color('primary'));
+  color: semantic-color('white');
+  border: none;
+  box-shadow: 0 4px 20px semantic-color('primary-glow');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  z-index: 50;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 24px semantic-color('primary-glow-strong');
+  }
+
+  @include mobile {
+    bottom: 16px;
+    right: 16px;
+    width: 48px;
+    height: 48px;
+  }
+}
+
+// ===== SETTINGS PANEL (Right Side, persistent) =====
+.settingsPanel {
+  width: 320px;
+  background-color: semantic-color('surface');
+  border-left: 1px solid semantic-color('surface-strong');
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: width 0.3s ease-in-out;
+
+  &.collapsed {
+    width: 0;
+    overflow: hidden;
+    border-left: none;
+  }
+}
+
+.settingsPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid semantic-color('surface-strong');
+  flex-shrink: 0;
+}
+
+.settingsPanelTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: semantic-color('white');
+  margin: 0;
+}
+
+.settingsPanelContent {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  scrollbar-width: none; // Firefox
+  -ms-overflow-style: none; // IE and Edge
+
+  &::-webkit-scrollbar {
+    display: none; // Chrome, Safari, Opera
+  }
+}
+
+// No selection state
+.noSelectionState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: semantic-color('text-muted');
+  text-align: center;
+  padding: 24px;
+
+  svg {
+    width: 48px;
+    height: 48px;
+  }
+
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: semantic-color('text-subtle');
+    margin: 0;
+  }
+
+  p {
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0;
+  }
+}
+
+// Mixed value styles
+.mixedValue {
+  &::placeholder {
+    color: semantic-color('primary-hover');
+    opacity: 0.8;
+  }
+}
+
+.mixedToggle {
+  opacity: 0.6; // e.g. a Switch component
+}
+
+.mixedLabel {
+  font-style: italic;
+  color: semantic-color('text-muted');
+}
+
+.settingsHint {
+  font-size: 12px;
+  color: semantic-color('text-muted');
+  margin-top: -16px;
+  padding: 0 4px;
+  line-height: 1.4;
+}
+
+.noSelectionHint {
+  font-size: 12px;
+  color: semantic-color('surface-muted');
+  margin-top: 4px;
+}
+
+// ===== MIXED STATE MESSAGE =====
+.mixedStateMessage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  text-align: center;
+  color: semantic-color('text-secondary');
+  font-size: 13px;
+}
+
+.mixedStateHint {
+  font-size: 12px;
+  color: semantic-color('text-muted');
+}
+
+// ===== ANALYZE SCENE BUTTON =====
+.analyzeSceneButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  margin-top: 8px;
+  background: linear-gradient(135deg, semantic-color('primary-strong'), semantic-color('primary-hover'));
+  border: none;
+  border-radius: 8px;
+  color: semantic-color('white');
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, semantic-color('primary'), semantic-color('primary-muted'));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px semantic-color('primary-outline');
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+.spinIcon {
+  animation: spin 1s linear infinite;
+}
+
+.analyzeError {
+  font-size: 12px;
+  color: semantic-color('error-soft');
+  margin-top: 4px;
+  padding: 0 4px;
+}
+
+// ===== ACCORDION SECTIONS =====
+.accordionScrollArea {
+  display: flex;
+  flex-direction: column;
+}
+
+.accordionRoot {
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: semantic-color('surface-deep');
+}
+
+.accordionItem {
+  width: 100%;
+
+  +.accordionItem {
+    border-top: 1px solid semantic-color('surface-strong');
+  }
+}
+
+.accordionHeader {
+  margin: 0;
+}
+
+.accordionTrigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px;
+  border: none;
+  background-color: semantic-color('surface');
+  color: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  user-select: none;
+
+  &:hover {
+    background-color: semantic-color('surface-hover');
+  }
+
+  &:focus-visible {
+    outline: 2px solid semantic-color('primary');
+    outline-offset: -2px;
+  }
+}
+
+.accordionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: semantic-color('text-primary');
+
+  svg {
+    width: 16px;
+    height: 16px;
+    color: semantic-color('primary-hover');
+  }
+}
+
+.accordionChevron {
+  width: 16px;
+  height: 16px;
+  color: semantic-color('text-secondary');
+  transition: transform 0.2s ease;
+}
+
+.accordionTrigger[data-state='open'] .accordionChevron {
+  transform: rotate(180deg);
+}
+
+.accordionContent {
+  overflow: hidden;
+  background-color: semantic-color('surface-deep');
+}
+
+.accordionContent[data-state='open'] {
+  animation: accordionSlideDown 200ms ease-out;
+}
+
+.accordionContent[data-state='closed'] {
+  animation: accordionSlideUp 200ms ease-out;
+}
+
+.accordionContentInner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@keyframes accordionSlideDown {
+  from {
+    height: 0;
+  }
+
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordionSlideUp {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+
+  to {
+    height: 0;
+  }
+}
+
+// ===== TOOLTIP / INFO ICON =====
+.tooltipTrigger {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+}
+
+.tooltipIcon {
+  width: 14px;
+  height: 14px;
+  color: semantic-color('text-muted');
+  transition: color 0.2s;
+
+  &:hover {
+    color: semantic-color('primary-hover');
+  }
+}
+
+.tooltipContent {
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: semantic-color('text-subtle');
+  line-height: 1.45;
+  white-space: pre-line;
+  max-width: 240px;
+  z-index: 9500;
+  box-shadow: 0 8px 18px semantic-color('overlay-soft-strong');
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.tooltipContent[data-state='delayed-open'] {
+  animation: tooltipFadeIn 140ms ease-out;
+}
+
+.tooltipContent[data-state='closed'] {
+  animation: tooltipFadeOut 140ms ease-in;
+}
+
+.tooltipArrow {
+  fill: semantic-color('background');
+  stroke: semantic-color('surface-muted');
+  stroke-width: 1px;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tooltipFadeOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+// ===== TAG INPUT WITH AUTOCOMPLETE =====
+.tagInputContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tagInputWrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  min-height: 40px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  align-items: center;
+  cursor: text;
+  transition: border-color 0.2s;
+
+  &:focus-within {
+    border-color: semantic-color('primary');
+  }
+}
+
+.tagItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background-color: semantic-color('primary-strong');
+  border-radius: 4px;
+  font-size: 12px;
+  color: semantic-color('white');
+
+  button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: semantic-color('text-inverse-muted');
+
+    &:hover {
+      color: semantic-color('white');
+    }
+
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+  }
+}
+
+.tagInput {
+  flex: 1;
+  min-width: 120px;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: semantic-color('white');
+
+  &::placeholder {
+    color: semantic-color('text-muted');
+  }
+}
+
+.tagAutocomplete {
+  position: relative;
+}
+
+.tagSuggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: semantic-color('surface');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 50;
+  box-shadow: 0 4px 12px semantic-color('overlay-soft');
+}
+
+.tagSuggestion {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 13px;
+  color: semantic-color('text-subtle');
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover,
+  &.highlighted {
+    background-color: semantic-color('surface-strong');
+    color: semantic-color('white');
+  }
+}
+
+// ===== IMAGE QUALITY SELECTOR =====
+.qualityGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.qualityButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background-color: semantic-color('surface-strong');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(.active) {
+    background-color: semantic-color('surface-pressed');
+    border-color: semantic-color('text-muted');
+  }
+
+  &.active {
+    background-color: semantic-color('primary-strong');
+    border-color: semantic-color('primary');
+
+    .qualityLabel {
+      color: semantic-color('white');
+    }
+
+    .qualityResolution {
+      color: semantic-color('text-inverse-muted');
+    }
+  }
+}
+
+.qualityLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: semantic-color('text-primary');
+}
+
+.qualityResolution {
+  font-size: 11px;
+  color: semantic-color('text-muted');
+}
+
+// ===== SETTINGS PANEL FOOTER =====
+.settingsPanelFooter {
+  padding: 16px 20px;
+  border-top: 1px solid semantic-color('surface-strong');
+  background-color: semantic-color('surface');
+  flex-shrink: 0;
+}
+
+.executeAllButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, semantic-color('primary-strong'), semantic-color('primary-hover'));
+  border: none;
+  border-radius: 8px;
+  color: semantic-color('white');
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, semantic-color('primary'), semantic-color('primary-muted'));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px semantic-color('primary-outline');
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+// ===== ALWAYS VISIBLE SECTION =====
+.alwaysVisibleSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border-top: 3px solid semantic-color('surface-strong');
+  margin-top: auto;
+}
+
+// ===== DEBUG BUTTON =====
+.debugButton {
+  width: 48px;
+  height: 48px;
+  background-color: transparent;
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: semantic-color('text-secondary');
+  }
+
+  &:hover {
+    background-color: semantic-color('primary-soft');
+    border-color: semantic-color('primary');
+
+    svg {
+      color: semantic-color('primary-hover');
+    }
+  }
+}
+
+.debugButtonModified {
+  border-color: semantic-color('primary');
+  box-shadow: 0 0 0 2px rgba(79, 130, 255, 0.25);
+
+  svg {
+    color: semantic-color('primary');
+  }
+}
+
+// ===== DEBUG MODAL =====
+.debugModalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: semantic-color('overlay-strong');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.debugModal {
+  width: 100%;
+  max-width: 700px;
+  max-height: 85vh;
+  background-color: semantic-color('surface');
+  border: 1px solid semantic-color('surface-strong');
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.debugModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid semantic-color('surface-strong');
+  flex-shrink: 0;
+}
+
+.debugModalTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: semantic-color('white');
+  margin: 0;
+}
+
+.debugModalContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.debugSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.debugSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.debugPromptHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.customPromptBadge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: semantic-color('primary-soft');
+  color: semantic-color('primary');
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.debugPromptActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.debugActionButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: semantic-color('primary');
+  border: none;
+  border-radius: 6px;
+  color: semantic-color('white');
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: semantic-color('primary-hover');
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.debugActionButtonSecondary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: transparent;
+  border: 1px solid semantic-color('surface-strong');
+  border-radius: 6px;
+  color: semantic-color('text-subtle');
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-muted');
+    color: semantic-color('white');
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.debugSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: semantic-color('text-subtle');
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.debugImagesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.debugImageItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.debugImageLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: semantic-color('text-secondary');
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.debugImageContainer {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-strong');
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.debugNoImages {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  color: semantic-color('text-muted');
+  background-color: semantic-color('background');
+  border-radius: 8px;
+  border: 1px dashed semantic-color('surface-strong');
+}
+
+.debugPromptText,
+.debugPromptEditor {
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-strong');
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: semantic-color('text-primary');
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.debugPromptEditor {
+  width: 100%;
+  resize: vertical;
+}
+
+.copyButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: semantic-color('surface-strong');
+  border: none;
+  border-radius: 6px;
+  color: semantic-color('text-subtle');
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-muted');
+    color: semantic-color('white');
+  }
+}
+
+// ===== GLOBAL EXECUTE BUTTON =====
+.globalExecuteButton {
+  position: absolute;
+  bottom: 24px;
+  right: 96px; // Position to the left of the assistant FAB
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, semantic-color('success-soft-stronger'), semantic-color('success-soft-strong'));
+  color: semantic-color('white');
+  border: none;
+  border-radius: 28px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 20px semantic-color('success-outline');
+  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+  z-index: 50;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px semantic-color('success-glow-strong');
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: linear-gradient(135deg, semantic-color('surface-muted'), semantic-color('text-muted'));
+    box-shadow: none;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  @include mobile {
+    bottom: 16px;
+    right: 80px;
+    padding: 12px 20px;
+    font-size: 13px;
+  }
+}
+
+// ===== IMAGE EDITOR MODAL =====
+.editorModalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: semantic-color('overlay-heavy');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.editorModal {
+  width: 100%;
+  max-width: 1400px;
+  max-height: 95vh;
+  background-color: semantic-color('surface');
+  border: 1px solid semantic-color('surface-strong');
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editorModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid semantic-color('surface-strong');
+  flex-shrink: 0;
+}
+
+.editorModalTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: semantic-color('white');
+  margin: 0;
+}
+
+.editorModalContent {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+
+  @include mobile {
+    flex-direction: column;
+  }
+}
+
+// Left: Image Section
+.editorImageSection {
+  width: 45%;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-right: 1px solid semantic-color('surface-strong');
+  overflow: visible; // Allow image preview hover zoom to extend beyond
+
+  @include mobile {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid semantic-color('surface-strong');
+  }
+}
+
+.editorImagePreview {
+  flex: 1;
+  min-height: 400px;
+  background-color: semantic-color('background');
+  border-radius: 12px;
+  overflow: visible; // Allow hover zoom to extend beyond frame
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease-out;
+    border-radius: 8px;
+  }
+
+  &:hover {
+    z-index: 10; // Bring above other elements when hovering
+
+    img {
+      transform: scale(1.15);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+  }
+
+  // Click hint overlay
+  &::after {
+    content: 'Click to enlarge';
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    padding: 6px 12px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: semantic-color('white');
+    font-size: 12px;
+    border-radius: 6px;
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+    pointer-events: none;
+  }
+
+  &:hover::after {
+    opacity: 1;
+  }
+}
+
+.analyzeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, semantic-color('accent'), semantic-color('accent-strong'));
+  border: none;
+  border-radius: 10px;
+  color: semantic-color('white');
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px semantic-color('accent-glow');
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+.reanalyzeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background-color: semantic-color('surface-strong');
+  border: none;
+  border-radius: 6px;
+  color: semantic-color('text-subtle');
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+
+  &:hover:not(:disabled) {
+    background-color: semantic-color('surface-muted');
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.editorError {
+  color: semantic-color('error-soft');
+  font-size: 13px;
+  margin: 0;
+}
+
+// Right: Editor Panel
+.editorPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.editorPanelContent {
+  flex: 1;
+  padding: 20px;
+  padding-bottom: 100px; // Space for fixed footer
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.editorPanelFooter {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 20px;
+  background: linear-gradient(to top, semantic-color('surface') 80%, transparent);
+  display: flex;
+  gap: 12px;
+  z-index: 10;
+}
+
+// ===== EDITOR TABS =====
+.editorTabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 20px;
+  background-color: semantic-color('surface-deep');
+  border-bottom: 1px solid semantic-color('surface-strong');
+  flex-shrink: 0;
+}
+
+.editorTab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: semantic-color('text-secondary');
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+    color: semantic-color('text-primary');
+  }
+
+  &.active {
+    background-color: semantic-color('primary');
+    color: semantic-color('white');
+    border-color: semantic-color('primary');
+
+    &:hover {
+      background-color: semantic-color('primary-hover');
+    }
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+// ===== ADJUSTMENTS TAB =====
+.adjustmentsTabContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.adjustmentsDescription {
+  font-size: 13px;
+  color: semantic-color('text-secondary');
+  line-height: 1.5;
+  margin: 0;
+}
+
+.adjustmentsBadge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 4px 10px;
+  background-color: semantic-color('primary');
+  color: semantic-color('white');
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.editorEmptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+  color: semantic-color('text-secondary');
+
+  svg {
+    color: semantic-color('accent-hover');
+    opacity: 0.6;
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: semantic-color('text-primary');
+    margin: 0;
+  }
+
+  p {
+    font-size: 14px;
+    margin: 0;
+    max-width: 280px;
+  }
+}
+
+.editorSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editorLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: semantic-color('text-secondary');
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.editorLabelHint {
+  font-size: 11px;
+  font-weight: 400;
+  color: semantic-color('text-muted');
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.editorSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.editorDivider {
+  height: 1px;
+  background-color: semantic-color('surface-strong');
+  margin: 16px 0;
+}
+
+.editorHint {
+  font-size: 13px;
+  color: semantic-color('text-muted');
+  line-height: 1.5;
+  margin: 0;
+}
+
+.analyzeButtonSmall {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: semantic-color('accent');
+  border: none;
+  border-radius: 6px;
+  color: semantic-color('white');
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background-color: semantic-color('accent-hover');
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.editorDescription {
+  font-size: 14px;
+  color: semantic-color('text-subtle');
+  line-height: 1.5;
+  margin: 0;
+  padding: 12px;
+  background-color: semantic-color('background');
+  border-radius: 8px;
+}
+
+// Adjustment Hints (AI-suggested improvements)
+.adjustmentHints {
+  margin-bottom: 16px;
+  padding: 12px;
+  background-color: semantic-color('surface-deep');
+  border: 1px solid semantic-color('accent-ghost');
+  border-radius: 8px;
+}
+
+.hintsLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: semantic-color('accent-text');
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hintsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hintButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 6px;
+  color: semantic-color('text-primary');
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background-color: semantic-color('accent-ghost');
+    border-color: semantic-color('accent-hover');
+    color: semantic-color('accent-text');
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.hintLabel {
+  white-space: nowrap;
+}
+
+.editorTextarea {
+  width: 100%;
+  padding: 12px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  color: semantic-color('white');
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+
+  &:focus {
+    border-color: semantic-color('accent-hover');
+  }
+
+  &::placeholder {
+    color: semantic-color('text-muted');
+  }
+}
+
+// Components List
+.componentsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.componentItem {
+  padding: 12px;
+  background-color: semantic-color('background');
+  border: 1px solid semantic-color('surface-strong');
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: semantic-color('surface-muted');
+  }
+
+  &.selected {
+    border-color: semantic-color('accent-hover');
+    background-color: semantic-color('accent-ghost');
+  }
+}
+
+.componentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.componentName {
+  font-size: 14px;
+  font-weight: 600;
+  color: semantic-color('white');
+  text-transform: capitalize;
+}
+
+.componentEdited {
+  font-size: 11px;
+  color: semantic-color('success-soft');
+  background-color: semantic-color('success-soft-strong');
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.componentDescription {
+  font-size: 12px;
+  color: semantic-color('text-secondary');
+}
+
+.componentEditArea {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid semantic-color('surface-strong');
+}
+
+.componentPromptInput {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: semantic-color('surface');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 6px;
+  color: semantic-color('white');
+  font-size: 13px;
+  outline: none;
+
+  &:focus {
+    border-color: semantic-color('accent-hover');
+  }
+
+  &::placeholder {
+    color: semantic-color('text-muted');
+  }
+}
+
+.componentImageUpload {
+  display: flex;
+  gap: 8px;
+}
+
+.uploadRefLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: semantic-color('surface');
+  border: 1px dashed semantic-color('surface-muted');
+  border-radius: 6px;
+  color: semantic-color('text-secondary');
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: semantic-color('accent-hover');
+    color: semantic-color('accent-soft');
+  }
+}
+
+.componentRefImage {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.removeRefImage {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  background-color: semantic-color('error');
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: semantic-color('white');
+  padding: 0;
+
+  &:hover {
+    background-color: semantic-color('error-hover');
+  }
+}
+
+// Generate Button
+.generateEditButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, semantic-color('accent'), semantic-color('accent-strong'));
+  border: none;
+  border-radius: 10px;
+  color: semantic-color('white');
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: auto;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px semantic-color('accent-glow');
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: semantic-color('surface-muted');
+  }
+}
+
+// Save Dialog
+.saveDialogOverlay {
+  position: absolute;
+  inset: 0;
+  background-color: semantic-color('overlay-strong');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.saveDialog {
+  background-color: semantic-color('surface');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: semantic-color('white');
+    margin: 0;
+    text-align: center;
+  }
+}
+
+.saveDialogPreview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.savePreviewImage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+
+  img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid semantic-color('surface-muted');
+  }
+
+  span {
+    font-size: 12px;
+    color: semantic-color('text-secondary');
+  }
+}
+
+.savePreviewArrow {
+  font-size: 24px;
+  color: semantic-color('text-muted');
+}
+
+.saveDialogActions {
+  display: flex;
+  gap: 12px;
+}
+
+.saveDialogButton {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background-color: semantic-color('surface-strong');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  color: semantic-color('white');
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-muted');
+  }
+
+  &.primary {
+    background: linear-gradient(135deg, semantic-color('accent'), semantic-color('accent-strong'));
+    border: none;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px semantic-color('accent-glow');
+    }
+  }
+}
+
+.saveDialogCancel {
+  background: none;
+  border: none;
+  color: semantic-color('text-secondary');
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px;
+  text-align: center;
+  width: 100%;
+
+  &:hover {
+    color: semantic-color('text-subtle');
+  }
+}
+
+// Edit button on generated image
+.editImageButton {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  border: none;
+  border-radius: 50%;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10;
+  background-color: semantic-color('overlay');
+  opacity: 0;
+  pointer-events: none;
+
+  @include tablet {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  &:hover {
+    transform: scale(1.1);
+    background-color: semantic-color('accent-glow-strong');
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: semantic-color('white');
+  }
+}
+
+// Show edit button on hover (output preview)
+.outputPreview:hover .editImageButton {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+// Delete image button (on generated images)
+.deleteImageButton {
+  position: absolute;
+  top: 8px;
+  right: 44px; // Position next to favorite button
+  border: none;
+  border-radius: 50%;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10;
+  background-color: semantic-color('overlay');
+  opacity: 0;
+  pointer-events: none;
+
+  @include tablet {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  &:hover {
+    transform: scale(1.1);
+    background-color: semantic-color('error-overlay'); // Red color for delete
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: semantic-color('white');
+  }
+}
+
+// Show delete button on hover (output preview)
+.outputPreview:hover .deleteImageButton {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+// Image actions hamburger menu
+.imageMenuContainer {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
+
+.imageMenuButton {
+  border: none;
+  border-radius: 50%;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  background-color: semantic-color('overlay');
+  opacity: 0;
+  pointer-events: none;
+
+  @include tablet {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  &:hover {
+    transform: scale(1.1);
+    background-color: semantic-color('overlay-strong');
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: semantic-color('white');
+  }
+}
+
+// Show menu button on hover
+.outputPreview:hover .imageMenuButton {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.imageMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background-color: semantic-color('surface');
+  border: 1px solid semantic-color('border');
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 180px;
+  box-shadow: 0 4px 12px semantic-color('shadow');
+  z-index: 100;
+}
+
+.imageMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  color: semantic-color('text-primary');
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background-color: semantic-color('surface-hover');
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+
+  span {
+    flex: 1;
+    text-align: left;
+    white-space: nowrap;
+  }
+}
+
+.imageMenuItemActive {
+  color: semantic-color('warning');
+
+  svg {
+    color: semantic-color('warning');
+  }
+
+  &:hover {
+    background-color: semantic-color('warning-overlay');
+  }
+}
+
+.imageMenuItemDanger {
+  color: semantic-color('error');
+
+  &:hover {
+    background-color: semantic-color('error-overlay');
+  }
+}
+
+// Delete confirmation modal overlay
+.deleteConfirmOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: semantic-color('overlay-strong');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+// Delete confirmation modal
+.deleteConfirmModal {
+  background-color: semantic-color('surface');
+  border: 1px solid semantic-color('surface-strong');
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+
+  h3 {
+    margin: 0 0 12px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: semantic-color('white');
+  }
+
+  p {
+    margin: 0 0 20px 0;
+    font-size: 14px;
+    color: semantic-color('text-secondary');
+  }
+}
+
+// Delete confirmation actions
+.deleteConfirmActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+
+  button {
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+}
+
+.cancelButton {
+  background-color: semantic-color('surface-strong');
+  border: 1px solid semantic-color('surface-muted');
+  color: semantic-color('text-subtle');
+
+  &:hover {
+    background-color: semantic-color('surface-muted');
+  }
+}
+
+.confirmDeleteButton {
+  background-color: semantic-color('error');
+  border: none;
+  color: semantic-color('white');
+
+  &:hover {
+    background-color: semantic-color('error-hover');
+  }
+}
+
+// ===== IMAGE EDITOR REVISION GALLERY =====
+
+// Badge showing current revision number on main preview
+.revisionBadge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 10px;
+  background-color: semantic-color('accent-glow-intense');
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: semantic-color('white');
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+// Navigation between revisions
+.revisionNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.revisionNavButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: semantic-color('surface-strong');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 6px;
+  color: semantic-color('text-subtle');
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background-color: semantic-color('surface-muted');
+    color: semantic-color('white');
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.revisionNavText {
+  font-size: 13px;
+  color: semantic-color('text-secondary');
+  min-width: 120px;
+  text-align: center;
+}
+
+// Thumbnail gallery for revisions
+.revisionGallery {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 0;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: semantic-color('surface');
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: semantic-color('surface-muted');
+    border-radius: 3px;
+  }
+}
+
+.revisionThumbnail {
+  position: relative;
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &:hover {
+    border-color: semantic-color('text-muted');
+  }
+
+  &.selected {
+    border-color: semantic-color('accent-hover');
+    box-shadow: 0 0 0 2px semantic-color('accent-outline');
+  }
+}
+
+.revisionSelected {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  background-color: semantic-color('accent-hover');
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: semantic-color('white');
+}
+
+.revisionDelete {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 16px;
+  height: 16px;
+  background-color: semantic-color('error');
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: semantic-color('white');
+  opacity: 0;
+  transition: opacity 0.2s;
+
+  &:hover {
+    background-color: semantic-color('error-hover');
+  }
+}
+
+.revisionThumbnail:hover .revisionDelete {
+  opacity: 1;
+}
+
+.revisionLabel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2px 4px;
+  background: linear-gradient(transparent, semantic-color('overlay-heavy'));
+  font-size: 9px;
+  color: semantic-color('white');
+  text-align: center;
+  font-weight: 500;
+}
+
+// Editor action buttons container
+.editorActions {
+  display: flex;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+// Save edit button (secondary style)
+.saveEditButton {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 24px;
+  background-color: semantic-color('surface-strong');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 10px;
+  color: semantic-color('white');
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background-color: semantic-color('surface-muted');
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+// Hint text in save dialog
+.saveDialogHint {
+  font-size: 13px;
+  color: semantic-color('text-secondary');
+  text-align: center;
+  margin: 0;
+}
+
+// Make image preview position relative for badge
+.editorImagePreview {
+  position: relative;
+}
+
+// ===== FLOW CARD COLLAPSIBLE =====
+.flowCardCollapsed {
+  padding: 8px 16px;
+  gap: 12px;
+  align-items: center;
+  min-height: auto;
+  overflow: visible;
+
+  .executeButton {
+    width: 36px;
+    height: 36px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+}
+
+.collapseToggle {
+  position: absolute;
+  bottom: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 24px;
+  background-color: semantic-color('surface');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: semantic-color('text-secondary');
+  z-index: 5;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+  opacity: 0;
+
+  .flowCard:hover & {
+    opacity: 1;
+  }
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+    border-color: semantic-color('primary');
+    color: semantic-color('primary');
+  }
+
+  // Always visible when in collapsed state
+  &.collapseToggleVisible {
+    opacity: 1;
+  }
+}
+
+.collapsedFlowName {
+  flex: 0 0 auto;
+  max-width: 25%;
+  font-size: 13px;
+  font-weight: 500;
+  color: semantic-color('text-primary');
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 60px;
+
+  @media (min-width: 768px) {
+    max-width: 33%;
+    font-size: 14px;
+    min-width: 80px;
+  }
+}
+
+.collapsedRevisions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+  padding: 8px 0;
+  margin: -8px 0;
+}
+
+.collapsedRevisionsImages {
+  display: flex;
+  gap: 4px;
+  overflow-x: clip;
+  overflow-y: visible;
+  flex: 1;
+  min-width: 0;
+}
+
+.collapsedRevisionThumb {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  border: 1px solid semantic-color('surface-muted');
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: scale(1.5);
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border-color: semantic-color('primary');
+  }
+
+  @media (min-width: 768px) {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+.collapsedRevisionsMore {
+  font-size: 10px;
+  font-weight: 500;
+  color: semantic-color('text-secondary');
+  background-color: semantic-color('surface-strong');
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.collapsedSpacer {
+  flex: 1;
+}
+
+.collapsedActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+// ===== TAGS COLLAPSIBLE =====
+.tagsWrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.tagsInnerContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  transition: max-height 0.2s ease-out;
+  overflow: hidden;
+}
+
+.tagsCollapsed {
+  max-height: 28px;
+}
+
+.tagsExpandButton {
+  width: 24px;
+  height: 24px;
+  background-color: semantic-color('surface-strong');
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: semantic-color('text-secondary');
+  flex-shrink: 0;
+  transition: background-color 0.2s, color 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-muted');
+    color: semantic-color('text-primary');
+  }
+}
+
+.noTagsLabel {
+  font-size: 12px;
+  color: semantic-color('text-muted');
+  font-style: italic;
+}
+
+// ===== RESPONSIVE SETTINGS PANEL =====
+
+@include mobile {
+  .flowActions {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .subtitle {
+    display: none;
+  }
+}
+
+@media (max-width: 1200px) {
+  .studioLayout {
+    position: relative;
+  }
+
+  .settingsPanel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    transform: translateX(100%);
+    box-shadow: -8px 0 24px semantic-color('overlay-soft');
+
+    &.settingsPanelOpen {
+      transform: translateX(0);
+    }
+  }
+
+  .settingsPanelOverlay {
+    position: fixed;
+    inset: 0;
+    background-color: semantic-color('overlay');
+    z-index: 99;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+
+    &.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+  }
+}
+
+@media (min-width: 1201px) {
+  .settingsPanelOverlay {
+    display: none;
+  }
+
+  // Hide header nav/settings buttons on desktop
+  .headerNavButton,
+  .headerSettingsButton {
+    display: none;
+  }
+}

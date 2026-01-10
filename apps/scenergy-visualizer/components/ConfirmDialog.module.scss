@@ -1,0 +1,224 @@
+// Confirmation dialog styles - Dark theme with vibrant colors
+@use 'sass:map';
+@use '@/styles/variables' as vars;
+
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: vars.semantic-color('overlay-strong');
+  backdrop-filter: blur(4px);
+  z-index: map.get(vars.$z-indices, 'modal');
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+
+  &.backdropOpen {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.95);
+  background: vars.semantic-color('surface');
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 480px;
+  width: calc(100% - 2rem);
+  z-index: map.get(vars.$z-indices, 'modal');
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5), 0 8px 16px rgba(0, 0, 0, 0.3);
+  border: 1px solid vars.semantic-color('border-subtle');
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+
+  &.dialogOpen {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: auto;
+  }
+
+  @media (max-width: 640px) {
+    padding: 1.5rem;
+  }
+}
+
+.closeButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: vars.semantic-color('surface-strong');
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: vars.semantic-color('text-secondary');
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: vars.semantic-color('surface-muted');
+    color: vars.semantic-color('text-primary');
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.iconWrapper {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .danger & {
+    background: vars.semantic-color('error-ghost');
+    color: vars.semantic-color('error');
+  }
+
+  .warning & {
+    background: rgba(245, 158, 11, 0.15);
+    color: vars.semantic-color('warning');
+  }
+
+  .info & {
+    background: vars.semantic-color('primary-ghost');
+    color: vars.semantic-color('primary');
+  }
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: vars.semantic-color('text-primary');
+  margin: 0 0 0.75rem 0;
+  text-align: center;
+
+  @media (max-width: 640px) {
+    font-size: 1.25rem;
+  }
+}
+
+.message {
+  font-size: 1rem;
+  color: vars.semantic-color('text-secondary');
+  margin: 0 0 2rem 0;
+  line-height: 1.6;
+  text-align: center;
+
+  @media (max-width: 640px) {
+    font-size: 0.9375rem;
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: stretch;
+
+  @media (max-width: 640px) {
+    flex-direction: column-reverse;
+  }
+}
+
+.cancelButton,
+.confirmButton {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  min-height: 48px;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 640px) {
+    padding: 0.875rem;
+  }
+}
+
+.cancelButton {
+  background: vars.semantic-color('surface-strong');
+  color: vars.semantic-color('text-primary');
+  border: 1px solid vars.semantic-color('border-strong');
+
+  &:hover:not(:disabled) {
+    background: vars.semantic-color('surface-muted');
+  }
+}
+
+.confirmButton {
+  // Danger button - vibrant red
+  &.confirmDanger {
+    background: vars.semantic-color('error');
+    color: #ffffff;
+
+    &:hover:not(:disabled) {
+      background: vars.semantic-color('error-hover');
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+  }
+
+  // Warning button - vibrant amber
+  &.confirmWarning {
+    background: vars.semantic-color('warning');
+    color: #0f0f0f;
+
+    &:hover:not(:disabled) {
+      background: vars.semantic-color('warning-hover');
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+    }
+  }
+
+  // Info/Primary button - vibrant indigo
+  &.confirmInfo {
+    background: vars.semantic-color('primary');
+    color: #ffffff;
+
+    &:hover:not(:disabled) {
+      background: vars.semantic-color('primary-hover');
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+  }
+
+  // Success button - vibrant green
+  &.confirmSuccess {
+    background: vars.semantic-color('success');
+    color: #ffffff;
+
+    &:hover:not(:disabled) {
+      background: vars.semantic-color('success-hover');
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+}

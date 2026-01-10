@@ -1,0 +1,352 @@
+@use 'sass:map';
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.container {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.chatColumn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  background-color: semantic-color('surface');
+  border-bottom: 1px solid semantic-color('border-strong');
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: map.get($z-indices, 'drawer');
+
+  // Mobile: add space for hamburger menu
+  @include mobile {
+    padding-left: 64px;
+  }
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 600;
+  color: semantic-color('text-inverse');
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: semantic-color('text-secondary');
+  margin-top: 4px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iconButton {
+  padding: 8px;
+  background-color: transparent;
+  color: semantic-color('text-secondary');
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+  }
+}
+
+.multiSelectInfo {
+  font-size: 14px;
+  color: semantic-color('text-secondary');
+  margin-right: 8px;
+  margin-bottom: 0;
+}
+
+.selectAllButton {
+  font-size: 12px;
+  color: semantic-color('accent-muted');
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+  transition: text-decoration 0.2s;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.confirmButton {
+  background-color: semantic-color('success-strong');
+  color: semantic-color('text-inverse');
+
+  &:hover {
+    background-color: semantic-color('success-alt');
+  }
+}
+
+.cancelButton {
+  background-color: semantic-color('error');
+  color: semantic-color('text-inverse');
+
+  &:hover {
+    background-color: semantic-color('error-strong');
+  }
+}
+
+.messagesContainer {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emptyContent {
+  text-align: center;
+  max-width: 400px;
+}
+
+.emptyIcon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  background-color: semantic-color('accent-soft');
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emptyTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: semantic-color('text-inverse');
+  margin-bottom: 8px;
+}
+
+.emptyText {
+  font-size: 14px;
+  color: semantic-color('text-secondary');
+  line-height: 1.6;
+}
+
+.inputArea {
+  border-top: 1px solid semantic-color('border-strong');
+  background-color: semantic-color('surface');
+  padding: 16px;
+}
+
+.contextTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background-color: semantic-color('accent-soft');
+  border: 1px solid semantic-color('accent-glow');
+  border-radius: 20px;
+  font-size: 13px;
+  color: semantic-color('accent-muted');
+}
+
+.tagClose {
+  padding: 2px;
+  background-color: transparent;
+  color: semantic-color('accent-muted');
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  border-radius: 50%;
+  border: none;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: semantic-color('accent-outline');
+  }
+}
+
+.inspirationPreview {
+  margin-bottom: 12px;
+  position: relative;
+  display: inline-block;
+}
+
+.inspirationImage {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid semantic-color('border-muted');
+}
+
+.removeButton {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  padding: 4px;
+  background-color: semantic-color('error');
+  color: semantic-color('text-inverse');
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+
+.inputRow {
+  display: flex;
+  gap: 12px;
+}
+
+.inputWrapper {
+  flex: 1;
+  position: relative;
+}
+
+.textarea {
+  width: 100%;
+  padding: 12px;
+  padding-right: 48px;
+  background-color: semantic-color('background-alt');
+  border: 1px solid semantic-color('border-muted');
+  border-radius: 8px;
+  color: semantic-color('text-inverse');
+  font-size: 14px;
+  outline: none;
+  resize: none;
+  font-family: inherit;
+  min-height: 52px;
+  transition: border-color 0.2s;
+
+  &:focus {
+    border-color: semantic-color('accent');
+  }
+}
+
+.imageButton {
+  position: absolute;
+  right: 8px;
+  bottom: 16px;
+  padding: 8px;
+  background-color: transparent;
+  color: semantic-color('text-secondary');
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface');
+  }
+}
+
+.sendButton {
+  padding: 12px 24px;
+  background-color: semantic-color('accent');
+  color: semantic-color('text-inverse');
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  border: none;
+
+  &:hover:not(:disabled) {
+    background-color: semantic-color('accent-strong');
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 400px;
+  max-width: 85vw;
+  background-color: semantic-color('background-alt');
+  border-left: 1px solid semantic-color('border-strong');
+  z-index: map.get($z-indices, 'drawer');
+  display: flex;
+  flex-direction: column;
+  box-shadow: -10px 0 20px semantic-color('overlay-soft');
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+
+  &.open {
+    transform: translateX(0);
+  }
+}
+
+.drawerOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: semantic-color('overlay-light');
+  z-index: 1000;
+}
+
+.drawerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid semantic-color('border-strong');
+  flex-shrink: 0;
+}
+
+.drawerTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: semantic-color('text-inverse');
+  margin: 0;
+}
+
+.drawerContent {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+}

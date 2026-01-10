@@ -1,0 +1,61 @@
+@use '@/styles/variables' as vars;
+@use '@/styles/mixins' as mixins;
+
+.input {
+  border-radius: vars.radius(xl);
+  border: 1px solid vars.semantic-color('border');
+  background: vars.semantic-color('input-background');
+  padding: vars.spacing(md) vars.spacing(md);
+  color: inherit;
+  width: 100%;
+}
+
+.fieldLabel {
+  display: flex;
+  flex-direction: column;
+  gap: vars.spacing(sm);
+  font-size: vars.font-size(sm);
+  color: vars.semantic-color('text-primary');
+}
+
+.expertDetails {
+  border-radius: vars.radius(xl);
+  border: 1px solid vars.semantic-color('border');
+  background: vars.semantic-color('surface');
+}
+
+.detailsContent {
+  display: flex;
+  flex-direction: column;
+  gap: vars.spacing(sm);
+  padding: vars.spacing(md) vars.spacing(lg) vars.spacing(lg);
+}
+
+.summary {
+  cursor: pointer;
+  list-style: none;
+  padding: vars.spacing(md) vars.spacing(lg);
+  font-size: vars.font-size(sm);
+  color: vars.semantic-color('text-secondary');
+}
+
+.buttonPrimary {
+  @include mixins.button;
+  background: linear-gradient(135deg, vars.semantic-color('primary'), vars.semantic-color('success'));
+  border: none;
+  color: vars.semantic-color('white');
+}
+
+.buttonSecondary {
+  @include mixins.button;
+  background: rgba(vars.color('indigo', 500), 0.2);
+  border: 1px solid rgba(vars.color('indigo', 500), 0.5);
+  color: vars.color('indigo', 300);
+}
+
+.buttonTertiary {
+  @include mixins.button;
+  background: rgba(vars.color('emerald', 600), 0.15);
+  border: 1px solid rgba(vars.color('emerald', 600), 0.35);
+  color: vars.color('emerald', 600);
+}

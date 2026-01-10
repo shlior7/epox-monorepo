@@ -1,0 +1,24 @@
+{
+  "name": "@scenergy/erp-service",
+  "version": "1.0.0",
+  "description": "ERP service abstraction layer for multiple commerce providers (WooCommerce, Shopify, Wix, etc.)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@scenergy/supabase-service": "1.0.0",
+    "@scenergy/woo-commerce-sdk": "0.0.1",
+    "@supabase/supabase-js": "^2.50.0",
+    "@woocommerce/woocommerce-rest-api": "^1.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,65 @@
+@use '@/styles/variables' as vars;
+@use '@/styles/mixins';
+
+.container {
+  position: relative;
+}
+
+.trigger {
+  @include mixins.button-reset;
+  @include mixins.flex-center;
+
+  padding: vars.spacing('sm');
+  color: vars.semantic-color('text-secondary');
+  border-radius: vars.radius('md');
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+
+  &:hover {
+    background-color: vars.semantic-color('surface-strong');
+    color: vars.semantic-color('text-primary');
+  }
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background-color: vars.semantic-color('surface');
+  border: 1px solid vars.semantic-color('border-strong');
+  border-radius: vars.radius('lg');
+  box-shadow: 0 4px 12px vars.semantic-color('overlay-soft');
+  min-width: 180px;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.menuItem {
+  width: 100%;
+  @include mixins.button-reset;
+
+  display: flex;
+  align-items: center;
+  gap: vars.spacing('md');
+  padding: vars.spacing('md');
+  font-size: var(--font-size-sm);
+  color: vars.semantic-color('text-inverse');
+  transition: background-color var(--transition-fast);
+
+  &:hover:not(:disabled) {
+    background-color: vars.semantic-color('surface-muted');
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.menuItemDanger {
+  color: vars.semantic-color('error');
+}
+
+.iconSlot {
+  display: flex;
+  align-items: center;
+}

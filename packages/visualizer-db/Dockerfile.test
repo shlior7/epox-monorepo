@@ -1,0 +1,33 @@
+# PostgreSQL 16 with pgTAP for database unit testing
+FROM postgres:16-alpine
+
+# Install build dependencies for pgTAP
+RUN apk add --no-cache \
+    build-base \
+    git \
+    perl \
+    perl-dev \
+    make \
+    wget
+
+# Install pgTAP extension
+RUN cd /tmp && \
+    wget https://github.com/theory/pgtap/archive/refs/tags/v1.3.3.tar.gz && \
+    tar -xzf v1.3.3.tar.gz && \
+    cd pgtap-1.3.3 && \
+    make && \
+    make install
+
+# Install pg_prove (Perl TAP harness)
+RUN apk add --no-cache perl-app-cpanminus && \
+    cpanm --notest TAP::Parser::SourceHandler::pgTAP
+
+# Create directory for SQL test files
+RUN mkdir -p /sql-tests
+
+# Add initialization script to install pgTAP extension on database creation
+COPY docker-entrypoint-initdb.d/ /docker-entrypoint-initdb.d/
+
+# Clean up
+RUN apk del build-base git wget && \
+    rm -rf /tmp/* /var/cache/apk/*

@@ -1,0 +1,32 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "yarn build",
+  "outputDirectory": ".next",
+  "regions": [
+    "iad1"
+  ],
+  "functions": {
+    "app/api/visualization/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/generate-images/route.ts": {
+      "maxDuration": 300
+    }
+  },
+  "images": {
+    "sizes": [
+      640,
+      750,
+      828,
+      1080,
+      1200,
+      1920
+    ],
+    "remotePatterns": [
+      {
+        "protocol": "https",
+        "hostname": "**.s3.amazonaws.com"
+      }
+    ]
+  }
+}

@@ -1,0 +1,313 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &.compact {
+    gap: 12px;
+
+    .categoryTabs {
+      gap: 4px;
+    }
+
+    .categoryTab {
+      padding: 6px 10px;
+      font-size: 12px;
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+    }
+
+    .sliderRow {
+      gap: 4px;
+    }
+
+    .sliderLabel {
+      font-size: 12px;
+    }
+
+    .sliderValue {
+      font-size: 11px;
+    }
+  }
+}
+
+// ===== CATEGORY TABS =====
+.categoryTabs {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  background-color: semantic-color('surface-deep');
+  border-radius: 8px;
+}
+
+.categoryTab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: semantic-color('text-secondary');
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+    color: semantic-color('text-primary');
+  }
+
+  &.active {
+    background-color: semantic-color('primary');
+    color: semantic-color('white');
+
+    &:hover {
+      background-color: semantic-color('primary-hover');
+    }
+  }
+
+  &.hasChanges:not(.active)::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    background-color: semantic-color('primary');
+    border-radius: 50%;
+  }
+}
+
+// ===== SLIDERS CONTAINER =====
+.slidersContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sliderRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sliderHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sliderLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: semantic-color('text-secondary');
+}
+
+.sliderValue {
+  font-size: 12px;
+  font-weight: 500;
+  color: semantic-color('text-muted');
+  min-width: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+
+  &.active {
+    color: semantic-color('primary');
+  }
+}
+
+.sliderContainer {
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.slider {
+  width: 100%;
+  height: 4px;
+  appearance: none;
+  background: linear-gradient(
+    to right,
+    semantic-color('primary') 0%,
+    semantic-color('primary') var(--fill-percentage, 50%),
+    semantic-color('surface-strong') var(--fill-percentage, 50%),
+    semantic-color('surface-strong') 100%
+  );
+  border-radius: 2px;
+  cursor: pointer;
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background-color: semantic-color('white');
+    border: 2px solid semantic-color('primary');
+    border-radius: 50%;
+    cursor: grab;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 4px semantic-color('overlay-soft');
+
+    &:hover {
+      transform: scale(1.1);
+      box-shadow: 0 2px 8px semantic-color('overlay');
+    }
+
+    &:active {
+      cursor: grabbing;
+      transform: scale(0.95);
+    }
+  }
+
+  &::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background-color: semantic-color('white');
+    border: 2px solid semantic-color('primary');
+    border-radius: 50%;
+    cursor: grab;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 4px semantic-color('overlay-soft');
+
+    &:hover {
+      transform: scale(1.1);
+      box-shadow: 0 2px 8px semantic-color('overlay');
+    }
+
+    &:active {
+      cursor: grabbing;
+      transform: scale(0.95);
+    }
+  }
+
+  &:focus {
+    outline: none;
+
+    &::-webkit-slider-thumb {
+      box-shadow: 0 0 0 3px semantic-color('primary-outline');
+    }
+
+    &::-moz-range-thumb {
+      box-shadow: 0 0 0 3px semantic-color('primary-outline');
+    }
+  }
+}
+
+.sliderCenter {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 8px;
+  background-color: semantic-color('text-muted');
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+// ===== RESET CATEGORY BUTTON =====
+.resetCategoryButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: transparent;
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 6px;
+  font-size: 12px;
+  color: semantic-color('text-secondary');
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 4px;
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+    border-color: semantic-color('text-muted');
+    color: semantic-color('text-primary');
+  }
+}
+
+// ===== PREVIEW CONTAINER =====
+.previewContainer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: semantic-color('surface-deep');
+  border: 1px solid semantic-color('surface-strong');
+}
+
+.previewCanvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+// ===== ACTION BUTTONS =====
+.actionButtons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.resetButton {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background-color: transparent;
+  border: 1px solid semantic-color('surface-muted');
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: semantic-color('text-secondary');
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: semantic-color('surface-strong');
+    border-color: semantic-color('text-muted');
+    color: semantic-color('text-primary');
+  }
+}
+
+.applyButton {
+  flex: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background-color: semantic-color('primary');
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: semantic-color('white');
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: semantic-color('primary-hover');
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

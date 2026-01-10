@@ -1,0 +1,52 @@
+@use '@/styles/variables' as vars;
+
+.dangerZone {
+  background-color: vars.color('slate', 900);
+  border-radius: vars.radius('xl');
+  padding: vars.spacing('2xl');
+  border: 1px solid vars.color('red', 500);
+  background-color: vars.rgba-color('red', 600, 0.05);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: vars.color('red', 500);
+  margin: 0 0 vars.spacing('sm');
+}
+
+.description {
+  font-size: var(--font-size-sm);
+  color: vars.color('slate', 400);
+  margin: 0 0 vars.spacing('lg');
+  line-height: 1.5;
+}
+
+.deleteButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: vars.spacing('sm');
+  padding: vars.spacing('md') vars.spacing('xl');
+  background-color: vars.color('red', 600);
+  color: vars.color('white', 100);
+  border: none;
+  border-radius: vars.radius('md');
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+
+  &:hover {
+    background-color: vars.color('red', 700);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

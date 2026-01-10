@@ -1,0 +1,13 @@
+.yarn
+.changeset
+.turbo
+build
+serverless
+fixtures
+templates
+dist
+playground
+schemas
+build-scripts
+
+version.cache.json

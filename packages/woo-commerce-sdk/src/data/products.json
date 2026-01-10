@@ -1,0 +1,843 @@
+[
+  {
+    "id": "KSR_Chair_Salli-SwingFit",
+    "name": "salli-swingfit",
+    "url": "https://ergonomicoffice.co.il/product/%d7%9b%d7%a1%d7%90-salli-swingfit/",
+    "slug": "%d7%9b%d7%a1%d7%90-salli",
+    "productId": 20099,
+    "price": "3990",
+    "regular_price": "3990",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [],
+    "configurationId": "salli_swingfit"
+  },
+  {
+    "id": "KSR_Chair_Comfort-Nuvem-Mesh",
+    "name": "nuvem-עור-עם-משענת-ראש",
+    "url": "https://ergonomicoffice.co.il/product/%d7%9b%d7%99%d7%a1%d7%90-nuvem-%d7%a2%d7%95%d7%a8-%d7%a2%d7%9d-%d7%9e%d7%a9%d7%a2%d7%a0%d7%aa-%d7%a8%d7%90%d7%a9/",
+    "slug": "%d7%9b%d7%99%d7%a1%d7%90-nuvem-%d7%a2%d7%95%d7%a8-%d7%a2%d7%9d-%d7%9e%d7%a9%d7%a2%d7%a0%d7%aa-%d7%a8%d7%90%d7%a9",
+    "productId": 17071,
+    "price": "8750",
+    "regular_price": "8750",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [],
+    "configurationId": "comfort_nuvem_mesh"
+  },
+  {
+    "id": "KSR_Chair_Comfort-Nuvem-Leather",
+    "name": "nuvem-עם-משענת-ראש",
+    "url": "https://ergonomicoffice.co.il/product/nuvem-%d7%a2%d7%9d-%d7%9e%d7%a9%d7%a2%d7%a0%d7%aa-%d7%a8%d7%90%d7%a9/",
+    "slug": "nuvem-%d7%a2%d7%9d-%d7%9e%d7%a9%d7%a2%d7%a0%d7%aa-%d7%a8%d7%90%d7%a9",
+    "productId": 3480,
+    "price": "9750",
+    "regular_price": "9750",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [],
+    "configurationId": "comfort_nuvem_leather"
+  },
+  {
+    "id": "KSR_Chair_Comfort-Genidia-Leather_stool",
+    "name": "כיסא-genidia-עור-עם-משענת-רגליים",
+    "url": "https://ergonomicoffice.co.il/product/%d7%9b%d7%99%d7%a1%d7%90-genidia-%d7%a2%d7%95%d7%a8-%d7%a2%d7%9d-%d7%9e%d7%a9%d7%a2%d7%a0%d7%aa-%d7%a8%d7%92%d7%9c%d7%99%d7%99%d7%9d/",
+    "slug": "%d7%9b%d7%99%d7%a1%d7%90-genidia-%d7%a2%d7%95%d7%a8-%d7%a2%d7%9d-%d7%9e%d7%a9%d7%a2%d7%a0%d7%aa-%d7%a8%d7%92%d7%9c%d7%99%d7%99%d7%9d",
+    "productId": 17604,
+    "price": "5595",
+    "regular_price": "5595",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [],
+    "configurationId": "genidia_leather_stool"
+  },
+  {
+    "id": "KSR_Chair_Comfort-Genidia-Mesh_stool",
+    "name": "כיסא-genidia-עור-עם-משענת-רגליים",
+    "url": "https://ergonomicoffice.co.il/product/%d7%9b%d7%99%d7%a1%d7%90-genidia-%d7%a2%d7%95%d7%a8-%d7%a2%d7%9d-%d7%9e%d7%a9%d7%a2%d7%a0%d7%aa-%d7%a8%d7%92%d7%9c%d7%99%d7%99%d7%9d/",
+    "slug": "%d7%9b%d7%99%d7%a1%d7%90-genidia-%d7%a2%d7%95%d7%a8-%d7%a2%d7%9d-%d7%9e%d7%a9%d7%a2%d7%a0%d7%aa-%d7%a8%d7%92%d7%9c%d7%99%d7%99%d7%9d",
+    "productId": 17604,
+    "price": "5595",
+    "regular_price": "5595",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [],
+    "configurationId": "genidia_mesh_stool"
+  },
+  {
+    "id": "KSR_Chair_Comfort-Enjoy_Pro",
+    "name": "enjoy-plus-2nd-generation",
+    "url": "https://ergonomicoffice.co.il/product/enjoy-plus-2nd-generation/",
+    "slug": "enjoy-plus-2nd-generation",
+    "productId": 20974,
+    "price": "3590",
+    "regular_price": "",
+    "type": "variable",
+    "status": "publish",
+    "attributes": [
+      {
+        "id": 0,
+        "name": "צבע",
+        "slug": "צבע",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "שחור",
+          "אפור"
+        ]
+      }
+    ],
+    "configurationId": "comfort_enjoy_pro"
+  },
+  {
+    "id": "KSR_Chair_Comfort-Enjoy_Project",
+    "name": "כיסא-enjoy-progect",
+    "url": "https://ergonomicoffice.co.il/product/%d7%9b%d7%99%d7%a1%d7%90-enjoy-progect/",
+    "slug": "%d7%9b%d7%99%d7%a1%d7%90-enjoy-progect",
+    "productId": 21716,
+    "price": "2290",
+    "regular_price": "2290",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [],
+    "configurationId": "comfort_enjoy_project"
+  },
+  {
+    "id": "KSR_Chair_Comfort-Mirus_Pro",
+    "name": "mirus-plus-2nd-generation",
+    "url": "https://ergonomicoffice.co.il/product/mirus-plus-2nd-generation/",
+    "slug": "mirus-plus-2nd-generation",
+    "productId": 20960,
+    "price": "4970",
+    "regular_price": "4970",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [],
+    "configurationId": "comfort_mirus_pro"
+  },
+  {
+    "id": "KSR_Chair_Comfort-Mirus_Project",
+    "name": "כיסא-mirus-project",
+    "url": "https://ergonomicoffice.co.il/product/%d7%9b%d7%99%d7%a1%d7%90-mirus-project/",
+    "slug": "%d7%9b%d7%99%d7%a1%d7%90-mirus-project",
+    "productId": 21672,
+    "price": "2850",
+    "regular_price": "2850",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [],
+    "configurationId": "comfort_mirus_project"
+  },
+  {
+    "id": "KSR_Chair_Comfort-Ergohuman_Pro-Leather",
+    "name": "ergohuman-pro-עור",
+    "url": "https://ergonomicoffice.co.il/product/ergohuman-pro-%d7%a2%d7%95%d7%a8/",
+    "slug": "ergohuman-pro-%d7%a2%d7%95%d7%a8",
+    "productId": 32726,
+    "price": "5990",
+    "regular_price": "",
+    "type": "variable",
+    "status": "publish",
+    "attributes": [
+      {
+        "id": 0,
+        "name": "צבע",
+        "slug": "צבע",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "עור חום 109612",
+          "עור שחור 101631"
+        ]
+      }
+    ],
+    "configurationId": "comfort_ergohuman_pro_leather"
+  },
+  {
+    "id": "KSR_Chair_Comfort-Ergohuman_Pro-Mesh",
+    "name": "ergohuman-pro",
+    "url": "https://ergonomicoffice.co.il/product/ergohuman-pro/",
+    "slug": "ergohuman-pro",
+    "productId": 23541,
+    "price": "5490",
+    "regular_price": "",
+    "type": "variable",
+    "status": "publish",
+    "attributes": [
+      {
+        "id": 1,
+        "name": "צבע",
+        "slug": "pa_color",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "אפור 112612",
+          "שחור 112611"
+        ]
+      }
+    ],
+    "configurationId": "comfort_ergohuman_pro_mesh"
+  },
+  {
+    "id": "KSR_Chair_Comfort-Ergohuman_Project-Mesh",
+    "name": "כיסא-ergohuman-project",
+    "url": "https://ergonomicoffice.co.il/product/%d7%9b%d7%99%d7%a1%d7%90-ergohuman-project/",
+    "slug": "%d7%9b%d7%99%d7%a1%d7%90-ergohuman-project",
+    "productId": 21663,
+    "price": "3755",
+    "regular_price": "3755",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [],
+    "configurationId": "comfort_ergohuman_project_mesh"
+  },
+  {
+    "id": "KSR_Chair_Comfort-Ergohuman_Ultra",
+    "name": "כיסא-ergohuman-ultra-gaming",
+    "url": "https://ergonomicoffice.co.il/product/%d7%9b%d7%99%d7%a1%d7%90-ergohuman-ultra-gaming/",
+    "slug": "%d7%9b%d7%99%d7%a1%d7%90-ergohuman-ultra-gaming",
+    "productId": 27876,
+    "price": "4490",
+    "regular_price": "",
+    "type": "variable",
+    "status": "publish",
+    "attributes": [
+      {
+        "id": 1,
+        "name": "צבע",
+        "slug": "pa_color",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "אדום - 102612",
+          "לבן - 102613",
+          "שחור - 102611"
+        ]
+      }
+    ],
+    "configurationId": "comfort_ergohuman_ultra"
+  },
+  {
+    "id": "KSR_Chair_Sistar-Compact",
+    "name": "",
+    "url": "https://ergonomicoffice.co.il/product/%d7%9b%d7%99%d7%a1%d7%90-compact/",
+    "slug": "%d7%9b%d7%99%d7%a1%d7%90-compact",
+    "productId": 31965,
+    "price": "2490",
+    "regular_price": "2490",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [],
+    "configurationId": "sistar_compact"
+  },
+  {
+    "id": "KSR_Chair_Sitplus-Up",
+    "name": "כיסא-up-לבן",
+    "url": "https://ergonomicoffice.co.il/product/%d7%9b%d7%99%d7%a1%d7%90-up-%d7%9c%d7%91%d7%9f/",
+    "slug": "%d7%9b%d7%99%d7%a1%d7%90-up-%d7%9c%d7%91%d7%9f",
+    "productId": 26198,
+    "price": "550",
+    "regular_price": "550",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [],
+    "configurationId": "sitplus_up"
+  },
+  {
+    "id": "KSR_Chair_Sitplus-Poly",
+    "name": "כיסא-poly",
+    "url": "https://ergonomicoffice.co.il/product/%d7%9b%d7%99%d7%a1%d7%90-poly/",
+    "slug": "%d7%9b%d7%99%d7%a1%d7%90-poly",
+    "productId": 30857,
+    "price": "1990",
+    "regular_price": "1990",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [],
+    "configurationId": "sitplus_poly"
+  },
+  {
+    "id": "KSR_Desktop_Loctek_Single-ET114E",
+    "name": "שולחן-חשמלי-דגם-סינגל-גוון-שחור",
+    "url": "https://ergonomicoffice.co.il/product/%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%97%d7%a9%d7%9e%d7%9c%d7%99-%d7%93%d7%92%d7%9d-%d7%a1%d7%99%d7%a0%d7%92%d7%9c-%d7%92%d7%95%d7%95%d7%9f-%d7%a9%d7%97%d7%95%d7%a8/",
+    "slug": "%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%97%d7%a9%d7%9e%d7%9c%d7%99-%d7%93%d7%92%d7%9d-%d7%a1%d7%99%d7%a0%d7%92%d7%9c-%d7%92%d7%95%d7%95%d7%9f-%d7%a9%d7%97%d7%95%d7%a8",
+    "productId": 17652,
+    "price": "2490",
+    "regular_price": "",
+    "type": "variable",
+    "status": "publish",
+    "attributes": [
+      {
+        "id": 2,
+        "name": "גודל",
+        "slug": "pa_גודל",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "1.7*67*118 פורמייקה אגר",
+          "1.7*67*138פורמייקה אגר",
+          "1.7*67*158 פורמייקה אגר",
+          "1.7*68*120 לבן/ שחור/ במבוק",
+          "1.7*68*140 לבן/ שחור/ במבוק",
+          "1.7*74*160 לבן/ שחור/ במבוק"
+        ]
+      },
+      {
+        "id": 3,
+        "name": "צבע רגל",
+        "slug": "pa_צבע-רגל",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "שחור"
+        ]
+      },
+      {
+        "id": 21,
+        "name": "צבע פלטה",
+        "slug": "pa_צבע-פלטה",
+        "position": 2,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "EGGER – אלון כהה",
+          "EGGER – אלון מבוקע",
+          "EGGER – בטון אפור",
+          "EGGER – ירוק זית",
+          "EGGER – לבן משופשף",
+          "EGGER – שחור משופשף",
+          "EGGER – שיש בהיר",
+          "EGGER – שיש כהה",
+          "במבוק",
+          "לבן",
+          "ננו אפור בהיר",
+          "ננו אפור כהה",
+          "ננו אפור מבריק",
+          "ננו אפרפר",
+          "ננו חאקי",
+          "ננו מוזהב",
+          "ננו מוקה",
+          "ננו שחור מבריק",
+          "ננו שחור מט",
+          "שחור"
+        ]
+      }
+    ],
+    "configurationId": "loctek_single_et114e"
+  },
+  {
+    "id": "KSR_Desktop_Jiecang_Dual-HOP",
+    "name": "שולחן-חשמלי-2-מנועים-דגם-hop-לבן",
+    "url": "https://ergonomicoffice.co.il/product/%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%97%d7%a9%d7%9e%d7%9c%d7%99-2-%d7%9e%d7%a0%d7%95%d7%a2%d7%99%d7%9d-%d7%93%d7%92%d7%9d-hop-%d7%9c%d7%91%d7%9f/",
+    "slug": "%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%97%d7%a9%d7%9e%d7%9c%d7%99-2-%d7%9e%d7%a0%d7%95%d7%a2%d7%99%d7%9d-%d7%93%d7%92%d7%9d-hop-%d7%9c%d7%91%d7%9f",
+    "productId": 16865,
+    "price": "3490",
+    "regular_price": "",
+    "type": "variable",
+    "status": "publish",
+    "attributes": [
+      {
+        "id": 2,
+        "name": "גודל",
+        "slug": "pa_גודל",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "1.7*67*118 פורמייקה אגר",
+          "1.7*67*138פורמייקה אגר",
+          "1.7*67*158 פורמייקה אגר",
+          "1.7*68*120 לבן/ שחור/ במבוק",
+          "1.7*68*140 לבן/ שחור/ במבוק",
+          "1.7*74*160 לבן/ שחור/ במבוק",
+          "1.7*74*180 לבן/ שחור/ במבוק",
+          "1.7*74*180 פורמייקה אגר"
+        ]
+      },
+      {
+        "id": 3,
+        "name": "צבע רגל",
+        "slug": "pa_צבע-רגל",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "לבן"
+        ]
+      },
+      {
+        "id": 21,
+        "name": "צבע פלטה",
+        "slug": "pa_צבע-פלטה",
+        "position": 2,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "EGGER – אלון כהה",
+          "EGGER – אלון מבוקע",
+          "EGGER – בטון אפור",
+          "EGGER – ירוק זית",
+          "EGGER – לבן משופשף",
+          "EGGER – שחור משופשף",
+          "EGGER – שיש בהיר",
+          "EGGER – שיש כהה",
+          "במבוק",
+          "לבן",
+          "ננו אפור בהיר",
+          "ננו אפור כהה",
+          "ננו אפור מבריק",
+          "ננו אפרפר",
+          "ננו חאקי",
+          "ננו מוזהב",
+          "ננו מוקה",
+          "ננו שחור מבריק",
+          "ננו שחור מט",
+          "שחור"
+        ]
+      }
+    ],
+    "configurationId": "jiecang_dual_hop"
+  },
+  {
+    "id": "KSR_Desktop_Jiecang_Dual-HOP-UP2",
+    "name": "שולחן-מתכוונן-עמידה-ישיבה-עם-יחידת-אחס",
+    "url": "https://ergonomicoffice.co.il/product/%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%9e%d7%aa%d7%9b%d7%95%d7%95%d7%a0%d7%9f-%d7%a2%d7%9e%d7%99%d7%93%d7%94-%d7%99%d7%a9%d7%99%d7%91%d7%94-%d7%a2%d7%9d-%d7%99%d7%97%d7%99%d7%93%d7%aa-%d7%90%d7%97%d7%a1/",
+    "slug": "%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%9e%d7%aa%d7%9b%d7%95%d7%95%d7%a0%d7%9f-%d7%a2%d7%9e%d7%99%d7%93%d7%94-%d7%99%d7%a9%d7%99%d7%91%d7%94-%d7%a2%d7%9d-%d7%99%d7%97%d7%99%d7%93%d7%aa-%d7%90%d7%97%d7%a1",
+    "productId": 19138,
+    "price": "4990",
+    "regular_price": "",
+    "type": "variable",
+    "status": "publish",
+    "attributes": [
+      {
+        "id": 0,
+        "name": "גודל פלטה",
+        "slug": "גודל פלטה",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "140x68",
+          "160x74",
+          "180x74"
+        ]
+      },
+      {
+        "id": 0,
+        "name": "צד שלוחה",
+        "slug": "צד שלוחה",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "ימין",
+          "שמאל"
+        ]
+      },
+      {
+        "id": 0,
+        "name": "צבע רגל",
+        "slug": "צבע רגל",
+        "position": 2,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "שחור",
+          "לבן"
+        ]
+      },
+      {
+        "id": 0,
+        "name": "צבע שלוחה",
+        "slug": "צבע שלוחה",
+        "position": 3,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "שחור",
+          "לבן"
+        ]
+      },
+      {
+        "id": 21,
+        "name": "צבע פלטה",
+        "slug": "pa_צבע-פלטה",
+        "position": 4,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "EGGER – אלון כהה",
+          "EGGER – אלון מבוקע",
+          "EGGER – בטון אפור",
+          "EGGER – ירוק זית",
+          "EGGER – לבן משופשף",
+          "EGGER – שחור משופשף",
+          "EGGER – שיש בהיר",
+          "EGGER – שיש כהה",
+          "במבוק",
+          "לבן",
+          "ננו אפור בהיר",
+          "ננו אפור כהה",
+          "ננו אפור מבריק",
+          "ננו אפרפר",
+          "ננו חאקי",
+          "ננו מוזהב",
+          "ננו מוקה",
+          "ננו שחור מבריק",
+          "ננו שחור מט",
+          "שחור"
+        ]
+      }
+    ],
+    "configurationId": "jiecang_dual_hop_up2"
+  },
+  {
+    "id": "KSR_Desktop_Sunon_Up1",
+    "name": "שולחן-חשמלי-מנהלים-דגם-up1",
+    "url": "https://ergonomicoffice.co.il/product/%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%97%d7%a9%d7%9e%d7%9c%d7%99-%d7%9e%d7%a0%d7%94%d7%9c%d7%99%d7%9d-%d7%93%d7%92%d7%9d-up1/",
+    "slug": "%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%97%d7%a9%d7%9e%d7%9c%d7%99-%d7%9e%d7%a0%d7%94%d7%9c%d7%99%d7%9d-%d7%93%d7%92%d7%9d-up1",
+    "productId": 3840,
+    "price": "6990",
+    "regular_price": "6990",
+    "type": "simple",
+    "status": "publish",
+    "attributes": [
+      {
+        "id": 3,
+        "name": "צבע רגל",
+        "slug": "pa_צבע-רגל",
+        "position": 0,
+        "visible": true,
+        "variation": false,
+        "options": [
+          "לבן",
+          "שחור"
+        ]
+      },
+      {
+        "id": 5,
+        "name": "תוספת",
+        "slug": "pa_תוספת",
+        "position": 1,
+        "visible": true,
+        "variation": false,
+        "options": [
+          "ללא תוספת",
+          "פלטת במבוק"
+        ]
+      },
+      {
+        "id": 14,
+        "name": "מידות פלטה",
+        "slug": "pa_מידות-פלטה",
+        "position": 2,
+        "visible": true,
+        "variation": false,
+        "options": [
+          "68*120",
+          "68*140",
+          "74*160"
+        ]
+      }
+    ],
+    "configurationId": "sunon_up1"
+  },
+  {
+    "id": "KSR_Desktop_Loctek_Triple-L-90-ET223T",
+    "name": "עמידה חשמלי מתכוונן 3 מנועים-L",
+    "url": "https://ergonomicoffice.co.il/product/%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%97%d7%a9%d7%9e%d7%9c%d7%99-%d7%9e%d7%aa%d7%9b%d7%95%d7%95%d7%a0%d7%9f-%d7%93%d7%92%d7%9d-%d7%90%d7%9c-3-%d7%9e%d7%a0%d7%95%d7%a2%d7%99%d7%9d/",
+    "slug": "%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%97%d7%a9%d7%9e%d7%9c%d7%99-%d7%9e%d7%aa%d7%9b%d7%95%d7%95%d7%a0%d7%9f-%d7%93%d7%92%d7%9d-%d7%90%d7%9c-3-%d7%9e%d7%a0%d7%95%d7%a2%d7%99%d7%9d",
+    "productId": 17274,
+    "price": "4990",
+    "regular_price": "",
+    "type": "variable",
+    "status": "publish",
+    "configurationId": "loctek_triple_l90",
+    "attributes": [
+      {
+        "id": 3,
+        "name": "צבע רגל",
+        "slug": "pa_צבע-רגל",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "לבן"
+        ]
+      },
+      {
+        "id": 0,
+        "name": "מידה פלטה א",
+        "slug": "מידה פלטה א",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "רוחב 120 עומק 68",
+          "רוחב 140 עומק 68",
+          "רוחב 160 עומק 74",
+          "רוחב 180 עומק 74"
+        ]
+      },
+      {
+        "id": 0,
+        "name": "מידה פלטה ב",
+        "slug": "מידה פלטה ב",
+        "position": 2,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "רוחב 120 עומק 68",
+          "רוחב 140 עומק 68",
+          "רוחב 160 עומק 74",
+          "רוחב 180 עומק 74"
+        ]
+      },
+      {
+        "id": 21,
+        "name": "צבע פלטה",
+        "slug": "pa_צבע-פלטה",
+        "position": 3,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "EGGER – אלון כהה",
+          "EGGER – אלון מבוקע",
+          "EGGER – בטון אפור",
+          "EGGER – ירוק זית",
+          "EGGER – לבן משופשף",
+          "EGGER – שחור משופשף",
+          "EGGER – שיש בהיר",
+          "EGGER – שיש כהה",
+          "לבן",
+          "ננו אפור בהיר",
+          "ננו אפור כהה",
+          "ננו אפור מבריק",
+          "ננו אפרפר",
+          "ננו חאקי",
+          "ננו מוזהב",
+          "ננו מוקה",
+          "ננו שחור מבריק",
+          "ננו שחור מט",
+          "שחור"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "KSR_Desktop_Loctek_Quadro-ET223Q",
+    "name": "עמידה חשמלי מתכוונן 4 מנועים-Quadro",
+    "url": "https://ergonomicoffice.co.il/product/%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%97%d7%a9%d7%9e%d7%9c%d7%99-4-%d7%9e%d7%a0%d7%95%d7%a2%d7%99%d7%9d-%d7%93%d7%92%d7%9d-quadro/",
+    "slug": "%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%97%d7%a9%d7%9e%d7%9c%d7%99-4-%d7%9e%d7%a0%d7%95%d7%a2%d7%99%d7%9d-%d7%93%d7%92%d7%9d-quadro",
+    "price": "4990",
+    "configurationId": "loctek_quadro",
+    "productId": 21167,
+    "regular_price": "",
+    "type": "variable",
+    "status": "publish",
+    "attributes": [
+      {
+        "id": 2,
+        "name": "גודל",
+        "slug": "pa_גודל",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "1.7*67*118 פורמייקה אגר",
+          "1.7*67*138פורמייקה אגר",
+          "1.7*67*158 פורמייקה אגר",
+          "1.7*68*120 לבן/ שחור/ במבוק",
+          "1.7*68*140 לבן/ שחור/ במבוק",
+          "1.7*74*160 לבן/ שחור/ במבוק",
+          "1.7*74*180 לבן/ שחור/ במבוק",
+          "1.7*74*180 פורמייקה אגר"
+        ]
+      },
+      {
+        "id": 3,
+        "name": "צבע רגל",
+        "slug": "pa_צבע-רגל",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "שחור"
+        ]
+      },
+      {
+        "id": 21,
+        "name": "צבע פלטה",
+        "slug": "pa_צבע-פלטה",
+        "position": 2,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "EGGER – אלון כהה",
+          "EGGER – אלון מבוקע",
+          "EGGER – בטון אפור",
+          "EGGER – ירוק זית",
+          "EGGER – לבן משופשף",
+          "EGGER – שחור משופשף",
+          "EGGER – שיש בהיר",
+          "EGGER – שיש כהה",
+          "במבוק",
+          "לבן",
+          "ננו אפור בהיר",
+          "ננו אפור כהה",
+          "ננו אפור מבריק",
+          "ננו אפרפר",
+          "ננו חאקי",
+          "ננו מוזהב",
+          "ננו מוקה",
+          "ננו שחור מבריק",
+          "ננו שחור מט",
+          "שחור"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "KSR_Desktop_Loctek-Kento-ET157-N",
+    "name": "עמידה מתכוונן-Kento",
+    "url": "https://ergonomicoffice.co.il/product/%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%a2%d7%9e%d7%99%d7%93%d7%94-%d7%9e%d7%aa%d7%9b%d7%95%d7%95%d7%a0%d7%9f-%d7%93%d7%92%d7%9d-kento/",
+    "slug": "%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%a2%d7%9e%d7%99%d7%93%d7%94-%d7%9e%d7%aa%d7%9b%d7%95%d7%95%d7%a0%d7%9f-%d7%93%d7%92%d7%9d-kento",
+    "price": "1990",
+    "configurationId": "loctek_kento",
+    "productId": 21841,
+    "regular_price": "",
+    "type": "variable",
+    "status": "publish",
+    "attributes": [
+      {
+        "id": 0,
+        "name": "צבע",
+        "slug": "צבע",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "שחור"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "KSR_Desktop_Glact-Poco",
+    "name": "מתכוונן Poco לבן",
+    "url": "https://ergonomicoffice.co.il/product/%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%9e%d7%aa%d7%9b%d7%95%d7%95%d7%a0%d7%9f-poco-%d7%9c%d7%91%d7%9f/",
+    "slug": "%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%9e%d7%aa%d7%9b%d7%95%d7%95%d7%a0%d7%9f-poco-%d7%9c%d7%91%d7%9f",
+    "price": "1490",
+    "configurationId": "glact_poco",
+    "productId": 33443,
+    "regular_price": "1490",
+    "type": "simple",
+    "status": "publish",
+    "attributes": []
+  },
+  {
+    "id": "KSR_Desktop_Glact-Mini-Do",
+    "name": "פנאומטי מיני דו",
+    "url": "https://ergonomicoffice.co.il/product/%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%a4%d7%a0%d7%90%d7%95%d7%9e%d7%98%d7%99-%d7%9e%d7%99%d7%a0%d7%99-%d7%93%d7%95/",
+    "slug": "%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%a4%d7%a0%d7%90%d7%95%d7%9e%d7%98%d7%99-%d7%9e%d7%99%d7%a0%d7%99-%d7%93%d7%95",
+    "price": "990",
+    "configurationId": "glact_mini_do",
+    "productId": 34014,
+    "regular_price": "990",
+    "type": "simple",
+    "status": "publish",
+    "attributes": []
+  },
+  {
+    "id": "KSR_Desktop_Glact-Mini-Blk",
+    "name": "פנאומטי מיני בלאק",
+    "url": "https://ergonomicoffice.co.il/product/%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%a4%d7%a0%d7%90%d7%95%d7%9e%d7%98%d7%99-%d7%9e%d7%99%d7%a0%d7%99-%d7%91%d7%9c%d7%90%d7%a7/",
+    "slug": "%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%a4%d7%a0%d7%90%d7%95%d7%9e%d7%98%d7%99-%d7%9e%d7%99%d7%a0%d7%99-%d7%91%d7%9c%d7%90%d7%a7",
+    "price": "1190",
+    "configurationId": "glact_mini_blk",
+    "productId": 34023,
+    "regular_price": "1190",
+    "type": "simple",
+    "status": "publish",
+    "attributes": []
+  },
+  {
+    "id": "KSR_Desktop_Glact_Pneomati",
+    "name": "פנאומטי רגל שחורה",
+    "url": "https://ergonomicoffice.co.il/product/%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%a4%d7%a0%d7%90%d7%95%d7%9e%d7%98%d7%99-%d7%a8%d7%92%d7%9c-%d7%a9%d7%97%d7%95%d7%a8%d7%94/",
+    "slug": "%d7%a9%d7%95%d7%9c%d7%97%d7%9f-%d7%a4%d7%a0%d7%90%d7%95%d7%9e%d7%98%d7%99-%d7%a8%d7%92%d7%9c-%d7%a9%d7%97%d7%95%d7%a8%d7%94",
+    "price": "2175",
+    "configurationId": "glact_pneomati",
+    "productId": 33818,
+    "regular_price": "",
+    "type": "variable",
+    "status": "publish",
+    "attributes": [
+      {
+        "id": 2,
+        "name": "גודל",
+        "slug": "pa_גודל",
+        "position": 0,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "1.7*67*118 פורמייקה אגר",
+          "1.7*67*138פורמייקה אגר",
+          "1.7*67*158 פורמייקה אגר",
+          "1.7*68*120 לבן/ שחור/ במבוק",
+          "1.7*68*140 לבן/ שחור/ במבוק",
+          "1.7*74*160 לבן/ שחור/ במבוק",
+          "1.7*74*180 לבן/ שחור/ במבוק",
+          "1.7*74*180 פורמייקה אגר"
+        ]
+      },
+      {
+        "id": 3,
+        "name": "צבע רגל",
+        "slug": "pa_צבע-רגל",
+        "position": 1,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "שחור"
+        ]
+      },
+      {
+        "id": 21,
+        "name": "צבע פלטה",
+        "slug": "pa_צבע-פלטה",
+        "position": 2,
+        "visible": true,
+        "variation": true,
+        "options": [
+          "EGGER – אלון כהה",
+          "EGGER – אלון מבוקע",
+          "EGGER – בטון אפור",
+          "EGGER – ירוק זית",
+          "EGGER – לבן משופשף",
+          "EGGER – שחור משופשף",
+          "EGGER – שיש בהיר",
+          "EGGER – שיש כהה",
+          "במבוק",
+          "לבן",
+          "ננו אפור בהיר",
+          "ננו אפור כהה",
+          "ננו אפור מבריק",
+          "ננו אפרפר",
+          "ננו חאקי",
+          "ננו מוזהב",
+          "ננו מוקה",
+          "ננו שחור מבריק",
+          "ננו שחור מט",
+          "שחור"
+        ]
+      }
+    ]
+  }
+]

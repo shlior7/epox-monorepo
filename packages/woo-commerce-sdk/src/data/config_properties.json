@@ -1,0 +1,328 @@
+{
+  "salli_swingfit": [],
+  "comfort_nuvem_mesh": [
+    {
+      "id": 0,
+      "name": "צבע מושב",
+      "slug": "pa_seat_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": [
+        "רשת T שחור",
+        "רשת T נטורל",
+        "רשת T סקרלט",
+        "רשת T קובלט",
+        "רשת T ורוד",
+        "רשת T ירוק",
+        "רשת W שחור",
+        "רשת W לבן",
+        "רשת W אפור",
+        "רשת W כחול"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "צבע משענות ידיים",
+      "slug": "pa_arm_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["כרום", "עץ טיק טבעי", "עץ טיק חום", "עץ אגוז", "לבן", "שחור"]
+    },
+    {
+      "id": 2,
+      "name": "צבע מסגרת",
+      "slug": "pa_frame_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["לבן", "שחור"]
+    },
+    {
+      "id": 3,
+      "name": "צבע רגליים",
+      "slug": "pa_leg_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["כרום", "עץ טיק טבעי", "עץ טיק חום", "עץ אגוז"]
+    }
+  ],
+  "comfort_nuvem_leather": [
+    {
+      "id": 0,
+      "name": "צבע מושב",
+      "slug": "pa_seat_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["עור לבן שלג LEA2", "עור חום 646", "עור שחור LE2095", "עור אדום LE310", "עור חום כאמל LE3902", "עור כחול נייבי LE70091"]
+    },
+    {
+      "id": 1,
+      "name": "צבע משענות ידיים",
+      "slug": "pa_arm_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["כרום", "עץ טיק טבעי", "עץ טיק חום", "עץ אגוז", "לבן", "שחור"]
+    },
+    {
+      "id": 2,
+      "name": "צבע מסגרת",
+      "slug": "pa_frame_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["לבן", "שחור"]
+    },
+    {
+      "id": 3,
+      "name": "צבע רגליים",
+      "slug": "pa_leg_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["כרום", "עץ טיק טבעי", "עץ טיק חום", "עץ אגוז"]
+    }
+  ],
+  "genidia_leather_stool": [
+    {
+      "id": 0,
+      "name": "צבע מושב",
+      "slug": "pa_seat_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["עור שחור", "עור חום"]
+    }
+  ],
+  "genidia_mesh_stool": [
+    {
+      "id": 0,
+      "name": "צבע מושב",
+      "slug": "pa_seat_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": [
+        "רשת T שחור",
+        "רשת T נטורל",
+        "רשת T סקרלט",
+        "רשת T קובלט",
+        "רשת T ורוד",
+        "רשת T ירוק",
+        "רשת W שחור",
+        "רשת W לבן",
+        "רשת W אפור",
+        "רשת W כחול"
+      ]
+    }
+  ],
+  "comfort_enjoy_pro": [
+    {
+      "id": 0,
+      "name": "צבע מושב",
+      "slug": "pa_seat_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["רשת T שחור", "רשת T נטורל", "רשת T סקרלט", "רשת T קובלט", "רשת T ורוד", "רשת T ירוק"]
+    },
+    {
+      "id": 1,
+      "name": "צבע מסגרת",
+      "slug": "pa_base_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["שחור", "אפור"]
+    }
+  ],
+  "comfort_enjoy_project": [],
+  "comfort_mirus_pro": [
+    {
+      "id": 0,
+      "name": "צבע מסגרת",
+      "slug": "pa_base_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["שחור", "אפור"]
+    }
+  ],
+  "comfort_mirus_project": [],
+  "comfort_ergohuman_pro_leather": [
+    {
+      "id": 0,
+      "name": "צבע מושב",
+      "slug": "pa_seat_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["עור שחור LE2095", "עור חום 646"]
+    }
+  ],
+  "comfort_ergohuman_pro_mesh": [
+    {
+      "id": 0,
+      "name": "צבע מושב",
+      "slug": "pa_seat_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["רשת T שחור", "רשת T נטורל", "רשת T סקרלט", "רשת T קובלט", "רשת T ורוד", "רשת T ירוק"]
+    },
+    {
+      "id": 1,
+      "name": "צבע מסגרת",
+      "slug": "pa_base_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["שחור", "אפור"]
+    }
+  ],
+  "comfort_ergohuman_project_mesh": [],
+  "comfort_ergohuman_ultra": [
+    {
+      "id": 0,
+      "name": "צבע מסגרת",
+      "slug": "pa_base_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["אדום", "אפור"]
+    },
+    {
+      "id": 1,
+      "name": "צבע מושב",
+      "slug": "pa_seat_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["רשת W אורורה לבן", "רשת W אדום"]
+    }
+  ],
+  "sistar_compact": [],
+  "sitplus_up": [
+    {
+      "id": 0,
+      "name": "צבע הכסא",
+      "slug": "pa_chair_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["שחור", "אפור"]
+    }
+  ],
+  "sitplus_poly": [
+    {
+      "id": 0,
+      "name": "צבע מסגרת",
+      "slug": "pa_chair_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["שחור קוסמי", "קורל", "לבן רך", "סגול אולטרה"]
+    }
+  ],
+  "loctek_single_et114e": [
+    {
+      "id": 0,
+      "name": "גודל",
+      "slug": "pa_size",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["120/68 ס״מ", "140/68 ס״מ", "160/74 ס״מ"]
+    },
+    {
+      "id": 1,
+      "name": "צבע רגליים",
+      "slug": "pa_table_leg_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["שחור", "לבן"]
+    },
+    {
+      "id": 2,
+      "name": "צבע פלטה",
+      "slug": "pa_table_top_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["שחור", "לבן"]
+    }
+  ],
+  "jiecang_dual_hop": [
+    {
+      "id": 0,
+      "name": "גודל",
+      "slug": "pa_size",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["120/68 ס״מ", "140/68 ס״מ", "160/74 ס״מ"]
+    },
+    {
+      "id": 1,
+      "name": "צבע רגליים",
+      "slug": "pa_table_leg_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["שחור", "לבן"]
+    },
+    {
+      "id": 2,
+      "name": "צבע פלטה",
+      "slug": "pa_table_top_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["שחור", "לבן"]
+    }
+  ],
+  "jiecang_dual_hop_up2": [
+    {
+      "id": 0,
+      "name": "גודל",
+      "slug": "pa_size",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["160/74 ס״מ", "180/74 ס״מ"]
+    },
+    {
+      "id": 1,
+      "name": "Storage Side",
+      "slug": "pa_storage_side",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["שמאל", "ימין"]
+    },
+    {
+      "id": 2,
+      "name": "צבע רגליים",
+      "slug": "pa_table_leg_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["שחור", "לבן"]
+    },
+    {
+      "id": 3,
+      "name": "צבע פלטה",
+      "slug": "pa_table_top_color",
+      "position": 0,
+      "visible": true,
+      "variation": true,
+      "options": ["שחור", "לבן"]
+    }
+  ],
+  "sunon_up1": []
+}

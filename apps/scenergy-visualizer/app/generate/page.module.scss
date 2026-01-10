@@ -1,0 +1,265 @@
+@use 'sass:map';
+@use '@/styles/variables' as vars;
+@use '@/styles/mixins' as mixins;
+
+.page {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(to bottom, vars.semantic-color('background'), vars.semantic-color('surface'));
+  color: vars.semantic-color('text-primary');
+  overflow: hidden;
+}
+
+.header {
+  padding: vars.spacing(lg) vars.spacing(2xl);
+  border-bottom: 1px solid vars.semantic-color('border');
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: vars.spacing(lg);
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: vars.font-size(3xl);
+  font-weight: 600;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: vars.spacing(lg);
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.drawer {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 420px;
+  background: rgba(vars.color('slate', 950), 0.95);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid vars.semantic-color('border');
+  padding: vars.spacing(2xl);
+  overflow-y: auto;
+  z-index: map.get(vars.$z-indices, 'drawer');
+  display: flex;
+  flex-direction: column;
+  gap: vars.spacing(2xl);
+  transition: transform 0.3s ease;
+}
+
+.contentArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: vars.spacing(2xl);
+  padding: vars.spacing(2xl);
+  overflow: auto;
+}
+
+.previewGrid {
+  display: grid;
+  gap: vars.spacing(2xl);
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  align-items: stretch;
+}
+
+.previewCard {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid rgba(vars.color('slate', 400), 0.18);
+  min-height: 60vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: vars.spacing(2xl);
+}
+
+.originalAssetCard {
+  @extend .previewCard;
+  background: rgba(vars.color('slate', 950), 0.55);
+}
+
+.generatedPreviewCard {
+  @extend .previewCard;
+  background: rgba(vars.color('slate', 950), 0.65);
+}
+
+.cardBadge {
+  position: absolute;
+  top: vars.spacing(lg);
+  left: vars.spacing(lg);
+  padding: vars.spacing(xs) vars.spacing(md);
+  border-radius: vars.radius(pill);
+  font-size: vars.font-size(xs);
+}
+
+.originalAssetBadge {
+  @extend .cardBadge;
+  background: rgba(vars.color('slate', 400), 0.25);
+  color: vars.color('slate', 200);
+}
+
+.generatedPreviewBadge {
+  @extend .cardBadge;
+  background: rgba(vars.color('green', 500), 0.25);
+  color: vars.color('green', 400);
+}
+
+.downloadButton {
+  position: absolute;
+  top: vars.spacing(lg);
+  right: vars.spacing(lg);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(vars.color('slate', 950), 0.9);
+  border: 1px solid vars.semantic-color('border');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: vars.semantic-color('text-primary');
+  font-size: 1.2rem;
+  z-index: 10;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: vars.color('slate', 950);
+    transform: scale(1.1);
+  }
+}
+
+.variantGallery {
+  padding: vars.spacing(2xl);
+  display: flex;
+  flex-direction: column;
+  gap: vars.spacing(lg);
+}
+
+.variantGalleryHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.variantGalleryTitle {
+  margin: 0;
+  font-size: vars.font-size(xl);
+  font-weight: 600;
+}
+
+.variantGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: vars.spacing(md);
+}
+
+.variantCard {
+  position: relative;
+  border-radius: vars.radius(xl);
+  overflow: hidden;
+  border: 2px solid vars.semantic-color('border');
+  background: rgba(vars.color('slate', 950), 0.5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  aspect-ratio: 1;
+
+  &:hover {
+    transform: scale(1.05);
+    border-color: rgba(vars.color('indigo', 400), 0.4);
+  }
+}
+
+.variantCardActive {
+  @extend .variantCard;
+  border-color: rgba(vars.color('indigo', 400), 0.6);
+
+  &:hover {
+    border-color: rgba(vars.color('indigo', 400), 0.6);
+  }
+}
+
+.variantImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.variantPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: vars.spacing(sm);
+  color: vars.semantic-color('text-secondary');
+  font-size: vars.font-size(xs);
+  padding: vars.spacing(md);
+}
+
+.selectionIndicator {
+  position: absolute;
+  top: vars.spacing(sm);
+  right: vars.spacing(sm);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(vars.color('slate', 950), 0.8);
+  border: 2px solid vars.semantic-color('border');
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.2s ease;
+}
+
+.selectionIndicatorSelected {
+  @extend .selectionIndicator;
+  background: rgba(vars.color('green', 500), 0.9);
+  border-color: vars.color('green', 400);
+}
+
+.statusBadge {
+  position: absolute;
+  bottom: vars.spacing(sm);
+  left: vars.spacing(sm);
+  right: vars.spacing(sm);
+  background: rgba(vars.color('slate', 950), 0.9);
+  border-radius: vars.radius(md);
+  padding: vars.spacing(xs) vars.spacing(sm);
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.closeButton {
+  position: absolute;
+  top: vars.spacing(md);
+  right: vars.spacing(md);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: vars.semantic-color('text-primary');
+  font-size: 1.2rem;
+  padding: vars.spacing(xs) vars.spacing(sm);
+}
+
+.promptTextarea {
+  min-height: 180px;
+  resize: vertical;
+  font-size: 0.8125rem;
+  font-family: monospace;
+}

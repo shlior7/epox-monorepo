@@ -1,0 +1,404 @@
+{
+  "id": 34875,
+  "name": "כסא Salli (העתק)",
+  "slug": "",
+  "date_created": {
+    "date": "2024-12-15 22:46:01.000000",
+    "timezone_type": 1,
+    "timezone": "+00:00"
+  },
+  "date_modified": {
+    "date": "2024-11-18 07:51:07.000000",
+    "timezone_type": 1,
+    "timezone": "+00:00"
+  },
+  "status": "draft",
+  "featured": false,
+  "catalog_visibility": "invisible",
+  "description": "• מחזיק את עמוד השדרה ופלג הגוף העליון באופן טבעי, ללא מאמץ\r\n• מנגנון נדנדה להטיית מושב קלה, ללא ידית\r\n• מפחית לחץ מאברי המין ומשפר את זרימת הדם\r\n• מתאים גם לבעלי אגן רחב",
+  "short_description": "הישיבה על כיסא אוכף ארגונומי Salli SwingFit מפחיתה את הלחץ מאברי המין ומשפרת את זרימת הדם.\r\nבזמן הישיבה, האגן נוטה קדימה ומחזיק את עמוד השדרה ללא מאמץ.\r\nגודלו הסטנדרטי של המושב מעניק תמיכה טובה גם לבעלי אגן רחב.\r\n\r\nמנגנון נדנדה מאפשר להטות את המושב לכל כיוון ללא צורך בידית, ובכך מפעיל את כל הגוף.\r\nבנוסף, ניתן לכוון את רוחב המושב בהתאם לגוף, ולהיעזר במנגנון הטיית אגן המחזק את שרירי חגורת הבטן והגב התחתון, ומגביר את חילוף חומרים.\r\n\r\n• בסיס הכיסא כולל מרכזי עיסוי לרגליים\r\n• הכיסא מגיע עם גלגלי סיליקון בקוטר 65 מ\"מ לפרקט / שטיח / רצפה\r\n• גובה: מינימום – 580 מ\"מ , מקסימום – 820 מ\"מ.\r\n• עומס מרבי: עד 140 ק\"ג.\r\n• משקל עצמי: 11 ק\"ג.\r\n• תוצרת פינלנד\r\n• 5 שנות אחריות על המנגנון והבוכנה (בהתאם למפרט טכני, משקל ורמת שימוש סביר)\r\n<div class=\"ms-editor-squiggler\"></div>",
+  "sku": "156131-1",
+  "global_unique_id": "",
+  "price": "3990",
+  "regular_price": "3990",
+  "sale_price": "",
+  "date_on_sale_from": null,
+  "date_on_sale_to": null,
+  "total_sales": 0,
+  "tax_status": "taxable",
+  "tax_class": "",
+  "manage_stock": false,
+  "stock_quantity": null,
+  "stock_status": "instock",
+  "backorders": "no",
+  "low_stock_amount": "",
+  "sold_individually": false,
+  "weight": "",
+  "length": "",
+  "width": "",
+  "height": "",
+  "upsell_ids": [],
+  "cross_sell_ids": [],
+  "parent_id": 0,
+  "reviews_allowed": true,
+  "purchase_note": "",
+  "attributes": [],
+  "default_attributes": [],
+  "menu_order": 79,
+  "post_password": "",
+  "virtual": false,
+  "downloadable": false,
+  "category_ids": [381, 248],
+  "tag_ids": [],
+  "shipping_class_id": 348,
+  "downloads": [],
+  "image_id": "20996",
+  "gallery_image_ids": [],
+  "download_limit": -1,
+  "download_expiry": -1,
+  "rating_counts": [],
+  "average_rating": "0",
+  "review_count": 0,
+  "meta_data": [
+    {
+      "id": 527538,
+      "key": "_wp_page_template",
+      "value": "default"
+    },
+    {
+      "id": 527539,
+      "key": "woodmart_sguide_select",
+      "value": "none"
+    },
+    {
+      "id": 527540,
+      "key": "_pys_head_footer",
+      "value": {
+        "disable_global": false,
+        "head_any": "",
+        "head_desktop": "",
+        "head_mobile": "",
+        "footer_any": "",
+        "footer_desktop": "",
+        "footer_mobile": ""
+      }
+    },
+    {
+      "id": 527541,
+      "key": "_yoast_wpseo_content_score",
+      "value": "60"
+    },
+    {
+      "id": 527542,
+      "key": "_yoast_wpseo_estimated-reading-time-minutes",
+      "value": "1"
+    },
+    {
+      "id": 527543,
+      "key": "_yoast_wpseo_wordproof_timestamp",
+      "value": ""
+    },
+    {
+      "id": 527544,
+      "key": "_woosea_exclude_product",
+      "value": "no"
+    },
+    {
+      "id": 527545,
+      "key": "woodmart_price_unit_of_measure",
+      "value": ""
+    },
+    {
+      "id": 527546,
+      "key": "woodmart_fbt_bundles_id",
+      "value": [""]
+    },
+    {
+      "id": 527547,
+      "key": "woodmart_total_stock_quantity",
+      "value": ""
+    },
+    {
+      "id": 527548,
+      "key": "_wc_facebook_sync_enabled",
+      "value": "yes"
+    },
+    {
+      "id": 527549,
+      "key": "fb_visibility",
+      "value": "yes"
+    },
+    {
+      "id": 527550,
+      "key": "_wc_facebook_commerce_enabled",
+      "value": "no"
+    },
+    {
+      "id": 527551,
+      "key": "fb_product_group_id",
+      "value": "6439876429375736"
+    },
+    {
+      "id": 527552,
+      "key": "fb_product_item_id",
+      "value": "6439876509375728"
+    },
+    {
+      "id": 527553,
+      "key": "_product_360_image_gallery",
+      "value": ""
+    },
+    {
+      "id": 527554,
+      "key": "_woodmart_whb_header",
+      "value": "none"
+    },
+    {
+      "id": 527555,
+      "key": "_woodmart_main_layout",
+      "value": "default"
+    },
+    {
+      "id": 527556,
+      "key": "_woodmart_sidebar_width",
+      "value": "default"
+    },
+    {
+      "id": 527557,
+      "key": "_woodmart_custom_sidebar",
+      "value": "none"
+    },
+    {
+      "id": 527558,
+      "key": "_woodmart_new_label",
+      "value": ""
+    },
+    {
+      "id": 527559,
+      "key": "_woodmart_new_label_date",
+      "value": ""
+    },
+    {
+      "id": 527560,
+      "key": "_woodmart_swatches_attribute",
+      "value": ""
+    },
+    {
+      "id": 527561,
+      "key": "_woodmart_related_off",
+      "value": ""
+    },
+    {
+      "id": 527562,
+      "key": "_woodmart_product_video",
+      "value": ""
+    },
+    {
+      "id": 527563,
+      "key": "_woodmart_product_hashtag",
+      "value": ""
+    },
+    {
+      "id": 527564,
+      "key": "_woodmart_single_product_style",
+      "value": "inherit"
+    },
+    {
+      "id": 527565,
+      "key": "_woodmart_thums_position",
+      "value": "inherit"
+    },
+    {
+      "id": 527566,
+      "key": "_woodmart_extra_content",
+      "value": ""
+    },
+    {
+      "id": 527567,
+      "key": "_woodmart_extra_position",
+      "value": "after"
+    },
+    {
+      "id": 527568,
+      "key": "_woodmart_product_design",
+      "value": "inherit"
+    },
+    {
+      "id": 527569,
+      "key": "_woodmart_product-background",
+      "value": ""
+    },
+    {
+      "id": 527570,
+      "key": "_woodmart_hide_tabs_titles",
+      "value": ""
+    },
+    {
+      "id": 527571,
+      "key": "_woodmart_product_custom_tab_title",
+      "value": ""
+    },
+    {
+      "id": 527572,
+      "key": "_woodmart_product_custom_tab_content_type",
+      "value": "text"
+    },
+    {
+      "id": 527573,
+      "key": "_woodmart_product_custom_tab_content",
+      "value": ""
+    },
+    {
+      "id": 527574,
+      "key": "_woodmart_product_custom_tab_html_block",
+      "value": ""
+    },
+    {
+      "id": 527575,
+      "key": "_woodmart_product_custom_tab_title_2",
+      "value": ""
+    },
+    {
+      "id": 527576,
+      "key": "_woodmart_product_custom_tab_content_type_2",
+      "value": "text"
+    },
+    {
+      "id": 527577,
+      "key": "_woodmart_product_custom_tab_content_2",
+      "value": ""
+    },
+    {
+      "id": 527578,
+      "key": "_woodmart_product_custom_tab_html_block_2",
+      "value": ""
+    },
+    {
+      "id": 527579,
+      "key": "_yoast_wpseo_primary_product_cat",
+      "value": "248"
+    },
+    {
+      "id": 527580,
+      "key": "fb_product_description",
+      "value": ""
+    },
+    {
+      "id": 527581,
+      "key": "_wc_facebook_product_image_source",
+      "value": "product"
+    },
+    {
+      "id": 527582,
+      "key": "selected_images_categories",
+      "value": "[0]"
+    },
+    {
+      "id": 527583,
+      "key": "_pys_conversion_label_settings",
+      "value": {
+        "enable": false,
+        "label": "",
+        "id": "AW-766972217"
+      }
+    },
+    {
+      "id": 527584,
+      "key": "_yith_wcgc_disable_gift_this_product",
+      "value": "no"
+    },
+    {
+      "id": 527585,
+      "key": "woodmart_wc_video_gallery",
+      "value": {
+        "20996": {
+          "video_type": "mp4",
+          "upload_video_id": "",
+          "upload_video_url": "",
+          "youtube_url": "",
+          "vimeo_url": "",
+          "autoplay": "0",
+          "video_size": "contain",
+          "video_control": "theme",
+          "hide_gallery_img": "0",
+          "hide_information": "0",
+          "audio_status": "unmute"
+        }
+      }
+    },
+    {
+      "id": 527586,
+      "key": "new_product_badge",
+      "value": "0"
+    },
+    {
+      "id": 527587,
+      "key": "_new_product_badge",
+      "value": "field_6139bc8468682"
+    },
+    {
+      "id": 527588,
+      "key": "_woodmart_exclude_show_single_variation",
+      "value": ""
+    },
+    {
+      "id": 527589,
+      "key": "_yoast_wpseo_primary_giftcard-category",
+      "value": ""
+    },
+    {
+      "id": 527590,
+      "key": "_yoast_wpseo_primary_fb_product_set",
+      "value": ""
+    },
+    {
+      "id": 527591,
+      "key": "berocket_post_order",
+      "value": "0"
+    },
+    {
+      "id": 527592,
+      "key": "wd_page_css_files",
+      "value": [
+        "widget-price-filter",
+        "widget-nav",
+        "widget-product-cat",
+        "wp-gutenberg",
+        "elementor-base",
+        "elementor-pro-base",
+        "woocommerce-base",
+        "mod-star-rating",
+        "woo-el-track-order",
+        "woo-gutenberg",
+        "woo-mod-quantity",
+        "woo-single-prod-el-base",
+        "woo-mod-stock-status",
+        "woo-mod-shop-attributes",
+        "header-base",
+        "mod-tools",
+        "header-elements-base",
+        "social-icons",
+        "header-search",
+        "header-search-form",
+        "wd-search-results",
+        "wd-search-form",
+        "header-cart-side",
+        "header-cart",
+        "widget-shopping-cart",
+        "widget-product-list",
+        "woo-single-prod-el-gallery",
+        "owl-carousel",
+        "photoswipe",
+        "woo-opt-title-limit",
+        "product-loop",
+        "product-loop-standard",
+        "woo-mod-add-btn-replace",
+        "categories-loop",
+        "mfp-popup",
+        "footer-base",
+        "scroll-top",
+        "bottom-toolbar"
+      ]
+    }
+  ]
+}

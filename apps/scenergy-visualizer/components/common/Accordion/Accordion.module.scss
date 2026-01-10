@@ -1,0 +1,118 @@
+@use '@/styles/variables' as vars;
+
+.accordion {
+  background-color: vars.semantic-color('surface-deep');
+  border-radius: vars.radius('xl');
+  padding: vars.spacing('2xl');
+  margin-bottom: vars.spacing('2xl');
+  border: 1px solid vars.semantic-color('border-strong');
+  overflow: visible;
+}
+
+.accordionMobile {
+  padding: vars.spacing('lg');
+}
+
+.accordionMinimal {
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.item {
+  border: none;
+}
+
+.itemMinimal {
+  border: none;
+}
+
+.itemWithDivider {
+  border-bottom: 1px solid vars.semantic-color('border-strong');
+  padding-bottom: vars.spacing('md');
+  margin-bottom: vars.spacing('md');
+}
+
+.header {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: vars.spacing('md');
+  width: 100%;
+}
+
+.trigger {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: vars.spacing('md');
+  cursor: pointer;
+  user-select: none;
+  padding: vars.spacing('sm');
+  border-radius: vars.radius('lg');
+  transition: background-color var(--transition-fast);
+  flex-wrap: wrap;
+  width: 100%;
+  flex: 1;
+}
+
+.trigger:focus-visible {
+  outline: 2px solid vars.semantic-color('accent');
+  outline-offset: 2px;
+}
+
+.chevron {
+  width: 20px;
+  height: 20px;
+  color: vars.semantic-color('text-secondary');
+  transition: transform var(--transition-fast);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center;
+  line-height: 0;
+}
+
+.trigger[data-state='open'] .chevron {
+  transform: rotate(180deg);
+}
+
+.trigger[data-state='closed'] .chevron {
+  transform: rotate(0deg);
+}
+
+.headerSuffix {
+  display: flex;
+  align-items: center;
+  gap: vars.spacing('sm');
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: vars.semantic-color('text-inverse');
+  margin: 0;
+}
+
+.titleMobile {
+  font-size: var(--font-size-lg);
+}
+
+.titleMinimal {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+}
+
+.content {
+  overflow: visible;
+  margin-top: vars.spacing('lg');
+}
+
+@media (max-width: vars.breakpoint('md')) {
+  .title {
+    font-size: var(--font-size-lg);
+  }
+}

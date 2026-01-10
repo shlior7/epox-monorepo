@@ -1,0 +1,11 @@
+node_modules
+dist
+build
+build-scripts
+schemas
+tmp
+serverless
+fixtures
+templates
+.turbo
+apps/scenergy-product-builder

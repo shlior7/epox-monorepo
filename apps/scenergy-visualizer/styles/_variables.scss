@@ -1,0 +1,434 @@
+@forward 'sass:map';
+@use 'sass:map';
+@use 'sass:color';
+@use 'sass:string';
+
+// =========================================
+// RAW COLOR PALETTE
+// =========================================
+$colors: (
+  // Pure white for surfaces
+  'white-pure': #ffffff,
+  // White with shades (for legacy compatibility)
+  'white': (100: #ffffff, 50: #fafafa),
+  // Neutral grays - optimized for dark theme (charcoal tones)
+  'neutral': (950: #0f0f0f, // Deepest background
+    900: #171717, // Main background
+    850: #1a1a1a, // App background
+    800: #262626, // Card/surface background
+    750: #2a2a2a, // Elevated surfaces
+    700: #333333, // Borders, strong surfaces
+    600: #404040, // Muted borders
+    500: #525252, // Disabled state
+    400: #737373, // Muted text
+    300: #a3a3a3, // Secondary text
+    200: #d4d4d4, // Primary text
+    100: #e5e5e5, // Bright text
+    50: #f5f5f5 // White-ish
+  ),
+  // Legacy slate (keeping for light theme compatibility)
+  'slate': (950: #020617, // Deep Onyx background
+    900: #111827, // Dark Zinc/Slate
+    800: #1f2937, // Lighter surface
+    700: #374151, // Borders/Strong surfaces
+    600: #4b5563,
+    500: #6b7280, // Muted text
+    400: #9ca3af,
+    300: #d1d5db,
+    200: #e5e7eb, // Light borders
+    100: #f3f4f6, // Light app background
+    50: #f9fafb // Very light gray
+  ),
+  //Kept existing accent colors
+  'indigo': (700: #4338ca, 600: #4f46e5, 500: #6366f1, 400: #818cf8, 300: #a5b4fc, 100: #e0e7ff),
+  'violet': (600: #7c3aed, 500: #8b5cf6, 400: #a78bfa),
+  'purple': (600: #9333ea),
+  'red': (700: #b91c1c, 600: #dc2626, 500: #ef4444, 400: #f87171, 300: #fca5a5),
+  'blue': (100: #D3DCEF, 200: #A7B9E0, 300: #7B97D1, 400: #4F75C2, 500: #2563EB, 600: #192D50, 700: #132340, 800: #0D1930, 900: #070F20),
+  'amber': (700: #b45309, 600: #d97706, 500: #f59e0b, 300: #fcd34d, 100: #fef3c7),
+  // Updated green slightly for better contrast across themes
+  'green': (700: #15803d, 600: #16a34a, 500: #22c55e, 400: #4ade80, 300: #86efac, 100: #dcfce7),
+  'emerald': (700: #047857, 600: #059669),
+  'turquoise': (100: #E0F2F1, 200: #B2DFDB, 300: #80CBC4, 400: #4DB6AC, 500: #26A69A, 600: #00897B, 700: #00796B, 800: #00695C, 900: #004D40),
+  // Cyan for accent tags/pills (like in the screenshot)
+  'cyan': (700: #0e7490, 600: #0891b2, 500: #06b6d4, 400: #22d3ee, 300: #67e8f9, 200: #a5f3fc, 100: #cffafe)
+);
+
+// Helper to access raw colors easily
+@function color($group, $shade: null) {
+  @if $shade ==null {
+    @return map.get($colors, $group);
+  }
+
+  @return map.get(map.get($colors, $group), $shade);
+}
+
+// Helper for RGBA using raw colors
+@function rgba-color($group, $shade, $alpha) {
+  $color: map.get(map.get($colors, $group), $shade);
+  @return rgba($color, $alpha);
+}
+
+// =========================================
+// STRUCTURAL VARIABLES (Spacing, Radii, Fonts)
+// =========================================
+$spacing: (
+  '2xs': 2px,
+  'xs': 4px,
+  'sm': 8px,
+  'md': 12px,
+  'lg': 16px,
+  'xl': 20px,
+  '2xl': 24px,
+  '3xl': 32px
+);
+
+$radii: (
+  'sm': 4px,
+  'md': 8px,
+  'lg': 12px,
+  'xl': 16px,
+  'pill': 999px
+);
+
+$font-sizes: (
+  'xs': 12px,
+  'sm': 13px,
+  'md': 14px,
+  'lg': 16px,
+  'xl': 18px,
+  '2xl': 20px,
+  '3xl': 24px
+);
+
+$font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+
+$z-indices: (
+  'drawer': 100,
+  'backdrop': 90,
+  'modal': 110,
+  'tooltip': 120
+);
+
+// Breakpoints for responsive design
+$breakpoints: (
+  'sm': 640px,
+  'md': 768px,
+  'lg': 1024px,
+  'xl': 1280px,
+  '2xl': 1536px
+);
+
+// =========================================
+// THEME DEFINITIONS
+// =========================================
+
+// --- Modern Light Theme ---
+$theme-light: (
+  // BACKGROUNDS & SURFACES
+  'background': color('slate', 100),
+  'background-alt': color('slate', 50),
+  'surface': color('white-pure'),
+  'surface-hover': color('slate', 50),
+  'surface-active': color('slate', 100),
+  'surface-strong': color('neutral', 200),
+  'surface-muted': color('slate', 100),
+  'surface-deep': color('slate', 50),
+  'surface-overlay': rgba(255, 255, 255, 0.95),
+  'sidebar-background': color('white-pure'),
+  'input-background': color('white-pure'),
+
+  // TEXT & CONTENT
+  'text': color('slate', 900),
+  'text-primary': color('slate', 900),
+  'text-secondary': color('slate', 500),
+  'text-tertiary': color('slate', 400),
+  'text-muted': color('slate', 400),
+  'text-subtle': color('slate', 500),
+  'text-inverse': color('neutral', 950),
+  'white': color('slate', 900),
+
+  // BORDERS
+  'border': color('slate', 200),
+  'border-subtle': color('slate', 200),
+  'border-strong': color('slate', 300),
+  'border-muted': color('slate', 200),
+  'border-hover': color('slate', 400),
+
+  // ACCENTS
+  'accent': color('indigo', 300),
+  'accent-hover': color('indigo', 400),
+  'accent-strong': color('indigo', 700),
+  'accent-muted': color('indigo', 100),
+  'accent-soft': rgba-color('indigo', 500, 0.1),
+  'accent-outline': rgba(79, 70, 229, 0.3),
+  'accent-glow': rgba(79, 70, 229, 0.2),
+  'accent-gradient-start': rgba(79, 70, 229, 0.1),
+
+  // PRIMARY (alias for accent in some contexts)
+  'primary': color('indigo', 400),
+  'primary-hover': color('indigo', 300),
+  'primary-strong': color('indigo', 500),
+  'primary-stronger': color('indigo', 600),
+  'primary-light': rgba-color('indigo', 500, 0.1),
+  'primary-muted': color('indigo', 400),
+  'primary-soft': rgba(79, 70, 229, 0.1),
+  'primary-softer': color('indigo', 200),
+  'primary-soft-strong': rgba(79, 70, 229, 0.15),
+  'primary-soft-stronger': rgba(79, 70, 229, 0.2),
+  'primary-outline': rgba(79, 70, 229, 0.3),
+  'primary-ghost': rgba(79, 70, 229, 0.05),
+
+  // SECONDARY
+  'secondary-outline': color('slate', 300),
+  'secondary-hover': color('slate', 400),
+
+  // STATUS COLORS
+  'success': color('green', 300),
+  'success-strong': color('green', 600),
+  'success-hover': color('green', 700),
+  'success-highlight': color('green', 700),
+  'success-outline': rgba(22, 163, 74, 0.3),
+  'success-ghost': rgba(22, 163, 74, 0.1),
+  'success-soft': color('green', 500),
+  'success-soft-strong': rgba(22, 163, 74, 0.7),
+  'success-soft-stronger': rgba(22, 163, 74, 0.9),
+
+  // WARNING
+  'warning': color('amber', 600),
+  'warning-strong': color('amber', 500),
+  'warning-hover': color('amber', 700),
+  'warning-highlight': color('amber', 700),
+
+  // ERROR/DANGER
+  'error': color('red', 600),
+  'error-hover': color('red', 700),
+  'error-soft': color('red', 500),
+  'error-ghost': rgba(220, 38, 38, 0.1),
+  'error-overlay': rgba(220, 38, 38, 0.8),
+  'danger': color('red', 600),
+  'danger-highlight': color('red', 700),
+
+  // OVERLAYS
+  'overlay': rgba(0, 0, 0, 0.3),
+  'overlay-light': rgba(0, 0, 0, 0.1),
+  'overlay-soft': rgba(0, 0, 0, 0.1),
+  'overlay-strong': rgba(0, 0, 0, 0.4),
+  'overlay-heavy': rgba(0, 0, 0, 0.6),
+
+  // SHADOWS (Soft shadows for light mode)
+  'shadow-sm': 0 1px 2px rgba(0, 0, 0, 0.05),
+  'shadow-md': 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+  'shadow-lg': 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+  'shadow-xl': 0 20px 25px -5px rgba(0, 0, 0, 0.1)
+);
+
+
+// --- Dark Theme (Charcoal/Cinema style matching screenshot) ---
+$theme-dark: (
+  // BACKGROUNDS & SURFACES
+  'background': color('neutral', 850),
+  // #1a1a1a - main app background
+  'background-alt': color('neutral', 800),
+  // #262626 - alternate background
+  'surface': color('neutral', 800),
+  // #262626 - card/panel background
+  'surface-hover': color('neutral', 750),
+  // #2a2a2a - hover state
+  'surface-active': color('neutral', 700),
+  // #333333 - active/pressed state
+  'surface-strong': color('neutral', 700),
+  // #333333 - elevated surfaces
+  'surface-muted': color('neutral', 600),
+  // #404040 - muted surfaces
+  'surface-deep': color('neutral', 900),
+  // #171717 - deeper surfaces (headers)
+  'surface-overlay': rgba(38, 38, 38, 0.95),
+  // Surface with transparency
+  'sidebar-background': color('neutral', 900),
+  // #171717 - sidebar
+  'input-background': color('neutral', 900),
+  // Input field background
+
+  // TEXT & CONTENT
+  'text': color('neutral', 100),
+  // #e5e5e5 - default text (alias)
+  'text-primary': color('neutral', 100),
+  // #e5e5e5 - main text
+  'text-secondary': color('neutral', 300),
+  // #a3a3a3 - secondary text
+  'text-tertiary': color('neutral', 400),
+  // #737373 - tertiary text
+  'text-muted': color('neutral', 500),
+  // #525252 - muted/disabled text
+  'text-subtle': color('neutral', 400),
+  // #737373 - subtle text
+  'text-inverse': color('white-pure'),
+  // #0f0f0f - inverse text (on light bg)
+  'white': color('white-pure'),
+  // Pure white for emphasis
+
+  // BORDERS
+  'border': color('neutral', 700),
+  // #333333 - default border
+  'border-subtle': color('neutral', 700),
+  // #333333 - subtle borders
+  'border-strong': color('neutral', 600),
+  // #404040 - stronger borders
+  'border-muted': color('neutral', 600),
+  // #404040 - muted borders
+  'border-hover': color('neutral', 500),
+  // Hover border color
+
+  // ACCENTS
+  'accent': color('indigo', 500),
+  'accent-hover': color('indigo', 600),
+  'accent-strong': color('indigo', 700),
+  'accent-muted': color('indigo', 100),
+  'accent-soft': rgba-color('indigo', 500, 0.1),
+  'accent-outline': rgba(79, 70, 229, 0.3),
+  'accent-glow': rgba(79, 70, 229, 0.2),
+  'accent-gradient-start': rgba(79, 70, 229, 0.1),
+
+  // PRIMARY - Vibrant indigo/purple for primary actions
+  'primary': color('indigo', 600),
+  // #6366f1 - primary actions
+  'primary-hover': color('indigo', 400),
+  // #818cf8 - primary hover
+  'primary-strong': color('indigo', 500),
+  'primary-stronger': color('indigo', 00),
+  // Stronger primary
+  'primary-light': rgba-color('indigo', 400, 0.15),
+  'primary-muted': color('indigo', 300),
+  // Muted primary text
+  'primary-soft': rgba(99, 102, 241, 0.15),
+  'primary-softer': color('indigo', 300),
+  // Soft primary bg
+  'primary-soft-strong': rgba(99, 102, 241, 0.2),
+  'primary-soft-stronger': rgba(99, 102, 241, 0.3),
+  'primary-outline': rgba(99, 102, 241, 0.4),
+  'primary-ghost': rgba(99, 102, 241, 0.08),
+
+  // SECONDARY
+  'secondary-outline': color('neutral', 600),
+  'secondary-hover': color('neutral', 500),
+
+  // STATUS COLORS - Vibrant greens
+  'success': color('green', 600),
+  'success-strong': color('green', 600),
+  'success-hover': color('green', 700),
+  'success-highlight': color('green', 700),
+  'success-outline': rgba(22, 163, 74, 0.3),
+  'success-ghost': rgba(22, 163, 74, 0.1),
+  'success-soft': color('green', 500),
+  'success-soft-strong': rgba(22, 163, 74, 0.7),
+  'success-soft-stronger': rgba(22, 163, 74, 0.9),
+
+  // WARNING - Vibrant amber/orange
+  'warning': color('amber', 500),
+  // #f59e0b - vibrant amber
+  'warning-strong': color('amber', 600),
+  'warning-hover': color('amber', 400),
+  // #fcd34d - bright amber
+  'warning-highlight': color('amber', 400),
+
+  // ERROR/DANGER - Vibrant reds
+  'error': color('red', 500),
+  // #ef4444 - vibrant red
+  'error-hover': color('red', 400),
+  // #f87171 - bright red
+  'error-soft': color('red', 400),
+  'error-ghost': rgba(239, 68, 68, 0.1),
+  'error-overlay': rgba(239, 68, 68, 0.8),
+  'danger': color('red', 500),
+  // Alias for error
+  'danger-highlight': color('red', 400),
+
+  // OVERLAYS
+  'overlay': rgba(0, 0, 0, 0.5),
+  'overlay-light': rgba(0, 0, 0, 0.3),
+  'overlay-soft': rgba(0, 0, 0, 0.4),
+  'overlay-strong': rgba(0, 0, 0, 0.75),
+  'overlay-heavy': rgba(0, 0, 0, 0.85),
+
+  // SHADOWS (Subtle shadows for dark mode)
+  'shadow-sm': 0 1px 2px rgba(0, 0, 0, 0.4),
+  'shadow-md': 0 4px 6px -1px rgba(0, 0, 0, 0.5),
+  'shadow-lg': 0 10px 15px -3px rgba(0, 0, 0, 0.5),
+  'shadow-xl': 0 20px 25px -5px rgba(0, 0, 0, 0.6)
+);
+
+
+// =========================================
+// CSS VARIABLE GENERATION (use in globals.scss)
+// =========================================
+
+// Helper mixin to iterate over a theme map and create CSS vars
+@mixin generate-theme-vars($theme-map) {
+  @each $key, $value in $theme-map {
+
+    // Check if it's a shadow or a color
+    @if string.index($key, 'shadow') {
+      --#{$key}: #{$value};
+    }
+
+    @else {
+      --color-#{$key}: #{$value};
+    }
+  }
+}
+
+// Mixin to generate all structural CSS variables
+@mixin generate-structural-vars() {
+  @each $token, $value in $spacing {
+    --spacing-#{$token}: #{$value};
+  }
+
+  @each $token, $value in $radii {
+    --radius-#{$token}: #{$value};
+  }
+
+  @each $token, $value in $font-sizes {
+    --font-size-#{$token}: #{$value};
+  }
+
+  @each $token, $value in $z-indices {
+    --z-index-#{$token}: #{$value};
+  }
+
+  --font-family-base: #{$font-family-base};
+  --transition-fast: 0.15s ease-in-out;
+  --transition-normal: 0.25s ease-in-out;
+}
+
+
+// =========================================
+// USAGE FUNCTIONS
+// =========================================
+
+// Access semantic colors (e.g., semantic-color('background'))
+@function semantic-color($name) {
+  @return var(--color-#{$name});
+}
+
+// Access semantic shadows (e.g., semantic-shadow('md'))
+@function semantic-shadow($size) {
+  @return var(--shadow-#{$size});
+}
+
+// Access structural variables
+@function spacing($size) {
+  @return map.get($spacing, $size);
+}
+
+@function radius($size) {
+  @return map.get($radii, $size);
+}
+
+@function font-size($size) {
+  @return map.get($font-sizes, $size);
+}
+
+@function breakpoint($size) {
+  @return map.get($breakpoints, $size);
+}

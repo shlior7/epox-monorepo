@@ -1,0 +1,51 @@
+{
+  "name": "scenergy-monorepo",
+  "version": "1.0.1",
+  "private": true,
+  "scripts": {
+    "fix-mismatches": "syncpack fix-mismatches",
+    "list-mismatches": "syncpack list-mismatches",
+    "build": "yarn fix-mismatches && turbo build",
+    "test": "turbo test",
+    "format": "prettier -c",
+    "format:all": "run format .",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "clean": "rm -rf node_modules packages/*/node_modules",
+    "deps:update": "yarn upgrade-interactive",
+    "ensure-deduped-lockfile": "yarn dedupe --check",
+    "dev": "turbo dev"
+  },
+  "workspaces": [
+    "services/*",
+    "packages/*",
+    "apps/*",
+    "workers/*"
+  ],
+  "devDependencies": {
+    "@evilmartians/lefthook": "^1.9.0",
+    "@typescript-eslint/eslint-plugin": "^8.10.0",
+    "@typescript-eslint/parser": "^8.10.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-import-resolver-typescript": "^3.6.1",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jest": "^28.8.3",
+    "eslint-plugin-perfectionist": "^3.9.1",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-unicorn": "^55.0.0",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "syncpack": "^13.0.0",
+    "turbo": "^2.5.5",
+    "typescript": "^5.7.2"
+  },
+  "resolutions": {
+    "@types/node": "^24.1.0",
+    "@types/react": "^19.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "ts-api-utils": "2.1.0"
+  },
+  "packageManager": "yarn@4.12.0"
+}

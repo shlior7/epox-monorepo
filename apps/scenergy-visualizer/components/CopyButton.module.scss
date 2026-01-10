@@ -1,0 +1,67 @@
+// Copy button styles
+
+.iconButton,
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.iconButton {
+  padding: 0.5rem;
+
+  &.small {
+    padding: 0.375rem;
+    min-width: 28px;
+    min-height: 28px;
+  }
+
+  &.medium {
+    padding: 0.5rem;
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  &.large {
+    padding: 0.625rem;
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
+.button {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+
+  &.small {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  &.medium {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  &.large {
+    padding: 0.625rem 1.25rem;
+    font-size: 1rem;
+  }
+}
