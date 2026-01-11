@@ -9,8 +9,8 @@
 
 ## Background
 
-The `visualizer-client` platform requires a complete UI/UX design covering every screen and component in the collection-based bulk generation workflow. This design must:
-- Support non-technical users generating 20-500+ products per collection
+The `visualizer-client` platform requires a complete UI/UX design covering every screen and component in the flow-based bulk generation workflow. This design must:
+- Support non-technical users generating 20-500+ products per studio session
 - Provide a progressive, wizard-style workflow
 - Reuse components where possible from existing admin portal
 - Be fully responsive (desktop-first, mobile-compatible)
@@ -19,8 +19,8 @@ The `visualizer-client` platform requires a complete UI/UX design covering every
 ## Problem
 
 We need detailed specifications for:
-1. **8 main screens** - Login, Dashboard, Collections, Wizard (4 steps), Results, Products, Settings, Errors
-2. **Core UI components** - ProductTable, InspirationPicker, GenerationProgress, AssetGallery
+1. **8 main screens** - Login, Dashboard, Sessions, Flow Creation, Flow Detail, Results, Products, Settings, Errors
+2. **Core UI components** - ProductTable, InspirationPicker, GenerationProgress, ImageGallery
 3. **Shared components** - Modals, filters, search bars, pagination, etc.
 4. **Responsive behavior** - Desktop (1440px), tablet (768px), mobile (375px)
 5. **State management** - What data each screen/component needs
@@ -29,10 +29,10 @@ We need detailed specifications for:
 ## Questions and Answers
 
 ### Q1: Should we build a multi-step wizard or separate pages?
-**A**: Multi-step wizard with URL state:
-- URL: `/collections/new?step=1` through `step=4`
-- Benefits: Single navigation context, progress indicator, back/forward navigation
-- Each step can be a separate route for deep-linking
+**A**: Dedicated flow creation pages with clear navigation:
+- Flow creation: Select products from session
+- Flow settings: Configure generation parameters
+- Benefits: Clear workflow, progress tracking, deep-linking
 
 ### Q2: How do we handle the product table with 1000+ products?
 **A**: Server-side pagination + virtualization:
@@ -42,7 +42,7 @@ We need detailed specifications for:
 - Client-side selection state
 
 ### Q3: Should inspiration picker tabs be separate routes or client-side tabs?
-**A**: Client-side tabs within Step 3:
+**A**: Client-side tabs within flow settings:
 - Single URL, tab state in local component
 - All tabs share same selection state (0-5 images)
 - Simpler UX, no page refresh
@@ -55,7 +55,7 @@ We need detailed specifications for:
 
 ### Q5: How do we show real-time generation progress?
 **A**: Polling + optimistic updates:
-- Poll `/api/collections/[id]/status` every 2s during generation
+- Poll `/api/flows/[id]/status` every 2s during generation
 - WebSocket upgrade path for future
 - Progress bar + live count (e.g., "23/150 completed")
 
@@ -68,11 +68,11 @@ We need detailed specifications for:
 ```mermaid
 graph TB
     Login[Login/Signup Screen] --> Dashboard[Dashboard]
-    Dashboard --> Collections[Collections List]
+    Dashboard --> StudioSessions[StudioSessions List]
     Dashboard --> Products[Products Library]
     Dashboard --> Settings[Settings Page]
 
-    Collections --> Wizard[Collection Creation Wizard]
+    StudioSessions --> Wizard[StudioSession Creation Wizard]
 
     subgraph wizard [4-Step Wizard]
         Step1[Step 1: Product Selection]
@@ -85,9 +85,9 @@ graph TB
     Step1 --> Step2
     Step2 --> Step3
     Step3 --> Step4
-    Step4 --> Results[Collection Results Gallery]
+    Step4 --> Results[StudioSession Results Gallery]
 
-    Collections --> Results
+    StudioSessions --> Results
 
     Error404[404 Error Page]
     Error500[500 Error Page]
@@ -172,24 +172,24 @@ interface LoginState {
 
 **Route**: `/`
 
-**Purpose**: Quick access to recent collections, stats, and navigation
+**Purpose**: Quick access to recent studioSessions, stats, and navigation
 
 **Layout**:
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ [Logo]  Collections  Products  Settings          [User Menu ▼]     │
+│ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  Welcome back, Sarah                                                │
 │                                                                     │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
 │  │   127        │  │   12         │  │   1,234      │             │
-│  │   Products   │  │   Collections│  │   Generated  │             │
+│  │   Products   │  │   StudioSessions│  │   Generated  │             │
 │  └──────────────┘  └──────────────┘  └──────────────┘             │
 │                                                                     │
-│  Recent Collections                            [+ New Collection]   │
+│  Recent StudioSessions                            [+ New StudioSession]   │
 │  ┌─────────────────────────────────────────────────────────────┐   │
-│  │ Summer Furniture Collection           Updated 2h ago        │   │
+│  │ Summer Furniture StudioSession           Updated 2h ago        │   │
 │  │ 45 products • 180 images generated    [View Results]        │   │
 │  ├─────────────────────────────────────────────────────────────┤   │
 │  │ Office Catalog 2026                   Updated 1d ago        │   │
@@ -200,7 +200,7 @@ interface LoginState {
 │  └─────────────────────────────────────────────────────────────┘   │
 │                                                                     │
 │  Quick Actions                                                      │
-│  [Browse All Collections]  [Upload Products]  [View Settings]      │
+│  [Browse All StudioSessions]  [Upload Products]  [View Settings]      │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -208,8 +208,8 @@ interface LoginState {
 **Components**:
 - `AppShell` - Top nav + sidebar layout
 - `StatCard` - Metric display (products count, etc.)
-- `CollectionCard` - Recent collection item
-- `EmptyState` - When no collections exist
+- `StudioSessionCard` - Recent studioSession item
+- `EmptyState` - When no studioSessions exist
 
 **State**:
 ```typescript
@@ -217,49 +217,49 @@ interface DashboardData {
   user: User;
   stats: {
     totalProducts: number;
-    totalCollections: number;
+    totalStudioSessions: number;
     totalGenerated: number;
   };
-  recentCollections: Collection[];
+  recentStudioSessions: StudioSession[];
   isLoading: boolean;
 }
 ```
 
 **Data Requirements**:
-- `GET /api/dashboard` - Returns stats + recent collections
+- `GET /api/dashboard` - Returns stats + recent studioSessions
 - Cached for 5 minutes
 
 **Interactions**:
-- Click collection card → Navigate to results
-- "+ New Collection" → Start wizard
+- Click studioSession card → Navigate to results
+- "+ New StudioSession" → Start wizard
 - Stat cards animate on load
 
 **Responsive**:
-- Desktop: 3-column stats, list view collections
+- Desktop: 3-column stats, list view studioSessions
 - Tablet: 2-column stats, list view
-- Mobile: Stacked stats, compact collection cards
+- Mobile: Stacked stats, compact studioSession cards
 
 ---
 
-### 3. Collections List
+### 3. StudioSessions List
 
-**Route**: `/collections`
+**Route**: `/studioSessions`
 
-**Purpose**: Browse all collections, filter by status
+**Purpose**: Browse all studioSessions, filter by status
 
 **Layout**:
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ [Logo]  Collections  Products  Settings          [User Menu ▼]     │
+│ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  Collections                                    [+ New Collection]  │
+│  StudioSessions                                    [+ New StudioSession]  │
 │                                                                     │
 │  🔍 Search...           [All ▼] [Sort: Recent ▼]                   │
 │                                                                     │
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │ ┌─────────┐                                                 │   │
-│  │ │ [img]   │  Summer Furniture Collection                    │   │
+│  │ │ [img]   │  Summer Furniture StudioSession                    │   │
 │  │ └─────────┘  45 products • Completed • Updated 2h ago       │   │
 │  │              180/180 images generated                       │   │
 │  │              [View Results] [Download All]                  │   │
@@ -277,7 +277,7 @@ interface DashboardData {
 │  │              [Continue Editing] [Delete]                    │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 │                                                                     │
-│  Showing 3 of 12 collections     [1] 2 3 4 → Next                  │
+│  Showing 3 of 12 studioSessions     [1] 2 3 4 → Next                  │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -286,15 +286,15 @@ interface DashboardData {
 - `SearchBar` - Full-text search
 - `FilterDropdown` - Status filter (All, Draft, Generating, Completed)
 - `SortDropdown` - Sort options (Recent, Name, Product Count)
-- `CollectionListItem` - Row display
+- `StudioSessionListItem` - Row display
 - `Pagination` - Page controls
 
 **State**:
 ```typescript
-interface CollectionsListState {
-  collections: Collection[];
+interface StudioSessionsListState {
+  studioSessions: StudioSession[];
   searchQuery: string;
-  filterStatus: CollectionStatus | 'all';
+  filterStatus: StudioSessionStatus | 'all';
   sortBy: 'recent' | 'name' | 'productCount';
   page: number;
   pageSize: number;
@@ -304,15 +304,15 @@ interface CollectionsListState {
 ```
 
 **Data Requirements**:
-- `GET /api/collections?search=&status=&sort=&page=&limit=`
+- `GET /api/studioSessions?search=&status=&sort=&page=&limit=`
 - Returns paginated results
 
 **Interactions**:
 - Search debounced 300ms
 - Filter/sort triggers new API call
-- Click row → Navigate to collection detail or wizard
+- Click row → Navigate to studioSession detail or wizard
 - Delete → Confirmation modal
-- Generating collections show live progress (polling)
+- Generating studioSessions show live progress (polling)
 
 **Responsive**:
 - Desktop: Grid view (2 columns)
@@ -321,19 +321,19 @@ interface CollectionsListState {
 
 ---
 
-### 4. Collection Creation Wizard
+### 4. StudioSession Creation Wizard
 
-**Route**: `/collections/new?step={1-4}`
+**Route**: `/studioSessions/new?step={1-4}`
 
-**Purpose**: 4-step guided workflow to create collection
+**Purpose**: 4-step guided workflow to create studioSession
 
 **Shared Wizard Shell**:
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ [Logo]  Collections  Products  Settings          [User Menu ▼]     │
+│ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  Create Collection                              [Save Draft] [Exit] │
+│  Create StudioSession                              [Save Draft] [Exit] │
 │                                                                     │
 │  ┌───────────────────────────────────────────────────────────────┐ │
 │  │ ①────② ─── ③ ─── ④                                           │ │
@@ -357,8 +357,8 @@ interface CollectionsListState {
 ```typescript
 interface WizardState {
   step: 1 | 2 | 3 | 4;
-  collectionId: string | null; // Created on step 1
-  collection: Partial<Collection>;
+  studioSessionId: string | null; // Created on step 1
+  studioSession: Partial<StudioSession>;
   canProceed: boolean; // Validation for current step
   isSaving: boolean;
 }
@@ -368,9 +368,9 @@ interface WizardState {
 
 #### Step 1: Product Selection Table
 
-**Route**: `/collections/new?step=1`
+**Route**: `/studioSessions/new?step=1`
 
-**Purpose**: Select products for the collection
+**Purpose**: Select products for the studioSession
 
 **Layout**:
 ```
@@ -395,7 +395,7 @@ interface WizardState {
 │                                                                     │
 │  Showing 5 of 127 products        [1] 2 3 4 ... 26 → Next          │
 │                                                                     │
-│              [← Back to Collections]         [Continue →]           │
+│              [← Back to StudioSessions]         [Continue →]           │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -455,7 +455,7 @@ interface ProductSelectionState {
 
 #### Step 2: Analysis Results Preview
 
-**Route**: `/collections/new?step=2`
+**Route**: `/studioSessions/new?step=2`
 
 **Purpose**: Show AI analysis of selected products
 
@@ -513,7 +513,7 @@ interface AnalysisState {
 ```
 
 **Data Requirements**:
-- `POST /api/collections/[id]/analyze`
+- `POST /api/studioSessions/[id]/analyze`
 - Input: `{ productIds: string[] }`
 - Output: `ProductAnalysisResult`
 
@@ -532,7 +532,7 @@ interface AnalysisState {
 
 #### Step 3: Inspiration Picker (Tabbed Interface)
 
-**Route**: `/collections/new?step=3`
+**Route**: `/studioSessions/new?step=3`
 
 **Purpose**: Select 0-5 inspiration images from 3 sources
 
@@ -594,7 +594,7 @@ interface AnalysisState {
 ┌──────────────────────────────────────────────────────────────────┐
 │  Search Unsplash                                                 │
 │                                                                  │
-│  Suggested for your collection:                                 │
+│  Suggested for your studioSession:                                 │
 │  [modern living room] [contemporary bedroom] [minimalist office] │
 │                                                                  │
 │  🔍 Search photos...                                             │
@@ -625,7 +625,7 @@ interface AnalysisState {
 │  │ [+ Select] │  │ [+ Select] │  │ [+ Select] │                 │
 │  └────────────┘  └────────────┘  └────────────┘                 │
 │                                                                  │
-│  No pinned images yet? Generate collections to build your        │
+│  No pinned images yet? Generate studioSessions to build your        │
 │  library of reusable scenes.                                     │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -634,7 +634,7 @@ interface AnalysisState {
 - `InspirationPicker` - Parent container
 - `UploadTab` - Drag-drop file upload
 - `UnsplashTab` - Search + gallery
-- `LibraryTab` - Filtered gallery of pinned assets
+- `LibraryTab` - Filtered gallery of pinned images
 - `SelectedImagesPreview` - Bottom panel showing selections
 - `ImageCard` - Thumbnail with select button
 
@@ -654,7 +654,7 @@ interface InspirationPickerState {
   unsplashPage: number;
 
   // Library tab
-  pinnedAssets: GeneratedAsset[];
+  pinnedImages: GeneratedImage[];
   libraryFilter: string; // Room type filter
 }
 ```
@@ -662,7 +662,7 @@ interface InspirationPickerState {
 **Data Requirements**:
 - **Upload**: `POST /api/upload` - Returns image URL
 - **Unsplash**: `GET /api/unsplash/search?q=&page=` - Proxied Unsplash API
-- **Library**: `GET /api/generated-assets?pinned=true&clientId=` - Returns pinned assets
+- **Library**: `GET /api/generated-images?pinned=true&clientId=` - Returns pinned images
 
 **Interactions**:
 - **Upload tab**:
@@ -697,7 +697,7 @@ interface InspirationPickerState {
 
 #### Step 4: Generation Launch & Progress
 
-**Route**: `/collections/new?step=4`
+**Route**: `/studioSessions/new?step=4`
 
 **Purpose**: Review settings and launch generation, show progress
 
@@ -706,9 +706,9 @@ interface InspirationPickerState {
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Ready to Generate                                                  │
 │                                                                     │
-│  Collection Summary                                                 │
+│  StudioSession Summary                                                 │
 │  ┌──────────────────────────────────────────────────────────────┐  │
-│  │  Name: Summer Furniture Collection                           │  │
+│  │  Name: Summer Furniture StudioSession                           │  │
 │  │  Products: 45                                                │  │
 │  │  Inspiration Images: 3                                       │  │
 │  │  Estimated Images: 180 (45 products × 4 variants)            │  │
@@ -732,17 +732,17 @@ interface InspirationPickerState {
 │  │  Props: Plants, Books                                        │  │
 │  └──────────────────────────────────────────────────────────────┘  │
 │                                                                     │
-│              [← Back]                   [🚀 Generate Collection]    │
+│              [← Back]                   [🚀 Generate StudioSession]    │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 **Layout (During Generation)**:
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  Generating Collection...                                           │
+│  Generating StudioSession...                                           │
 │                                                                     │
 │  ┌──────────────────────────────────────────────────────────────┐  │
-│  │  Summer Furniture Collection                                 │  │
+│  │  Summer Furniture StudioSession                                 │  │
 │  │                                                              │  │
 │  │  Progress: 23 of 180 images completed (13%)                  │  │
 │  │  ████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░                 │  │
@@ -790,13 +790,13 @@ interface GenerationState {
 ```
 
 **Data Requirements**:
-- `POST /api/collections/[id]/generate` - Starts generation
-- `GET /api/collections/[id]/status` - Polls every 2s during generation
+- `POST /api/studioSessions/[id]/generate` - Starts generation
+- `GET /api/studioSessions/[id]/status` - Polls every 2s during generation
 
 **Interactions**:
 - **Pre-launch**:
   - Click "Edit" on any setting → Opens modal to adjust
-  - "Generate Collection" → Confirms and starts
+  - "Generate StudioSession" → Confirms and starts
 - **During generation**:
   - Progress bar updates every 2s
   - Recent completions list updates in real-time
@@ -816,21 +816,21 @@ interface GenerationState {
 
 ---
 
-### 5. Collection Detail/Results Gallery
+### 5. StudioSession Detail/Results Gallery
 
-**Route**: `/collections/[id]` or `/collections/[id]/results`
+**Route**: `/studioSessions/[id]` or `/studioSessions/[id]/results`
 
 **Purpose**: View generated images, download, refine, pin
 
 **Layout**:
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ [Logo]  Collections  Products  Settings          [User Menu ▼]     │
+│ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  ← Back to Collections                                              │
+│  ← Back to StudioSessions                                              │
 │                                                                     │
-│  Summer Furniture Collection                        [⚙️ Settings ▼] │
+│  Summer Furniture StudioSession                        [⚙️ Settings ▼] │
 │  45 products • 180 images generated • Updated 2h ago                │
 │                                                                     │
 │  [All Products ▼] [Room: All ▼] [Sort: Product ▼]  [Download All]  │
@@ -869,9 +869,9 @@ interface GenerationState {
 ```
 
 **Components**:
-- `AssetGallery` - Main gallery container
+- `ImageGallery` - Main gallery container
 - `ProductGroup` - Grouped by product
-- `AssetCard` - Individual image with actions
+- `ImageCard` - Individual image with actions
 - `FilterBar` - Product/room filters
 - `BulkActions` - Select multiple for batch operations
 - `ImageModal` - Lightbox view
@@ -879,22 +879,22 @@ interface GenerationState {
 **State**:
 ```typescript
 interface ResultsGalleryState {
-  collection: Collection;
-  assets: GeneratedAsset[];
+  studioSession: StudioSession;
+  images: GeneratedImage[];
   filters: {
     productId: string | null;
     roomType: string | null;
-    status: AssetStatus | null;
+    status: ImageStatus | null;
   };
   sortBy: 'product' | 'date' | 'rating';
-  selectedAssetIds: Set<string>;
+  selectedImageIds: Set<string>;
   isLoading: boolean;
 }
 ```
 
 **Data Requirements**:
-- `GET /api/collections/[id]` - Collection details
-- `GET /api/generated-assets?collectionId=&productId=&roomType=` - Assets
+- `GET /api/studioSessions/[id]` - StudioSession details
+- `GET /api/generated-images?studioSessionId=&productId=&roomType=` - Images
 
 **Interactions**:
 - **View**: Click image → Opens lightbox modal
@@ -902,7 +902,7 @@ interface ResultsGalleryState {
 - **Pin**: Click pin icon → Pin to library (makes available in Step 3 of wizard)
 - **Download**: Click download → Downloads image
 - **Regenerate**: Click regenerate → Re-generates that specific product with same settings
-- **Delete**: Click delete → Confirmation, soft-deletes asset
+- **Delete**: Click delete → Confirmation, soft-deletes image
 - **Bulk actions**:
   - Select multiple images (checkbox mode)
   - "Download Selected", "Pin Selected", "Delete Selected"
@@ -927,7 +927,7 @@ interface ResultsGalleryState {
 **Layout**:
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ [Logo]  Collections  Products  Settings          [User Menu ▼]     │
+│ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  Products                                          [+ Add Products] │
@@ -1004,7 +1004,7 @@ interface ProductsLibraryState {
 **Layout**:
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ [Logo]  Collections  Products  Settings          [User Menu ▼]     │
+│ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │  Settings                                                           │
@@ -1172,18 +1172,18 @@ interface InspirationPickerProps {
 **Sub-components**:
 - `UploadTab` - Drag-drop file upload
 - `UnsplashTab` - Search + gallery
-- `LibraryTab` - Pinned assets gallery
+- `LibraryTab` - Pinned images gallery
 
 ---
 
 #### 3. GenerationProgress
 
-**Purpose**: Real-time progress tracking for collection generation
+**Purpose**: Real-time progress tracking for studioSession generation
 
 **Props**:
 ```typescript
 interface GenerationProgressProps {
-  collectionId: string;
+  studioSessionId: string;
   totalImages: number;
   completedImages: number;
   onComplete?: () => void;
@@ -1204,20 +1204,20 @@ interface GenerationProgressProps {
 
 ---
 
-#### 4. AssetGallery
+#### 4. ImageGallery
 
 **Purpose**: Display generated images with actions (star, pin, download, delete)
 
 **Props**:
 ```typescript
-interface AssetGalleryProps {
-  assets: GeneratedAsset[];
+interface ImageGalleryProps {
+  images: GeneratedImage[];
   groupBy?: 'product' | 'room' | 'date';
-  onStar: (assetId: string, rating: number) => void;
-  onPin: (assetId: string, pinned: boolean) => void;
-  onDownload: (assetId: string) => void;
-  onRegenerate: (assetId: string) => void;
-  onDelete: (assetId: string) => void;
+  onStar: (imageId: string, rating: number) => void;
+  onPin: (imageId: string, pinned: boolean) => void;
+  onDownload: (imageId: string) => void;
+  onRegenerate: (imageId: string) => void;
+  onDelete: (imageId: string) => void;
 }
 ```
 
@@ -1229,7 +1229,7 @@ interface AssetGalleryProps {
 - Bulk selection mode
 
 **Sub-components**:
-- `AssetCard` - Individual image card
+- `ImageCard` - Individual image card
 - `ImageModal` - Lightbox view
 
 ---
@@ -1429,15 +1429,15 @@ const productsQuery = useQuery({
   staleTime: 5 * 60 * 1000, // 5 minutes
 });
 
-const collectionQuery = useQuery({
-  queryKey: ['collection', collectionId],
-  queryFn: () => fetchCollection(collectionId),
+const studioSessionQuery = useQuery({
+  queryKey: ['studioSession', studioSessionId],
+  queryFn: () => fetchStudioSession(studioSessionId),
 });
 
 // Polling for generation progress
 const progressQuery = useQuery({
-  queryKey: ['collection-progress', collectionId],
-  queryFn: () => fetchCollectionProgress(collectionId),
+  queryKey: ['studioSession-progress', studioSessionId],
+  queryFn: () => fetchStudioSessionProgress(studioSessionId),
   refetchInterval: (data) =>
     data?.status === 'generating' ? 2000 : false, // Poll every 2s
 });
@@ -1697,11 +1697,11 @@ const debouncedSearch = useDebouncedCallback(
 3. Add search, filter, sort functionality
 4. Create Add/Edit Product modals
 
-### Phase 3: Collections List (Week 3)
-1. Build Collections List screen
+### Phase 3: StudioSessions List (Week 3)
+1. Build StudioSessions List screen
 2. Implement filters and search
 3. Add pagination
-4. Create CollectionCard component
+4. Create StudioSessionCard component
 
 ### Phase 4: Wizard - Steps 1-2 (Week 4)
 1. Build wizard shell with progress indicator
@@ -1716,7 +1716,7 @@ const debouncedSearch = useDebouncedCallback(
 4. Build GenerationProgress component
 
 ### Phase 6: Results Gallery (Week 6)
-1. Build AssetGallery component
+1. Build ImageGallery component
 2. Implement Results screen
 3. Add image actions (star, pin, download, delete)
 4. Create ImageModal lightbox
@@ -1808,13 +1808,13 @@ export function Dashboard() {
       {/* Stats - 3 cols desktop, 2 tablet, 1 mobile */}
       <div className="stats">
         <StatCard label="Products" value={127} />
-        <StatCard label="Collections" value={12} />
+        <StatCard label="StudioSessions" value={12} />
         <StatCard label="Generated" value={1234} />
       </div>
 
-      {/* Collections list */}
-      <div className="collections">
-        {collections.map(c => <CollectionCard key={c.id} collection={c} />)}
+      {/* StudioSessions list */}
+      <div className="studioSessions">
+        {studioSessions.map(c => <StudioSessionCard key={c.id} studioSession={c} />)}
       </div>
     </div>
   );
@@ -1844,19 +1844,19 @@ export function Dashboard() {
 
 ```tsx
 // ❌ Don't hardcode URLs
-<a href="/collections/new?step=1">Start</a>
+<a href="/studioSessions/new?step=1">Start</a>
 
 // ✅ Use Next.js Link with constants
 import { ROUTES } from '@/lib/constants';
 
-<Link href={ROUTES.collections.new(1)}>Start</Link>
+<Link href={ROUTES.studioSessions.new(1)}>Start</Link>
 
 // lib/constants.ts
 export const ROUTES = {
-  collections: {
-    list: '/collections',
-    new: (step: number) => `/collections/new?step=${step}`,
-    detail: (id: string) => `/collections/${id}`,
+  studioSessions: {
+    list: '/studioSessions',
+    new: (step: number) => `/studioSessions/new?step=${step}`,
+    detail: (id: string) => `/studioSessions/${id}`,
   },
 };
 ```
@@ -1959,7 +1959,7 @@ function Step1() {
 6. **Keyboard shortcuts**: What shortcuts should we support?
    - Proposal:
      - `/` to focus search
-     - `N` to create new collection
+     - `N` to create new studioSession
      - `ESC` to close modals
      - Arrow keys for navigation
 

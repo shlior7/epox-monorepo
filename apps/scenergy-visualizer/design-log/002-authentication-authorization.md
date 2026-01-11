@@ -2,8 +2,9 @@
 
 **Status**: Draft
 **Created**: 2026-01-10
+**Updated**: 2026-01-11
 **Author**: Claude
-**Related**: Design Log #001 (Architecture)
+**Related**: Design Log #001 (Architecture), Design Log #008 (Business Model & Pricing)
 
 ---
 
@@ -163,6 +164,8 @@ interface Member {
   joinedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  // FUTURE: Add credit_balance for Phase 2 (credit system)
+  creditBalance?: number;  // Track credits at member level
 }
 
 interface Session {
@@ -207,6 +210,8 @@ CREATE TABLE members (
   joined_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- FUTURE: Add for Phase 2 (credit system)
+  -- credit_balance INTEGER DEFAULT 0,
 
   UNIQUE(user_id, client_id)
 );
@@ -619,6 +624,406 @@ Mitigation: Use Redis for session storage
 - ✅ Clearer scoping
 - ❌ Less flexible for users who work with multiple brands
 - 🔄 Easy to add multi-client support later (just update member table query)
+
+---
+
+## Future Evolution to Credit System
+
+**Note**: This section outlines the future monetization path. For MVP, the platform remains invitation-only with no credits or payments. See Design Log #008 (Business Model & Pricing) for complete pricing strategy.
+
+### Phase Overview
+
+```mermaid
+graph LR
+    A[Phase 1: MVP<br/>Invitation Only] --> B[Phase 2: Credits<br/>Self-Service]
+    B --> C[Phase 3: Subscriptions<br/>Store Sync]
+
+    style A fill:#e1f5ff
+    style B fill:#fff4e1
+    style C fill:#e7ffe1
+```
+
+### Phase 1: MVP - Invitation Only (Months 1-3)
+
+**Current Implementation** (as documented above):
+- Admin manually invites users to clients
+- No payment infrastructure
+- No credit tracking
+- Focus on product validation
+
+**Goals**:
+- Validate product-market fit
+- Collect pricing feedback
+- Measure usage patterns
+
+### Phase 2: Credit-Based System (Months 4-9)
+
+**Overview**:
+- Users sign up and receive 10 free credits
+- 1 credit = 1 image generation
+- Users purchase credit packages as needed
+- Self-service, no admin involvement
+
+#### Database Schema Changes
+
+**Add credit_balance to members table**:
+```sql
+ALTER TABLE members
+ADD COLUMN credit_balance INTEGER DEFAULT 0;
+```
+
+**New tables for credit system**:
+
+```sql
+-- Track credit transactions (purchases, usage, refunds)
+CREATE TABLE credit_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL,  -- Can be negative (usage) or positive (purchase)
+  balance_after INTEGER NOT NULL,
+  type TEXT NOT NULL,  -- 'signup_bonus' | 'purchase' | 'subscription' | 'usage' | 'refund'
+  reference_id UUID,  -- Links to payment, generation, etc.
+  description TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Credit packages available for purchase
+CREATE TABLE credit_packages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  credits INTEGER NOT NULL,
+  price_cents INTEGER NOT NULL,
+  active BOOLEAN DEFAULT TRUE,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX idx_credit_transactions_member_id ON credit_transactions(member_id);
+CREATE INDEX idx_credit_transactions_created_at ON credit_transactions(created_at);
+CREATE INDEX idx_credit_transactions_type ON credit_transactions(type);
+```
+
+#### Initial Credit Packages
+
+Based on Design Log #008:
+
+| Package | Credits | Price | Price per Credit | Target Segment |
+|---------|---------|-------|------------------|----------------|
+| Free Trial | 10 | $0 | $0 | New signups (auto-granted) |
+| Starter | 50 | $12 | $0.24 | Hobbyists, small brands |
+| Pro | 200 | $40 | $0.20 | Growing brands |
+| Business | 1,000 | $150 | $0.15 | Agencies, large catalogs |
+
+**Seeding credit packages**:
+```sql
+INSERT INTO credit_packages (name, credits, price_cents, sort_order) VALUES
+  ('Starter', 50, 1200, 1),
+  ('Pro', 200, 4000, 2),
+  ('Business', 1000, 15000, 3);
+```
+
+#### Updated Authentication Flow
+
+**Signup flow changes**:
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant AdminApp
+    participant User
+    participant ClientApp
+    participant Auth
+    participant DB
+
+    Admin->>AdminApp: Invite user (email)
+    AdminApp->>DB: INSERT member (status=invited, credit_balance=0)
+    AdminApp->>User: Send invitation email
+
+    User->>ClientApp: Click invitation link
+    ClientApp->>Auth: Show signup form
+    User->>Auth: Enter name + password
+    Auth->>DB: INSERT user
+    Auth->>DB: UPDATE member (status=active, credit_balance=10)
+    Auth->>DB: INSERT credit_transaction (type=signup_bonus, amount=10)
+    Auth-->>ClientApp: Redirect to /collections
+    ClientApp->>User: Show welcome message with credit balance
+```
+
+**Generation flow with credits**:
+```mermaid
+sequenceDiagram
+    participant User
+    participant App
+    participant API
+    participant DB
+    participant Queue
+
+    User->>App: Click "Generate"
+    App->>API: POST /api/generations/create
+    API->>DB: SELECT member WHERE userId = ?
+    DB-->>API: member (credit_balance: 47)
+
+    alt Insufficient credits
+        API-->>App: 402 Payment Required
+        App->>User: Show "Buy Credits" modal
+    else Has credits
+        API->>DB: UPDATE member SET credit_balance = 46
+        API->>DB: INSERT credit_transaction (type=usage, amount=-1)
+        API->>DB: INSERT generated_asset (status=pending)
+        API->>Queue: Enqueue generation job
+        API-->>App: 200 OK (creditsRemaining: 46)
+        App->>User: Show generation in progress
+    end
+```
+
+#### Updated Session Structure
+
+```typescript
+interface ClientSession {
+  userId: string;
+  email: string;
+  name: string;
+  clientId: string;
+  role: 'owner' | 'editor' | 'viewer';
+  creditBalance: number;  // NEW: Include for quick access
+  expiresAt: Date;
+}
+```
+
+#### UI Changes
+
+**Credit display in header**:
+```tsx
+<Header>
+  <Logo />
+  <Nav />
+  <CreditDisplay balance={session.creditBalance} />
+  <UserMenu />
+</Header>
+```
+
+**Pre-generation confirmation**:
+```tsx
+// Show modal when credits < 10
+{creditBalance < 10 && (
+  <ConfirmationModal>
+    <p>This will use 1 credit.</p>
+    <p>You have {creditBalance} credits remaining.</p>
+    <Button>Continue</Button>
+    <Link href="/pricing">Buy More Credits</Link>
+  </ConfirmationModal>
+)}
+```
+
+**Low balance warning**:
+```tsx
+// Show banner when credits < 5
+{creditBalance < 5 && (
+  <Banner variant="warning">
+    Low balance: {creditBalance} credits remaining.
+    <Link href="/pricing">Buy more →</Link>
+  </Banner>
+)}
+```
+
+### Phase 3: Subscription Tiers (Months 10-18)
+
+**Overview**:
+- Add subscription plans with recurring monthly credits
+- Include store sync features (Shopify, WooCommerce)
+- Tiered by product catalog size
+- Annual discounts available (17% off)
+
+#### Subscription Tables
+
+```sql
+CREATE TABLE subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  tier TEXT NOT NULL,  -- 'basic' | 'pro' | 'business'
+  status TEXT NOT NULL,  -- 'active' | 'canceled' | 'past_due' | 'trialing'
+  stripe_subscription_id TEXT UNIQUE,
+  stripe_customer_id TEXT,
+  monthly_credits INTEGER NOT NULL,
+  max_products_sync INTEGER,
+  current_period_start TIMESTAMPTZ NOT NULL,
+  current_period_end TIMESTAMPTZ NOT NULL,
+  cancel_at_period_end BOOLEAN DEFAULT FALSE,
+  canceled_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX idx_subscriptions_member_id ON subscriptions(member_id);
+CREATE INDEX idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX idx_subscriptions_stripe_subscription_id ON subscriptions(stripe_subscription_id);
+```
+
+#### Subscription Tiers
+
+Based on Design Log #008:
+
+| Tier | Products | Price/Month | Included Credits/Mo | Overage | Target |
+|------|----------|-------------|---------------------|---------|--------|
+| Basic | 100 | $49 | 100 | $0.20/credit | Small stores |
+| Pro | 500 | $149 | 500 | $0.18/credit | Growing brands |
+| Business | 2,000 | $399 | 2,000 | $0.15/credit | Large retailers |
+
+**Key features**:
+- Monthly credits expire at end of period (don't roll over)
+- Can purchase additional credit packs if needed
+- Store sync automation included
+- Annual plans available (save 17%)
+
+#### Credit Allocation Strategy
+
+**Priority order** (when deducting credits):
+1. Use expiring subscription credits first
+2. Then use oldest purchased credits (FIFO)
+3. Then use free/bonus credits
+
+**Implementation**:
+```typescript
+async function deductCredits(memberId: string, amount: number) {
+  // 1. Check subscription credits (expire monthly)
+  const subscription = await db.subscriptions.findActive(memberId);
+  if (subscription && subscription.creditsRemaining > 0) {
+    // Use subscription credits first
+    await db.subscriptions.deductCredits(subscription.id, amount);
+  } else {
+    // 2. Use purchased credits (non-expiring)
+    await db.members.update(memberId, {
+      creditBalance: member.creditBalance - amount,
+    });
+  }
+
+  // Record transaction
+  await db.creditTransactions.create({
+    memberId,
+    amount: -amount,
+    type: 'usage',
+    balanceAfter: newBalance,
+  });
+}
+```
+
+#### Monthly Credit Grant (Webhook)
+
+```typescript
+// apps/visualizer-client/app/api/webhooks/stripe/route.ts
+export async function POST(req: Request) {
+  const event = stripe.webhooks.constructEvent(/* ... */);
+
+  if (event.type === 'invoice.payment_succeeded') {
+    const invoice = event.data.object;
+    const subscription = await db.subscriptions.findByStripeId(
+      invoice.subscription
+    );
+
+    // Grant monthly credits (reset to full amount)
+    await db.subscriptions.update(subscription.id, {
+      creditsRemaining: subscription.monthlyCredits,
+      currentPeriodStart: new Date(invoice.period_start * 1000),
+      currentPeriodEnd: new Date(invoice.period_end * 1000),
+    });
+
+    // Log transaction
+    await db.creditTransactions.create({
+      memberId: subscription.memberId,
+      amount: subscription.monthlyCredits,
+      type: 'subscription',
+      description: `Monthly credits for ${subscription.tier} plan`,
+      balanceAfter: subscription.monthlyCredits,
+    });
+  }
+
+  return Response.json({ received: true });
+}
+```
+
+### Migration Strategy
+
+**Phase 1 → Phase 2 (MVP to Credits)**:
+1. Deploy credit tables via migration
+2. Backfill existing members with 50 free credits (one-time)
+3. Enable credit purchase UI
+4. Enable self-signup (no longer invitation-only)
+5. Monitor conversion rate (free → paid)
+
+**Phase 2 → Phase 3 (Credits to Subscriptions)**:
+1. Deploy subscription tables
+2. Create Stripe subscription products
+3. Add subscription UI
+4. Email high-usage credit users with subscription offer
+5. Enable store sync features for subscribers
+
+### Pricing Strategy Summary
+
+See Design Log #008 for complete details.
+
+**Key principles**:
+- Start with generous free tier (10 credits) to drive signups
+- Credit pricing at 4-5x cost ($0.20-$0.25 per credit)
+- Subscriptions provide better value (encourage upgrade)
+- Annual plans offer 17% discount (2 months free)
+
+**Revenue projections** (moderate scenario, 12 months):
+- Phase 2 (Credits): $10,000 MRR
+- Phase 3 (Subscriptions): $28,000 MRR (combined)
+- Target: $50,000 MRR by month 18
+
+### Authorization Changes
+
+**Current** (MVP):
+```typescript
+// API routes just check session exists
+const session = await getSession(request);
+if (!session) {
+  return Response.json({ error: 'Unauthorized' }, { status: 401 });
+}
+```
+
+**Future** (with credits):
+```typescript
+// API routes also check credit balance
+const session = await getSession(request);
+if (!session) {
+  return Response.json({ error: 'Unauthorized' }, { status: 401 });
+}
+
+// Check credits before generation
+if (session.creditBalance < 1) {
+  return Response.json({
+    error: 'Insufficient credits',
+    balance: 0,
+    purchaseUrl: '/pricing',
+  }, { status: 402 }); // 402 Payment Required
+}
+```
+
+### Open Questions for Credit System
+
+1. **Should we allow negative balances?**
+   - Proposal: No, hard stop at 0 credits (prevent debt)
+
+2. **What happens to unused subscription credits?**
+   - Proposal: They expire monthly (don't roll over)
+   - Rationale: Encourages usage, maximizes revenue
+
+3. **How do we handle refunds for credit purchases?**
+   - Proposal: No refunds if >10% of credits used
+   - Rationale: Prevents abuse
+
+4. **Should we notify users when credits are low?**
+   - Proposal: Yes, email when balance drops below 10
+   - Also show in-app banner at <5 credits
+
+5. **Can users transfer credits between clients?**
+   - Proposal: No, credits are tied to member (user + client)
+   - Rationale: Prevents gaming the system
 
 ---
 

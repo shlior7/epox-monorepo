@@ -12,11 +12,12 @@
 The `visualizer-client` platform needs a comprehensive REST API to support:
 - Client user authentication and authorization
 - Product browsing and filtering (1000+ products)
-- Collection-based bulk generation workflow
+- Studio session management with multi-flow support
+- Flow creation and configuration (multiple flows per session)
 - AI-powered product and scene analysis
 - Image uploads and inspiration management
-- Real-time generation progress tracking
-- Asset management (download, pin, delete)
+- Real-time generation progress tracking per flow
+- Generated image management (download, pin, delete, regenerate)
 
 The API must be:
 - **Secure** - All routes scoped to authenticated user's clientId
@@ -35,7 +36,7 @@ We need to design a complete REST API that:
 5. **Enables real-time updates** - Polling for generation progress
 6. **Prevents abuse** - Rate limiting per endpoint
 7. **Validates input** - Request validation with clear error messages
-8. **Integrates with external services** - Unsplash, Gemini AI, S3
+8. **Integrates with external services** - Unsplash, Gemini AI, R2
 
 ## Questions and Answers
 
@@ -49,22 +50,22 @@ We need to design a complete REST API that:
 
 ### Q2: How do we handle API versioning?
 **A**: URL versioning initially, header-based later:
-- MVP: `/api/v1/collections` (explicit version in path)
+- MVP: `/api/v1/studioSessions` (explicit version in path)
 - Future: Accept header versioning for backward compatibility
 - Deprecation policy: 6-month notice before removing old versions
 
 ### Q3: What's our pagination strategy?
 **A**: Hybrid approach:
-- **Cursor-based**: For real-time data (generated assets, collections)
+- **Cursor-based**: For real-time data (generated images, studioSessions)
 - **Offset-based**: For stable data (products, with limit of 10k results)
 - Always include `total`, `hasMore`, `nextCursor` in responses
 
 ### Q4: How do we handle file uploads?
 **A**: Multipart upload with streaming:
-- Direct upload to API → stream to S3
+- Direct upload to API → stream to R2
 - Max 10MB per image
 - Support multiple file upload (up to 5 images)
-- Return S3 URL immediately after upload
+- Return R2 URL immediately after upload
 
 ### Q5: Should we expose WebSockets or polling for progress?
 **A**: Polling (MVP), WebSocket (future):
@@ -87,8 +88,8 @@ We need to design a complete REST API that:
 
 1. **RESTful Resource Naming**
    - Nouns, not verbs: `/products` not `/getProducts`
-   - Plural for collections: `/collections`, `/products`
-   - Nested resources: `/collections/{id}/generated-assets`
+   - Plural for studioSessions: `/studioSessions`, `/products`
+   - Nested resources: `/studioSessions/{id}/images`
 
 2. **HTTP Methods**
    - `GET`: Retrieve (idempotent, cacheable)
@@ -455,17 +456,17 @@ Example Response:
 
 ---
 
-### 3. Collections (`/api/collections/*`)
+### 3. Studio Sessions (`/api/sessions/*`)
 
-#### 3.1 Create Collection
+#### 3.1 Create Studio Session
 
 ```typescript
-POST /api/collections
+POST /api/sessions
 
 Request:
 {
   name: string;
-  selectedProductIds: string[];  // Min: 1, Max: 500
+  productIds: string[];  // Min: 1, products for this session
 }
 
 Response 201:
@@ -474,8 +475,7 @@ Response 201:
     id: string;
     clientId: string;
     name: string;
-    status: 'draft';
-    selectedProductIds: string[];
+    productIds: string[];
     createdAt: string;
     updatedAt: string;
   };
@@ -489,11 +489,11 @@ Errors:
 
 **Example Request:**
 ```javascript
-const response = await fetch('/api/collections', {
+const response = await fetch('/api/sessions', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    name: 'Modern Furniture Collection',
+    name: 'Modern Furniture StudioSession',
     selectedProductIds: [
       'prod_123',
       'prod_456',
@@ -502,14 +502,14 @@ const response = await fetch('/api/collections', {
   })
 });
 
-const { data: collection } = await response.json();
-console.log(`Created collection: ${collection.id}`);
+const { data: studioSession } = await response.json();
+console.log(`Created studioSession: ${studioSession.id}`);
 ```
 
-#### 3.2 List Collections
+#### 3.2 List StudioSessions
 
 ```typescript
-GET /api/collections?page=1&limit=20&status=completed&sort=createdAt&order=desc
+GET /api/sessions?page=1&limit=20&status=completed&sort=createdAt&order=desc
 
 Query Parameters:
 - page: number (default: 1)
@@ -523,12 +523,12 @@ Response 200:
   data: Array<{
     id: string;
     name: string;
-    status: CollectionStatus;
+    status: StudioSessionStatus;
     selectedProductIds: string[];
     productCount: number;
-    generatedAssetCount: number;
-    completedAssetCount: number;
-    failedAssetCount: number;
+    generatedImageCount: number;
+    completedImageCount: number;
+    failedImageCount: number;
     createdAt: string;
     updatedAt: string;
     completedAt?: string;
@@ -546,10 +546,10 @@ Errors:
 - 401: Not authenticated
 ```
 
-#### 3.3 Get Collection by ID
+#### 3.3 Get StudioSession by ID
 
 ```typescript
-GET /api/collections/{collectionId}
+GET /api/sessions/{studioSessionId}
 
 Response 200:
 {
@@ -557,7 +557,7 @@ Response 200:
     id: string;
     clientId: string;
     name: string;
-    status: CollectionStatus;
+    status: StudioSessionStatus;
     selectedProductIds: string[];
     productAnalysis?: ProductAnalysisResult;
     baseSettings?: Partial<FlowGenerationSettings>;
@@ -577,14 +577,14 @@ Response 200:
 
 Errors:
 - 401: Not authenticated
-- 403: Collection belongs to different client
-- 404: Collection not found
+- 403: StudioSession belongs to different client
+- 404: StudioSession not found
 ```
 
-#### 3.4 Update Collection
+#### 3.4 Update StudioSession
 
 ```typescript
-PATCH /api/collections/{collectionId}
+PATCH /api/sessions/{studioSessionId}
 
 Request:
 {
@@ -595,38 +595,38 @@ Request:
 
 Response 200:
 {
-  data: Collection;  // Updated collection
+  data: StudioSession;  // Updated studioSession
 }
 
 Errors:
-- 400: Invalid update (can't modify generating collection)
+- 400: Invalid update (can't modify generating studioSession)
 - 401: Not authenticated
 - 403: Not authorized
-- 404: Collection not found
+- 404: StudioSession not found
 - 422: Validation failed
 ```
 
-#### 3.5 Delete Collection
+#### 3.5 Delete StudioSession
 
 ```typescript
-DELETE /api/collections/{collectionId}
+DELETE /api/sessions/{studioSessionId}
 
 Response 204: No Content
 
-Note: Soft-deletes collection and all associated generated assets
+Note: Soft-deletes studioSession and all associated generated images
 
 Errors:
 - 401: Not authenticated
 - 403: Not authorized
-- 404: Collection not found
+- 404: StudioSession not found
 ```
 
-#### 3.6 Analyze Collection Products
+#### 3.6 Analyze StudioSession Products
 
 ```typescript
-POST /api/collections/{collectionId}/analyze
+POST /api/sessions/{studioSessionId}/analyze
 
-Request: (no body, uses selectedProductIds from collection)
+Request: (no body, uses selectedProductIds from studioSession)
 
 Response 200:
 {
@@ -668,21 +668,21 @@ Example Response:
 
 Errors:
 - 401: Not authenticated
-- 404: Collection not found
+- 404: StudioSession not found
 - 422: No products selected
 - 503: AI service unavailable (fallback to metadata-only)
 ```
 
 **Example Request:**
 ```bash
-curl -X POST https://api.example.com/api/collections/coll_abc123/analyze \
+curl -X POST https://api.example.com/api/sessions/coll_abc123/analyze \
   -H "Authorization: Bearer <session_token>"
 ```
 
 #### 3.7 Add Inspiration Images
 
 ```typescript
-POST /api/collections/{collectionId}/inspirations
+POST /api/sessions/{studioSessionId}/inspirations
 
 Request:
 {
@@ -697,7 +697,7 @@ Response 200:
 {
   data: Array<{
     id: string;
-    collectionId: string;
+    studioSessionId: string;
     imageId: string;
     url: string;
     source: string;
@@ -709,13 +709,13 @@ Response 200:
 Errors:
 - 400: Too many images (max 5)
 - 401: Not authenticated
-- 404: Collection or image not found
+- 404: StudioSession or image not found
 ```
 
 #### 3.8 Analyze Inspiration Image
 
 ```typescript
-POST /api/collections/{collectionId}/inspirations/{inspirationId}/analyze
+POST /api/sessions/{studioSessionId}/inspirations/{inspirationId}/analyze
 
 Response 200:
 {
@@ -759,10 +759,10 @@ Errors:
 - 503: AI analysis unavailable
 ```
 
-#### 3.9 Generate Collection
+#### 3.9 Generate StudioSession
 
 ```typescript
-POST /api/collections/{collectionId}/generate
+POST /api/sessions/{studioSessionId}/generate
 
 Request:
 {
@@ -772,9 +772,9 @@ Request:
 Response 202:  // Accepted (async processing)
 {
   data: {
-    collectionId: string;
+    studioSessionId: string;
     status: 'generating';
-    assets: Array<{
+    images: Array<{
       id: string;
       productId: string;
       status: 'pending';
@@ -782,7 +782,7 @@ Response 202:  // Accepted (async processing)
     }>;
   };
   meta: {
-    totalAssets: number;
+    totalImages: number;
     estimatedCompletionTime: string;  // ISO 8601 duration (e.g., "PT5M")
   };
 }
@@ -790,17 +790,17 @@ Response 202:  // Accepted (async processing)
 Example Response:
 {
   "data": {
-    "collectionId": "coll_abc123",
+    "studioSessionId": "coll_abc123",
     "status": "generating",
-    "assets": [
+    "images": [
       {
-        "id": "asset_001",
+        "id": "image_001",
         "productId": "prod_123",
         "status": "pending",
         "jobId": "job_xyz789"
       },
       {
-        "id": "asset_002",
+        "id": "image_002",
         "productId": "prod_456",
         "status": "pending",
         "jobId": "job_xyz790"
@@ -808,22 +808,22 @@ Example Response:
     ]
   },
   "meta": {
-    "totalAssets": 3,
+    "totalImages": 3,
     "estimatedCompletionTime": "PT3M"  // 3 minutes
   }
 }
 
 Errors:
-- 400: Collection not ready (missing analysis or inspirations)
+- 400: StudioSession not ready (missing analysis or inspirations)
 - 401: Not authenticated
-- 404: Collection not found
-- 409: Collection already generating
+- 404: StudioSession not found
+- 409: StudioSession already generating
 - 429: Monthly quota exceeded
 ```
 
 **Example Request:**
 ```javascript
-const response = await fetch(`/api/collections/${collectionId}/generate`, {
+const response = await fetch(`/api/sessions/${studioSessionId}/generate`, {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -838,18 +838,18 @@ const response = await fetch(`/api/collections/${collectionId}/generate`, {
 });
 
 const { data, meta } = await response.json();
-console.log(`Generating ${meta.totalAssets} assets...`);
+console.log(`Generating ${meta.totalImages} images...`);
 ```
 
-#### 3.10 Get Collection Generation Status
+#### 3.10 Get StudioSession Generation Status
 
 ```typescript
-GET /api/collections/{collectionId}/status
+GET /api/sessions/{studioSessionId}/status
 
 Response 200:
 {
   data: {
-    collectionId: string;
+    studioSessionId: string;
     status: 'generating' | 'completed' | 'error';
     progress: {
       total: number;
@@ -859,10 +859,10 @@ Response 200:
       failed: number;
       percentage: number;  // 0-100
     };
-    assets: Array<{
+    images: Array<{
       id: string;
       productId: string;
-      status: AssetStatus;
+      status: ImageStatus;
       progress: number;   // 0-100
       imageUrl?: string;
       errorMessage?: string;
@@ -875,7 +875,7 @@ Response 200:
 Example Response:
 {
   "data": {
-    "collectionId": "coll_abc123",
+    "studioSessionId": "coll_abc123",
     "status": "generating",
     "progress": {
       "total": 3,
@@ -885,26 +885,26 @@ Example Response:
       "failed": 0,
       "percentage": 66.7
     },
-    "assets": [
+    "images": [
       {
-        "id": "asset_001",
+        "id": "image_001",
         "productId": "prod_123",
         "status": "completed",
         "progress": 100,
-        "imageUrl": "https://s3.../asset_001.jpg"
+        "imageUrl": "https://s3.../image_001.jpg"
       },
       {
-        "id": "asset_002",
+        "id": "image_002",
         "productId": "prod_456",
         "status": "generating",
         "progress": 60
       },
       {
-        "id": "asset_003",
+        "id": "image_003",
         "productId": "prod_789",
         "status": "completed",
         "progress": 100,
-        "imageUrl": "https://s3.../asset_003.jpg"
+        "imageUrl": "https://s3.../image_003.jpg"
       }
     ],
     "startedAt": "2026-01-10T14:35:00Z"
@@ -913,43 +913,239 @@ Example Response:
 
 Errors:
 - 401: Not authenticated
-- 404: Collection not found
+- 404: StudioSession not found
 ```
 
 **Polling Example:**
 ```javascript
 // Poll every 5 seconds while generating
-async function pollCollectionStatus(collectionId) {
-  const response = await fetch(`/api/collections/${collectionId}/status`);
+async function pollStudioSessionStatus(studioSessionId) {
+  const response = await fetch(`/api/sessions/${studioSessionId}/status`);
   const { data } = await response.json();
 
   console.log(`Progress: ${data.progress.percentage}%`);
 
   if (data.status === 'generating') {
-    setTimeout(() => pollCollectionStatus(collectionId), 5000);
+    setTimeout(() => pollStudioSessionStatus(studioSessionId), 5000);
   } else {
     console.log('Generation complete!');
   }
 }
 
-pollCollectionStatus('coll_abc123');
+pollStudioSessionStatus('coll_abc123');
 ```
 
 ---
 
-### 4. Generated Assets (`/api/generated-assets/*`)
+### 4. Flows (`/api/flows/*`)
 
-#### 4.1 List Generated Assets
+#### 4.1 Create Flow
 
 ```typescript
-GET /api/generated-assets?collectionId=coll_123&status=completed&roomType=office&pinned=true&page=1&limit=50
+POST /api/sessions/{sessionId}/flows
+
+Request:
+{
+  name: string;
+  productIds: string[];  // Subset of session's products
+  settings: FlowGenerationSettings;
+  inspirationImages?: string[];  // Image IDs
+}
+
+Response 201:
+{
+  data: {
+    id: string;
+    sessionId: string;
+    clientId: string;
+    name: string;
+    productIds: string[];
+    settings: FlowGenerationSettings;
+    status: 'draft';
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
+Errors:
+- 400: Invalid product IDs (must be in session)
+- 401: Not authenticated
+- 404: Session not found
+- 422: Validation failed
+```
+
+#### 4.2 Get Flow
+
+```typescript
+GET /api/flows/{flowId}
+
+Response 200:
+{
+  data: {
+    id: string;
+    sessionId: string;
+    clientId: string;
+    name: string;
+    productIds: string[];
+    settings: FlowGenerationSettings;
+    status: FlowStatus;
+    inspirationImages: Image[];
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
+Errors:
+- 401: Not authenticated
+- 403: Flow belongs to different client
+- 404: Flow not found
+```
+
+#### 4.3 Update Flow
+
+```typescript
+PUT /api/flows/{flowId}
+
+Request:
+{
+  name?: string;
+  productIds?: string[];
+  settings?: Partial<FlowGenerationSettings>;
+}
+
+Response 200:
+{
+  data: Flow;  // Updated flow
+}
+
+Errors:
+- 400: Invalid update (can't modify generating flow)
+- 401: Not authenticated
+- 403: Not authorized
+- 404: Flow not found
+- 422: Validation failed
+```
+
+#### 4.4 Generate Flow
+
+```typescript
+POST /api/flows/{flowId}/generate
+
+Request: (no body, uses flow's settings)
+
+Response 202:  // Accepted (async processing)
+{
+  data: {
+    flowId: string;
+    status: 'generating';
+    generatedImages: Array<{
+      id: string;
+      productId: string;
+      status: 'pending';
+      jobId: string;
+    }>;
+  };
+  meta: {
+    totalImages: number;
+    estimatedCompletionTime: string;  // ISO 8601 duration
+  };
+}
+
+Errors:
+- 401: Not authenticated
+- 404: Flow not found
+- 409: Flow already generating
+- 429: Monthly quota exceeded
+```
+
+#### 4.5 Get Flow Status
+
+```typescript
+GET /api/flows/{flowId}/status
+
+Response 200:
+{
+  data: {
+    flowId: string;
+    status: 'generating' | 'completed' | 'error';
+    progress: {
+      total: number;
+      pending: number;
+      generating: number;
+      completed: number;
+      failed: number;
+      percentage: number;  // 0-100
+    };
+    generatedImages: Array<{
+      id: string;
+      productId: string;
+      status: GeneratedImageStatus;
+      progress: number;
+      imageUrl?: string;
+      errorMessage?: string;
+    }>;
+    startedAt: string;
+    completedAt?: string;
+  };
+}
+
+Errors:
+- 401: Not authenticated
+- 404: Flow not found
+```
+
+#### 4.6 Get Flow Images
+
+```typescript
+GET /api/flows/{flowId}/images?page=1&limit=50
+
+Response 200:
+{
+  data: GeneratedImage[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+  };
+}
+
+Errors:
+- 401: Not authenticated
+- 404: Flow not found
+```
+
+#### 4.7 Delete Flow
+
+```typescript
+DELETE /api/flows/{flowId}
+
+Response 204: No Content
+
+Note: Soft-deletes flow and all associated generated images
+
+Errors:
+- 401: Not authenticated
+- 403: Not authorized
+- 404: Flow not found
+```
+
+---
+
+### 5. Generated Images (`/api/images/*`)
+
+#### 5.1 List Generated Images
+
+```typescript
+GET /api/images?flowId=flow_123&status=completed&roomType=office&pinned=true&page=1&limit=50
 
 Query Parameters:
-- collectionId: string (filter by collection)
+- flowId: string (filter by flow)
+- sessionId: string (filter by session - returns images from all flows in session)
 - productId: string (filter by product)
-- status: AssetStatus (filter by status)
+- status: ImageStatus (filter by status)
 - roomType: string (from settings.roomType)
-- pinned: boolean (only pinned assets)
+- pinned: boolean (only pinned images)
 - page: number (default: 1)
 - limit: number (default: 50, max: 100)
 - sort: 'createdAt' | 'completedAt' | 'productName'
@@ -959,7 +1155,8 @@ Response 200:
 {
   data: Array<{
     id: string;
-    collectionId?: string;
+    flowId: string;
+    sessionId: string;
     productId: string;
     product: {
       id: string;
@@ -967,7 +1164,7 @@ Response 200:
       sku: string;
     };
     type: 'image';
-    status: AssetStatus;
+    status: ImageStatus;
     settings: FlowGenerationSettings;
     image?: {
       id: string;
@@ -993,26 +1190,26 @@ Errors:
 - 401: Not authenticated
 ```
 
-#### 4.2 Get Generated Asset
+#### 5.2 Get Generated Image
 
 ```typescript
-GET /api/generated-assets/{assetId}
+GET /api/images/{imageId}
 
 Response 200:
 {
-  data: GeneratedAsset;  // Full asset with all details
+  data: GeneratedImage;  // Full image with all details
 }
 
 Errors:
 - 401: Not authenticated
-- 403: Asset belongs to different client
-- 404: Asset not found
+- 403: Image belongs to different client
+- 404: Image not found
 ```
 
-#### 4.3 Update Generated Asset
+#### 5.3 Update Generated Image
 
 ```typescript
-PATCH /api/generated-assets/{assetId}
+PATCH /api/images/{imageId}
 
 Request:
 {
@@ -1021,63 +1218,63 @@ Request:
 
 Response 200:
 {
-  data: GeneratedAsset;  // Updated asset
+  data: GeneratedImage;  // Updated image
 }
 
 Errors:
 - 401: Not authenticated
 - 403: Not authorized
-- 404: Asset not found
+- 404: Image not found
 ```
 
-**Example - Pin Asset:**
+**Example - Pin Image:**
 ```javascript
-const response = await fetch(`/api/generated-assets/${assetId}`, {
+const response = await fetch(`/api/images/${imageId}`, {
   method: 'PATCH',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ pinned: true })
 });
 
-const { data: asset } = await response.json();
-console.log(`Asset ${asset.id} pinned: ${asset.pinned}`);
+const { data: image } = await response.json();
+console.log(`Image ${image.id} pinned: ${image.pinned}`);
 ```
 
-#### 4.4 Delete Generated Asset
+#### 5.4 Delete Generated Image
 
 ```typescript
-DELETE /api/generated-assets/{assetId}
+DELETE /api/images/{imageId}
 
 Response 204: No Content
 
-Note: Soft-deletes asset (sets deletedAt)
-S3 object marked for deletion after 30 days
+Note: Soft-deletes image (sets deletedAt)
+R2 object marked for deletion after 30 days
 
 Errors:
 - 401: Not authenticated
 - 403: Not authorized
-- 404: Asset not found
+- 404: Image not found
 ```
 
-#### 4.5 Restore Deleted Asset
+#### 5.5 Restore Deleted Image
 
 ```typescript
-POST /api/generated-assets/{assetId}/restore
+POST /api/images/{imageId}/restore
 
 Response 200:
 {
-  data: GeneratedAsset;  // Restored asset
+  data: GeneratedImage;  // Restored image
 }
 
 Errors:
-- 400: Asset not deleted
+- 400: Image not deleted
 - 401: Not authenticated
-- 404: Asset not found
+- 404: Image not found
 ```
 
-#### 4.6 Regenerate Asset
+#### 5.6 Regenerate Image
 
 ```typescript
-POST /api/generated-assets/{assetId}/regenerate
+POST /api/images/{imageId}/regenerate
 
 Request:
 {
@@ -1087,7 +1284,7 @@ Request:
 Response 201:
 {
   data: {
-    id: string;           // New asset ID
+    id: string;           // New image ID
     productId: string;
     status: 'pending';
     settings: FlowGenerationSettings;
@@ -1095,24 +1292,24 @@ Response 201:
     createdAt: string;
   };
   meta: {
-    originalAssetId: string;
+    originalImageId: string;
   };
 }
 
-Note: Creates new asset, original remains
+Note: Creates new image, original remains
 
 Errors:
 - 401: Not authenticated
-- 404: Original asset not found
+- 404: Original image not found
 - 429: Rate limit exceeded
 ```
 
-#### 4.7 Download Asset
+#### 5.7 Download Image
 
 ```typescript
-GET /api/generated-assets/{assetId}/download
+GET /api/images/{imageId}/download
 
-Response 302: Redirect to S3 signed URL
+Response 302: Redirect to R2 signed URL
 
 Headers:
 Content-Disposition: attachment; filename="modern_desk_office_20260110.jpg"
@@ -1120,23 +1317,23 @@ Content-Disposition: attachment; filename="modern_desk_office_20260110.jpg"
 Errors:
 - 401: Not authenticated
 - 403: Not authorized
-- 404: Asset not found or not completed
+- 404: Image not found or not completed
 ```
 
 **Example:**
 ```javascript
 // Trigger browser download
-window.location.href = `/api/generated-assets/${assetId}/download`;
+window.location.href = `/api/images/${imageId}/download`;
 ```
 
-#### 4.8 Bulk Download (ZIP)
+#### 5.8 Bulk Download (ZIP)
 
 ```typescript
-POST /api/generated-assets/bulk-download
+POST /api/images/bulk-download
 
 Request:
 {
-  assetIds: string[];    // Max 100 assets
+  imageIds: string[];    // Max 100 images
 }
 
 Response 202:  // Accepted (async ZIP creation)
@@ -1144,7 +1341,7 @@ Response 202:  // Accepted (async ZIP creation)
   data: {
     jobId: string;
     status: 'processing';
-    totalAssets: number;
+    totalImages: number;
   };
 }
 
@@ -1163,18 +1360,18 @@ Response 200:
 }
 
 Errors:
-- 400: Too many assets (max 100)
+- 400: Too many images (max 100)
 - 401: Not authenticated
 ```
 
 **Full Example - Bulk Download:**
 ```javascript
 // Step 1: Request ZIP creation
-const createResponse = await fetch('/api/generated-assets/bulk-download', {
+const createResponse = await fetch('/api/images/bulk-download', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    assetIds: ['asset_001', 'asset_002', 'asset_003']
+    imageIds: ['image_001', 'image_002', 'image_003']
   })
 });
 
@@ -1201,9 +1398,9 @@ pollDownloadJob(jobId);
 
 ---
 
-### 5. Images/Upload (`/api/images/*`)
+### 6. Images/Upload (`/api/upload/*`)
 
-#### 5.1 Upload Image
+#### 6.1 Upload Image
 
 ```typescript
 POST /api/images/upload
@@ -1256,7 +1453,7 @@ const { data: image } = await response.json();
 console.log(`Uploaded: ${image.url}`);
 ```
 
-#### 5.2 Upload Multiple Images
+#### 6.2 Upload Multiple Images
 
 ```typescript
 POST /api/images/upload-multiple
@@ -1283,7 +1480,7 @@ Errors:
 - 413: One or more files too large
 ```
 
-#### 5.3 Get Image
+#### 6.3 Get Image
 
 ```typescript
 GET /api/images/{imageId}
@@ -1299,7 +1496,7 @@ Errors:
 - 404: Image not found
 ```
 
-#### 5.4 Delete Image
+#### 6.4 Delete Image
 
 ```typescript
 DELETE /api/images/{imageId}
@@ -1307,27 +1504,27 @@ DELETE /api/images/{imageId}
 Response 204: No Content
 
 Note: Soft-deletes image record
-S3 object marked for deletion after 30 days
+R2 object marked for deletion after 30 days
 
 Errors:
 - 401: Not authenticated
 - 403: Not authorized
 - 404: Image not found
-- 409: Image in use by collection/asset
+- 409: Image in use by studioSession/image
 ```
 
 ---
 
-### 6. Analysis Services (`/api/analyze/*`)
+### 7. Analysis Services (`/api/analyze/*`)
 
-#### 6.1 Analyze Scene
+#### 7.1 Analyze Scene
 
 ```typescript
 POST /api/analyze/scene
 
 Request:
 {
-  imageUrl: string;      // S3 URL or public URL
+  imageUrl: string;      // R2 URL or public URL
 }
 
 Response 200:
@@ -1364,7 +1561,7 @@ curl -X POST https://api.example.com/api/analyze/scene \
   }'
 ```
 
-#### 6.2 Analyze Product
+#### 7.2 Analyze Product
 
 ```typescript
 POST /api/analyze/product
@@ -1392,7 +1589,7 @@ Errors:
 - 503: AI service unavailable
 ```
 
-#### 6.3 Analyze Products (Batch)
+#### 7.3 Analyze Products (Batch)
 
 ```typescript
 POST /api/analyze/products
@@ -1423,9 +1620,9 @@ Errors:
 
 ---
 
-### 7. Unsplash Integration (`/api/unsplash/*`)
+### 8. Unsplash Integration (`/api/unsplash/*`)
 
-#### 7.1 Search Unsplash
+#### 8.1 Search Unsplash
 
 ```typescript
 GET /api/unsplash/search?query=modern+office&page=1&perPage=30
@@ -1479,7 +1676,7 @@ data.results.forEach(photo => {
 });
 ```
 
-#### 7.2 Download Unsplash Image
+#### 8.2 Download Unsplash Image
 
 ```typescript
 POST /api/unsplash/download
@@ -1494,7 +1691,7 @@ Response 200:
 {
   data: {
     id: string;          // Our image ID
-    url: string;         // S3 URL
+    url: string;         // R2 URL
     unsplashId: string;  // Original Unsplash photo ID
     attribution: {
       photographerName: string;
@@ -1514,9 +1711,9 @@ Errors:
 
 ---
 
-### 8. User Settings (`/api/user/*`)
+### 9. User Settings (`/api/user/*`)
 
-#### 8.1 Update Profile
+#### 9.1 Update Profile
 
 ```typescript
 PATCH /api/user/profile
@@ -1543,7 +1740,7 @@ Errors:
 - 422: Validation failed
 ```
 
-#### 8.2 Update Password
+#### 9.2 Update Password
 
 ```typescript
 POST /api/user/password
@@ -1566,7 +1763,7 @@ Errors:
 - 422: Validation failed (passwords don't match, too weak)
 ```
 
-#### 8.3 Update Notification Settings
+#### 9.3 Update Notification Settings
 
 ```typescript
 PATCH /api/user/notifications
@@ -1594,7 +1791,7 @@ Errors:
 - 401: Not authenticated
 ```
 
-#### 8.4 Get Usage & Quota
+#### 9.4 Get Usage & Quota
 
 ```typescript
 GET /api/user/usage
@@ -1639,7 +1836,7 @@ Errors:
 - 401: Not authenticated
 ```
 
-#### 8.5 Delete Account
+#### 9.5 Delete Account
 
 ```typescript
 DELETE /api/user/account
@@ -1686,12 +1883,12 @@ Response:
 
 #### Cursor-based (for real-time data)
 ```typescript
-// Generated Assets, Collections (data updates frequently)
-GET /api/generated-assets?cursor=eyJpZCI6ImFzc2V0XzEyMyJ9&limit=50
+// Generated Images, StudioSessions (data updates frequently)
+GET /api/images?cursor=eyJpZCI6ImFzc2V0XzEyMyJ9&limit=50
 
 Response:
 {
-  data: GeneratedAsset[];
+  data: GeneratedImage[];
   meta: {
     nextCursor: "eyJpZCI6ImFzc2V0XzE3MyJ9";
     hasMore: true;
@@ -1720,21 +1917,21 @@ For long-running operations (generation, ZIP creation):
 
 ```typescript
 // Step 1: Initiate operation
-POST /api/collections/{id}/generate
+POST /api/sessions/{id}/generate
 Response 202: { jobId: "xyz" }
 
 // Step 2: Poll for status
-GET /api/collections/{id}/status
+GET /api/sessions/{id}/status
 
 // Poll every 5 seconds with exponential backoff
 const pollInterval = (attempts) => Math.min(5000 * Math.pow(1.5, attempts), 30000);
 
-async function poll(collectionId, attempts = 0) {
-  const response = await fetch(`/api/collections/${collectionId}/status`);
+async function poll(studioSessionId, attempts = 0) {
+  const response = await fetch(`/api/sessions/${studioSessionId}/status`);
   const { data } = await response.json();
 
   if (data.status === 'generating') {
-    setTimeout(() => poll(collectionId, attempts + 1), pollInterval(attempts));
+    setTimeout(() => poll(studioSessionId, attempts + 1), pollInterval(attempts));
   }
 
   return data;
@@ -1746,18 +1943,18 @@ async function poll(collectionId, attempts = 0) {
 **Pattern:** Accept array of IDs, return array of results
 
 ```typescript
-POST /api/generated-assets/bulk-delete
-Request: { assetIds: string[] }
+POST /api/images/bulk-delete
+Request: { imageIds: string[] }
 
-POST /api/generated-assets/bulk-pin
-Request: { assetIds: string[], pinned: boolean }
+POST /api/images/bulk-pin
+Request: { imageIds: string[], pinned: boolean }
 
 Response:
 {
   data: {
-    successful: string[];    // Asset IDs that succeeded
+    successful: string[];    // Image IDs that succeeded
     failed: Array<{
-      assetId: string;
+      imageId: string;
       error: string;
     }>;
   };
@@ -1825,11 +2022,11 @@ interface ProblemDetails {
   "title": "Validation Failed",
   "status": 422,
   "detail": "The request body contains invalid fields",
-  "instance": "/api/collections",
+  "instance": "/api/sessions",
   "errors": [
     {
       "field": "name",
-      "message": "Collection name is required"
+      "message": "StudioSession name is required"
     },
     {
       "field": "selectedProductIds",
@@ -1846,7 +2043,7 @@ interface ProblemDetails {
   "title": "Unauthorized",
   "status": 401,
   "detail": "Session expired. Please log in again.",
-  "instance": "/api/collections/coll_123"
+  "instance": "/api/sessions/coll_123"
 }
 ```
 
@@ -1857,7 +2054,7 @@ interface ProblemDetails {
   "title": "Too Many Requests",
   "status": 429,
   "detail": "You have exceeded your monthly generation quota",
-  "instance": "/api/collections/coll_123/generate",
+  "instance": "/api/sessions/coll_123/generate",
   "quota": {
     "limit": 100,
     "used": 100,
@@ -1873,8 +2070,8 @@ interface ProblemDetails {
   "type": "https://api.example.com/errors/not-found",
   "title": "Resource Not Found",
   "status": 404,
-  "detail": "Collection with ID 'coll_xyz' not found",
-  "instance": "/api/collections/coll_xyz"
+  "detail": "StudioSession with ID 'coll_xyz' not found",
+  "instance": "/api/sessions/coll_xyz"
 }
 ```
 
@@ -1885,7 +2082,7 @@ interface ProblemDetails {
   "title": "Internal Server Error",
   "status": 500,
   "detail": "An unexpected error occurred. Our team has been notified.",
-  "instance": "/api/collections/coll_123/generate",
+  "instance": "/api/sessions/coll_123/generate",
   "errorId": "err_20260110143052abc",
   "timestamp": "2026-01-10T14:30:52Z"
 }
@@ -1945,14 +2142,14 @@ export async function POST(request: Request) {
 
 **MVP: URL Versioning**
 ```
-/api/v1/collections
+/api/v1/studioSessions
 /api/v1/products
-/api/v1/generated-assets
+/api/v1/images
 ```
 
 **Future: Header Versioning**
 ```
-GET /api/collections
+GET /api/sessions
 Accept: application/vnd.epox.v2+json
 ```
 
@@ -2004,8 +2201,8 @@ export function middleware(request: NextRequest) {
 | `POST /api/auth/signup` | 3 requests | 1 hour |
 | `POST /api/auth/password-reset/*` | 5 requests | 1 hour |
 | `GET /api/products` | 100 requests | 1 minute |
-| `GET /api/collections` | 100 requests | 1 minute |
-| `POST /api/collections/*/generate` | 10 requests | 1 hour |
+| `GET /api/sessions` | 100 requests | 1 minute |
+| `POST /api/sessions/*/generate` | 10 requests | 1 hour |
 | `POST /api/images/upload` | 30 requests | 1 hour |
 | `GET /api/unsplash/search` | 50 requests | 1 hour |
 | Default | 1000 requests | 1 hour |
@@ -2061,7 +2258,7 @@ export async function POST(request: Request) {
 
   const { allowed, remaining, resetAt } = await rateLimit(
     session.userId,
-    'POST:/api/collections/:id/generate',
+    'POST:/api/sessions/:id/generate',
     10,
     3600  // 1 hour
   );
@@ -2102,16 +2299,16 @@ export async function POST(request: Request) {
 // lib/validation/schemas.ts
 import { z } from 'zod';
 
-export const createCollectionSchema = z.object({
+export const createStudioSessionSchema = z.object({
   name: z.string()
-    .min(1, 'Collection name is required')
-    .max(100, 'Collection name must be less than 100 characters'),
+    .min(1, 'StudioSession name is required')
+    .max(100, 'StudioSession name must be less than 100 characters'),
   selectedProductIds: z.array(z.string().uuid())
     .min(1, 'Must select at least 1 product')
-    .max(500, 'Maximum 500 products per collection')
+    .max(500, 'Maximum 500 products per studioSession')
 });
 
-export const generateCollectionSchema = z.object({
+export const generateStudioSessionSchema = z.object({
   overrideSettings: z.object({
     aspectRatio: z.enum(['1:1', '16:9', '9:16']).optional(),
     varietyLevel: z.number().min(1).max(10).optional(),
@@ -2125,7 +2322,7 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     // Validate input
-    const validatedData = createCollectionSchema.parse(body);
+    const validatedData = createStudioSessionSchema.parse(body);
 
     // ... use validatedData (fully typed)
   } catch (error) {
@@ -2291,7 +2488,7 @@ components:
           type: string
           format: date-time
 
-    Collection:
+    StudioSession:
       type: object
       properties:
         id:
@@ -2341,7 +2538,7 @@ components:
         instance:
           type: string
           format: uri
-          example: /api/collections
+          example: /api/sessions
       required:
         - type
         - title
@@ -2404,10 +2601,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
 
-  /collections:
+  /studioSessions:
     post:
-      summary: Create collection
-      tags: [Collections]
+      summary: Create studioSession
+      tags: [StudioSessions]
       requestBody:
         required: true
         content:
@@ -2427,14 +2624,14 @@ paths:
                 - selectedProductIds
       responses:
         '201':
-          description: Collection created
+          description: StudioSession created
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   data:
-                    $ref: '#/components/schemas/Collection'
+                    $ref: '#/components/schemas/StudioSession'
         '422':
           description: Validation failed
           content:
@@ -2493,54 +2690,54 @@ export class ApiClient {
       this.request<Array<{ category: string; count: number }>>('/products/categories')
   };
 
-  // Collections
-  collections = {
-    list: (params?: CollectionListParams) =>
-      this.request<Collection[]>('/collections?' + new URLSearchParams(params)),
+  // StudioSessions
+  studioSessions = {
+    list: (params?: StudioSessionListParams) =>
+      this.request<StudioSession[]>('/studioSessions?' + new URLSearchParams(params)),
 
-    create: (data: CreateCollectionRequest) =>
-      this.request<Collection>('/collections', {
+    create: (data: CreateStudioSessionRequest) =>
+      this.request<StudioSession>('/studioSessions', {
         method: 'POST',
         body: JSON.stringify(data)
       }),
 
     get: (id: string) =>
-      this.request<Collection>(`/collections/${id}`),
+      this.request<StudioSession>(`/studioSessions/${id}`),
 
     analyze: (id: string) =>
-      this.request<ProductAnalysisResult>(`/collections/${id}/analyze`, {
+      this.request<ProductAnalysisResult>(`/studioSessions/${id}/analyze`, {
         method: 'POST'
       }),
 
     generate: (id: string, overrides?: Partial<FlowGenerationSettings>) =>
-      this.request(`/collections/${id}/generate`, {
+      this.request(`/studioSessions/${id}/generate`, {
         method: 'POST',
         body: JSON.stringify({ overrideSettings: overrides })
       }),
 
     status: (id: string) =>
-      this.request<CollectionStatus>(`/collections/${id}/status`)
+      this.request<StudioSessionStatus>(`/studioSessions/${id}/status`)
   };
 
-  // Generated Assets
-  generatedAssets = {
-    list: (params?: AssetListParams) =>
-      this.request<GeneratedAsset[]>('/generated-assets?' + new URLSearchParams(params)),
+  // Generated Images
+  generatedImages = {
+    list: (params?: ImageListParams) =>
+      this.request<GeneratedImage[]>('/images?' + new URLSearchParams(params)),
 
     get: (id: string) =>
-      this.request<GeneratedAsset>(`/generated-assets/${id}`),
+      this.request<GeneratedImage>(`/images/${id}`),
 
-    update: (id: string, data: UpdateAssetRequest) =>
-      this.request<GeneratedAsset>(`/generated-assets/${id}`, {
+    update: (id: string, data: UpdateImageRequest) =>
+      this.request<GeneratedImage>(`/images/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data)
       }),
 
     delete: (id: string) =>
-      this.request(`/generated-assets/${id}`, { method: 'DELETE' }),
+      this.request(`/images/${id}`, { method: 'DELETE' }),
 
     regenerate: (id: string, settings?: Partial<FlowGenerationSettings>) =>
-      this.request<GeneratedAsset>(`/generated-assets/${id}/regenerate`, {
+      this.request<GeneratedImage>(`/images/${id}/regenerate`, {
         method: 'POST',
         body: JSON.stringify({ settings })
       })
@@ -2583,13 +2780,13 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 5. Add room type aggregation endpoint
 6. Optimize queries with indexes
 
-### Phase 4: Collection CRUD (Week 2)
-1. Create collection creation endpoint
-2. Implement collection list with filters
-3. Add collection detail endpoint
-4. Build collection update endpoint
-5. Create collection delete endpoint (soft-delete)
-6. Test collection workflows
+### Phase 4: StudioSession CRUD (Week 2)
+1. Create studioSession creation endpoint
+2. Implement studioSession list with filters
+3. Add studioSession detail endpoint
+4. Build studioSession update endpoint
+5. Create studioSession delete endpoint (soft-delete)
+6. Test studioSession workflows
 
 ### Phase 5: Analysis Services (Week 3)
 1. Implement product analysis endpoint (single)
@@ -2600,10 +2797,10 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 6. Add fallback logic for AI failures
 
 ### Phase 6: Generation Endpoints (Week 3)
-1. Create collection generation trigger endpoint
+1. Create studioSession generation trigger endpoint
 2. Implement generation status polling endpoint
-3. Build generated asset CRUD endpoints
-4. Add asset regeneration endpoint
+3. Build generated image CRUD endpoints
+4. Add image regeneration endpoint
 5. Create download endpoints (single & bulk ZIP)
 6. Test generation workflows end-to-end
 
@@ -2612,7 +2809,7 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 2. Create multiple image upload endpoint
 3. Add image detail endpoint
 4. Build image delete endpoint
-5. Integrate S3 streaming upload
+5. Integrate R2 streaming upload
 6. Add file validation (MIME type, size, signature)
 
 ### Phase 8: Unsplash Integration (Week 4)
@@ -2665,11 +2862,11 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const validated = createCollectionSchema.parse(body);
+    const validated = createStudioSessionSchema.parse(body);
 
-    const collection = await db.collections.create(validated);
+    const studioSession = await db.studioSessions.create(validated);
 
-    return NextResponse.json({ data: collection }, { status: 201 });
+    return NextResponse.json({ data: studioSession }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({
@@ -2766,7 +2963,7 @@ Future: Add GraphQL layer for complex queries
 ### Cursor vs. Offset Pagination
 **Chosen**: Hybrid (cursor for real-time, offset for stable)
 **Rationale**:
-- ✅ Cursor: Handles real-time data (generated assets)
+- ✅ Cursor: Handles real-time data (generated images)
 - ✅ Offset: Simpler for stable data (products, categories)
 - ✅ Can switch per-endpoint based on use case
 - ❌ Need to maintain both implementations

@@ -23,7 +23,7 @@ This design log provides a comprehensive catalog of use cases with realistic sce
 ## Problem
 
 We need to document:
-1. **Complete use case coverage** - Every user action from onboarding to asset management
+1. **Complete use case coverage** - Every user action from onboarding to image management
 2. **Realistic scenarios** - Concrete examples with specific products, quantities, and outcomes
 3. **Error handling** - How the system responds to failures at every step
 4. **Success metrics** - Measurable criteria to validate each use case works correctly
@@ -49,7 +49,7 @@ Without this documentation:
 **A**: Specific and realistic:
 - ✅ "Generate 45 images in 12 minutes"
 - ❌ "Generate some images quickly"
-- Include ranges: "20-500 products per collection"
+- Include ranges: "20-500 products per studioSession"
 - Show quota usage: "45 of 100 monthly generations used"
 
 ### Q3: Should we include future features (team collaboration, API)?
@@ -87,7 +87,7 @@ Without this documentation:
 
 **Goals**:
 - Generate seasonal product catalogs (4x per year, 50-100 products each)
-- Create social media assets for new product launches
+- Create social media images for new product launches
 - Maintain consistent brand aesthetic across all visuals
 - Reduce dependency on expensive photoshoots
 
@@ -100,7 +100,7 @@ Without this documentation:
 **Use Case Focus**:
 - Bulk generation (50-100 products)
 - Brand consistency (reuse pinned inspiration)
-- Download organization (by collection, by product)
+- Download organization (by studioSession, by product)
 - Regeneration for A/B testing different styles
 
 ---
@@ -154,7 +154,7 @@ Without this documentation:
 - Budget-conscious (needs free/starter tier)
 
 **Use Case Focus**:
-- Small collections (10-30 products)
+- Small studioSessions (10-30 products)
 - High customization (manual inspiration selection)
 - Quality over quantity (regenerate until perfect)
 - Settings management (save preferred styles)
@@ -196,12 +196,12 @@ Without this documentation:
    - Creates session with `clientId`
 
 5. **User lands on dashboard**
-   - Shows empty state with "Create First Collection" CTA
+   - Shows empty state with "Create First StudioSession" CTA
    - Displays product count for client
    - Optional: Shows onboarding tutorial video
 
-6. **User creates first collection**
-   - Follows UC-002 (Creating a Collection)
+6. **User creates first studioSession**
+   - Follows UC-002 (Creating a StudioSession)
    - Smart defaults applied (auto-select all if <20 products)
 
 **Alternative Flows**:
@@ -216,10 +216,10 @@ Without this documentation:
 - Provides link to login page
 - User can reset password if needed
 
-**A3: User skips first collection**
+**A3: User skips first studioSession**
 - Clicks "Skip" or navigates away
 - Dashboard shows empty state persistently
-- Can create collection later from dashboard or nav
+- Can create studioSession later from dashboard or nav
 
 **Exception Handling**:
 
@@ -231,14 +231,14 @@ Without this documentation:
 - User account created and active
 - User logged in with valid session
 - User associated with exactly one client
-- Ready to create first collection
+- Ready to create first studioSession
 
 **Success Criteria**:
 - ✅ User can sign up in <2 minutes
 - ✅ Form validation prevents invalid data
 - ✅ Session persists for 7 days
 - ✅ User sees personalized dashboard
-- ✅ Clear next step (create collection)
+- ✅ Clear next step (create studioSession)
 
 **Related Components**:
 - `/signup` page (Design Log #005, Screen 1)
@@ -249,11 +249,11 @@ Without this documentation:
 
 **Scenario Example**:
 
-> Sarah receives an invitation from her admin John. She clicks the link, creates her account with password "SecurePass123", and lands on the dashboard. She sees "Welcome, Sarah! You have 127 products ready to visualize." She clicks "Create First Collection" and selects 45 furniture products for her summer catalog.
+> Sarah receives an invitation from her admin John. She clicks the link, creates her account with password "SecurePass123", and lands on the dashboard. She sees "Welcome, Sarah! You have 127 products ready to visualize." She clicks "Create First StudioSession" and selects 45 furniture products for her summer catalog.
 
 ---
 
-### UC-002: Creating a Collection (Bulk Generation)
+### UC-002: Creating a StudioSession (Bulk Generation)
 
 **Actor**: Logged-in user (Sarah - bulk generation, 45 products)
 
@@ -266,8 +266,8 @@ Without this documentation:
 
 **Step 1: Select Products (2 minutes)**
 
-1. User clicks "+ New Collection" from dashboard
-2. System navigates to `/collections/new?step=1`
+1. User clicks "+ New StudioSession" from dashboard
+2. System navigates to `/studioSessions/new?step=1`
 3. System loads products from database (paginated, 50 per page)
 4. User applies filters:
    - Category: "Furniture"
@@ -279,7 +279,7 @@ Without this documentation:
    - Deselects 23 products manually
 7. System shows "45 products selected"
 8. User clicks "Next: Analyze"
-9. System creates draft collection record:
+9. System creates draft studioSession record:
    ```typescript
    {
      id: "col_abc123",
@@ -293,9 +293,9 @@ Without this documentation:
 
 **Step 2: AI Analysis (30 seconds)**
 
-10. System navigates to `/collections/new?step=2`
+10. System navigates to `/studioSessions/new?step=2`
 11. System auto-triggers product analysis:
-    - POST `/api/collections/{id}/analyze`
+    - POST `/api/studioSessions/{id}/analyze`
     - Analyzes product metadata (category, room types, names)
     - Uses Gemini to extract patterns
 12. System shows loading state (progress bar)
@@ -322,7 +322,7 @@ Without this documentation:
 
 **Step 3: Choose Inspirations (3 minutes)**
 
-16. System navigates to `/collections/new?step=3`
+16. System navigates to `/studioSessions/new?step=3`
 17. User sees 3 tabs: Upload, Unsplash, My Library
 18. User selects Unsplash tab
 19. System pre-populates search with "modern living room" (from analysis)
@@ -336,7 +336,7 @@ Without this documentation:
 
 **Step 4: Review & Generate (1 minute)**
 
-24. System navigates to `/collections/new?step=4`
+24. System navigates to `/studioSessions/new?step=4`
 25. System displays summary:
     - Products: 45
     - Inspirations: 3
@@ -346,22 +346,22 @@ Without this documentation:
     - Aspect ratio: 1:1
     - Variety level: 5
     - Match product colors: Yes
-27. User reviews settings, clicks "Generate Collection"
+27. User reviews settings, clicks "Generate StudioSession"
 28. System processes generation request:
     - Analyzes inspiration images (extracts style, lighting, colors)
     - Builds base settings from inspiration analysis
-    - Creates 180 GeneratedAsset records (45 products × 4 variants)
+    - Creates 180 GeneratedImage records (45 products × 4 variants)
     - Enqueues 180 jobs in Redis generation queue
-    - Updates collection status: `draft` → `generating`
-29. System navigates to `/collections/{id}/results`
+    - Updates studioSession status: `draft` → `generating`
+29. System navigates to `/studioSessions/{id}/results`
 30. System shows generation progress:
     - "Generating 180 images... 0 of 180 completed (0%)"
     - Progress bar updating every 5 seconds
 31. Background workers process queue:
     - Generate images via Gemini API
-    - Upload to S3
-    - Update GeneratedAsset records
-    - Update collection progress
+    - Upload to R2
+    - Update GeneratedImage records
+    - Update studioSession progress
 32. After 12 minutes, all images complete
 33. System shows completion notification
 34. User views results gallery (UC-006)
@@ -373,7 +373,7 @@ Without this documentation:
 - User can proceed or go back to select more
 
 **A2: User selects >500 products**
-- System shows error: "Maximum 500 products per collection. Please reduce selection."
+- System shows error: "Maximum 500 products per studioSession. Please reduce selection."
 - "Continue" button disabled until count ≤500
 
 **A3: User skips inspiration images (0 selected)**
@@ -388,7 +388,7 @@ Without this documentation:
 
 **A5: User abandons wizard mid-flow**
 - System auto-saves draft every 30 seconds
-- User can return to `/collections/{id}/edit` later
+- User can return to `/studioSessions/{id}/edit` later
 - Draft shows on dashboard with "Resume" button
 - Drafts older than 7 days auto-deleted
 
@@ -399,14 +399,14 @@ Without this documentation:
 - **Gemini API timeout**: Use fallback metadata analysis, log error, notify user
 - **Unsplash API rate limit**: Show cached popular images instead, notify user
 - **Generation queue full**: Show error "System busy, try again in 5 minutes", auto-retry
-- **S3 upload fails**: Retry up to 3 times, mark asset as error if all fail
+- **R2 upload fails**: Retry up to 3 times, mark image as error if all fail
 - **User quota exceeded**: Show quota modal before generation, prevent proceeding
 
 **Postconditions**:
-- Collection created with status `generating` or `completed`
-- 180 GeneratedAsset records created
-- 180 images uploaded to S3 (on success)
-- Collection visible in collections list
+- StudioSession created with status `generating` or `completed`
+- 180 GeneratedImage records created
+- 180 images uploaded to R2 (on success)
+- StudioSession visible in studioSessions list
 - User quota updated (180 generations deducted)
 
 **Success Criteria**:
@@ -418,12 +418,12 @@ Without this documentation:
 - ✅ Generated images match inspiration style
 
 **Related Components**:
-- Collection wizard (Design Log #005, Screen 4)
+- StudioSession wizard (Design Log #005, Screen 4)
 - Product selection table (Design Log #005, Step 1)
 - Analysis results (Design Log #005, Step 2)
 - Inspiration picker (Design Log #005, Step 3)
 - Generation progress (Design Log #005, Step 4)
-- APIs: `/api/collections`, `/api/products`, `/api/analyze`, `/api/generate`
+- APIs: `/api/studioSessions`, `/api/products`, `/api/analyze`, `/api/generate`
 
 **Quantifiable Outcomes**:
 - **Time**: 7 minutes user interaction + 12 minutes background generation = 19 minutes total
@@ -440,7 +440,7 @@ Without this documentation:
 
 ### UC-003: Analyzing Products with AI
 
-**Actor**: Logged-in user (during collection creation or standalone)
+**Actor**: Logged-in user (during studioSession creation or standalone)
 
 **Preconditions**:
 - User has selected 1+ products
@@ -451,9 +451,9 @@ Without this documentation:
 
 1. User completes Step 1 of wizard (45 products selected)
 2. User clicks "Next: Analyze"
-3. System navigates to `/collections/new?step=2`
+3. System navigates to `/studioSessions/new?step=2`
 4. System automatically triggers analysis:
-   - POST `/api/collections/{id}/analyze`
+   - POST `/api/studioSessions/{id}/analyze`
    - Request body: `{ productIds: ["prod_1", ..., "prod_45"] }`
 5. System shows loading state:
    - Spinner with message: "AI is analyzing your products..."
@@ -481,10 +481,10 @@ Without this documentation:
    const analysis = await gemini.analyze(prompt);
    ```
 7. AI returns analysis after 30 seconds
-8. System stores analysis in collection:
+8. System stores analysis in studioSession:
    ```typescript
-   await db.collections.update({
-     where: { id: collectionId },
+   await db.studioSessions.update({
+     where: { id: studioSessionId },
      data: {
        productAnalysis: analysis,
        status: "analyzing"
@@ -513,7 +513,7 @@ Without this documentation:
 **A3: Products have conflicting room types**
 - AI detects mixed categories (e.g., Office + Kitchen + Bedroom)
 - Analysis shows all room types
-- Warning: "Mixed room types detected. Consider splitting into multiple collections."
+- Warning: "Mixed room types detected. Consider splitting into multiple studioSessions."
 - User can proceed or go back
 
 **Exception Handling**:
@@ -534,10 +534,10 @@ Without this documentation:
 - **Invalid product data**: Skip invalid products, analyze remaining, log warning
 
 **Postconditions**:
-- Collection has `productAnalysis` field populated
+- StudioSession has `productAnalysis` field populated
 - Analysis results displayed to user
 - Suggested keywords ready for Unsplash search (next step)
-- Collection status: `draft` → `analyzing` → `ready`
+- StudioSession status: `draft` → `analyzing` → `ready`
 
 **Success Criteria**:
 - ✅ Analysis completes in <60 seconds for 100 products
@@ -548,9 +548,9 @@ Without this documentation:
 
 **Related Components**:
 - Analysis results screen (Design Log #005, Step 2)
-- `/api/collections/{id}/analyze` endpoint
+- `/api/studioSessions/{id}/analyze` endpoint
 - `ProductAnalyzer` service (Design Log #001, shared package)
-- `productAnalysis` field in collections table (Design Log #003)
+- `productAnalysis` field in studioSessions table (Design Log #003)
 
 **Quantifiable Outcomes**:
 - **Time**: 30 seconds for 45 products = 0.67s per product
@@ -592,7 +592,7 @@ Without this documentation:
 14. System uploads image:
     - POST `/api/upload` with FormData
     - Validates: JPG/PNG, <10MB
-    - Uploads to S3: `s3://bucket/clients/{clientId}/inspirations/{id}.jpg`
+    - Uploads to R2: `s3://bucket/clients/{clientId}/inspirations/{id}.jpg`
     - Returns URL
 15. System adds uploaded image to selected panel (4 of 5)
 16. User reviews selection:
@@ -605,13 +605,13 @@ Without this documentation:
     await db.inspirationImages.createMany({
       data: [
         {
-          collectionId,
+          studioSessionId,
           imageId: "img_1",
           source: "unsplash",
           displayOrder: 0
         },
         {
-          collectionId,
+          studioSessionId,
           imageId: "img_2",
           source: "upload",
           displayOrder: 1
@@ -631,7 +631,7 @@ Without this documentation:
 
 **A2: User selects only from Library (pinned previous generations)**
 - User switches to Library tab
-- System loads pinned assets: `GET /api/generated-assets?pinned=true&clientId={id}`
+- System loads pinned images: `GET /api/generated-images?pinned=true&clientId={id}`
 - User filters by room: "Living Room"
 - System shows 5 pinned images
 - User selects 2
@@ -656,13 +656,13 @@ Without this documentation:
 - **Upload fails (network)**: Show progress bar, retry automatically, show error if all retries fail
 - **Invalid file format**: Show inline error "Only JPG and PNG supported", prevent upload
 - **File too large (>10MB)**: Show error "File must be under 10MB", suggest compression
-- **S3 upload fails**: Retry 3 times, show error "Upload failed. Try again.", log to monitoring
+- **R2 upload fails**: Retry 3 times, show error "Upload failed. Try again.", log to monitoring
 - **Library empty (no pinned images)**: Show empty state "Pin your favorite generated images to reuse them"
 
 **Postconditions**:
-- Collection has 0-5 inspiration images linked
+- StudioSession has 0-5 inspiration images linked
 - Each inspiration stored in `inspiration_images` table
-- Upload images saved to S3
+- Upload images saved to R2
 - Ready to proceed to generation step
 
 **Success Criteria**:
@@ -677,8 +677,8 @@ Without this documentation:
 - Inspiration picker (Design Log #005, Step 3)
 - Upload tab with drag-drop
 - Unsplash tab with search
-- Library tab with pinned assets
-- `/api/upload`, `/api/unsplash/search`, `/api/generated-assets`
+- Library tab with pinned images
+- `/api/upload`, `/api/unsplash/search`, `/api/generated-images`
 - `inspiration_images` table (Design Log #003)
 
 **Quantifiable Outcomes**:
@@ -695,21 +695,21 @@ Without this documentation:
 
 ### UC-005: Monitoring Generation Progress
 
-**Actor**: Logged-in user (waiting for collection to complete)
+**Actor**: Logged-in user (waiting for studioSession to complete)
 
 **Preconditions**:
-- Collection has status `generating`
-- At least 1 GeneratedAsset has status `pending` or `generating`
+- StudioSession has status `generating`
+- At least 1 GeneratedImage has status `pending` or `generating`
 - User is on results page or has page open in background
 
 **Main Flow**:
 
-1. User is on `/collections/{id}/results` (navigated after clicking "Generate")
+1. User is on `/studioSessions/{id}/results` (navigated after clicking "Generate")
 2. System loads initial state:
    ```typescript
-   const collection = await db.collections.findById(id);
-   const assets = await db.generatedAssets.findMany({
-     where: { collectionId: id }
+   const studioSession = await db.studioSessions.findById(id);
+   const images = await db.generatedImages.findMany({
+     where: { studioSessionId: id }
    });
 
    const progress = {
@@ -727,8 +727,8 @@ Without this documentation:
 4. System starts polling for updates:
    ```typescript
    const { data } = useQuery({
-     queryKey: ['collection-progress', id],
-     queryFn: () => fetchCollectionProgress(id),
+     queryKey: ['studioSession-progress', id],
+     queryFn: () => fetchStudioSessionProgress(id),
      refetchInterval: 5000, // Poll every 5 seconds
      refetchIntervalInBackground: true // Continue when tab inactive
    });
@@ -736,11 +736,11 @@ Without this documentation:
 5. Background workers process queue:
    - Worker picks job from Redis: `LPOP client:generation:queue`
    - Worker generates image via Gemini (20-40 seconds)
-   - Worker uploads to S3
+   - Worker uploads to R2
    - Worker updates database:
      ```typescript
-     await db.generatedAssets.update({
-       where: { id: assetId },
+     await db.generatedImages.update({
+       where: { id: imageId },
        data: {
          status: 'completed',
          imageId: uploadedImageId,
@@ -766,9 +766,9 @@ Without this documentation:
     - Completed: 176, Error: 4, Total: 180
     - Progress: 97.8% (some errors)
 12. System shows completion notification:
-    - Browser notification: "Collection 'Summer Catalog 2026' complete! 176 of 180 images generated."
+    - Browser notification: "StudioSession 'Summer Catalog 2026' complete! 176 of 180 images generated."
     - Email notification sent (if enabled in settings)
-13. System updates collection status: `generating` → `completed`
+13. System updates studioSession status: `generating` → `completed`
 14. Progress bar shows green checkmark
 15. User can now download all images
 
@@ -783,12 +783,12 @@ Without this documentation:
 **A2: User closes browser during generation**
 - Generation continues on server (queue-based, not session-dependent)
 - Email sent when complete
-- User logs back in later, sees completed collection
+- User logs back in later, sees completed studioSession
 
-**A3: User has multiple collections generating simultaneously**
-- Each collection polls independently
-- Dashboard shows status of all active collections
-- No interference between collections
+**A3: User has multiple studioSessions generating simultaneously**
+- Each studioSession polls independently
+- Dashboard shows status of all active studioSessions
+- No interference between studioSessions
 
 **A4: All images complete successfully (no errors)**
 - Progress reaches 100%
@@ -813,10 +813,10 @@ Without this documentation:
   - Completed images remain accessible
 
 **Postconditions**:
-- Collection status: `generating` → `completed`
-- 176+ GeneratedAssets have status `completed` with imageId
-- 0-4 GeneratedAssets have status `error` with errorMessage
-- Images uploaded to S3 and accessible
+- StudioSession status: `generating` → `completed`
+- 176+ GeneratedImages have status `completed` with imageId
+- 0-4 GeneratedImages have status `error` with errorMessage
+- Images uploaded to R2 and accessible
 - User notified of completion
 
 **Success Criteria**:
@@ -830,7 +830,7 @@ Without this documentation:
 **Related Components**:
 - Results gallery (Design Log #005, Screen 5)
 - Generation progress component (Design Log #005, Step 4)
-- `/api/collections/{id}/status` endpoint
+- `/api/studioSessions/{id}/status` endpoint
 - GenerationQueue service (Design Log #001)
 - Browser Notification API
 
@@ -849,18 +849,18 @@ Without this documentation:
 
 ---
 
-### UC-006: Downloading and Organizing Generated Assets
+### UC-006: Downloading and Organizing Generated Images
 
-**Actor**: Logged-in user with completed collection
+**Actor**: Logged-in user with completed studioSession
 
 **Preconditions**:
-- Collection has status `completed`
-- At least 1 GeneratedAsset has status `completed`
-- Images uploaded to S3 and accessible
+- StudioSession has status `completed`
+- At least 1 GeneratedImage has status `completed`
+- Images uploaded to R2 and accessible
 
 **Main Flow**:
 
-1. User is on `/collections/{id}/results` (176 completed images)
+1. User is on `/studioSessions/{id}/results` (176 completed images)
 2. System displays gallery:
    - Grouped by product (45 products, ~4 images each)
    - Each image shows product name, room type, download button
@@ -873,7 +873,7 @@ Without this documentation:
 6. User clicks "Download"
 7. System creates background job:
    ```typescript
-   POST /api/collections/{id}/download
+   POST /api/studioSessions/{id}/download
    Response: { jobId: "download_xyz", status: "pending" }
    ```
 8. System shows progress modal:
@@ -882,10 +882,10 @@ Without this documentation:
    - "Packaging 176 images... (23/176)"
 9. Background worker processes download job:
    ```typescript
-   // Fetch all image URLs from S3
-   const images = await getCompletedImages(collectionId);
+   // Fetch all image URLs from R2
+   const images = await getCompletedImages(studioSessionId);
 
-   // Download images from S3 to temp directory
+   // Download images from R2 to temp directory
    for (const image of images) {
      const file = await s3.getObject(image.s3Key);
      tempFiles.push({ path: image.filename, data: file });
@@ -897,7 +897,7 @@ Without this documentation:
      zip.addFile(file.path, file.data);
    }
 
-   // Upload ZIP to S3 with expiration
+   // Upload ZIP to R2 with expiration
    const zipKey = `downloads/${jobId}.zip`;
    await s3.putObject(zipKey, zip.toBuffer(), {
      expiresIn: 86400 // 24 hours
@@ -984,17 +984,17 @@ Without this documentation:
 **Exception Handling**:
 
 - **ZIP creation fails**: Show error "Download preparation failed. Try again.", retry button
-- **S3 access denied**: Show error "Unable to access images. Contact support.", log error
+- **R2 access denied**: Show error "Unable to access images. Contact support.", log error
 - **Download job timeout (>5 minutes)**: Cancel job, show error "Download took too long. Try selecting fewer images."
 - **ZIP too large (>2GB)**: Show warning "Too many images. Try downloading in smaller batches.", suggest filtering
 - **User quota exceeded**: Still allow downloads (downloads don't count against quota)
 - **Expired ZIP link (>24 hours)**: Show message "Download link expired. Generate new link?", recreate ZIP
 
 **Postconditions**:
-- ZIP file created and cached in S3 (24-hour expiration)
+- ZIP file created and cached in R2 (24-hour expiration)
 - User has local copy of images
 - Download job record saved (for analytics)
-- No changes to GeneratedAssets (read-only operation)
+- No changes to GeneratedImages (read-only operation)
 
 **Success Criteria**:
 - ✅ ZIP creation completes in <2 minutes for 200 images
@@ -1007,16 +1007,16 @@ Without this documentation:
 **Related Components**:
 - Results gallery (Design Log #005, Screen 5)
 - Download buttons and modals
-- `/api/collections/{id}/download` endpoint
+- `/api/studioSessions/{id}/download` endpoint
 - `/api/download-jobs/{id}` status polling
-- S3 signed URLs (Design Log #001)
+- R2 signed URLs (Design Log #001)
 
 **Quantifiable Outcomes**:
 - **Files**: 176 JPG images
 - **Total size**: 352 MB (2MB avg per image)
 - **ZIP creation time**: 90 seconds
 - **Download bandwidth**: 352 MB
-- **Storage**: ZIP cached in S3 for 24 hours
+- **Storage**: ZIP cached in R2 for 24 hours
 - **Filename pattern**: `{product}_{room}_{variant}.jpg`
 
 **Scenario Example**:
@@ -1025,17 +1025,17 @@ Without this documentation:
 
 ---
 
-### UC-007: Pinning Assets for Reuse
+### UC-007: Pinning Images for Reuse
 
 **Actor**: Logged-in user reviewing generated images
 
 **Preconditions**:
 - User viewing results gallery
-- At least 1 GeneratedAsset with status `completed`
+- At least 1 GeneratedImage with status `completed`
 
 **Main Flow**:
 
-1. User browses collection results (176 images)
+1. User browses studioSession results (176 images)
 2. User finds a particularly good image:
    - Modern Desk in bright, minimalist living room
    - Perfect lighting, clean composition
@@ -1043,8 +1043,8 @@ Without this documentation:
 4. User clicks "Pin" button (📌 icon)
 5. System updates database:
    ```typescript
-   await db.generatedAssets.update({
-     where: { id: assetId },
+   await db.generatedImages.update({
+     where: { id: imageId },
      data: { pinned: true }
    });
    ```
@@ -1052,19 +1052,19 @@ Without this documentation:
    - UI shows pin icon as filled (📌 → 📌✓)
    - Shows toast: "Pinned! You can reuse this as inspiration."
 7. User pins 4 more images (5 total pinned)
-8. User creates new collection (weeks later)
+8. User creates new studioSession (weeks later)
 9. User navigates to Step 3 (Inspire)
 10. User selects "My Library" tab
 11. System loads pinned images:
     ```typescript
-    GET /api/generated-assets?pinned=true&clientId={id}
+    GET /api/generated-images?pinned=true&clientId={id}
     ```
 12. System displays 5 pinned images in grid
 13. User can filter by room type: "Living Room"
 14. System shows 3 matching pinned images
 15. User selects 2 pinned images as inspiration
-16. System uses these as inspiration for new collection
-17. New collection inherits style attributes from pinned images
+16. System uses these as inspiration for new studioSession
+17. New studioSession inherits style attributes from pinned images
 
 **Alternative Flows**:
 
@@ -1100,9 +1100,9 @@ Without this documentation:
 - **Image not found**: Show error "Image no longer exists."
 
 **Postconditions**:
-- GeneratedAsset has `pinned = true`
+- GeneratedImage has `pinned = true`
 - Image appears in "My Library" tab
-- Image available for reuse in future collections
+- Image available for reuse in future studioSessions
 - Pin count tracked per user (analytics)
 
 **Success Criteria**:
@@ -1115,20 +1115,20 @@ Without this documentation:
 
 **Related Components**:
 - Results gallery (Design Log #005, Screen 5)
-- Asset card with pin button
+- Image card with pin button
 - Library tab in inspiration picker (Design Log #005, Step 3)
-- `/api/generated-assets/{id}` PATCH endpoint
-- `pinned` field in generated_assets table (Design Log #003)
+- `/api/generated-images/{id}` PATCH endpoint
+- `pinned` field in generated_images table (Design Log #003)
 
 **Quantifiable Outcomes**:
 - **Pin action time**: <500ms (optimistic update)
 - **Pinned images**: 5 out of 176 (2.8%)
-- **Reuse**: Pinned images used in 3 future collections
+- **Reuse**: Pinned images used in 3 future studioSessions
 - **Storage**: No additional storage (references existing images)
 
 **Scenario Example**:
 
-> Sarah finds 5 images with perfect lighting and composition. She pins them by clicking the pin icon. Three weeks later, when creating a new collection for fall products, she selects these pinned images in the "My Library" tab. The new collection inherits the same lighting and style, ensuring brand consistency across seasonal catalogs.
+> Sarah finds 5 images with perfect lighting and composition. She pins them by clicking the pin icon. Three weeks later, when creating a new studioSession for fall products, she selects these pinned images in the "My Library" tab. The new studioSession inherits the same lighting and style, ensuring brand consistency across seasonal catalogs.
 
 ---
 
@@ -1137,7 +1137,7 @@ Without this documentation:
 **Actor**: Logged-in user dissatisfied with generated image
 
 **Preconditions**:
-- User has GeneratedAsset (completed or error)
+- User has GeneratedImage (completed or error)
 - User has remaining quota
 - Original settings and product available
 
@@ -1168,12 +1168,12 @@ Without this documentation:
    - Props: Remove "Books" and "Lamps", keep only "Plants"
    - Variety level: 5 → 7 (more creative)
 7. User clicks "Regenerate"
-8. System creates new GeneratedAsset:
+8. System creates new GeneratedImage:
    ```typescript
-   const newAsset = await db.generatedAssets.create({
+   const newImage = await db.generatedImages.create({
      data: {
        clientId,
-       collectionId,
+       studioSessionId,
        productId, // Same product
        type: 'image',
        status: 'pending',
@@ -1185,16 +1185,16 @@ Without this documentation:
 9. System enqueues new job:
    ```typescript
    const jobId = await queue.enqueue({
-     assetId: newAsset.id,
+     imageId: newImage.id,
      clientId,
      productId,
      settings: adjustedSettings
    });
    ```
-10. System updates asset with jobId:
+10. System updates image with jobId:
     ```typescript
-    await db.generatedAssets.update({
-      where: { id: newAsset.id },
+    await db.generatedImages.update({
+      where: { id: newImage.id },
       data: { jobId }
     });
     ```
@@ -1217,8 +1217,8 @@ Without this documentation:
 - User confirms, proceeds
 - May need another regeneration if result unsatisfactory
 
-**A2: Regenerate failed asset**
-- Original asset has status `error`
+**A2: Regenerate failed image**
+- Original image has status `error`
 - User clicks "Retry" (same as regenerate)
 - Uses same settings, retries generation
 - If fails again, user can adjust settings
@@ -1228,42 +1228,42 @@ Without this documentation:
   - Modern
   - Rustic
   - Industrial
-- System creates 3 new assets
+- System creates 3 new images
 - User compares all 4 versions (original + 3 regenerations)
 - User picks best, deletes others
 
-**A4: Regenerate entire collection**
-- User clicks "Regenerate Collection" (future feature)
-- System creates new collection with same products, new settings
-- Preserves original collection for comparison
+**A4: Regenerate entire studioSession**
+- User clicks "Regenerate StudioSession" (future feature)
+- System creates new studioSession with same products, new settings
+- Preserves original studioSession for comparison
 
 **Exception Handling**:
 
 - **Quota exceeded**: Show modal "Monthly limit reached. Upgrade to continue.", disable regenerate button
-- **Regeneration fails**: Mark asset as `error`, show error message, offer retry
+- **Regeneration fails**: Mark image as `error`, show error message, offer retry
 - **Product deleted**: Show error "Product no longer exists. Cannot regenerate."
 - **Invalid settings**: Validate before enqueueing, show inline errors
 
 **Postconditions**:
-- New GeneratedAsset created (separate from original)
-- Original asset unchanged (preserved for comparison)
-- New image generated and uploaded to S3
+- New GeneratedImage created (separate from original)
+- Original image unchanged (preserved for comparison)
+- New image generated and uploaded to R2
 - User quota decremented by 1
-- Both assets visible in gallery (user can delete original)
+- Both images visible in gallery (user can delete original)
 
 **Success Criteria**:
 - ✅ Regeneration modal pre-fills current settings
 - ✅ All settings editable
 - ✅ New image generates in <60 seconds
-- ✅ Original asset preserved (not overwritten)
+- ✅ Original image preserved (not overwritten)
 - ✅ User can compare side-by-side
 - ✅ Quota properly decremented
 
 **Related Components**:
 - Results gallery (Design Log #005, Screen 5)
 - Regenerate modal
-- Asset card with regenerate button
-- `/api/generated-assets` POST endpoint (create new asset)
+- Image card with regenerate button
+- `/api/generated-images` POST endpoint (create new image)
 - GenerationQueue service (Design Log #001)
 
 **Quantifiable Outcomes**:
@@ -1371,7 +1371,7 @@ Without this documentation:
 26. System shows confirmation:
     - "Delete 'Old Product'?"
     - "This will not delete generated images."
-    - Warning if used in active collections
+    - Warning if used in active studioSessions
 27. User confirms
 28. System soft-deletes:
     ```typescript
@@ -1410,12 +1410,12 @@ Without this documentation:
 - **Duplicate SKUs in CSV**: Show error "Duplicate SKUs found: DSK-001 (rows 5, 10)", prevent import
 - **SKU already exists in database**: Skip duplicate, log warning, import others
 - **Image URL invalid**: Import product without image, show warning
-- **Product in use (active collection generating)**: Warn user but allow edit/delete
+- **Product in use (active studioSession generating)**: Warn user but allow edit/delete
 
 **Postconditions**:
 - Products created/updated/deleted in database
 - Products visible/hidden in products list
-- Products available for collection creation
+- Products available for studioSession creation
 
 **Success Criteria**:
 - ✅ CSV import handles 1000+ products
@@ -1434,7 +1434,7 @@ Without this documentation:
 
 **Scenario Example**:
 
-> Mike imports 500 products from a CSV file. The system validates the file and shows 5 errors (missing SKUs). Mike fixes the CSV and re-uploads. All 500 products import successfully in 45 seconds. He can now use these products in collections.
+> Mike imports 500 products from a CSV file. The system validates the file and shows 5 errors (missing SKUs). Mike fixes the CSV and re-uploads. All 500 products import successfully in 45 seconds. He can now use these products in studioSessions.
 
 ---
 
@@ -1508,7 +1508,7 @@ Without this documentation:
 - User selects "Generation Defaults" tab
 - User sets preferred aspect ratio: 1:1 → 16:9
 - User sets variety level: 5 → 7
-- Future collections pre-filled with these defaults
+- Future studioSessions pre-filled with these defaults
 
 **Postconditions**:
 - Settings saved to database
@@ -1540,19 +1540,19 @@ Without this documentation:
 
 1. Owner invites editor: "john@company.com"
 2. John receives invitation, signs up
-3. John has editor role (can create/edit collections, cannot manage billing)
-4. Sarah (owner) creates collection "Summer Catalog"
-5. John sees collection in shared collections list
-6. John can view, edit, or add products to collection
+3. John has editor role (can create/edit studioSessions, cannot manage billing)
+4. Sarah (owner) creates studioSession "Summer Catalog"
+5. John sees studioSession in shared studioSessions list
+6. John can view, edit, or add products to studioSession
 7. Real-time updates show when Sarah or John makes changes
 8. Activity log shows: "Sarah added 10 products at 2:30 PM"
 9. Both can generate, download, pin images
-10. Only Sarah can delete collection or manage team members
+10. Only Sarah can delete studioSession or manage team members
 
 **Future Features**:
 - Role-based permissions (owner, editor, viewer)
 - Real-time collaboration (WebSockets)
-- Activity log per collection
+- Activity log per studioSession
 - Comments on images
 - Shared pinned library
 
@@ -1569,25 +1569,25 @@ Without this documentation:
 **Main Flow**:
 
 1. User generates API key in settings
-2. Developer calls API to create collection:
+2. Developer calls API to create studioSession:
    ```bash
-   curl -X POST https://api.epox.com/v1/collections \
+   curl -X POST https://api.epox.com/v1/studioSessions \
      -H "Authorization: Bearer sk_live_abc123" \
      -d '{
-       "name": "API Collection",
+       "name": "API StudioSession",
        "productIds": ["prod_1", "prod_2"],
        "settings": { "style": "Modern" }
      }'
    ```
-3. API returns collection ID
+3. API returns studioSession ID
 4. Developer polls for status:
    ```bash
-   curl https://api.epox.com/v1/collections/{id}/status
+   curl https://api.epox.com/v1/studioSessions/{id}/status
    ```
 5. API returns progress: `{ "completed": 10, "total": 20 }`
 6. When complete, developer fetches image URLs:
    ```bash
-   curl https://api.epox.com/v1/collections/{id}/assets
+   curl https://api.epox.com/v1/studioSessions/{id}/images
    ```
 7. Developer downloads images programmatically
 
@@ -1607,10 +1607,10 @@ Without this documentation:
 
 **Flow**:
 
-1. User on `/collections/{id}/results` (generation in progress)
+1. User on `/studioSessions/{id}/results` (generation in progress)
 2. 50 of 180 images completed
 3. User's internet disconnects
-4. Polling fails (no response from `/api/collections/{id}/status`)
+4. Polling fails (no response from `/api/studioSessions/{id}/status`)
 5. System shows banner: "Connection lost. Reconnecting..."
 6. System retries polling with exponential backoff:
    - Retry 1: After 2 seconds
@@ -1626,7 +1626,7 @@ Without this documentation:
 
 **Alternative**: User closes browser while offline
 - Generation continues on server (queue-based)
-- User returns later, sees completed collection
+- User returns later, sees completed studioSession
 - Email sent when complete
 
 **Handling**:
@@ -1663,10 +1663,10 @@ Without this documentation:
      }
    }
    ```
-5. After 3 failures, worker marks asset as error:
+5. After 3 failures, worker marks image as error:
    ```typescript
-   await db.generatedAssets.update({
-     where: { id: assetId },
+   await db.generatedImages.update({
+     where: { id: imageId },
      data: {
        status: 'error',
        errorMessage: 'AI service unavailable. Please retry.',
@@ -1699,13 +1699,13 @@ Without this documentation:
 
 ### EC-003: Quota Limits Reached
 
-**Scenario**: User exceeds monthly generation limit mid-collection
+**Scenario**: User exceeds monthly generation limit mid-studioSession
 
 **Flow**:
 
 1. User on free plan: 100 generations/month
 2. User has used 85 generations so far
-3. User creates collection with 45 products × 4 variants = 180 generations
+3. User creates studioSession with 45 products × 4 variants = 180 generations
 4. User clicks "Generate"
 5. System checks quota before enqueueing:
    ```typescript
@@ -1720,7 +1720,7 @@ Without this documentation:
 6. System shows quota modal before generation:
    - "Monthly Limit Exceeded"
    - "You've used 85 of 100 generations"
-   - "This collection requires 180 generations"
+   - "This studioSession requires 180 generations"
    - "Upgrade to Pro for unlimited generations"
    - [Upgrade] [Cancel]
 7. User can either:
@@ -1777,7 +1777,7 @@ Without this documentation:
 8. User compresses image to 8MB
 9. User uploads again
 10. System validates: ✅ JPG, 8MB
-11. System uploads to S3
+11. System uploads to R2
 12. Upload succeeds
 
 **Alternative**: Image has unusual dimensions
@@ -1793,19 +1793,19 @@ Without this documentation:
 
 ---
 
-### EC-005: Concurrent Collection Editing
+### EC-005: Concurrent StudioSession Editing
 
-**Scenario**: User edits collection in 2 browser tabs simultaneously
+**Scenario**: User edits studioSession in 2 browser tabs simultaneously
 
 **Flow**:
 
-1. User opens collection in Tab 1
-2. User opens same collection in Tab 2
+1. User opens studioSession in Tab 1
+2. User opens same studioSession in Tab 2
 3. In Tab 1, user adds 10 products
 4. System auto-saves draft:
    ```typescript
-   await db.collections.update({
-     where: { id: collectionId },
+   await db.studioSessions.update({
+     where: { id: studioSessionId },
      data: {
        selectedProductIds: [...existing, ...new10],
        updatedAt: new Date()
@@ -1821,8 +1821,8 @@ Without this documentation:
 **Ideal Handling (future enhancement)**:
 - Implement optimistic locking with version field:
   ```typescript
-  await db.collections.update({
-    where: { id: collectionId, version: currentVersion },
+  await db.studioSessions.update({
+    where: { id: studioSessionId, version: currentVersion },
     data: {
       ...updates,
       version: currentVersion + 1
@@ -1833,11 +1833,11 @@ Without this documentation:
 - User can merge changes or choose which to keep
 
 **Current MVP Handling**:
-- Show warning in UI: "Collection open in another tab. Changes may conflict."
+- Show warning in UI: "StudioSession open in another tab. Changes may conflict."
 - Detect other tabs via localStorage beacon
 - Suggest closing other tabs
 
-**Alternative**: Two users editing same collection (team collaboration, future)
+**Alternative**: Two users editing same studioSession (team collaboration, future)
 - Use WebSockets for real-time sync
 - Show "Sarah is editing..." indicator
 - Lock fields being edited
@@ -1850,7 +1850,7 @@ Without this documentation:
 
 **Flow**:
 
-1. User navigates to `/collections/new?step=1`
+1. User navigates to `/studioSessions/new?step=1`
 2. System loads products with pagination:
    ```typescript
    GET /api/products?page=1&limit=50
@@ -1877,7 +1877,7 @@ Without this documentation:
 9. User selects more products across multiple pages
 10. Selection persists across pages (client-side Set)
 11. User tries to select 600 products total
-12. System shows warning: "Maximum 500 products per collection. Please deselect 100 products."
+12. System shows warning: "Maximum 500 products per studioSession. Please deselect 100 products."
 13. "Continue" button disabled until count ≤500
 
 **Handling**:
@@ -1905,7 +1905,7 @@ Without this documentation:
 
 ### Phase 2: Primary Use Cases (Weeks 2-5)
 1. UC-001: Onboarding (Week 2)
-2. UC-002: Collection creation (Week 3)
+2. UC-002: StudioSession creation (Week 3)
 3. UC-003-005: Analysis, inspiration, progress (Week 4)
 4. UC-006-008: Download, pin, regenerate (Week 5)
 
@@ -1935,7 +1935,7 @@ Without this documentation:
 ### ✅ Good: Detailed Use Case with Quantifiable Outcomes
 
 ```markdown
-**UC-002: Creating a Collection**
+**UC-002: Creating a StudioSession**
 
 **Quantifiable Outcomes**:
 - Time: 7 minutes user interaction + 12 minutes generation = 19 minutes total
@@ -1975,7 +1975,7 @@ while (attempts < 3) {
       await sleep(5000 * (attempts + 1)); // 5s, 10s
       attempts++;
     } else {
-      await markAsError(assetId, 'AI service unavailable');
+      await markAsError(imageId, 'AI service unavailable');
       throw error;
     }
   }
@@ -1985,11 +1985,11 @@ while (attempts < 3) {
 ### ❌ Bad: Vague Use Case Without Details
 
 ```markdown
-**UC-002: Create Collection**
+**UC-002: Create StudioSession**
 
-User creates a collection and generates images.
+User creates a studioSession and generates images.
 
-**Success**: Collection created.
+**Success**: StudioSession created.
 ```
 
 ### ❌ Bad: Unrealistic Scenario

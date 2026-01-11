@@ -2,6 +2,7 @@
 
 **Status**: Draft
 **Created**: 2026-01-10
+**Updated**: 2026-01-11
 **Author**: Claude
 **Related**: Design Log #001 (Architecture), Design Log #002 (Authentication), Design Log #003 (Data Model)
 
@@ -15,12 +16,12 @@ The `visualizer-client` platform is a SaaS studio for non-technical users to gen
 - **Forgiving** - Easy error recovery, undo actions, clear error messages
 - **Fast** - Responsive UI, optimistic updates, background processing
 
-This design log maps out the complete user journey from first login to managing hundreds of generated assets.
+This design log maps out the complete user journey from first login to managing hundreds of generated images across multiple studio sessions.
 
 ## Problem
 
 We need to design user flows that:
-1. **Onboard new users** efficiently (invitation → first collection in <5 minutes)
+1. **Onboard new users** efficiently (invitation → first session in <5 minutes)
 2. **Guide bulk generation** through a multi-step wizard without overwhelming users
 3. **Handle errors gracefully** (network failures, AI errors, quota limits)
 4. **Manage assets at scale** (view, filter, download, pin, delete 100s of images)
@@ -28,16 +29,16 @@ We need to design user flows that:
 
 ## Questions and Answers
 
-### Q1: Should onboarding be separate from collection creation, or combined?
+### Q1: Should onboarding be separate from session creation, or combined?
 **A**: Combined, but with smart defaults:
 - Skip product selection if client has <20 products (auto-select all)
 - Skip inspiration if user wants quick test (use defaults)
-- Progressive: "Create First Collection" → "Create Collection" (different CTAs)
+- Progressive: "Create First Session" → "Create Session" (different CTAs)
 
 ### Q2: How do we handle users who abandon mid-flow?
 **A**: Auto-save drafts:
-- Collection status: `draft` → saves progress automatically
-- User can return to `/collections/[id]/edit` to resume
+- StudioSession status: `draft` → saves progress automatically
+- User can return to `/sessions/[id]/edit` to resume
 - Show "Resume Draft" card on dashboard
 - Auto-delete drafts older than 7 days
 
@@ -45,13 +46,13 @@ We need to design user flows that:
 **A**: Graceful degradation:
 - Step 2 (Analyze): If AI fails → use metadata-only fallback
 - Step 3 (Inspiration): If scene analysis fails → allow manual settings
-- Step 4 (Generate): If product generation fails → mark as error, continue queue
+- Step 4 (Generate): If product generation fails → mark flow as error, continue queue
 
 ### Q4: Should users see generation progress in real-time or just get notified?
 **A**: Hybrid approach:
 - Real-time: If user stays on results page (polling every 5s)
 - Notification: Browser notification when user switches tabs
-- Email: Optional summary email when collection completes
+- Email: Optional summary email when flow completes
 
 ### Q5: How do we prevent accidental deletions?
 **A**: Multiple safeguards:
@@ -62,7 +63,7 @@ We need to design user flows that:
 
 ### Q6: Should the 4-step wizard be separate pages or a single page with tabs?
 **A**: Separate pages with URL state:
-- `/collections/new/select` → `/analyze` → `/inspire` → `/generate`
+- `/sessions/new/select` → `/analyze` → `/inspire` → `/generate`
 - Back/forward browser navigation works
 - Can bookmark/share specific step
 - Clearer progress indication
@@ -79,12 +80,12 @@ graph TB
 
     Start --> Signup[Sign up via invitation link]
     Signup --> Dashboard[Land on Dashboard]
-    Dashboard --> FirstCollection[Create First Collection CTA]
+    Dashboard --> FirstSession[Create First Session CTA]
 
-    FirstCollection --> Step1[Step 1: Select Products]
+    FirstSession --> Step1[Step 1: Select Products]
     Step1 --> Step2[Step 2: Analyze Products]
     Step2 --> Step3[Step 3: Choose Inspirations]
-    Step3 --> Step4[Step 4: Generate]
+    Step3 --> Step4[Step 4: Configure & Generate]
 
     Step4 --> GenerationProgress[View Generation Progress]
     GenerationProgress --> Results[View Results Gallery]
@@ -95,12 +96,12 @@ graph TB
     AssetActions --> Delete[Delete Unwanted]
     AssetActions --> Regenerate[Regenerate with New Settings]
 
-    Results --> NextCollection[Create Another Collection]
-    NextCollection --> Step1
+    Results --> NextSession[Create Another Session]
+    NextSession --> Step1
 
     Dashboard --> Settings[User Settings]
-    Dashboard --> PastCollections[View Past Collections]
-    PastCollections --> Results
+    Dashboard --> PastSessions[View Past Sessions]
+    PastSessions --> Results
 ```
 
 ---
@@ -108,7 +109,7 @@ graph TB
 ## Flow 1: Onboarding Flow
 
 ### Overview
-From invitation email to first collection created.
+From invitation email to first studio session created.
 
 ### User Story
 > "As a new user, I want to quickly understand the platform and generate my first product images without feeling overwhelmed."
@@ -135,10 +136,10 @@ sequenceDiagram
 
     SignupPage->>Dashboard: Redirect to dashboard
     Dashboard->>User: Show welcome state
-    Note over Dashboard: "Welcome! Let's create your<br/>first collection of product images"
+    Note over Dashboard: "Welcome! Let's create your<br/>first studio session"
 
-    User->>Dashboard: Click "Create First Collection"
-    Dashboard->>Wizard: Navigate to /collections/new
+    User->>Dashboard: Click "Create First Session"
+    Dashboard->>Wizard: Navigate to /sessions/new
 
     Wizard->>User: Show Step 1: Select Products
     Note over Wizard: Smart default: If <20 products,<br/>auto-select all
@@ -151,13 +152,13 @@ sequenceDiagram
     Note over Wizard: Suggested: "Modern", "Minimalist"<br/>based on analysis
 
     User->>Wizard: Click "Generate"
-    Wizard->>Results: Navigate to /collections/[id]/results
+    Wizard->>Results: Navigate to /sessions/[id]/flows/[flowId]/results
 
     Results->>User: Show real-time progress
     Note over Results: "Generating 15 images...<br/>3 of 15 completed"
 
     Results->>User: First image appears!
-    Note over Results: 🎉 Celebrate first completion
+    Note over Results: Celebrate first completion
 ```
 
 ### Step-by-Step Breakdown
@@ -229,12 +230,12 @@ interface SignupPageState {
 **Empty State UI**:
 ```
 ┌────────────────────────────────────────────────────────┐
-│ 🎉 Welcome to Epox Visualizer!                        │
+│  Welcome to Epox Visualizer!                          │
 │                                                        │
-│ Let's create your first collection of product images. │
+│ Let's create your first studio session.               │
 │ It only takes a few minutes.                          │
 │                                                        │
-│    [Create Your First Collection]                     │
+│    [Create Your First Session]                        │
 │                                                        │
 │ Or watch a 2-minute tutorial →                        │
 └────────────────────────────────────────────────────────┘
@@ -247,16 +248,16 @@ Your Products (15)
 ```
 
 **Navigation Options**:
-- Primary CTA: "Create Your First Collection" (large, prominent)
+- Primary CTA: "Create Your First Session" (large, prominent)
 - Secondary: "View Products" (link)
 - Secondary: "Account Settings" (top-right)
 
-#### Step 4-7: Collection Creation Wizard
-See **Flow 2: Main Collection Creation Flow** below
+#### Step 4-7: Studio Session Creation Wizard
+See **Flow 2: Main Studio Session Creation Flow** below
 
 ---
 
-## Flow 2: Main Collection Creation Flow
+## Flow 2: Main Studio Session Creation Flow
 
 ### Overview
 4-step wizard for bulk product visualization generation.
@@ -270,7 +271,7 @@ See **Flow 2: Main Collection Creation Flow** below
 graph LR
     A[Step 1: Select Products] --> B[Step 2: Analyze]
     B --> C[Step 3: Choose Inspirations]
-    C --> D[Step 4: Generate]
+    C --> D[Step 4: Configure & Generate]
     D --> E[Results]
 
     B -.Back.-> A
@@ -292,14 +293,72 @@ graph LR
 └──────────────────────────────────────────────────────┘
 ```
 
+### Data Model: StudioSession → Flow → GeneratedImage
+
+```typescript
+// Step 1-3: StudioSession is created and configured
+interface StudioSession {
+  id: string;
+  clientId: string;
+  name: string;
+  productIds: string[];  // Selected products
+  selectedBaseImages: Record<string, string>;  // productId → baseImageUrl
+  status: 'draft' | 'configured' | 'active' | 'archived';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Step 4: Flow is created within the session
+interface Flow {
+  id: string;
+  studioSessionId: string;
+  productIds: string[];  // Can be subset or all from session
+  status: 'empty' | 'configured' | 'generating' | 'completed' | 'error';
+  settings: FlowGenerationSettings;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Step 4+: Images are generated for the flow
+interface GeneratedImage {
+  id: string;
+  flowId: string;
+  r2Key: string;  // R2 storage path
+  productIds: string[];  // Products featured in this image
+  status: 'pending' | 'generating' | 'completed' | 'error';
+  settings: FlowGenerationSettings;  // Snapshot of settings used
+  jobId: string | null;  // Redis job ID (transient)
+  errorMessage: string | null;
+  pinned: boolean;
+  deletedAt: Date | null;
+  createdAt: Date;
+  completedAt: Date | null;
+}
+
+interface FlowGenerationSettings {
+  style: string;
+  lighting: string;
+  colorScheme: string;
+  surroundings: string;
+  props: string[];
+  sceneImageUrl: string;
+  aspectRatio: '1:1' | '16:9' | '9:16';
+  varietyLevel: number;  // 1-10
+  matchProductColors: boolean;
+  roomType: string;
+  cameraAngle: string;
+  promptText: string;
+}
+```
+
 ### Step 1: Select Products
 
-**URL**: `/collections/new/select`
+**URL**: `/sessions/new/select`
 
 **Page Layout**:
 ```
 ┌────────────────────────────────────────────────────────┐
-│ Create New Collection                                  │
+│ Create New Studio Session                             │
 │                                                        │
 │ Step 1 of 4: Select Products                          │
 ├────────────────────────────────────────────────────────┤
@@ -309,10 +368,10 @@ graph LR
 ├───┬───────┬──────────────┬─────────┬──────────────────┤
 │ ☑ │ Image │ Name         │ SKU     │ Category         │
 ├───┼───────┼──────────────┼─────────┼──────────────────┤
-│ ☑ │ 🖼️    │ Modern Desk  │ DSK-001 │ Furniture        │
-│ ☑ │ 🖼️    │ Velvet Sofa  │ SOF-042 │ Furniture        │
-│ ☐ │ 🖼️    │ Bath Vanity  │ VAN-103 │ Fixtures         │
-│ ☑ │ 🖼️    │ King Bed     │ BED-077 │ Furniture        │
+│ ☑ │       │ Modern Desk  │ DSK-001 │ Furniture        │
+│ ☑ │       │ Velvet Sofa  │ SOF-042 │ Furniture        │
+│ ☐ │       │ Bath Vanity  │ VAN-103 │ Fixtures         │
+│ ☑ │       │ King Bed     │ BED-077 │ Furniture        │
 └───┴───────┴──────────────┴─────────┴──────────────────┘
 
                     [3 selected]  [Next: Analyze →]
@@ -349,17 +408,26 @@ interface SelectProductsState {
 ```
 
 **Actions**:
-- "Next: Analyze →" - Saves draft, navigates to Step 2
-- "Cancel" - Returns to dashboard (draft saved)
+- "Next: Analyze →" - Creates StudioSession draft, navigates to Step 2
+- "Cancel" - Returns to dashboard (draft saved if any products selected)
 
 **Smart Behaviors**:
 - If client has <20 products → Auto-select all by default
-- If user previously created collections → Pre-select same category
+- If user previously created sessions → Pre-select same category
 - Save draft every 30 seconds (auto-save indicator)
+
+**API Call**:
+```typescript
+// POST /api/studio-sessions
+const session = await createStudioSession({
+  productIds: selectedProductIds,
+  status: 'draft'
+});
+```
 
 ### Step 2: Analyze Products
 
-**URL**: `/collections/new/analyze`
+**URL**: `/sessions/[sessionId]/analyze`
 
 **Flow**:
 ```mermaid
@@ -370,7 +438,7 @@ sequenceDiagram
     participant AI
 
     User->>UI: Click "Next: Analyze"
-    UI->>API: POST /api/collections/[id]/analyze
+    UI->>API: POST /api/studio-sessions/[id]/analyze
     API->>AI: Analyze product metadata
 
     Note over UI: Show loading state<br/>"Analyzing your products..."
@@ -387,7 +455,7 @@ sequenceDiagram
 ┌────────────────────────────────────────────────────────┐
 │ Step 2 of 4: Analyzing Your Products                  │
 │                                                        │
-│         🤖 AI is analyzing your selection...           │
+│         AI is analyzing your selection...             │
 │                                                        │
 │         ▓▓▓▓▓▓▓▓░░░░░░░░  60%                         │
 │                                                        │
@@ -462,7 +530,7 @@ If AI analysis fails:
 
 ### Step 3: Choose Inspirations
 
-**URL**: `/collections/new/inspire`
+**URL**: `/sessions/[sessionId]/inspire`
 
 **Page Layout**:
 ```
@@ -475,7 +543,7 @@ If AI analysis fails:
 │  [Upload]  [Unsplash]  [My Library]                   │
 ├────────────────────────────────────────────────────────┤
 │                                                        │
-│  Suggested for your collection:                       │
+│  Suggested for your session:                          │
 │  Based on: Office, Living Room, Bedroom, Modern       │
 │                                                        │
 │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐    │
@@ -512,15 +580,15 @@ sequenceDiagram
     participant User
     participant UI
     participant API
-    participant S3
+    participant R2
 
     User->>UI: Drag & drop images
     UI->>UI: Validate (format, size, count)
     UI->>User: Show preview + upload progress
 
     UI->>API: POST /api/inspirations/upload
-    API->>S3: Upload to s3://inspirations/
-    S3-->>API: Image URL
+    API->>R2: Upload to r2://clients/{clientId}/inspirations/
+    R2-->>API: Image URL
 
     API->>AI: Analyze scene (async)
     AI-->>API: Scene attributes
@@ -629,8 +697,14 @@ interface UnsplashSearchResponse {
 
 **Query**:
 ```sql
-SELECT * FROM generated_assets
-WHERE client_id = $clientId
+SELECT * FROM generated_images
+WHERE flow_id IN (
+  SELECT id FROM flows
+  WHERE studio_session_id IN (
+    SELECT id FROM studio_sessions
+    WHERE client_id = $clientId
+  )
+)
   AND pinned = TRUE
   AND deleted_at IS NULL
   AND status = 'completed'
@@ -641,19 +715,19 @@ ORDER BY created_at DESC;
 ```typescript
 // If Step 2 detected "Office, Living Room, Bedroom"
 // Show filter chips: [All] [Office] [Living Room] [Bedroom]
-const relevantRoomTypes = analysis.roomTypeDistribution.keys();
+const relevantRoomTypes = Object.keys(analysis.roomTypeDistribution);
 ```
 
-### Step 4: Generate
+### Step 4: Configure & Generate
 
-**URL**: `/collections/new/generate`
+**URL**: `/sessions/[sessionId]/generate`
 
 **Page Layout** (Review & Confirm):
 ```
 ┌────────────────────────────────────────────────────────┐
 │ Step 4 of 4: Ready to Generate                        │
 │                                                        │
-│ Review your collection settings:                      │
+│ Review your session settings:                         │
 │                                                        │
 │ ✓ Products Selected: 3                                │
 │   Modern Desk, Velvet Sofa, King Bed                  │
@@ -693,38 +767,54 @@ sequenceDiagram
     participant API
     participant Queue
     participant AI
+    participant R2
 
     User->>UI: Click "Generate"
-    UI->>API: POST /api/collections/[id]/generate
+    UI->>API: POST /api/studio-sessions/[id]/flows
 
-    Note over API: Merge inspiration analyses<br/>Build base settings
+    Note over API: 1. Create Flow record<br/>2. Merge inspiration analyses<br/>3. Build base settings
 
     loop For each product
-        API->>DB: Create GeneratedAsset (pending)
+        API->>DB: Create GeneratedImage (pending)
         API->>Queue: Enqueue generation job
     end
 
-    API-->>UI: Generation started (jobIds)
-    UI->>UI: Navigate to /collections/[id]/results
+    API-->>UI: Flow created (flowId, jobIds)
+    UI->>UI: Navigate to /sessions/[id]/flows/[flowId]/results
 
     par Background Processing
         Queue->>AI: Generate image (product 1)
         AI-->>Queue: Image data
-        Queue->>S3: Upload image
-        Queue->>DB: Update asset (completed)
+        Queue->>R2: Upload to clients/{clientId}/sessions/{sessionId}/media/
+        Queue->>DB: Update GeneratedImage (completed)
         Queue-->>UI: SSE/Polling update
         UI->>User: Show first image ✨
     end
 ```
 
 **What Happens on "Generate"**:
-1. **Merge Scene Analyses**: Combine all inspiration image analyses
-2. **Build Base Settings**: Create `FlowGenerationSettings` template
-3. **Create Assets**: One `GeneratedAsset` per product
-4. **Assign Rooms**: Use Step 2 analysis for per-product `roomType`
-5. **Enqueue Jobs**: Add to Redis generation queue
-6. **Update Collection**: Set status to `generating`
-7. **Navigate**: Redirect to results page
+1. **Create Flow**: New Flow record linked to StudioSession
+2. **Merge Scene Analyses**: Combine all inspiration image analyses
+3. **Build Base Settings**: Create `FlowGenerationSettings` template
+4. **Create Images**: One `GeneratedImage` per product
+5. **Assign Rooms**: Use Step 2 analysis for per-product `roomType`
+6. **Enqueue Jobs**: Add to Redis generation queue
+7. **Update Statuses**: StudioSession → `active`, Flow → `generating`
+8. **Navigate**: Redirect to results page
+
+**Flow Creation**:
+```typescript
+// POST /api/studio-sessions/[sessionId]/flows
+const flow = await createFlow({
+  studioSessionId: session.id,
+  productIds: session.productIds,  // All products from session
+  status: 'configured',
+  settings: mergeInspirationAnalyses(inspirationImages)
+});
+
+// Update session status
+await updateStudioSession(session.id, { status: 'active' });
+```
 
 **Base Settings Construction**:
 ```typescript
@@ -753,18 +843,33 @@ const baseSettings: FlowGenerationSettings = {
 **Per-Product Final Settings**:
 ```typescript
 // For "Modern Desk" (productId: desk-1)
-const deskAssetSettings: FlowGenerationSettings = {
+const deskImageSettings: FlowGenerationSettings = {
   ...baseSettings,
   roomType: 'Office', // From Step 2 analysis
   promptText: 'Professional modern office with the desk as the focal point, natural lighting, neutral tones, plants and books as props',
 };
 
-// For "Velvet Sofa" (productId: sofa-1)
-const sofaAssetSettings: FlowGenerationSettings = {
-  ...baseSettings,
-  roomType: 'Living Room', // From Step 2 analysis
-  promptText: 'Contemporary living room with the sofa as centerpiece, natural lighting, neutral tones, plants and books as props',
-};
+// Create GeneratedImage record
+const generatedImage = await createGeneratedImage({
+  flowId: flow.id,
+  productIds: ['desk-1'],
+  settings: deskImageSettings,
+  status: 'pending',
+  r2Key: `clients/${clientId}/sessions/${sessionId}/media/${imageId}.jpg`
+});
+```
+
+**R2 Storage Path**:
+```
+r2://epox-visualizer/
+  clients/
+    {clientId}/
+      sessions/
+        {sessionId}/
+          media/
+            {generatedImageId}.jpg
+          inspirations/
+            {inspirationId}.jpg
 ```
 
 ---
@@ -772,19 +877,19 @@ const sofaAssetSettings: FlowGenerationSettings = {
 ## Flow 3: Asset Management Flow
 
 ### Overview
-Viewing, filtering, downloading, pinning, and deleting generated assets.
+Viewing, filtering, downloading, pinning, and deleting generated images.
 
 ### Results Gallery Page
 
-**URL**: `/collections/[id]/results`
+**URL**: `/sessions/[sessionId]/flows/[flowId]/results`
 
 **Page Layout**:
 ```
 ┌────────────────────────────────────────────────────────┐
-│ ← Back to Collections                                  │
+│ ← Back to Sessions                                     │
 │                                                        │
-│ Collection: "Modern Furniture Set"                    │
-│ Status: Generating... 3 of 3 completed (100%)         │
+│ Session: "Modern Furniture Set"                       │
+│ Flow: #1 - Status: Generating... 3 of 3 completed     │
 │                                                        │
 │ [Download All]  [Pin Selected]  [Delete Selected]     │
 │                                                        │
@@ -814,12 +919,12 @@ Viewing, filtering, downloading, pinning, and deleting generated assets.
 **Polling Strategy**:
 ```typescript
 // Poll every 5 seconds while status is 'generating'
-const { data: assets } = useQuery({
-  queryKey: ['generated-assets', collectionId],
-  queryFn: () => fetchCollectionAssets(collectionId),
+const { data: images } = useQuery({
+  queryKey: ['generated-images', flowId],
+  queryFn: () => fetchFlowImages(flowId),
   refetchInterval: (data) => {
     const hasGenerating = data?.some(
-      asset => ['pending', 'generating'].includes(asset.status)
+      image => ['pending', 'generating'].includes(image.status)
     );
     return hasGenerating ? 5000 : false; // 5s or stop polling
   },
@@ -830,7 +935,7 @@ const { data: assets } = useQuery({
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Pending: Asset created
+    [*] --> Pending: Image created
     Pending --> Generating: Worker picked up
     Generating --> Completed: Success
     Generating --> Error: AI failed
@@ -879,6 +984,46 @@ stateDiagram-v2
 └──────────────┘
 ```
 
+### Flow Status Updates
+
+**Flow Status Progression**:
+```typescript
+type FlowStatus = 'empty' | 'configured' | 'generating' | 'completed' | 'error';
+
+// empty → Flow created, no settings yet
+// configured → Settings applied, ready to generate
+// generating → At least one image is pending/generating
+// completed → All images completed successfully
+// error → All images completed, but some failed
+```
+
+**Auto-Update Flow Status**:
+```typescript
+// After each GeneratedImage status change
+async function updateFlowStatus(flowId: string) {
+  const images = await getFlowImages(flowId);
+
+  const allCompleted = images.every(img => img.status === 'completed');
+  const anyError = images.some(img => img.status === 'error');
+  const anyGenerating = images.some(img =>
+    ['pending', 'generating'].includes(img.status)
+  );
+
+  let flowStatus: FlowStatus;
+  if (allCompleted && !anyError) {
+    flowStatus = 'completed';
+  } else if (anyGenerating) {
+    flowStatus = 'generating';
+  } else if (anyError) {
+    flowStatus = 'error';
+  } else {
+    flowStatus = 'configured';
+  }
+
+  await updateFlow(flowId, { status: flowStatus });
+}
+```
+
 ### Asset Actions
 
 #### 1. Download Single Image
@@ -889,12 +1034,12 @@ sequenceDiagram
     participant User
     participant UI
     participant API
-    participant S3
+    participant R2
 
     User->>UI: Click "Download"
-    UI->>API: GET /api/generated-assets/[id]/download
-    API->>S3: Get signed URL (expiry: 1 hour)
-    S3-->>API: Signed URL
+    UI->>API: GET /api/generated-images/[id]/download
+    API->>R2: Get signed URL (expiry: 1 hour)
+    R2-->>API: Signed URL
     API-->>UI: Redirect to URL
     UI->>User: Browser downloads image
 ```
@@ -916,9 +1061,10 @@ sequenceDiagram
     participant UI
     participant API
     participant Worker
+    participant R2
 
     User->>UI: Click "Download All"
-    UI->>API: POST /api/collections/[id]/download
+    UI->>API: POST /api/flows/[id]/download
     Note over API: Create ZIP archive job
     API->>Worker: Queue ZIP creation (async)
     API-->>UI: Job ID
@@ -926,9 +1072,9 @@ sequenceDiagram
     UI->>User: Show progress modal
     Note over UI: "Preparing download...<br/>This may take a minute"
 
-    Worker->>Worker: Fetch all images from S3
+    Worker->>R2: Fetch all images
     Worker->>Worker: Create ZIP archive
-    Worker->>S3: Upload ZIP
+    Worker->>R2: Upload ZIP
     Worker->>DB: Update job status
 
     loop Poll every 2s
@@ -973,18 +1119,18 @@ sequenceDiagram
 **Action**:
 ```typescript
 // Toggle pin status
-async function togglePin(assetId: string) {
-  await fetch(`/api/generated-assets/${assetId}`, {
+async function togglePin(imageId: string) {
+  await fetch(`/api/generated-images/${imageId}`, {
     method: 'PATCH',
     body: JSON.stringify({ pinned: true }),
   });
 
   // Optimistic update
-  queryClient.setQueryData(['assets'], (old) =>
-    old.map(asset =>
-      asset.id === assetId
-        ? { ...asset, pinned: true }
-        : asset
+  queryClient.setQueryData(['images'], (old) =>
+    old.map(image =>
+      image.id === imageId
+        ? { ...image, pinned: true }
+        : image
     )
   );
 
@@ -1018,9 +1164,9 @@ sequenceDiagram
     Note over Modal: Pre-filled with current settings<br/>User can tweak style, room, etc.
 
     User->>Modal: Adjust settings + confirm
-    Modal->>API: POST /api/generated-assets (new asset)
+    Modal->>API: POST /api/generated-images (new image)
     API->>Queue: Enqueue new generation
-    API-->>Modal: New asset ID
+    API-->>Modal: New image ID
 
     Modal->>User: Close modal
     User->>UI: See new "Generating..." card
@@ -1053,13 +1199,13 @@ sequenceDiagram
 ```
 
 **What Happens**:
-1. Create new `GeneratedAsset` record
+1. Create new `GeneratedImage` record
 2. Copy settings from original, apply user changes
 3. Enqueue new generation job
-4. Original asset remains (keep for comparison)
+4. Original image remains (keep for comparison)
 5. Both shown in gallery, sorted by newest first
 
-#### 5. Delete Asset
+#### 5. Delete Image
 
 **Confirmation Modal**:
 ```
@@ -1075,21 +1221,21 @@ sequenceDiagram
 
 **Action**:
 ```typescript
-async function deleteAsset(assetId: string) {
-  await fetch(`/api/generated-assets/${assetId}`, {
+async function deleteImage(imageId: string) {
+  await fetch(`/api/generated-images/${imageId}`, {
     method: 'DELETE',
   });
 
   // Soft-delete: sets deletedAt timestamp
   // Image removed from gallery immediately
-  // S3 object marked for deletion after 30 days
+  // R2 object marked for deletion after 30 days
 
   toast.success(
     'Deleted. Undo?',
     {
       action: {
         label: 'Undo',
-        onClick: () => undoDelete(assetId),
+        onClick: () => undoDelete(imageId),
       },
       duration: 10000, // 10 seconds to undo
     }
@@ -1099,8 +1245,8 @@ async function deleteAsset(assetId: string) {
 
 **Undo Flow**:
 ```typescript
-async function undoDelete(assetId: string) {
-  await fetch(`/api/generated-assets/${assetId}/restore`, {
+async function undoDelete(imageId: string) {
+  await fetch(`/api/generated-images/${imageId}/restore`, {
     method: 'POST',
   });
 
@@ -1149,7 +1295,7 @@ async function undoDelete(assetId: string) {
 ```typescript
 interface GalleryFilters {
   roomTypes: string[];
-  status: AssetStatus[];
+  status: GeneratedImageStatus[];
   pinnedOnly: boolean;
   dateRange: {
     start: Date | null;
@@ -1286,7 +1432,7 @@ if (selectedProductIds.length === 0) {
 }
 
 if (selectedProductIds.length > 100) {
-  errors.selectedProducts = 'Maximum 100 products per collection';
+  errors.selectedProducts = 'Maximum 100 products per session';
 }
 ```
 
@@ -1311,9 +1457,9 @@ if (selectedProductIds.length > 100) {
 - Timeout (>2 minutes)
 - Invalid product image
 
-**Per-Asset Error Handling**:
+**Per-Image Error Handling**:
 ```typescript
-interface GeneratedAsset {
+interface GeneratedImage {
   status: 'error';
   errorMessage: string;
   errorCode: 'GEMINI_ERROR' | 'TIMEOUT' | 'POLICY_VIOLATION' | 'INVALID_IMAGE';
@@ -1366,9 +1512,9 @@ interface GeneratedAsset {
 if (error.code === 'TIMEOUT' || error.code === 'RATE_LIMIT') {
   if (retryCount < 3) {
     await sleep(Math.min(1000 * 2 ** retryCount, 30000));
-    await retryGeneration(assetId);
+    await retryGeneration(imageId);
   } else {
-    markAsFailed(assetId, 'Max retries exceeded');
+    markAsFailed(imageId, 'Max retries exceeded');
   }
 }
 ```
@@ -1376,7 +1522,7 @@ if (error.code === 'TIMEOUT' || error.code === 'RATE_LIMIT') {
 **Batch Error Summary**:
 ```
 ┌────────────────────────────────────────────────────────┐
-│ Collection: "Modern Furniture Set"                    │
+│ Flow #1: "Modern Furniture Set"                       │
 │                                                        │
 │ ⚠️ 2 of 10 images failed to generate                   │
 │                                                        │
@@ -1441,7 +1587,7 @@ if (error.code === 'TIMEOUT' || error.code === 'RATE_LIMIT') {
 
 **Scenarios**:
 - Database connection lost
-- S3 upload failed
+- R2 upload failed
 - Redis queue unavailable
 - Unknown server error (500)
 
@@ -1541,7 +1687,7 @@ User account and client settings management.
 **Actions**:
 - Update name → PATCH `/api/user/profile`
 - Change email → Requires verification
-- Upload photo → POST `/api/user/photo` → S3
+- Upload photo → POST `/api/user/photo` → R2
 
 ### Tab 2: Notifications
 
@@ -1590,15 +1736,15 @@ interface NotificationSettings {
 
 **URL**: `/settings/defaults`
 
-**Purpose**: Pre-fill wizard settings for faster collection creation
+**Purpose**: Pre-fill wizard settings for faster session creation
 
 **Settings**:
 ```
 ┌────────────────────────────────────────────────────────┐
 │ Default Generation Settings                            │
 │                                                        │
-│ These settings will pre-fill the collection wizard.   │
-│ You can always change them when creating collections.  │
+│ These settings will pre-fill the session wizard.      │
+│ You can always change them when creating sessions.    │
 │                                                        │
 │ Aspect Ratio                                           │
 │ ⦿ Square (1:1)    ○ Landscape (16:9)    ○ Portrait    │
@@ -1696,7 +1842,7 @@ sequenceDiagram
     Modal->>API: DELETE /api/user/account
     API->>DB: Soft-delete user
     API->>DB: Soft-delete member
-    API->>DB: Mark assets for deletion
+    API->>DB: Mark images for deletion
     API-->>Modal: Success
 
     Modal->>User: Redirect to goodbye page
@@ -1710,47 +1856,49 @@ sequenceDiagram
 1. Create invitation email template
 2. Build signup page with token validation
 3. Implement dashboard empty state
-4. Add "Create First Collection" CTA
+4. Add "Create First Session" CTA
 5. Test invitation → signup → dashboard flow
 
-### Phase 2: Collection Wizard - Step 1 (Week 2)
+### Phase 2: Session Wizard - Step 1 (Week 2)
 1. Build product table component
 2. Implement search, filter, sort
 3. Add multi-select with checkboxes
-4. Create draft auto-save logic
+4. Create draft auto-save logic (StudioSession status: 'draft')
 5. Add "Next" navigation
 
-### Phase 3: Collection Wizard - Step 2 (Week 2)
+### Phase 3: Session Wizard - Step 2 (Week 2)
 1. Implement product analysis API
 2. Build loading state UI
 3. Create results display component
 4. Add error fallback (metadata-only)
 5. Test analysis flow
 
-### Phase 4: Collection Wizard - Step 3 (Week 3)
+### Phase 4: Session Wizard - Step 3 (Week 3)
 1. Build inspiration picker tabs
-2. Implement upload functionality
+2. Implement upload functionality (R2)
 3. Integrate Unsplash API
 4. Build library view (pinned images)
 5. Add scene analysis
 
-### Phase 5: Collection Wizard - Step 4 (Week 3)
+### Phase 5: Session Wizard - Step 4 (Week 3)
 1. Build review/confirm page
 2. Implement advanced settings (collapsible)
-3. Create generation trigger logic
-4. Build progress indicator
-5. Test end-to-end wizard
+3. Create Flow creation logic
+4. Create generation trigger (GeneratedImage records)
+5. Build progress indicator
+6. Test end-to-end wizard
 
 ### Phase 6: Results Gallery (Week 4)
 1. Build gallery grid layout
 2. Implement real-time polling
 3. Add filter and sort controls
-4. Create asset action buttons
+4. Create image action buttons
 5. Test progress updates
+6. Implement Flow status auto-update
 
 ### Phase 7: Asset Actions (Week 4)
-1. Implement single download
-2. Build bulk download (ZIP)
+1. Implement single download (R2 signed URLs)
+2. Build bulk download (ZIP from R2)
 3. Add pin/unpin functionality
 4. Create regenerate modal
 5. Implement soft-delete + undo
@@ -1759,8 +1907,9 @@ sequenceDiagram
 1. Add network error handling
 2. Implement auth error redirects
 3. Build validation feedback
-4. Create AI error UI
+4. Create AI error UI (per-image and batch)
 5. Add quota limit warnings
+6. Implement Flow error status handling
 
 ### Phase 9: Settings (Week 5)
 1. Build settings layout with tabs
@@ -1816,22 +1965,22 @@ function ProgressIndicator({ steps }: { steps: WizardStep[] }) {
 
 ```typescript
 // Update UI immediately, rollback on error
-async function pinAsset(assetId: string) {
+async function pinImage(imageId: string) {
   // Optimistic update
-  queryClient.setQueryData(['assets'], (old) =>
-    old.map(asset =>
-      asset.id === assetId ? { ...asset, pinned: true } : asset
+  queryClient.setQueryData(['images'], (old) =>
+    old.map(image =>
+      image.id === imageId ? { ...image, pinned: true } : image
     )
   );
 
   try {
-    await api.updateAsset(assetId, { pinned: true });
+    await api.updateImage(imageId, { pinned: true });
     toast.success('Pinned!');
   } catch (error) {
     // Rollback
-    queryClient.setQueryData(['assets'], (old) =>
-      old.map(asset =>
-        asset.id === assetId ? { ...asset, pinned: false } : asset
+    queryClient.setQueryData(['images'], (old) =>
+      old.map(image =>
+        image.id === imageId ? { ...image, pinned: false } : image
       )
     );
     toast.error('Failed to pin. Try again.');
@@ -1866,7 +2015,7 @@ async function analyzeProducts(productIds: string[]) {
 // ❌ Silent failure, user confused
 async function generateImages() {
   try {
-    await api.startGeneration(collectionId);
+    await api.createFlow(sessionId);
   } catch (error) {
     // Nothing shown to user! Bad!
     console.error(error);
@@ -1876,11 +2025,11 @@ async function generateImages() {
 // ✅ Clear error message
 async function generateImages() {
   try {
-    await api.startGeneration(collectionId);
+    await api.createFlow(sessionId);
     toast.success('Generation started!');
   } catch (error) {
     toast.error('Failed to start generation. Please try again.');
-    logger.error('Generation start failed', error);
+    logger.error('Flow creation failed', error);
   }
 }
 ```
@@ -1957,6 +2106,15 @@ function ProductList() {
 - ✅ Context-appropriate
 - ❌ Need to design both patterns
 
+### StudioSession → Flow Relationship
+**Chosen**: One-to-many (session can have multiple flows)
+**Rationale**:
+- ✅ Allows iterating on settings without recreating session
+- ✅ Clean separation: session = products + inspirations, flow = generation run
+- ✅ Can track generation history per session
+- ❌ Slightly more complex data model
+- ❌ Need to manage flow status separately
+
 ---
 
 ## Open Questions
@@ -1965,15 +2123,15 @@ function ProductList() {
    - Proposal: Optional 2-minute video + "Skip" button
    - Track completion, show again if skipped
 
-2. **Collection templates**: Should we offer pre-made templates (e.g., "Modern Furniture", "Outdoor Collection")?
+2. **Session templates**: Should we offer pre-made templates (e.g., "Modern Furniture", "Outdoor Session")?
    - Proposal: Phase 2 feature
    - Admins can create templates per client
 
-3. **Bulk regeneration**: Should users be able to regenerate an entire collection with new settings?
-   - Proposal: Yes, add "Regenerate Collection" button
-   - Creates new collection with same products + new settings
+3. **Bulk regeneration**: Should users be able to regenerate an entire flow with new settings?
+   - Proposal: Yes, add "Regenerate Flow" button
+   - Creates new flow in same session with new settings
 
-4. **Asset sharing**: Should users be able to share individual assets or collections via link?
+4. **Asset sharing**: Should users be able to share individual images or sessions via link?
    - Proposal: Phase 2 feature
    - Generate signed URL, expires in 7 days
 
@@ -1981,19 +2139,25 @@ function ProductList() {
    - Proposal: Yes, but subtle (no modal on load)
    - Show shortcuts in settings
 
+6. **Multiple flows per session**: How should UI handle viewing multiple flows in one session?
+   - Proposal: Flow switcher dropdown in results page
+   - Show all flows in session detail page
+
 ---
 
 ## Success Criteria
 
-- [ ] New user can sign up and create first collection in <5 minutes
+- [ ] New user can sign up and create first session in <5 minutes
 - [ ] Wizard auto-saves progress, can resume if abandoned
 - [ ] All error states have clear, actionable messages
 - [ ] Real-time progress updates work without page refresh
-- [ ] Can download single or bulk images (ZIP)
-- [ ] Pin/unpin assets for reuse as inspiration
+- [ ] Can download single or bulk images (ZIP from R2)
+- [ ] Pin/unpin images for reuse as inspiration
 - [ ] Soft-delete with 10-second undo works
 - [ ] Settings persist across sessions
 - [ ] All flows tested on mobile (responsive)
 - [ ] Accessibility: keyboard navigation works throughout
 - [ ] Page load time <2 seconds (with skeleton loaders)
 - [ ] 95%+ of generations complete without user intervention
+- [ ] Flow status accurately reflects image statuses
+- [ ] StudioSession → Flow → GeneratedImage hierarchy clear in UI

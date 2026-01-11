@@ -1,7 +1,8 @@
 # Design Log #003: Data Model & Terminology
 
-**Status**: Draft
+**Status**: Approved
 **Created**: 2026-01-10
+**Updated**: 2026-01-11
 **Author**: Claude
 **Related**: Design Log #001 (Architecture), Design Log #002 (Authentication)
 
@@ -9,102 +10,122 @@
 
 ## Background
 
-The current codebase uses "Job" terminology (`ImageGenerationJob`, `VisualizationJob`) to represent transient work items in the generation queue. However, these are actually **persisted assets** (images, future videos) that:
-- Are valuable outputs, not just temporary jobs
-- Need long-term storage and retrieval
-- Can be reused as inspiration for future generations
-- Are the primary deliverable of the platform
+The Scenergy Visualizer platform enables clients to generate AI-powered product visualization images. The data model needs to support:
+- Multi-product selection in a single generation flow
+- Multiple generation attempts (flows) within a studio session
+- Persistent tracking of generated images
+- Future: Automated product combination strategies
 
-The terminology "Job" is misleading and creates confusion between:
-- Queue mechanics (processing work)
-- Business value (generated visual assets)
+The existing schema (studio_session, flow, generated_image) already supports these requirements and needs no renaming.
 
 ## Problem
 
-We need a comprehensive data model that:
-1. **Renames** "Job" → "GeneratedAsset" to reflect the true nature of these entities
-2. **Clarifies** the distinction between transient queue items vs. persistent database records
-3. **Supports** both image and video generation (future-proof)
-4. **Organizes** assets into Collections for bulk workflows
-5. **Enables** asset reuse (pinning for inspiration)
-6. **Tracks** generation settings for reproducibility
+We need to document the complete data model that:
+1. **Clarifies** existing terminology (StudioSession, Flow, GeneratedImage)
+2. **Supports** multi-product workflows (user selects 2+ products per flow)
+3. **Tracks** generation lifecycle (empty → configured → generating → completed)
+4. **Persists** all generated images with full metadata
+5. **Enables** future product combination strategies (match by dimension, category pairing)
+6. **Integrates** user authentication (Better Auth with multi-tenant support)
 
 ## Questions and Answers
 
-### Q1: Should "GeneratedAsset" replace "Job" everywhere?
-**A**: No, maintain two concepts:
-- **GeneratedAsset** - Database record (persistent, valuable)
-- **QueueJob** - Redis record (transient, processing metadata)
-
-Relationship: `GeneratedAsset.jobId → QueueJob.id`
-
-### Q2: How do we model Collections vs. individual generations?
-**A**: Collections are first-class entities:
-- User creates a Collection (selects products, inspirations, settings)
-- Collection spawns N GeneratedAssets (one per product)
-- Each GeneratedAsset links back to its Collection
-- Individual generations (outside collections) have `collectionId = null`
-
-### Q3: What's the lifecycle of a GeneratedAsset?
+### Q1: What's the difference between StudioSession and Flow?
 **A**:
-```
-Draft → Pending → Generating → Completed
-                            → Error
-```
-- **Draft**: Created but not enqueued yet
-- **Pending**: Enqueued, waiting for processing
-- **Generating**: Currently being processed
-- **Completed**: Successfully generated, has imageId
-- **Error**: Failed, has error message
+- **StudioSession** = User's working environment for a set of products
+  - Contains product selection and base image selection
+  - Can spawn multiple flows (different attempts)
+  - Persists user's workspace state
+- **Flow** = A single generation attempt with specific settings
+  - References products from parent session
+  - Has status lifecycle (empty → configured → generating → completed)
+  - Produces N generated images (one per prompt variation)
 
-### Q4: How do we handle regeneration (same product, different settings)?
-**A**: Create a new GeneratedAsset:
-- Each generation is immutable once completed
-- Re-generating creates a new asset with a new ID
-- Original asset remains for historical tracking
-- UI can show "previous versions" grouped by productId
+### Q2: How do we handle multiple products in a single flow?
+**A**: Flow supports multi-product natively:
+```typescript
+interface Flow {
+  productIds: string[];  // Can be 1 or many products
+  selectedBaseImages: Record<string, string>; // productId → imageId mapping
+}
+```
+- User manually selects which products go together
+- All products rendered in same scene
+- Future: Auto-generate combinations based on strategies
 
-### Q5: Should we soft-delete or hard-delete GeneratedAssets?
-**A**: Soft-delete:
-- Add `deletedAt` timestamp
-- Keep image in S3 for 30 days (lifecycle policy)
-- Hard-delete from database after 30 days (cron job)
-- Allows "undo" and reduces accidental data loss
+### Q3: What's the lifecycle of a Flow?
+**A**:
+```mermaid
+stateDiagram-v2
+    [*] --> empty: Create flow
+    empty --> configured: Set generation settings
+    configured --> generating: Start generation
+    generating --> completed: All images done
+    generating --> error: Generation failed
+    completed --> [*]
+    error --> configured: Retry with new settings
+```
+
+### Q4: How do we track individual generated images?
+**A**: Each image is a separate record:
+```typescript
+interface GeneratedImage {
+  id: string;
+  flowId: string;        // FK to flow (many images per flow)
+  productIds: string[];  // Products visible in this image
+  r2Key: string;         // Storage path
+  settings: FlowGenerationSettings; // Settings used
+  jobId: string | null;  // Redis job ID (transient)
+}
+```
+- One flow generates multiple images (different prompts/variations)
+- Each image tracks its own settings and products
+- JobId links to Redis queue (can be null after completion)
+
+### Q5: How do product combination strategies work (future)?
+**A**: Add `combinationStrategy` to Flow schema:
+```typescript
+type CombinationStrategy =
+  | 'manual'              // User selects products (default)
+  | 'match_dimensions'    // Auto-pair by dimensions (mattress 1.60m + bed 1.60m)
+  | 'category_pairing'    // Auto-pair by category (chair + table)
+  | 'one_from_each_group' // Cartesian product of groups
+
+interface Flow {
+  combinationStrategy?: CombinationStrategy; // Optional, defaults to 'manual'
+  combinationRules?: CombinationRules;       // Strategy-specific rules
+}
+```
+**NOT in MVP** - add later when needed.
+
+### Q6: How do we handle user authentication across clients?
+**A**: Multi-tenant model via Better Auth:
+- **User** = Individual person (global identity)
+- **Member** = User-to-Client association (role, permissions)
+- One user can be member of multiple clients
+- Sessions are client-scoped (user must select client)
 
 ---
 
 ## Design
 
-### Terminology Mapping
-
-| Old Term | New Term | Definition |
-|----------|----------|------------|
-| ImageGenerationJob | GeneratedAsset (type: image) | A persisted generated image |
-| VisualizationJob | GeneratedAsset (type: 3d_render) | A persisted 3D visualization |
-| Job Queue | Generation Queue | The processing system |
-| Job ID | Asset ID (DB) / Job ID (Redis) | Disambiguate persistence vs. queue |
-| enqueue() | createGenerationRequest() | More descriptive action |
-| jobStatus | asset.status | Clearer naming |
-
 ### Core Entities
 
 ```mermaid
 erDiagram
-    CLIENT ||--o{ COLLECTION : owns
-    CLIENT ||--o{ PRODUCT : owns
-    CLIENT ||--o{ GENERATED_ASSET : owns
     CLIENT ||--o{ MEMBER : has
+    CLIENT ||--o{ PRODUCT : owns
+    CLIENT ||--o{ STUDIO_SESSION : owns
+    CLIENT ||--o{ GENERATED_IMAGE : owns
 
     USER ||--o{ MEMBER : belongs_to
+    USER ||--o{ SESSION : has
+    USER ||--o{ ACCOUNT : has
 
-    COLLECTION ||--o{ GENERATED_ASSET : contains
-    COLLECTION ||--o{ INSPIRATION_IMAGE : uses
+    STUDIO_SESSION ||--o{ FLOW : contains
+    FLOW ||--o{ GENERATED_IMAGE : produces
 
-    PRODUCT ||--o{ GENERATED_ASSET : featured_in
     PRODUCT ||--o{ PRODUCT_IMAGE : has
-
-    GENERATED_ASSET }o--|| IMAGE : produces
-    INSPIRATION_IMAGE }o--|| IMAGE : references
 
     CLIENT {
         uuid id PK
@@ -118,6 +139,7 @@ erDiagram
         text email UK
         text name
         boolean email_verified
+        text image
         timestamp created_at
     }
 
@@ -130,13 +152,68 @@ erDiagram
         timestamp created_at
     }
 
+    SESSION {
+        uuid id PK
+        uuid user_id FK
+        text token UK
+        timestamp expires_at
+        timestamp created_at
+    }
+
+    ACCOUNT {
+        uuid id PK
+        uuid user_id FK
+        text provider
+        text provider_account_id UK
+        text access_token
+        text refresh_token
+    }
+
+    STUDIO_SESSION {
+        uuid id PK
+        uuid client_id FK
+        text name
+        uuid[] product_ids
+        jsonb selected_base_images
+        integer version
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    FLOW {
+        uuid id PK
+        uuid studio_session_id FK
+        text name
+        uuid[] product_ids
+        jsonb selected_base_images
+        text status
+        jsonb settings
+        integer current_image_index
+        integer version
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    GENERATED_IMAGE {
+        uuid id PK
+        uuid client_id FK
+        uuid flow_id FK
+        text r2_key
+        text prompt
+        jsonb settings
+        uuid[] product_ids
+        text job_id
+        text error
+        timestamp created_at
+        timestamp updated_at
+    }
+
     PRODUCT {
         uuid id PK
         uuid client_id FK
         text name
         text sku
         text category
-        text[] room_types
         jsonb metadata
         timestamp created_at
     }
@@ -144,63 +221,10 @@ erDiagram
     PRODUCT_IMAGE {
         uuid id PK
         uuid product_id FK
-        uuid image_id FK
+        text url
+        text r2_key
         boolean is_primary
         integer display_order
-    }
-
-    COLLECTION {
-        uuid id PK
-        uuid client_id FK
-        text name
-        text status
-        uuid[] selected_product_ids
-        jsonb product_analysis
-        jsonb base_settings
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    INSPIRATION_IMAGE {
-        uuid id PK
-        uuid collection_id FK
-        uuid image_id FK
-        text source
-        jsonb analysis
-        integer display_order
-    }
-
-    GENERATED_ASSET {
-        uuid id PK
-        uuid client_id FK
-        uuid collection_id FK
-        uuid product_id FK
-        text type
-        text status
-        jsonb settings
-        uuid image_id FK
-        text error_message
-        text job_id
-        integer progress
-        boolean pinned
-        timestamp created_at
-        timestamp updated_at
-        timestamp completed_at
-        timestamp deleted_at
-    }
-
-    IMAGE {
-        uuid id PK
-        uuid client_id FK
-        text url
-        text s3_key
-        text s3_bucket
-        integer width
-        integer height
-        integer file_size
-        text mime_type
-        jsonb metadata
-        timestamp created_at
     }
 ```
 
@@ -208,7 +232,44 @@ erDiagram
 
 ```typescript
 // ====================
-// Core Entities
+// Authentication (Better Auth)
+// ====================
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  emailVerified: boolean;
+  image?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Session {
+  id: string;
+  userId: string;
+  token: string;
+  expiresAt: Date;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Account {
+  id: string;
+  userId: string;
+  provider: string;           // 'google', 'github', etc.
+  providerAccountId: string;  // OAuth provider's user ID
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ====================
+// Multi-Tenant
 // ====================
 
 interface Client {
@@ -226,13 +287,29 @@ interface ClientSettings {
   allowedFileTypes?: string[];
 }
 
+interface Member {
+  id: string;
+  userId: string;
+  clientId: string;
+  role: MemberRole;
+  status: MemberStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type MemberRole = 'owner' | 'admin' | 'member' | 'viewer';
+type MemberStatus = 'active' | 'invited' | 'suspended';
+
+// ====================
+// Products
+// ====================
+
 interface Product {
   id: string;
   clientId: string;
   name: string;
   sku: string;
   category: string;
-  roomTypes: string[];
   metadata?: ProductMetadata;
   createdAt: Date;
   updatedAt: Date;
@@ -243,152 +320,72 @@ interface ProductMetadata {
   materials?: string[];
   colors?: string[];
   tags?: string[];
+  roomTypes?: string[];
   customFields?: Record<string, unknown>;
 }
 
-interface Image {
+interface ProductImage {
   id: string;
-  clientId: string;
+  productId: string;
   url: string;
-  s3Key: string;
-  s3Bucket: string;
-  width: number;
-  height: number;
-  fileSize: number;
-  mimeType: string;
-  metadata?: ImageMetadata;
-  createdAt: Date;
-}
-
-interface ImageMetadata {
-  source?: 'upload' | 'generated' | 'unsplash';
-  originalFilename?: string;
-  altText?: string;
-  caption?: string;
-  exif?: Record<string, unknown>;
-}
-
-// ====================
-// Collection Workflow
-// ====================
-
-interface Collection {
-  id: string;
-  clientId: string;
-  name: string;
-  status: CollectionStatus;
-
-  // Step 1: Product Selection
-  selectedProductIds: string[];
-
-  // Step 2: Product Analysis (from AI)
-  productAnalysis?: ProductAnalysisResult;
-
-  // Step 3: Inspiration Images
-  inspirationImages?: InspirationImage[];
-
-  // Step 4: Base Settings (derived from inspiration analysis)
-  baseSettings?: Partial<FlowGenerationSettings>;
-
-  createdAt: Date;
-  updatedAt: Date;
-  completedAt?: Date;
-}
-
-type CollectionStatus =
-  | 'draft'          // Being created
-  | 'analyzing'      // AI analyzing products
-  | 'ready'          // Ready to generate
-  | 'generating'     // Generation in progress
-  | 'completed'      // All assets generated
-  | 'error';         // Generation failed
-
-interface InspirationImage {
-  id: string;
-  collectionId: string;
-  imageId: string;           // FK: images.id
-  source: 'upload' | 'unsplash' | 'library';
-  analysis?: SceneAnalysis;  // AI-extracted scene attributes
+  r2Key: string;
+  isPrimary: boolean;
   displayOrder: number;
   createdAt: Date;
 }
 
-interface ProductAnalysisResult {
-  roomTypeDistribution: Record<string, number>;
-  productTypes: string[];
-  dominantCategory: string;
-  suggestedStyles: string[];
-  recommendedInspirationKeywords: string[];
-  productRoomAssignments: Record<string, string>; // productId → roomType
-  analyzedAt: Date;
-}
-
-interface SceneAnalysis {
-  environment: 'indoor' | 'outdoor' | 'mixed';
-  suggestedRoomTypes: string[];
-  style: string;
-  lighting: string;
-  colorPalette: string[];
-  materials: {
-    floor?: string;
-    walls?: string;
-    ceiling?: string;
-  };
-  props: string[];
-  mood: string;
-}
-
 // ====================
-// Generated Assets (The Core Entity)
+// Studio Workflow
 // ====================
 
-interface GeneratedAsset {
+interface StudioSession {
   id: string;
   clientId: string;
-  collectionId: string | null;  // null = standalone generation
-  productId: string;
-
-  // Asset type (extensible for future media types)
-  type: AssetType;
-
-  // Lifecycle
-  status: AssetStatus;
-  progress: number;              // 0-100
-
-  // Generation Configuration
-  settings: FlowGenerationSettings;  // Full settings used for this generation
-
-  // Result
-  imageId: string | null;        // FK: images.id (populated when completed)
-  errorMessage: string | null;   // Populated when status = 'error'
-
-  // Queue Integration (transient)
-  jobId: string | null;          // Redis queue job ID (can be null after completion)
-
-  // Features
-  pinned: boolean;               // Can be reused as inspiration
-
-  // Timestamps
+  name: string;
+  productIds: string[];  // Products selected for this session
+  selectedBaseImages: Record<string, string>; // productId → imageId
+  version: number;
   createdAt: Date;
   updatedAt: Date;
-  completedAt: Date | null;
-  deletedAt: Date | null;        // Soft delete
 }
 
-type AssetType =
-  | 'image'         // Static product image
-  | 'video'         // Future: video generation
-  | '3d_render';    // Future: 3D model render
+interface Flow {
+  id: string;
+  studioSessionId: string;
+  name: string | null;
+  productIds: string[];  // Multi-product support!
+  selectedBaseImages: Record<string, string>; // productId → imageId
+  status: FlowStatus;
+  settings: FlowGenerationSettings;
+  currentImageIndex: number;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-type AssetStatus =
-  | 'draft'         // Created but not enqueued
-  | 'pending'       // Enqueued, waiting for worker
-  | 'generating'    // Worker processing
-  | 'completed'     // Successfully generated
-  | 'error';        // Failed
+type FlowStatus =
+  | 'empty'        // Just created, no settings
+  | 'configured'   // Settings defined, ready to generate
+  | 'generating'   // Generation in progress
+  | 'completed'    // Generation finished
+  | 'error';       // Generation failed
+
+interface GeneratedImage {
+  id: string;
+  clientId: string;
+  flowId: string;           // FK to flow
+  r2Key: string;            // Path in R2 storage
+  prompt: string;           // Full prompt used
+  settings: FlowGenerationSettings; // Settings snapshot
+  productIds: string[];     // Products in this image
+  jobId: string | null;     // Redis job ID (transient, can be null)
+  error: string | null;     // Error message if failed
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 // ====================
-// Generation Settings (Reused from existing system)
+// Generation Settings
 // ====================
 
 interface FlowGenerationSettings {
@@ -405,412 +402,534 @@ interface FlowGenerationSettings {
   matchProductColors: boolean;
   promptText?: string;           // Custom prompt override
 }
+
+// ====================
+// FUTURE: Product Combination Strategies
+// ====================
+
+// NOT IN MVP - Add when needed
+interface FlowWithCombinations extends Flow {
+  combinationStrategy?: CombinationStrategy;
+  combinationRules?: CombinationRules;
+}
+
+type CombinationStrategy =
+  | 'manual'              // User selects products (default)
+  | 'match_dimensions'    // Auto-pair by dimensions
+  | 'category_pairing'    // Auto-pair by category
+  | 'one_from_each_group' // Cartesian product of groups
+  | 'style_matching';     // Match by style metadata
+
+interface CombinationRules {
+  dimensionTolerance?: number;        // For match_dimensions (e.g., ±10cm)
+  categoryPairs?: Record<string, string[]>; // For category_pairing
+  productGroups?: string[][];         // For one_from_each_group
+  styleKeywords?: string[];           // For style_matching
+}
+
+// Example: Auto-generate flows for mattress + bed combinations
+interface CombinationGenerationRequest {
+  studioSessionId: string;
+  strategy: CombinationStrategy;
+  rules: CombinationRules;
+  baseSettings: FlowGenerationSettings;
+}
 ```
 
 ### SQL Schema
 
 ```sql
 -- ====================
--- Collections
+-- Authentication
 -- ====================
-CREATE TABLE collections (
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+  image TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_users_email ON users(email);
+
+CREATE TABLE sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  ip_address TEXT,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX idx_sessions_token ON sessions(token);
+
+CREATE TABLE accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL,
+  provider_account_id TEXT NOT NULL,
+  access_token TEXT,
+  refresh_token TEXT,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  UNIQUE(provider, provider_account_id)
+);
+
+CREATE INDEX idx_accounts_user_id ON accounts(user_id);
+
+-- ====================
+-- Multi-Tenant
+-- ====================
+CREATE TABLE members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'member',
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  UNIQUE(user_id, client_id),
+  CONSTRAINT valid_role CHECK (role IN ('owner', 'admin', 'member', 'viewer')),
+  CONSTRAINT valid_status CHECK (status IN ('active', 'invited', 'suspended'))
+);
+
+CREATE INDEX idx_members_user_id ON members(user_id);
+CREATE INDEX idx_members_client_id ON members(client_id);
+
+-- ====================
+-- Studio Sessions
+-- ====================
+CREATE TABLE studio_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'draft',
-
-  -- Product selection
-  selected_product_ids UUID[] NOT NULL DEFAULT '{}',
-
-  -- Analysis results (JSONB)
-  product_analysis JSONB,
-
-  -- Base generation settings (JSONB)
-  base_settings JSONB,
-
-  -- Timestamps
+  product_ids UUID[] NOT NULL DEFAULT '{}',
+  selected_base_images JSONB NOT NULL DEFAULT '{}',
+  version INTEGER NOT NULL DEFAULT 1,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  completed_at TIMESTAMPTZ,
-
-  CONSTRAINT valid_status CHECK (status IN ('draft', 'analyzing', 'ready', 'generating', 'completed', 'error'))
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_collections_client_id ON collections(client_id);
-CREATE INDEX idx_collections_status ON collections(status);
+CREATE INDEX idx_studio_sessions_client_id ON studio_sessions(client_id);
 
 -- ====================
--- Inspiration Images
+-- Flows
+-- ====================
+CREATE TABLE flows (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  studio_session_id UUID NOT NULL REFERENCES studio_sessions(id) ON DELETE CASCADE,
+  name TEXT,
+  product_ids UUID[] NOT NULL DEFAULT '{}',
+  selected_base_images JSONB NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'empty',
+  settings JSONB,
+  current_image_index INTEGER NOT NULL DEFAULT 0,
+  version INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT valid_status CHECK (status IN ('empty', 'configured', 'generating', 'completed', 'error'))
+);
+
+CREATE INDEX idx_flows_studio_session_id ON flows(studio_session_id);
+CREATE INDEX idx_flows_status ON flows(status);
+
+-- ====================
+-- Generated Images
+-- ====================
+CREATE TABLE generated_images (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  flow_id UUID NOT NULL REFERENCES flows(id) ON DELETE CASCADE,
+  r2_key TEXT NOT NULL,
+  prompt TEXT NOT NULL,
+  settings JSONB NOT NULL,
+  product_ids UUID[] NOT NULL DEFAULT '{}',
+  job_id TEXT,
+  error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_generated_images_client_id ON generated_images(client_id);
+CREATE INDEX idx_generated_images_flow_id ON generated_images(flow_id);
+CREATE INDEX idx_generated_images_job_id ON generated_images(job_id) WHERE job_id IS NOT NULL;
+
+-- ====================
+-- FUTURE: Inspiration Images (optional)
 -- ====================
 CREATE TABLE inspiration_images (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
-  image_id UUID NOT NULL REFERENCES images(id) ON DELETE CASCADE,
+  studio_session_id UUID NOT NULL REFERENCES studio_sessions(id) ON DELETE CASCADE,
+  url TEXT NOT NULL,
+  r2_key TEXT,
   source TEXT NOT NULL,
   analysis JSONB,
   display_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-  CONSTRAINT valid_source CHECK (source IN ('upload', 'unsplash', 'library'))
+  CONSTRAINT valid_source CHECK (source IN ('upload', 'unsplash', 'url'))
 );
 
-CREATE INDEX idx_inspiration_images_collection ON inspiration_images(collection_id);
-
--- ====================
--- Generated Assets (The Main Entity)
--- ====================
-CREATE TABLE generated_assets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
-  collection_id UUID REFERENCES collections(id) ON DELETE SET NULL,
-  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-
-  -- Asset metadata
-  type TEXT NOT NULL DEFAULT 'image',
-  status TEXT NOT NULL DEFAULT 'draft',
-  progress INTEGER NOT NULL DEFAULT 0,
-
-  -- Generation config (full FlowGenerationSettings as JSONB)
-  settings JSONB NOT NULL,
-
-  -- Result
-  image_id UUID REFERENCES images(id) ON DELETE SET NULL,
-  error_message TEXT,
-
-  -- Queue integration (transient)
-  job_id TEXT,
-
-  -- Features
-  pinned BOOLEAN NOT NULL DEFAULT FALSE,
-
-  -- Timestamps
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  completed_at TIMESTAMPTZ,
-  deleted_at TIMESTAMPTZ,
-
-  -- Constraints
-  CONSTRAINT valid_type CHECK (type IN ('image', 'video', '3d_render')),
-  CONSTRAINT valid_status CHECK (status IN ('draft', 'pending', 'generating', 'completed', 'error')),
-  CONSTRAINT valid_progress CHECK (progress >= 0 AND progress <= 100),
-  CONSTRAINT completed_has_image CHECK (
-    (status = 'completed' AND image_id IS NOT NULL) OR
-    (status != 'completed')
-  ),
-  CONSTRAINT error_has_message CHECK (
-    (status = 'error' AND error_message IS NOT NULL) OR
-    (status != 'error')
-  )
-);
-
--- Indexes for efficient queries
-CREATE INDEX idx_generated_assets_client ON generated_assets(client_id);
-CREATE INDEX idx_generated_assets_collection ON generated_assets(collection_id);
-CREATE INDEX idx_generated_assets_product ON generated_assets(product_id);
-CREATE INDEX idx_generated_assets_status ON generated_assets(status);
-CREATE INDEX idx_generated_assets_type ON generated_assets(type);
-CREATE INDEX idx_generated_assets_pinned ON generated_assets(client_id, pinned) WHERE pinned = TRUE AND deleted_at IS NULL;
-CREATE INDEX idx_generated_assets_active ON generated_assets(client_id, status) WHERE deleted_at IS NULL;
-
--- Partial index for active generations
-CREATE INDEX idx_generated_assets_active_generations ON generated_assets(client_id, status, created_at)
-  WHERE status IN ('pending', 'generating') AND deleted_at IS NULL;
-```
-
-### Drizzle Schema (TypeScript ORM)
-
-```typescript
-// packages/visualizer-db/src/schema/generated-assets.ts
-import { pgTable, uuid, text, integer, boolean, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
-import { clients } from './clients';
-import { collections } from './collections';
-import { products } from './products';
-import { images } from './images';
-
-export const generatedAssets = pgTable('generated_assets', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  clientId: uuid('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
-  collectionId: uuid('collection_id').references(() => collections.id, { onDelete: 'set null' }),
-  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
-
-  type: text('type').notNull().default('image'),
-  status: text('status').notNull().default('draft'),
-  progress: integer('progress').notNull().default(0),
-
-  settings: jsonb('settings').notNull(),
-
-  imageId: uuid('image_id').references(() => images.id, { onDelete: 'set null' }),
-  errorMessage: text('error_message'),
-
-  jobId: text('job_id'),
-
-  pinned: boolean('pinned').notNull().default(false),
-
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  completedAt: timestamp('completed_at'),
-  deletedAt: timestamp('deleted_at'),
-}, (table) => ({
-  clientIdIdx: index('idx_generated_assets_client').on(table.clientId),
-  collectionIdIdx: index('idx_generated_assets_collection').on(table.collectionId),
-  productIdIdx: index('idx_generated_assets_product').on(table.productId),
-  statusIdx: index('idx_generated_assets_status').on(table.status),
-  pinnedIdx: index('idx_generated_assets_pinned').on(table.clientId, table.pinned),
-}));
-
-export type GeneratedAsset = typeof generatedAssets.$inferSelect;
-export type NewGeneratedAsset = typeof generatedAssets.$inferInsert;
+CREATE INDEX idx_inspiration_images_session ON inspiration_images(studio_session_id);
 ```
 
 ### Queue vs. Database Separation
 
-| Aspect | Redis Queue (QueueJob) | Database (GeneratedAsset) |
-|--------|----------------------|---------------------------|
-| **Purpose** | Transient processing metadata | Permanent asset record |
-| **Lifetime** | Minutes to hours | Forever (until soft-deleted) |
+| Aspect | Redis Queue (jobId) | Database (GeneratedImage) |
+|--------|---------------------|---------------------------|
+| **Purpose** | Transient processing state | Permanent image record |
+| **Lifetime** | Minutes to hours | Forever |
 | **TTL** | 24 hours after completion | No expiration |
-| **Fields** | jobId, status, progress, queueMetadata | Full asset: settings, imageId, timestamps |
-| **Query Pattern** | Get by jobId for polling | List/filter by client, collection, product |
-| **Cleanup** | Auto-expires via Redis TTL | Soft-delete, cron hard-delete after 30 days |
+| **Fields** | jobId, status, progress | Full record: r2Key, prompt, settings, products |
+| **Query Pattern** | Poll by jobId | List by flow, client, product |
+| **Cleanup** | Auto-expires via Redis TTL | Manual deletion only |
 
 **Synchronization**:
-- When GeneratedAsset created → QueueJob created (jobId stored in asset)
-- QueueJob status changes → Update GeneratedAsset.status/progress
-- QueueJob completes → Update GeneratedAsset.imageId/completedAt, keep jobId for reference
-- QueueJob auto-expires → GeneratedAsset persists forever
+1. User starts generation → Create Flow (status: 'generating')
+2. For each variation → Enqueue job, get jobId
+3. Worker picks up job → Updates progress via Redis
+4. Job completes → Worker creates GeneratedImage record
+5. All jobs done → Update Flow (status: 'completed')
+6. JobId can be stored in GeneratedImage for debugging (optional, can be null)
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Database Migrations
-1. Create `collections` table
-2. Create `inspiration_images` table
-3. Create `generated_assets` table
-4. Add indexes
-5. Run migrations in dev environment
+### Phase 1: Authentication Tables (NEW)
+1. Create `users` table (Better Auth)
+2. Create `sessions` table (Better Auth)
+3. Create `accounts` table (OAuth support)
+4. Create `members` table (multi-tenant)
+5. Run migrations
 
-### Phase 2: Update Drizzle Schemas
-1. Define `collections` schema
-2. Define `inspirationImages` schema
-3. Define `generatedAssets` schema
-4. Generate TypeScript types
-5. Update schema exports
+### Phase 2: Verify Existing Tables
+1. Confirm `studio_sessions` schema matches design
+2. Confirm `flows` schema matches design
+3. Confirm `generated_images` schema matches design
+4. Update schemas if needed (minor tweaks only)
 
-### Phase 3: Rename Throughout Codebase
-1. Find all "Job" references in existing code
-2. Update queue service to use "GeneratedAsset" terminology
-3. Update API routes to use new naming
-4. Update tests to match new terminology
-5. Update documentation
+### Phase 3: Add Optional Tables
+1. Create `inspiration_images` table (optional feature)
+2. Add indexes
+3. Update Drizzle schemas
 
-### Phase 4: Service Layer Updates
-1. Create `GeneratedAssetService` (CRUD operations)
-2. Update `GenerationQueue` to sync with GeneratedAsset table
-3. Create `CollectionService` (collection management)
-4. Create `InspirationService` (inspiration image handling)
+### Phase 4: Service Layer
+1. Create `StudioSessionService` (CRUD for sessions)
+2. Create `FlowService` (CRUD for flows, status management)
+3. Create `GeneratedImageService` (CRUD for images)
+4. Update `GenerationQueue` to create GeneratedImage records on completion
 
-### Phase 5: Migration Strategy (if existing jobs in production)
-1. Create migration script to convert old "jobs" data to GeneratedAssets
-2. Run dual-write (write to both old and new tables) during transition
-3. Verify data integrity
-4. Switch all reads to new table
-5. Drop old tables after grace period
+### Phase 5: FUTURE - Combination Strategies
+**NOT IN MVP** - Implement when needed:
+1. Add `combination_strategy` column to flows table
+2. Add `combination_rules` JSONB column to flows table
+3. Create `CombinationEngine` service
+4. Add API endpoint: `POST /api/sessions/:id/auto-generate-flows`
+5. Implement strategy algorithms:
+   - `match_dimensions`: Pair products by size
+   - `category_pairing`: Use predefined category pairs
+   - `one_from_each_group`: Generate cartesian product
+6. Update UI to show "Auto-generate combinations" button
 
 ---
 
 ## Examples
 
-### ✅ Good: Creating a GeneratedAsset
+### ✅ Good: Creating a Multi-Product Flow
 
 ```typescript
-// apps/visualizer-client/app/api/collections/[id]/generate/route.ts
+// apps/visualizer-client/app/api/sessions/[id]/flows/route.ts
+import { db } from '@repo/visualizer-db';
+
+export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const { productIds } = await req.json();
+
+  const session = await db.studioSessions.findById(params.id);
+
+  // Create new flow with selected products
+  const flow = await db.flows.create({
+    studioSessionId: session.id,
+    name: null,
+    productIds, // Multi-product array
+    selectedBaseImages: session.selectedBaseImages,
+    status: 'empty',
+    currentImageIndex: 0,
+  });
+
+  return Response.json(flow);
+}
+```
+
+### ✅ Good: Starting Generation (Creates Queue Jobs + Updates Flow)
+
+```typescript
+// apps/visualizer-client/app/api/flows/[id]/generate/route.ts
 import { db } from '@repo/visualizer-db';
 import { GenerationQueue } from '@repo/visualizer-shared';
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const collection = await db.collections.findById(params.id);
-  const queue = new GenerationQueue({ prefix: 'client' });
+  const flow = await db.flows.findById(params.id);
+  const queue = new GenerationQueue();
 
-  for (const productId of collection.selectedProductIds) {
-    // Build settings for this product
-    const settings = {
-      ...collection.baseSettings,
-      roomType: collection.productAnalysis.productRoomAssignments[productId],
-      promptText: `Beautiful ${collection.baseSettings.style} scene featuring the product`,
-    };
+  // Update flow status
+  await db.flows.update(flow.id, { status: 'generating' });
 
-    // Create database record FIRST
-    const asset = await db.generatedAssets.create({
-      clientId: collection.clientId,
-      collectionId: collection.id,
-      productId,
-      type: 'image',
-      status: 'pending',
-      settings,
-    });
-
-    // Then enqueue for processing
+  // Enqueue jobs (one per prompt variation)
+  const jobIds = [];
+  for (let i = 0; i < 4; i++) {
     const jobId = await queue.enqueue({
-      assetId: asset.id,  // Link queue job to asset
-      clientId: collection.clientId,
-      productId,
+      flowId: flow.id,
+      clientId: flow.clientId,
+      productIds: flow.productIds,
+      settings: flow.settings,
+      variationIndex: i,
+    });
+    jobIds.push(jobId);
+  }
+
+  return Response.json({ success: true, jobIds });
+}
+```
+
+### ✅ Good: Worker Creates GeneratedImage on Completion
+
+```typescript
+// packages/visualizer-worker/src/handlers/image-generation.ts
+import { db } from '@repo/visualizer-db';
+import { uploadToR2 } from '../utils/r2';
+
+export async function handleImageGeneration(job: Job) {
+  const { flowId, clientId, productIds, settings, variationIndex } = job.data;
+
+  try {
+    // Generate image (AI service)
+    const { imageBuffer, prompt } = await generateImage(settings, variationIndex);
+
+    // Upload to R2
+    const r2Key = `clients/${clientId}/flows/${flowId}/${Date.now()}_${variationIndex}.png`;
+    await uploadToR2(r2Key, imageBuffer);
+
+    // Create database record
+    await db.generatedImages.create({
+      clientId,
+      flowId,
+      r2Key,
+      prompt,
       settings,
+      productIds,
+      jobId: job.id, // Optional: track which job created this
     });
 
-    // Update asset with jobId
-    await db.generatedAssets.update(asset.id, { jobId });
+    // Check if all images complete for this flow
+    const images = await db.generatedImages.findByFlowId(flowId);
+    if (images.length >= 4) {
+      await db.flows.update(flowId, { status: 'completed' });
+    }
+
+    return { success: true };
+  } catch (error) {
+    // Update flow with error
+    await db.flows.update(flowId, {
+      status: 'error',
+      error: error.message,
+    });
+    throw error;
+  }
+}
+```
+
+### ✅ Good: Querying Multi-Product Flows
+
+```typescript
+// Find all flows that include a specific product
+const flows = await db.flows.findMany({
+  where: sql`${flows.productIds} @> ARRAY[${productId}]::uuid[]`,
+  orderBy: desc(flows.createdAt),
+});
+
+// Get all images for a flow
+const images = await db.generatedImages.findMany({
+  where: eq(generatedImages.flowId, flowId),
+  orderBy: asc(generatedImages.createdAt),
+});
+```
+
+### ✅ FUTURE: Auto-Generate Combinations (NOT MVP)
+
+```typescript
+// FUTURE FEATURE - NOT IN MVP
+export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const { strategy, rules, baseSettings } = await req.json();
+
+  const session = await db.studioSessions.findById(params.id);
+  const products = await db.products.findMany({
+    where: inArray(products.id, session.productIds)
+  });
+
+  // Generate combinations based on strategy
+  const combinations = generateCombinations(products, strategy, rules);
+
+  // Create flow for each combination
+  const flows = [];
+  for (const combo of combinations) {
+    const flow = await db.flows.create({
+      studioSessionId: session.id,
+      name: `${combo.map(p => p.name).join(' + ')}`,
+      productIds: combo.map(p => p.id),
+      selectedBaseImages: session.selectedBaseImages,
+      status: 'configured',
+      settings: baseSettings,
+      combinationStrategy: strategy, // FUTURE FIELD
+      combinationRules: rules,       // FUTURE FIELD
+    });
+    flows.push(flow);
   }
 
-  return Response.json({ success: true });
+  return Response.json({ flows, count: flows.length });
 }
-```
 
-### ✅ Good: Polling for Asset Status
-
-```typescript
-// apps/visualizer-client/app/api/generated-assets/[id]/route.ts
-import { db } from '@repo/visualizer-db';
-
-export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const asset = await db.generatedAssets.findById(params.id);
-
-  if (!asset) {
-    return Response.json({ error: 'Asset not found' }, { status: 404 });
+function generateCombinations(
+  products: Product[],
+  strategy: CombinationStrategy,
+  rules: CombinationRules
+): Product[][] {
+  switch (strategy) {
+    case 'match_dimensions':
+      return matchByDimensions(products, rules.dimensionTolerance);
+    case 'category_pairing':
+      return pairByCategory(products, rules.categoryPairs);
+    case 'one_from_each_group':
+      return cartesianProduct(products, rules.productGroups);
+    default:
+      return [];
   }
-
-  // Return database record (always authoritative)
-  return Response.json({
-    id: asset.id,
-    productId: asset.productId,
-    status: asset.status,
-    progress: asset.progress,
-    imageUrl: asset.imageId ? await getImageUrl(asset.imageId) : null,
-    error: asset.errorMessage,
-  });
 }
 ```
 
-### ✅ Good: Pinning an Asset for Reuse
+### ❌ Bad: Renaming Tables
 
 ```typescript
-// Mark a generated asset as pinned (can be used as inspiration)
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const { pinned } = await req.json();
+// ❌ Don't rename existing tables
+CREATE TABLE generated_assets ... // Bad - use generated_images
+CREATE TABLE collections ...      // Bad - use studio_sessions
 
-  const asset = await db.generatedAssets.update(params.id, {
-    pinned,
-    updatedAt: new Date(),
-  });
-
-  return Response.json(asset);
-}
-```
-
-### ✅ Good: Soft Deleting an Asset
-
-```typescript
-// Soft delete (mark as deleted, actual deletion happens via cron)
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const asset = await db.generatedAssets.update(params.id, {
-    deletedAt: new Date(),
-  });
-
-  // Optionally: mark S3 object for deletion after 30 days
-  await markS3ObjectForDeletion(asset.imageId, 30);
-
-  return Response.json({ success: true });
-}
-```
-
-### ❌ Bad: Using "Job" Terminology
-
-```typescript
-// ❌ Don't use old "Job" naming
-interface ImageGenerationJob {  // Bad
-  id: string;
-  status: string;
-}
-
-// ✅ Use "GeneratedAsset"
-interface GeneratedAsset {  // Good
-  id: string;
-  status: AssetStatus;
-}
+// ✅ Use existing names
+CREATE TABLE generated_images ... // Good
+CREATE TABLE studio_sessions ...  // Good
+CREATE TABLE flows ...            // Good
 ```
 
 ---
 
 ## Trade-offs
 
-### GeneratedAsset vs. Job
-**Chosen**: GeneratedAsset (new), deprecate Job (old)
+### StudioSession vs. Collection
+**Chosen**: StudioSession (existing name)
 **Rationale**:
-- ✅ Clearer business meaning (it's an asset, not just a job)
-- ✅ Emphasizes persistence (database, not just queue)
-- ✅ Extensible (image, video, 3D in future)
-- ✅ Supports features (pinning, soft-delete, search)
-- ❌ Requires migration from old terminology
-- ❌ Slightly longer name
+- ✅ Already implemented and working
+- ✅ Accurate name (user's working session)
+- ✅ Matches UI terminology ("Studio" tab)
+- ✅ No migration needed
+- ❌ Slightly longer than "Collection"
 
-### Separate Collection Entity vs. Inline
-**Chosen**: Separate `collections` table
+### Flow vs. Generation
+**Chosen**: Flow (existing name)
 **Rationale**:
-- ✅ First-class entity with its own lifecycle
-- ✅ Can store analysis results independent of assets
-- ✅ Easier to query "all collections" vs. "all assets"
-- ✅ Supports future features (collection templates, sharing)
-- ❌ Extra table join when querying assets with collection info
+- ✅ Emphasizes workflow nature (configure → generate → complete)
+- ✅ Each flow is a single attempt with specific settings
+- ✅ Already implemented
+- ❌ Could be confused with "flow" in other contexts
 
-### Soft-Delete vs. Hard-Delete
-**Chosen**: Soft-delete with `deletedAt`
+### Multi-Product in Flow vs. Separate Records
+**Chosen**: Multi-product array in Flow
 **Rationale**:
-- ✅ Can undo accidental deletions
-- ✅ Audit trail for compliance
-- ✅ S3 lifecycle policy handles actual file cleanup
-- ❌ Queries must filter `WHERE deletedAt IS NULL`
-- ❌ Database size grows (mitigated by cron cleanup)
+- ✅ Products are generated together in same scene
+- ✅ Simpler queries (one flow record)
+- ✅ Settings apply to all products equally
+- ❌ Can't have different settings per product
+- ❌ Array queries require PostgreSQL array operators
 
-### JSONB Settings vs. Normalized Columns
-**Chosen**: JSONB for `settings` field
+### Manual Selection vs. Auto-Combinations
+**Chosen**: Manual first, auto-combinations as FUTURE feature
 **Rationale**:
-- ✅ Flexible schema (settings evolve over time)
-- ✅ Easier to store full FlowGenerationSettings object
-- ✅ Can query JSON fields with Postgres JSON operators
-- ❌ Harder to enforce schema validation
-- ❌ Less efficient queries vs. indexed columns
+- ✅ Simpler MVP (no complex pairing logic)
+- ✅ Users have full control
+- ✅ Can add strategies incrementally
+- ❌ Users must manually create many flows
+- ❌ No automation for large product catalogs
+
+### JobId in GeneratedImage vs. Separate Table
+**Chosen**: Optional jobId field in GeneratedImage
+**Rationale**:
+- ✅ Useful for debugging (which job created this image)
+- ✅ Can be null (queue jobs expire)
+- ✅ No extra table join
+- ❌ Field becomes stale after Redis TTL expires
 
 ---
 
-## Open Questions
+## Migration Notes
 
-1. **Asset versioning**: Should we track versions when regenerating the same product?
-   - Proposal: No explicit versioning, just create new asset each time
-   - Group by productId in UI to show "previous generations"
+**No migrations needed** - Starting from scratch with correct schema:
 
-2. **Asset expiration**: Should old assets auto-delete after N days?
-   - Proposal: No auto-delete for completed assets (user controls deletion)
-   - Do auto-delete failed/error assets after 7 days
+1. Copy existing tables as-is:
+   - studio_sessions ✅
+   - flows ✅
+   - generated_images ✅
 
-3. **Duplicate detection**: Should we prevent identical settings from being generated twice?
-   - Proposal: No duplicate detection in MVP (users may want variations)
-   - Future: Add "similar asset" detection
+2. Add new authentication tables:
+   - users
+   - sessions
+   - accounts
+   - members
 
-4. **Asset limits**: How many assets can a client have?
-   - Proposal: Soft limit of 10,000 assets per client
-   - Cron job warns admins when approaching limit
+3. Add optional feature tables:
+   - inspiration_images (future)
+
+4. FUTURE: Add combination strategy fields to flows:
+   - combination_strategy (enum)
+   - combination_rules (JSONB)
 
 ---
 
 ## Success Criteria
 
-- [ ] All "Job" references renamed to "GeneratedAsset" in codebase
-- [ ] Database tables created and migrated
-- [ ] Can create Collections with multiple products
-- [ ] Each product in collection creates a GeneratedAsset
-- [ ] Assets persist even after queue jobs expire
-- [ ] Can query all assets for a collection
-- [ ] Can pin assets for reuse as inspiration
-- [ ] Can soft-delete assets and recover them
-- [ ] Drizzle schema generates correct TypeScript types
-- [ ] All API routes use new terminology consistently
+- [x] StudioSession supports multi-product selection
+- [x] Flow tracks generation lifecycle (empty → configured → generating → completed)
+- [x] GeneratedImage stores all metadata (r2Key, prompt, settings, products)
+- [x] Authentication tables support Better Auth + OAuth
+- [x] Members table enables multi-tenant access
+- [ ] Can create flows with 2+ products
+- [ ] Can query all images for a flow
+- [ ] Can query all flows for a session
+- [ ] Worker creates GeneratedImage on job completion
+- [ ] FUTURE: Can auto-generate flows using combination strategies
+
+---
+
+## Open Questions
+
+1. **Combination strategy priority**: Which strategy should be default when multiple match?
+   - Proposal: Let user choose, no auto-fallback
+
+2. **Dimension tolerance**: What's reasonable tolerance for "match_dimensions"?
+   - Proposal: ±10cm for furniture, ±5cm for smaller items
+
+3. **Max products per flow**: Should we limit how many products in one scene?
+   - Proposal: Soft limit of 5 products (UI warning), hard limit of 10
+
+4. **Inspiration image scope**: Should inspiration be per-session or per-flow?
+   - Proposal: Per-session (users set overall style, applies to all flows)
+
+5. **Flow naming**: Should auto-generated flows have auto-names?
+   - Proposal: Yes - "Mattress 160cm + Bed 160cm" (from combination logic)
