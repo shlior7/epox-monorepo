@@ -288,12 +288,12 @@ export interface AIModelConfig {
 }
 
 // ===== CLIENT =====
-export type CommerceProvider = 'woocommerce' | 'none';
+import type { CommerceProvider, CommerceConfig as BaseCommerceConfig } from 'visualizer-types';
 
-export interface CommerceConfig {
-  provider: CommerceProvider;
+export type { CommerceProvider };
+
+export interface CommerceConfig extends BaseCommerceConfig {
   baseUrl: string;
-  secretName?: string;
 }
 
 export interface CreateClientPayload {

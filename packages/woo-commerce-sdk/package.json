@@ -25,11 +25,13 @@
     "body-parser": "^1.20.3",
     "dotenv": "^17.2.1",
     "express": "^4.21.2",
+    "lodash": "^4.17.21",
     "puppeteer": "^23.10.4"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
+    "@types/lodash": "^4.14.202",
     "@types/node": "^24.1.0",
     "@types/supertest": "^6.0.2",
     "@types/woocommerce__woocommerce-rest-api": "^1.0.5",

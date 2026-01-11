@@ -20,7 +20,7 @@ export const product = pgTable(
     category: text('category'),
     roomTypes: jsonb('room_types').$type<string[]>(),
     modelFilename: text('model_filename'),
-    favoriteImages: jsonb('favorite_images').$type<Array<{ imageId: string; sessionId: string }>>().notNull().default([]),
+    favoriteGeneratedImages: jsonb('favorite_images').$type<Array<{ imageId: string; sessionId: string }>>().notNull().default([]),
     sceneImages: jsonb('scene_images').$type<Array<{ imageId: string; sessionId: string }>>().notNull().default([]),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
