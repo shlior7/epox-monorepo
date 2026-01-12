@@ -104,7 +104,7 @@ graph TB
 **Purpose**: Authenticate users via Better Auth
 
 **Layout**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
 │                      [Logo]                                 │
@@ -175,7 +175,7 @@ interface LoginState {
 **Purpose**: Quick access to recent studioSessions, stats, and navigation
 
 **Layout**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
 ├─────────────────────────────────────────────────────────────────────┤
@@ -248,7 +248,7 @@ interface DashboardData {
 **Purpose**: Browse all studioSessions, filter by status
 
 **Layout**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
 ├─────────────────────────────────────────────────────────────────────┤
@@ -328,7 +328,7 @@ interface StudioSessionsListState {
 **Purpose**: 4-step guided workflow to create studioSession
 
 **Shared Wizard Shell**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
 ├─────────────────────────────────────────────────────────────────────┤
@@ -373,7 +373,7 @@ interface WizardState {
 **Purpose**: Select products for the studioSession
 
 **Layout**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Select Products                                                    │
 │                                                                     │
@@ -460,7 +460,7 @@ interface ProductSelectionState {
 **Purpose**: Show AI analysis of selected products
 
 **Layout**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Product Analysis                                                   │
 │                                                                     │
@@ -537,7 +537,7 @@ interface AnalysisState {
 **Purpose**: Select 0-5 inspiration images from 3 sources
 
 **Layout**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Choose Inspiration Images (0-5 selected)                           │
 │                                                                     │
@@ -562,9 +562,9 @@ interface AnalysisState {
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-**Tab 1: Upload**
+#### Tab 1: Upload
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────┐
 │  Upload Your Own Images                                          │
 │                                                                  │
@@ -588,9 +588,9 @@ interface AnalysisState {
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-**Tab 2: Unsplash**
+#### Tab 2: Unsplash
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────┐
 │  Search Unsplash                                                 │
 │                                                                  │
@@ -610,9 +610,9 @@ interface AnalysisState {
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-**Tab 3: My Library (Pinned Generated Images)**
+#### Tab 3: My Library (Pinned Generated Images)
 
-```
+```text
 ┌──────────────────────────────────────────────────────────────────┐
 │  Your Pinned Images                                              │
 │                                                                  │
@@ -702,7 +702,7 @@ interface InspirationPickerState {
 **Purpose**: Review settings and launch generation, show progress
 
 **Layout (Pre-Launch)**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Ready to Generate                                                  │
 │                                                                     │
@@ -737,7 +737,7 @@ interface InspirationPickerState {
 ```
 
 **Layout (During Generation)**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Generating StudioSession...                                           │
 │                                                                     │
@@ -823,7 +823,7 @@ interface GenerationState {
 **Purpose**: View generated images, download, refine, pin
 
 **Layout**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
 ├─────────────────────────────────────────────────────────────────────┤
@@ -857,7 +857,7 @@ interface GenerationState {
 ```
 
 **Image Actions (Hover State)**:
-```
+```text
 ┌──────────┐
 │ [img]    │
 │ ⭐ ⭐ ⭐  │ ← Star rating (1-5)
@@ -925,7 +925,7 @@ interface ResultsGalleryState {
 **Purpose**: Manage product catalog (view, upload, edit, delete)
 
 **Layout**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
 ├─────────────────────────────────────────────────────────────────────┤
@@ -1002,7 +1002,7 @@ interface ProductsLibraryState {
 **Purpose**: Client settings, user profile, billing, API keys
 
 **Layout**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
 ├─────────────────────────────────────────────────────────────────────┤
@@ -1070,7 +1070,7 @@ interface SettingsState {
 **Route**: Any invalid route
 
 **Layout**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                                                                     │
 │                           404                                       │
@@ -1089,7 +1089,7 @@ interface SettingsState {
 **Route**: On server error
 
 **Layout**:
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                                                                     │
 │                           500                                       │
@@ -1105,7 +1105,7 @@ interface SettingsState {
 
 **Components**:
 - `ErrorPage` - Generic error layout
-- `ErrorIllustration` - SVG graphic
+- `ErrorIllustration` - SVG illustration
 
 ---
 
@@ -1987,6 +1987,6 @@ function Step1() {
 - Design Log #003: Data Model & Terminology
 - Plan: `/docs/plans/visualizer_client_studio_42cad7f0.plan.md`
 - Existing components: `/apps/scenergy-visualizer/components/`
-- shadcn/ui: https://ui.shadcn.com/
-- TanStack Query: https://tanstack.com/query/latest
-- Radix UI: https://www.radix-ui.com/
+- [shadcn/ui](https://ui.shadcn.com/)
+- [TanStack Query](https://tanstack.com/query/latest)
+- [Radix UI](https://www.radix-ui.com/)

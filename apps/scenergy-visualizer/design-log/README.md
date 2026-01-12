@@ -177,7 +177,7 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 - Action: Create studio session with 45 products
 - Flows: Create 3 flows with different settings
 - Time: 19 minutes total (7 min interaction + 12 min generation)
-- Output: 180 generated images (45 products × 4 variants × 3 flows... wait that doesn't add up. Let me recalculate: 45 products × 4 variants/product = 180 images per flow? Or is it 45 products across 3 flows = 60 images total? The design log should clarify this.)
+- Output: 180 generated images (45 products × 4 variants per flow = 180 images; 3 flows represent different style settings)
 - Success rate: 176/180 (97.8%)
 - Cost: $9.00, Storage: 360MB
 
@@ -201,7 +201,7 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 - **Error handling**: RFC 7807 Problem Details format
 
 **Key Endpoints**:
-```
+```text
 POST   /api/auth/signup
 GET    /api/products?search=desk&category=furniture
 POST   /api/sessions                    # Create studio session

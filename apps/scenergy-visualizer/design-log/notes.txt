@@ -1,0 +1,34 @@
+- the architecture focuses on the collection flow which the main bulk flow we want to funnel our users to
+but there should be flows that generate one product or genFlow that is part of a collection or not.
+meaning a user can create a single genflow select the product relevant and start a studio session with only this one
+it should have a better view of the genflow having only one with more options available on screen like editing (using the cabapilities of the editor modal), regenerating and modifying the settings or maybe even masking the image and asking speicific propmts.
+the user can get to this view either from the collection studio view by focusing on one of the genFlows(show in a table or matrix) or from the home page where we can have a section for recent genflows or a button to create a new genflow directly
+
+- we need to consider the generated images used to be an optimized webp because the user will be using our r2 cdn for their store site product images as we are providing hosting the images as well.
+
+- consider adding a way to favorite certain products or genflows for easy access later on
+
+- consider adding tags or categories to products and genflows to help users organize and find them easily
+
+- think about integrating analytics to track which products or genflows are performing best for users, providing insights for future improvements
+
+- rename studio session to collection session for better clarity
+
+- rename flow to generationFlow for better clarity
+
+- generated assets needs to be connected to the mutilple products (as well as the generationFlow) they were generated for in order to be used in the store and be viewed in the product context
+its only one productId in the generated_image table
+
+- rename image_url to asset_url in the generated_image table as we will be storing more than just images in the future (like 3d models, videos, etc) and add a asset_type column to specify the type of asset
+
+- user,session,member tables for authentication already exists
+
+--------------------------------------------------------------------------------------------------------------------------------
+
+
+- generated image analysis should be saved on the generated image data to not reanalyze everytime the user want to edit a certain generated asset.
+this would be invalidated if the user edited the generated image
+
+-we need to add another favorite level which is approved (when a client connected his store)
+we want to have an approved for upload indication so the client can approve all or some and sync to the store products and upload the urls for the base images of the product
+

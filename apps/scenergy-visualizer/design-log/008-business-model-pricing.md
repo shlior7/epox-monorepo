@@ -344,7 +344,7 @@ sequenceDiagram
 - One-click "Buy More Credits" button in header
 
 **Credit display**:
-```
+```text
 ┌─────────────────────────────┐
 │ Credits: 47                 │
 │ ○○○○○○○○○○ 47%             │
@@ -353,7 +353,7 @@ sequenceDiagram
 ```
 
 **Package selection UI**:
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                    Choose Your Plan                     │
 ├─────────────┬─────────────┬─────────────┬──────────────┤
