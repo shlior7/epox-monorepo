@@ -51,7 +51,7 @@
     "uuid": "^13.0.0",
     "visualizer-auth": "1.0.0",
     "visualizer-db": "1.0.0",
-    "zustand": "^5.0.2"
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@playwright/test": "^1.46.1",
