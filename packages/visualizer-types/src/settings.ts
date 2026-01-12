@@ -144,10 +144,10 @@ export interface AIModelConfig {
 
 // ===== COMMERCE CONFIGURATION =====
 
-export type CommerceProvider = 'woocommerce' | 'shopify' | 'custom';
+export type CommerceProvider = 'woocommerce' | 'shopify' | 'custom' | 'none';
 
 export interface CommerceConfig {
-  provider?: CommerceProvider;
+  provider: CommerceProvider;
   baseUrl?: string;
   apiUrl?: string;
   consumerKey?: string;
