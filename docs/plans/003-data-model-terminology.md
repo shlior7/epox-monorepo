@@ -2,7 +2,7 @@
 
 **Status**: Updated
 **Created**: 2026-01-10
-**Updated**: 2026-01-11
+**Updated**: 2026-01-12
 **Author**: Claude
 **Related**: Design Log #001 (Architecture), Design Log #002 (Authentication)
 
@@ -279,7 +279,40 @@ interface StoreSyncLog {
 - Link product by SKU/ID
 - Sets `source = 'imported'` and populates `erp_id`
 
-### Q12: When should products be analyzed for prompt engineering?
+### Q12: How do Prompt Tags work in the generation flow?
+**A**: Prompt Tags are UI-friendly style attributes that translate to generation prompts:
+
+**User-facing concept**:
+- Tag bubbles representing room type, mood, lighting, style
+- User clicks to toggle tags on/off
+- AI suggests initial tags based on product analysis
+- User can add custom tags
+
+**Data representation**:
+```typescript
+interface PromptTags {
+  roomType: string[];       // ["living room", "office"]
+  mood: string[];           // ["cozy", "minimalist"]
+  lighting: string[];       // ["natural", "warm"]
+  style: string[];          // ["scandinavian", "modern"]
+  custom: string[];         // User-added custom tags
+}
+```
+
+**Prompt generation**:
+```typescript
+// Tags are flattened to comma-separated values in the prompt
+function tagsToPrompt(tags: PromptTags): string {
+  return [...tags.roomType, ...tags.mood, ...tags.lighting, ...tags.style, ...tags.custom]
+    .filter(Boolean)
+    .join(", ");
+}
+// Result: "living room, office, cozy, minimalist, natural lighting, scandinavian style"
+```
+
+**Stored on**: `generation_flow.settings.promptTags` as JSONB
+
+### Q13: When should products be analyzed for prompt engineering?
 **A**: Three strategy options:
 
 | Strategy | When | Best For |
@@ -732,6 +765,10 @@ interface GeneratedAssetProduct {
 // ====================
 
 interface GenerationFlowSettings {
+  // Prompt Tags (Q&A form - primary way to configure generation)
+  promptTags: PromptTags;        // Tag-based style configuration (see Q12)
+
+  // Legacy/advanced settings (may be derived from promptTags)
   roomType: string;
   style: string;
   lighting: string;
@@ -743,7 +780,15 @@ interface GenerationFlowSettings {
   sceneImageUrl?: string;        // Inspiration image URL
   varietyLevel: number;          // 1-10
   matchProductColors: boolean;
-  promptText?: string;           // Custom prompt override
+  promptText?: string;           // Custom prompt override (takes precedence)
+}
+
+interface PromptTags {
+  roomType: string[];            // ["living room", "office", "bedroom"]
+  mood: string[];                // ["cozy", "minimalist", "elegant"]
+  lighting: string[];            // ["natural", "warm", "dramatic"]
+  style: string[];               // ["scandinavian", "modern", "industrial"]
+  custom: string[];              // User-defined custom tags
 }
 
 // ====================
@@ -1448,6 +1493,41 @@ product_id UUID                     // Bad - use junction table
 CREATE TABLE collection_session ... // Good
 CREATE TABLE generation_flow ...    // Good
 CREATE TABLE generated_asset ...    // Good
+```
+
+### ✅ Good: Using Prompt Tags for Generation Settings
+
+```typescript
+// Creating a generation flow with prompt tags from the Q&A form
+const settings: GenerationFlowSettings = {
+  promptTags: {
+    roomType: ["living room", "office"],
+    mood: ["cozy", "minimalist"],
+    lighting: ["natural"],
+    style: ["scandinavian"],
+    custom: ["high ceilings", "wooden floors"],
+  },
+  // Other settings can be derived or set directly
+  aspectRatio: "16:9",
+  varietyLevel: 5,
+  matchProductColors: true,
+  sceneImageUrl: inspirationImage.url,
+};
+
+// Convert tags to prompt string for AI
+function buildPromptFromTags(tags: PromptTags): string {
+  const allTags = [
+    ...tags.roomType,
+    ...tags.mood,
+    ...tags.lighting.map(l => `${l} lighting`),
+    ...tags.style.map(s => `${s} style`),
+    ...tags.custom,
+  ];
+  return allTags.filter(Boolean).join(", ");
+}
+
+// Result: "living room, office, cozy, minimalist, natural lighting, scandinavian style, high ceilings, wooden floors"
+const promptText = buildPromptFromTags(settings.promptTags);
 ```
 
 ### ❌ Bad: Single productId on generated_asset

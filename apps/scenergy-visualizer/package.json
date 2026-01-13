@@ -51,10 +51,11 @@
     "uuid": "^13.0.0",
     "visualizer-auth": "1.0.0",
     "visualizer-db": "1.0.0",
-    "zustand": "^5.0.9"
+    "zustand": "^5.0.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.46.1",
+    "@types/jsdom": "^27",
     "@types/jszip": "^3.4.1",
     "@types/node": "^24.1.0",
     "@types/react": "^19.0.0",
@@ -62,6 +63,7 @@
     "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
+    "jsdom": "^27.4.0",
     "sass": "^1.89.2",
     "typescript": "^5.7.2",
     "vite-tsconfig-paths": "^5.1.4",

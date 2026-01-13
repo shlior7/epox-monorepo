@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from 'visualizer-auth';
 import { randomBytes } from 'crypto';
-import { db } from 'visualizer-db';
+import { db, getDb } from 'visualizer-db';
 import { createClientRecord, updateClientRecord } from '@/lib/services/db/storage-service';
 import type { Client, CreateClientPayload } from '@/lib/types/app-types';
 import { requireAdmin } from '@/lib/auth/admin-route';
@@ -16,7 +16,7 @@ const generateClientPassword = (): string => randomBytes(12).toString('base64url
 /**
  * API route to create a new client in S3
  * This keeps AWS credentials server-side only
- * Commerce credentials are stored securely in Supabase Vault via erp-service
+ * Commerce credentials are stored securely in Neon via erp-service
  */
 export const POST = requireAdmin(async (request: Request) => {
   try {
@@ -108,9 +108,9 @@ export const POST = requireAdmin(async (request: Request) => {
     let updatedClient = client;
 
     if (commerce?.provider === 'woocommerce') {
-      // Use ERP service to store credentials securely in Supabase Vault
+      // Use ERP service to store credentials securely in Neon
       const { createERPService } = await import('@scenergy/erp-service');
-      const erpService = createERPService();
+      const erpService = createERPService(getDb());
 
       // Save credentials to vault using clientId
       const saveResult = await erpService.saveCredentials(client.id, 'woocommerce', {
@@ -123,7 +123,7 @@ export const POST = requireAdmin(async (request: Request) => {
         throw saveResult.error;
       }
 
-      console.log('✅ Stored WooCommerce credentials in vault for client:', client.name);
+      console.log('✅ Stored WooCommerce credentials in Neon for client:', client.name);
 
       // Also store in Supabase Clients table for quick lookup
       const { db } = await import('@scenergy/supabase-service');

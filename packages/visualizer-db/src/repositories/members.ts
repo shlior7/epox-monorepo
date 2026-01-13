@@ -33,10 +33,6 @@ export class MemberRepository extends BaseRepository<Member> {
     return rows.map((row) => this.mapToEntity(row));
   }
 
-  async listByOrganization(organizationId: string): Promise<Member[]> {
-    return this.listByClient(organizationId);
-  }
-
   async listByUser(userId: string): Promise<Member[]> {
     const rows = await this.drizzle.select().from(member).where(eq(member.userId, userId));
     return rows.map((row) => this.mapToEntity(row));
@@ -49,9 +45,5 @@ export class MemberRepository extends BaseRepository<Member> {
       .where(and(eq(member.clientId, clientId), eq(member.userId, userId)))
       .limit(1);
     return rows[0] ? this.mapToEntity(rows[0]) : null;
-  }
-
-  async getByOrganizationAndUser(organizationId: string, userId: string): Promise<Member | null> {
-    return this.getByClientAndUser(organizationId, userId);
   }
 }

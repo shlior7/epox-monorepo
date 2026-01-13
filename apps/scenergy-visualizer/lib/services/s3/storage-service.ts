@@ -29,6 +29,23 @@ function resolvePublicBaseUrl(bucket: string): string {
   return `https://${bucket}.r2.cloudflarestorage.com`;
 }
 
+async function readFileArrayBuffer(file: File | Blob): Promise<ArrayBuffer> {
+  if (typeof (file as { arrayBuffer?: () => Promise<ArrayBuffer> }).arrayBuffer === 'function') {
+    return (file as { arrayBuffer: () => Promise<ArrayBuffer> }).arrayBuffer();
+  }
+
+  if (typeof Response !== 'undefined') {
+    return new Response(file).arrayBuffer();
+  }
+
+  if (typeof (file as { text?: () => Promise<string> }).text === 'function') {
+    const text = await (file as { text: () => Promise<string> }).text();
+    return new TextEncoder().encode(text).buffer;
+  }
+
+  throw new Error('Unable to read file contents');
+}
+
 
 /**
  * Upload a file to S3
@@ -52,14 +69,14 @@ export async function uploadFile(key: string, file: File | Blob): Promise<string
       svg: 'image/svg+xml',
       json: 'application/json',
     };
-    contentType = mimeTypes[extension || 'jpg'] || 'image/jpeg';
+    contentType = mimeTypes[extension || ''] || contentType || 'image/jpeg';
     console.log(`📝 S3 Upload: Corrected Content-Type to '${contentType}' based on extension`);
   }
 
   console.log(`📤 S3 Upload: ${key} (${contentType}, ${file.size} bytes)`);
 
   // Convert File/Blob to Uint8Array for browser compatibility with AWS SDK
-  const arrayBuffer = await file.arrayBuffer();
+  const arrayBuffer = await readFileArrayBuffer(file);
   const uint8Array = new Uint8Array(arrayBuffer);
 
   const shouldUseMultipart = !isFsDriver && file.size >= 5 * 1024 * 1024;
@@ -80,12 +97,13 @@ export async function uploadFile(key: string, file: File | Blob): Promise<string
     // Convert to Blob to ensure proper streaming
     const blob = new Blob([uint8Array], { type: contentType });
 
+    const body = typeof blob.stream === 'function' ? blob.stream() : blob;
     const upload = createUpload({
       client: s3,
       params: {
         Bucket: bucket,
         Key: key,
-        Body: blob.stream(), // Use stream() for proper ReadableStream in browser
+        Body: body,
         ContentType: contentType,
       },
     });

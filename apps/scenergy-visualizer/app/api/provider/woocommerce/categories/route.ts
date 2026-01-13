@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createERPService, type ProviderCategory } from '@scenergy/erp-service';
+import { getDb } from 'visualizer-db';
 
 export interface WooCommerceCategory {
   id: number;
@@ -31,7 +32,7 @@ export async function POST(request: Request): Promise<NextResponse<FetchCategori
     console.log('🏷️ Fetching WooCommerce categories for client:', clientId);
 
     // Use ERP service to fetch categories (handles credentials securely using clientId)
-    const erpService = createERPService();
+    const erpService = createERPService(getDb());
 
     const result = await erpService.getCategories(clientId);
 

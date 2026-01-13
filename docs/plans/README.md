@@ -84,7 +84,7 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 ### Data Model & Terminology
 
 #### [💾 Design Log #003: Data Model & Terminology](./003-data-model-terminology.md)
-**Focus**: Database schema, entity relationships, **NO renaming needed**
+**Focus**: Database schema, entity relationships
 
 **Key Topics**:
 - **Core entities**: StudioSession, Flow, GeneratedImage (existing tables, no changes)
@@ -95,7 +95,6 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 - **Future**: Multi-product combination strategies
 
 **Key Decisions**:
-- ✅ **NO renaming** - use existing schema: `studio_session`, `flow`, `generated_image`
 - ✅ Flow already supports multi-product (productIds array)
 - ✅ Soft-delete with 30-day recovery window
 - ✅ JSONB for flexible settings storage
@@ -324,16 +323,6 @@ GET    /api/unsplash/search?query=modern+office
 | S3 | **Cloudflare R2** | Already in use, lower costs, S3-compatible API |
 | S3 bucket | R2 bucket | Terminology alignment |
 | s3Key | r2Key | Field naming consistency |
-
-### NO Renaming Needed
-
-The following terms are **already correct** in the existing codebase:
-- ✅ `studio_session` (database table)
-- ✅ `flow` (database table)
-- ✅ `generated_image` (database table)
-- ✅ `jobId` (Redis queue identifier, transient)
-
-**Important**: The design logs previously proposed renaming "Job" → "GeneratedAsset", but this is **NOT needed**. The existing schema is correct.
 
 ---
 
@@ -575,7 +564,6 @@ The platform is ready when:
 - ✅ Removed "GeneratedAsset" concept - use existing `generated_image` table
 - ✅ Removed "Collection" concept - use existing `studio_session` table
 - ✅ Kept existing Flow model (already supports multi-product)
-- ✅ No renaming needed - existing schema is correct
 
 **Storage**:
 - ✅ Changed S3 → Cloudflare R2 throughout all logs

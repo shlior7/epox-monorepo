@@ -2,9 +2,9 @@ import { getStorageAdapter } from './client.js';
 import { storagePaths } from './paths.js';
 import type { PresignedUrl, StorageAdapter, StorageFacade, UploadOptions } from './types.js';
 
-function normalizeKey(orgId: string, path: string): string {
+function normalizeKey(clientId: string, path: string): string {
   const trimmed = path.replace(/^\/+/, '');
-  const prefix = `orgs/${orgId}/`;
+  const prefix = `clients/${clientId}/`;
   if (trimmed.startsWith(prefix)) {
     return trimmed;
   }
@@ -12,8 +12,8 @@ function normalizeKey(orgId: string, path: string): string {
 }
 
 export function createStorageFacade(adapter: StorageAdapter): StorageFacade {
-  async function getUploadUrl(orgId: string, path: string, options?: UploadOptions): Promise<PresignedUrl> {
-    const key = normalizeKey(orgId, path);
+  async function getUploadUrl(clientId: string, path: string, options?: UploadOptions): Promise<PresignedUrl> {
+    const key = normalizeKey(clientId, path);
     return adapter.getUploadUrl(key, options);
   }
 

@@ -1074,11 +1074,12 @@ import { AssetGenerationQueue, WebPOptimizer } from '@repo/visualizer-shared';
 import { db } from '@repo/visualizer-db';
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const { selectedProductIds, flowSettings } = await req.json();
   const collection = await db.query.collectionSession.findFirst({
     where: eq(collectionSession.id, params.id),
   });
 
-  const genFlow = await db.insert(generationFlow).values({
+  const [genFlow] = await db.insert(generationFlow).values({
     collectionSessionId: collection.id,
     clientId: collection.clientId,
     productIds: selectedProductIds,

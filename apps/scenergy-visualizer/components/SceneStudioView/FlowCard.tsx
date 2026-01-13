@@ -143,9 +143,10 @@ export function FlowCard({
     return S3Service.getImageUrl(S3Service.S3Paths.getProductImageBasePath(clientId, product.id, imageId));
   };
 
-  const getGeneratedImageUrl = (imageId: string): string => {
+  const getGeneratedImageUrl = (image: FlowGeneratedImage): string => {
     // Generated images are stored in the client session media folder
-    return S3Service.getImageUrl(S3Service.S3Paths.getClientSessionMediaFilePath(clientId, sessionId, imageId));
+    const filename = image.imageFilename ?? image.imageId;
+    return S3Service.getImageUrl(S3Service.S3Paths.getClientSessionMediaFilePath(clientId, sessionId, filename));
   };
 
   // Config drag handlers
@@ -360,7 +361,7 @@ export function FlowCard({
   const handleImageClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (currentImage && onImageClick) {
-      onImageClick(getGeneratedImageUrl(currentImage.imageId));
+      onImageClick(getGeneratedImageUrl(currentImage));
     }
   };
 
@@ -387,12 +388,12 @@ export function FlowCard({
               {flow.generatedImages.map((img) => (
                 <img
                   key={img.id}
-                  src={getGeneratedImageUrl(img.imageId)}
+                  src={getGeneratedImageUrl(img)}
                   alt=""
                   className={styles.collapsedRevisionThumb}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onImageClick?.(getGeneratedImageUrl(img.imageId));
+                    onImageClick?.(getGeneratedImageUrl(img));
                   }}
                 />
               ))}
@@ -570,7 +571,7 @@ export function FlowCard({
         {currentImage ? (
           <>
             <img
-              src={getGeneratedImageUrl(currentImage.imageId)}
+              src={getGeneratedImageUrl(currentImage)}
               alt="Generated output"
               style={{
                 filter: currentImage.settings?.postAdjustments
@@ -601,7 +602,7 @@ export function FlowCard({
                         onClick={(e) => {
                           e.stopPropagation();
                           setShowImageMenu(false);
-                          onEditImage(getGeneratedImageUrl(currentImage.imageId), flow.id);
+                          onEditImage(getGeneratedImageUrl(currentImage), flow.id);
                         }}
                         className={styles.imageMenuItem}
                         type="button"
@@ -705,7 +706,7 @@ export function FlowCard({
                 }}
               >
                 <img
-                  src={getGeneratedImageUrl(img.imageId)}
+                  src={getGeneratedImageUrl(img)}
                   alt={`Revision ${index + 1}`}
                   style={{
                     filter: img.settings?.postAdjustments

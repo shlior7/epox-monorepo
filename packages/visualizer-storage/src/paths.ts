@@ -1,16 +1,18 @@
-const ORG_PREFIX = 'orgs';
+const CLIENT_PREFIX = 'clients';
 
 export const storagePaths = {
-  productImageBase: (orgId: string, productId: string, imageId: string) =>
-    `${ORG_PREFIX}/${orgId}/products/${productId}/images/base/${imageId}.png`,
-  productImagePreview: (orgId: string, productId: string, imageId: string) =>
-    `${ORG_PREFIX}/${orgId}/products/${productId}/images/preview/${imageId}.jpg`,
-  productModel: (orgId: string, productId: string, filename: string) =>
-    `${ORG_PREFIX}/${orgId}/products/${productId}/models/${filename}`,
-  sessionMedia: (orgId: string, sessionId: string, filename: string) =>
-    `${ORG_PREFIX}/${orgId}/sessions/${sessionId}/media/${filename}`,
-  generatedImage: (orgId: string, imageId: string, extension = 'png') =>
-    `${ORG_PREFIX}/${orgId}/generated/${imageId}.${extension.replace(/^\./, '')}`,
+  productImageBase: (clientId: string, productId: string, imageId: string) =>
+    `${CLIENT_PREFIX}/${clientId}/products/${productId}/media/images/base/${imageId}.png`,
+  productImagePreview: (clientId: string, productId: string, imageId: string) =>
+    `${CLIENT_PREFIX}/${clientId}/products/${productId}/media/images/preview/${imageId}.jpg`,
+  productModel: (clientId: string, productId: string, filename: string) =>
+    `${CLIENT_PREFIX}/${clientId}/products/${productId}/media/models/${filename}`,
+  collectionAsset: (clientId: string, collectionId: string, assetId: string, extension = 'webp') =>
+    `${CLIENT_PREFIX}/${clientId}/collections/${collectionId}/assets/${assetId}.${extension.replace(/^\./, '')}`,
+  generationAsset: (clientId: string, generationFlowId: string, assetId: string, extension = 'webp') =>
+    `${CLIENT_PREFIX}/${clientId}/generations/${generationFlowId}/assets/${assetId}.${extension.replace(/^\./, '')}`,
+  generationAssetOriginal: (clientId: string, generationFlowId: string, assetId: string, extension = 'png') =>
+    `${CLIENT_PREFIX}/${clientId}/generations/${generationFlowId}/assets/${assetId}_original.${extension.replace(/^\./, '')}`,
 } as const;
 
 export type StoragePaths = typeof storagePaths;

@@ -1,11 +1,12 @@
 /**
  * API Route: Update provider credentials
- * Uses erp-service to securely store credentials in Supabase Vault
+ * Uses erp-service to securely store credentials in Neon
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createERPService } from '@scenergy/erp-service';
 import { getClient, updateClientRecord } from '@/lib/services/db/storage-service';
+import { getDb } from 'visualizer-db';
 
 interface UpdateCredentialsRequest {
   clientId: string;
@@ -41,7 +42,7 @@ export async function PUT(request: Request) {
 
     console.log('🔐 Updating provider credentials for client:', clientId);
 
-    const erpService = createERPService();
+    const erpService = createERPService(getDb());
 
     // Save credentials to vault using clientId
     const result = await erpService.saveCredentials(clientId, provider, {
@@ -92,7 +93,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Missing clientId' }, { status: 400 });
     }
 
-    const erpService = createERPService();
+    const erpService = createERPService(getDb());
     const hasCredentials = await erpService.hasCredentials(clientId);
 
     if (hasCredentials.error) {

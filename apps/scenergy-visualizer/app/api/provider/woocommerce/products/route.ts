@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createERPService, type ProviderProduct } from '@scenergy/erp-service';
+import { getDb } from 'visualizer-db';
 
 // Simplified product response for the import modal
 export interface WooCommerceProductPreview {
@@ -57,7 +58,7 @@ export async function POST(request: Request): Promise<NextResponse<FetchProducts
     console.log('🛒 Fetching WooCommerce products for client:', clientId);
 
     // Use ERP service to fetch products (handles credentials securely using clientId)
-    const erpService = createERPService();
+    const erpService = createERPService(getDb());
 
     // Fetch products using clientId to retrieve credentials
     const result = await erpService.getProducts(clientId, {

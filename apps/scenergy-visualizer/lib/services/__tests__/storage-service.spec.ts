@@ -107,7 +107,7 @@ describe('s3/storage-service', () => {
 
   it('uploadFile propagates upload errors', async () => {
     const file = new File(['oops'], 'broken.png', { type: 'image/png' });
-    uploadDoneMock.mockRejectedValueOnce(new Error('upload failed'));
+    sendMock.mockRejectedValueOnce(new Error('upload failed'));
 
     await expect(StorageService.uploadFile('path/to/file.png', file)).rejects.toThrow('upload failed');
   });

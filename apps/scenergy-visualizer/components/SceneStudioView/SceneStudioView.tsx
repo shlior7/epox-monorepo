@@ -253,9 +253,13 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
       const statusData = await statusResponse.json();
 
       if (statusData.status === 'completed') {
+        const imageFilename = statusData.imageIds?.[0] || '';
+        const imageId = imageFilename ? imageFilename.replace(/\.[^/.]+$/, '') : '';
+
         const newGeneratedImage: FlowGeneratedImage = {
           id: uuidv4(),
-          imageId: statusData.imageIds?.[0] || '',
+          imageId,
+          imageFilename,
           timestamp: new Date().toISOString(),
           productIds: flow.productIds,
           settings: { ...flow.settings },
@@ -658,9 +662,13 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
         // Update the flow with the new/replaced image
         const currentImages = [...flow.generatedImages];
         const currentGenImage = flow.generatedImages[flow.currentImageIndex];
+        const imageFilename = newImageId;
+        const imageId = newImageId.replace(/\.[^/.]+$/, '');
+
         const newImage: FlowGeneratedImage = {
           id: newImageId,
-          imageId: newImageId,
+          imageId,
+          imageFilename,
           timestamp: new Date().toISOString(),
           productIds: currentGenImage?.productIds || flow.productIds,
           settings: currentGenImage?.settings || flow.settings,

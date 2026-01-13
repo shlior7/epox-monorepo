@@ -60,8 +60,6 @@ We need to design a multi-phase business model that:
 
 | Cost Component | Amount | Notes |
 |----------------|--------|-------|
-| Gemini API (imagen-3.0-generate-001) | $0.04 per image | Standard quality |
-| Gemini API (imagen-3.0-fast-001) | $0.02 per image | Fast mode (2x cheaper) |
 | S3 storage | $0.023/GB/month | Average 3MB per image = $0.00007/image/month |
 | CloudFront CDN | $0.085/GB transfer | Average 3MB = $0.00025 per view |
 | Database writes | $0.0001 per write | Negligible |

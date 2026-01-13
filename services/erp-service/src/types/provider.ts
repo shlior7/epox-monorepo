@@ -15,6 +15,9 @@ export interface BaseCredentials {
 export interface WooCommerceCredentials extends BaseCredentials {
   consumerKey: string;
   consumerSecret: string;
+  keyId?: number;
+  userId?: number;
+  keyPermissions?: 'read' | 'write' | 'read_write';
 }
 
 // Shopify credentials (for future implementation)

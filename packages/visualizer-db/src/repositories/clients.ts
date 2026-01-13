@@ -1,7 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
 import { client } from '../schema/auth';
-import type { Client, ClientCreate, ClientUpdate } from '../types';
+import type { Client, ClientCreate, ClientUpdate } from 'visualizer-types';
 import { updateWithVersion } from '../utils/optimistic-lock';
 import { BaseRepository } from './base';
 
@@ -65,6 +65,3 @@ export class ClientRepository extends BaseRepository<Client> {
     return updateWithVersion<Client>(this.drizzle, client, id, data, expectedVersion);
   }
 }
-
-// Legacy alias
-export { ClientRepository as OrganizationRepository };

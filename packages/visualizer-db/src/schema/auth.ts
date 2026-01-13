@@ -8,9 +8,7 @@ import { relations } from 'drizzle-orm';
 import type { ClientMetadata } from 'visualizer-types';
 
 // Re-export types for schema consumers
-
-// Legacy alias
-export type { ClientMetadata as OrganizationMetadata, CommerceConfig, AIModelConfig, ClientMetadata } from 'visualizer-types';
+export type { CommerceConfig, AIModelConfig, ClientMetadata } from 'visualizer-types';
 
 // ===== ADMIN USER (Platform Administrators) =====
 export const adminUser = pgTable('admin_user', {
@@ -120,9 +118,6 @@ export const client = pgTable(
   (table) => [uniqueIndex('client_slug_idx').on(table.slug)]
 );
 
-// Legacy alias
-export const organization = client;
-
 // ===== MEMBER =====
 export const member = pgTable(
   'member',
@@ -200,9 +195,6 @@ export const clientRelations = relations(client, ({ many }) => ({
   members: many(member),
   invitations: many(invitation),
 }));
-
-// Legacy alias
-export const organizationRelations = clientRelations;
 
 export const memberRelations = relations(member, ({ one }) => ({
   client: one(client, {

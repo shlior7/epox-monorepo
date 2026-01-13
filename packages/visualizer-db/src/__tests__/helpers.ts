@@ -41,9 +41,9 @@ export async function createTestUser(
 }
 
 /**
- * Create a test organization directly in the database
+ * Create a test client directly in the database
  */
-export async function createTestOrganization(
+export async function createTestClient(
   db: TestDrizzleClient,
   overrides: Partial<{
     id: string;
@@ -51,13 +51,13 @@ export async function createTestOrganization(
     slug: string;
   }> = {}
 ) {
-  const id = overrides.id ?? createTestId('org');
-  const name = overrides.name ?? 'Test Organization';
+  const id = overrides.id ?? createTestId('client');
+  const name = overrides.name ?? 'Test Client';
   const slug = overrides.slug ?? id;
   const now = new Date();
 
   await db.execute(sql`
-    INSERT INTO organization (id, name, slug, version, created_at, updated_at)
+    INSERT INTO client (id, name, slug, version, created_at, updated_at)
     VALUES (${id}, ${name}, ${slug}, 1, ${now}, ${now})
   `);
 
@@ -69,7 +69,7 @@ export async function createTestOrganization(
  */
 export async function createTestProduct(
   db: TestDrizzleClient,
-  organizationId: string,
+  clientId: string,
   overrides: Partial<{
     id: string;
     name: string;
@@ -82,39 +82,40 @@ export async function createTestProduct(
   const now = new Date();
 
   await db.execute(sql`
-    INSERT INTO product (id, organization_id, name, description, version, created_at, updated_at)
-    VALUES (${id}, ${organizationId}, ${name}, ${description}, 1, ${now}, ${now})
+    INSERT INTO product (id, client_id, name, description, is_favorite, source, version, created_at, updated_at)
+    VALUES (${id}, ${clientId}, ${name}, ${description}, false, 'uploaded', 1, ${now}, ${now})
   `);
 
-  return { id, organizationId, name, description, version: 1, createdAt: now, updatedAt: now };
+  return { id, clientId, name, description, version: 1, createdAt: now, updatedAt: now };
 }
 
 /**
- * Create a test client session directly in the database
+ * Create a test collection session directly in the database
  */
-export async function createTestClientSession(
+export async function createTestCollectionSession(
   db: TestDrizzleClient,
-  organizationId: string,
+  clientId: string,
   overrides: Partial<{
     id: string;
     name: string;
     productIds: string[];
   }> = {}
 ) {
-  const id = overrides.id ?? createTestId('client-session');
-  const name = overrides.name ?? 'Test Client Session';
+  const id = overrides.id ?? createTestId('collection-session');
+  const name = overrides.name ?? 'Test Collection Session';
   const productIds = JSON.stringify(overrides.productIds ?? []);
   const now = new Date();
 
   await db.execute(sql`
-    INSERT INTO client_session (id, organization_id, name, product_ids, selected_base_images, version, created_at, updated_at)
-    VALUES (${id}, ${organizationId}, ${name}, ${productIds}::jsonb, '{}'::jsonb, 1, ${now}, ${now})
+    INSERT INTO collection_session (id, client_id, name, status, product_ids, selected_base_images, version, created_at, updated_at)
+    VALUES (${id}, ${clientId}, ${name}, 'draft', ${productIds}::jsonb, '{}'::jsonb, 1, ${now}, ${now})
   `);
 
   return {
     id,
-    organizationId,
+    clientId,
     name,
+    status: 'draft',
     productIds: overrides.productIds ?? [],
     selectedBaseImages: {},
     version: 1,

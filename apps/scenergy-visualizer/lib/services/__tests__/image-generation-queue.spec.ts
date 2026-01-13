@@ -65,6 +65,7 @@ const { generateImagesMock, GeminiServiceMock } = vi.hoisted(() => {
 
 vi.mock('../gemini', () => ({
   GeminiService: GeminiServiceMock,
+  getGeminiService: () => new GeminiServiceMock(),
 }));
 
 const { uploadFileMock, downloadFileMock } = vi.hoisted(() => ({
@@ -72,8 +73,8 @@ const { uploadFileMock, downloadFileMock } = vi.hoisted(() => ({
   downloadFileMock: vi.fn(),
 }));
 
-vi.mock('../s3', async () => {
-  const actual = await vi.importActual<typeof import('../s3')>('../s3');
+vi.mock('../r2/media-service', async () => {
+  const actual = await vi.importActual<typeof import('../r2/media-service')>('../r2/media-service');
   return {
     ...actual,
     uploadFile: uploadFileMock,
@@ -152,6 +153,7 @@ describe('image-generation queue', () => {
     });
 
     expect(result.expectedImageIds).toEqual(['generated-alpha.jpg', 'generated-beta.jpg']);
+    await new Promise((resolve) => setImmediate(resolve));
     expect(startSpy).toHaveBeenCalledWith(result.jobId);
     const stored = redisStore.get(`job:${result.jobId}`);
     expect(stored).toBeDefined();

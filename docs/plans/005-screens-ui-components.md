@@ -2,6 +2,7 @@
 
 **Status**: Draft
 **Created**: 2026-01-10
+**Updated**: 2026-01-12
 **Author**: Claude
 **Related**: Design Log #001 (Architecture), Design Log #003 (Data Model)
 
@@ -453,48 +454,98 @@ interface ProductSelectionState {
 
 ---
 
-#### Step 2: Analysis Results Preview
+#### Step 2: Analysis Results + Q&A Form (Prompt Tags)
 
 **Route**: `/studioSessions/new?step=2`
 
-**Purpose**: Show AI analysis of selected products
+**Purpose**: Show AI analysis of selected products AND let user customize style via prompt tags
 
 **Layout**:
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
-│  Product Analysis                                                   │
+│  Product Analysis + Style Your Generation                          │
 │                                                                     │
 │  [🔄 Analyzing products...]  (Shows during API call)                │
 │                                                                     │
 │  ✓ Analysis Complete                                                │
 │                                                                     │
-│  Selected Products: 45                                              │
+│  ─────────────────────────────────────────────────────────────────  │
 │                                                                     │
-│  Room Type Distribution                                             │
+│  STYLE YOUR GENERATION (Prompt Tags)                                │
+│  Based on your products, we suggest the following. Click to toggle: │
+│                                                                     │
+│  Room Type                                                          │
+│  [Living Room ✓] [Bedroom ✓] [Office] [Outdoor] [Bathroom] [+ Add] │
+│                                                                     │
+│  Mood                                                               │
+│  [Cozy ✓] [Modern] [Minimalist ✓] [Elegant] [Rustic] [+ Add]       │
+│                                                                     │
+│  Lighting                                                           │
+│  [Natural ✓] [Warm] [Dramatic] [Soft] [Bright] [+ Add]             │
+│                                                                     │
+│  Style                                                              │
+│  [Scandinavian ✓] [Industrial] [Bohemian] [Mid-Century] [+ Add]    │
+│                                                                     │
+│  Custom Tags                                                        │
+│  [high ceilings ✓] [wooden floors ✓] [+ Add Custom]                │
+│                                                                     │
+│  ─────────────────────────────────────────────────────────────────  │
+│                                                                     │
+│  📝 Prompt Preview                                                  │
 │  ┌──────────────────────────────────────────────────────────────┐  │
-│  │  Living Room    ████████████████░░░░  18 products (40%)      │  │
-│  │  Bedroom        ██████████░░░░░░░░░░  12 products (27%)      │  │
-│  │  Office         ██████░░░░░░░░░░░░░░   8 products (18%)      │  │
-│  │  Bathroom       ████░░░░░░░░░░░░░░░░   5 products (11%)      │  │
-│  │  Kitchen        ██░░░░░░░░░░░░░░░░░░   2 products (4%)       │  │
+│  │ "living room, bedroom, cozy, minimalist, natural lighting,   │  │
+│  │  scandinavian style, high ceilings, wooden floors"           │  │
 │  └──────────────────────────────────────────────────────────────┘  │
 │                                                                     │
-│  Product Types Detected                                             │
-│  Sofas, Chairs, Beds, Desks, Tables, Lamps, Rugs, Cabinets         │
+│  ─────────────────────────────────────────────────────────────────  │
 │                                                                     │
-│  Suggested Styles                                                   │
-│  Modern, Contemporary, Minimalist                                   │
-│                                                                     │
-│  Recommended Inspiration Keywords                                   │
-│  "modern living room", "contemporary bedroom", "minimalist office"  │
-│                                                                     │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │ ℹ️ These insights will help us suggest relevant inspiration  │  │
-│  │   images in the next step.                                   │  │
-│  └──────────────────────────────────────────────────────────────┘  │
+│  📊 Product Summary                                                 │
+│  Selected: 45 products • Types: Sofas, Beds, Desks, Chairs         │
 │                                                                     │
 │              [← Back]                            [Continue →]       │
 └─────────────────────────────────────────────────────────────────────┘
+```
+
+**Prompt Tags Component**:
+```typescript
+interface PromptTagsFormProps {
+  initialTags: PromptTags;       // AI-suggested tags
+  onChange: (tags: PromptTags) => void;
+  suggestedTags: {              // From product analysis
+    roomType: string[];
+    mood: string[];
+    lighting: string[];
+    style: string[];
+  };
+}
+
+interface PromptTags {
+  roomType: string[];     // ["living room", "bedroom"]
+  mood: string[];         // ["cozy", "minimalist"]
+  lighting: string[];     // ["natural"]
+  style: string[];        // ["scandinavian"]
+  custom: string[];       // ["high ceilings", "wooden floors"]
+}
+```
+
+**Tag Bubble Behavior**:
+- ✓ (checked) = tag is selected (included in prompt)
+- Click to toggle on/off
+- [+ Add] opens input to add custom tag in that category
+- Prompt preview updates in real-time
+
+**Prompt Generation**:
+```typescript
+function buildPromptFromTags(tags: PromptTags): string {
+  return [
+    ...tags.roomType,
+    ...tags.mood,
+    ...tags.lighting.map(l => `${l} lighting`),
+    ...tags.style.map(s => `${s} style`),
+    ...tags.custom,
+  ].filter(Boolean).join(", ");
+}
+// Result: "living room, bedroom, cozy, minimalist, natural lighting, scandinavian style, high ceilings, wooden floors"
 ```
 
 **Components**:

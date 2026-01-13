@@ -161,7 +161,8 @@ export interface FlowGenerationSettings {
 
 export interface FlowGeneratedImage {
   id: string;
-  imageId: string; // Reference to image in S3
+  imageId: string; // Reference to image in S3 (without extension)
+  imageFilename?: string; // Full filename with extension
   timestamp: string;
   productIds: string[];
   settings: FlowGenerationSettings;

@@ -6,8 +6,8 @@
  * ```typescript
  * import { createERPService } from '@scenergy/erp-service';
  *
- * // Create service (uses supabase-service internally)
- * const erpService = createERPService();
+ * // Create service using Neon drizzle client
+ * const erpService = createERPService(db);
  *
  * // Fetch products using stored credentials
  * const { data, error } = await erpService.getProducts('my-client', { limit: 10 });
@@ -17,27 +17,26 @@
  * ```
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { ERPService, type ERPServiceConfig } from './erp-service';
+import type { DrizzleClient } from 'visualizer-db';
 
 // Cached service instance
 let cachedService: ERPService | null = null;
+let cachedDrizzle: DrizzleClient | null = null;
 
 /**
- * Create an ERP service instance using the default supabase client from supabase-service
+ * Create an ERP service instance using a Neon Drizzle client
  */
-export function createERPService(config?: ERPServiceConfig): ERPService {
-  if (cachedService && !config) {
+export function createERPService(drizzle: DrizzleClient, config?: ERPServiceConfig): ERPService {
+  if (cachedService && cachedDrizzle === drizzle && !config) {
     return cachedService;
   }
 
-  // Dynamic import to avoid circular dependencies
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { supabase } = require('@scenergy/supabase-service');
-  const service = new ERPService(supabase as SupabaseClient, config);
+  const service = new ERPService(drizzle, config);
 
   if (!config) {
     cachedService = service;
+    cachedDrizzle = drizzle;
   }
 
   return service;
