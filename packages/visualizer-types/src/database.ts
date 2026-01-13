@@ -5,8 +5,24 @@
 
 import type { FlowGenerationSettings, ClientMetadata, FlowStatus } from './settings';
 import type { MessagePart, MessageRole } from './messages';
+import type {
+  ProductSource,
+  ProductAnalysis,
+  CollectionSessionStatus,
+  AssetType,
+  AssetStatus,
+  ApprovalStatus,
+  AssetAnalysis,
+  TaggableEntityType,
+  FavoriteEntityType,
+  StoreType,
+  StoreConnectionStatus,
+  SyncAction,
+  SyncStatus,
+  GenerationEventType,
+} from './domain';
 
-// ===== CLIENT (formerly Organization) =====
+// ===== CLIENT =====
 
 export interface ClientCreate {
   name: string;
@@ -22,10 +38,6 @@ export interface ClientUpdate {
   metadata?: ClientMetadata;
 }
 
-// Legacy aliases for backward compatibility
-export type OrganizationCreate = ClientCreate;
-export type OrganizationUpdate = ClientUpdate;
-
 // ===== PRODUCT =====
 
 export interface ProductCreate {
@@ -34,8 +46,18 @@ export interface ProductCreate {
   category?: string;
   roomTypes?: string[];
   modelFilename?: string;
-  favoriteGeneratedImages?: Array<{ imageId: string; sessionId: string }>;
-  sceneImages?: Array<{ imageId: string; sessionId: string }>;
+  isFavorite?: boolean;
+  source?: ProductSource;
+  storeConnectionId?: string;
+  erpId?: string;
+  erpSku?: string;
+  erpUrl?: string;
+  importedAt?: Date;
+  analysisData?: ProductAnalysis;
+  analysisVersion?: string;
+  analyzedAt?: Date;
+  price?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ProductUpdate {
@@ -44,8 +66,18 @@ export interface ProductUpdate {
   category?: string | null;
   roomTypes?: string[] | null;
   modelFilename?: string | null;
-  favoriteGeneratedImages?: Array<{ imageId: string; sessionId: string }>;
-  sceneImages?: Array<{ imageId: string; sessionId: string }>;
+  isFavorite?: boolean;
+  source?: ProductSource;
+  storeConnectionId?: string | null;
+  erpId?: string | null;
+  erpSku?: string | null;
+  erpUrl?: string | null;
+  importedAt?: Date | null;
+  analysisData?: ProductAnalysis | null;
+  analysisVersion?: string | null;
+  analyzedAt?: Date | null;
+  price?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 // ===== PRODUCT IMAGE =====
@@ -73,23 +105,21 @@ export interface ChatSessionUpdate {
   selectedBaseImageId?: string;
 }
 
-// ===== STUDIO SESSION (formerly ClientSession) =====
+// ===== COLLECTION SESSION =====
 
-export interface StudioSessionCreate {
+export interface CollectionSessionCreate {
   name: string;
+  status?: CollectionSessionStatus;
   productIds?: string[];
   selectedBaseImages?: Record<string, string>;
 }
 
-export interface StudioSessionUpdate {
+export interface CollectionSessionUpdate {
   name?: string;
+  status?: CollectionSessionStatus;
   productIds?: string[];
   selectedBaseImages?: Record<string, string>;
 }
-
-// Legacy aliases for backward compatibility
-export type ClientSessionCreate = StudioSessionCreate;
-export type ClientSessionUpdate = StudioSessionUpdate;
 
 // ===== MESSAGE =====
 
@@ -105,43 +135,162 @@ export interface MessageUpdate {
   parts?: MessagePart[];
 }
 
-// ===== FLOW =====
+// ===== GENERATION FLOW =====
 
-export interface FlowCreate {
+export interface GenerationFlowCreate {
+  collectionSessionId?: string | null;
+  clientId: string;
   name?: string;
   productIds?: string[];
   selectedBaseImages?: Record<string, string>;
   settings?: Partial<FlowGenerationSettings>;
+  isFavorite?: boolean;
 }
 
-export interface FlowUpdate {
+export interface GenerationFlowUpdate {
   name?: string;
   productIds?: string[];
   selectedBaseImages?: Record<string, string>;
   status?: FlowStatus;
   settings?: Partial<FlowGenerationSettings>;
+  isFavorite?: boolean;
   currentImageIndex?: number;
 }
 
-// ===== GENERATED IMAGE =====
+// ===== GENERATED ASSET =====
 
-export interface GeneratedImageCreate {
+export interface GeneratedAssetCreate {
   clientId: string;
-  flowId?: string;
+  generationFlowId?: string | null;
   chatSessionId?: string | null;
-  r2Key: string;
+  assetUrl: string;
+  assetType?: AssetType;
+  status?: AssetStatus;
   prompt?: string | null;
   settings?: FlowGenerationSettings;
   productIds?: string[];
   jobId?: string | null;
   error?: string | null;
+  assetAnalysis?: AssetAnalysis | null;
+  analysisVersion?: string | null;
+  approvalStatus?: ApprovalStatus;
+  approvedAt?: Date | null;
+  approvedBy?: string | null;
+  completedAt?: Date | null;
+}
+
+export interface GeneratedAssetUpdate {
+  assetUrl?: string;
+  assetType?: AssetType;
+  status?: AssetStatus;
+  prompt?: string | null;
+  settings?: FlowGenerationSettings | null;
+  productIds?: string[] | null;
+  jobId?: string | null;
+  error?: string | null;
+  assetAnalysis?: AssetAnalysis | null;
+  analysisVersion?: string | null;
+  approvalStatus?: ApprovalStatus;
+  approvedAt?: Date | null;
+  approvedBy?: string | null;
+  completedAt?: Date | null;
+}
+
+// ===== GENERATED ASSET PRODUCT =====
+
+export interface GeneratedAssetProductCreate {
+  generatedAssetId: string;
+  productId: string;
+  isPrimary?: boolean;
 }
 
 // ===== FAVORITE IMAGE =====
 
 export interface FavoriteImageCreate {
   clientId: string;
-  generatedImageId: string;
+  generatedAssetId: string;
+}
+
+// ===== TAG =====
+
+export interface TagCreate {
+  clientId: string;
+  name: string;
+  color?: string;
+}
+
+export interface TagUpdate {
+  name?: string;
+  color?: string | null;
+}
+
+// ===== TAG ASSIGNMENT =====
+
+export interface TagAssignmentCreate {
+  tagId: string;
+  entityType: TaggableEntityType;
+  entityId: string;
+}
+
+// ===== USER FAVORITE =====
+
+export interface UserFavoriteCreate {
+  userId: string;
+  entityType: FavoriteEntityType;
+  entityId: string;
+}
+
+// ===== STORE CONNECTION =====
+
+export interface StoreConnectionCreate {
+  clientId: string;
+  storeType: StoreType;
+  storeName: string;
+  storeUrl: string;
+  status?: StoreConnectionStatus;
+  credentials: Record<string, unknown>;
+  syncConfig?: Record<string, unknown>;
+}
+
+export interface StoreConnectionUpdate {
+  storeName?: string;
+  storeUrl?: string;
+  status?: StoreConnectionStatus;
+  credentials?: Record<string, unknown>;
+  syncConfig?: Record<string, unknown> | null;
+  lastSyncAt?: Date | null;
+}
+
+// ===== STORE SYNC LOG =====
+
+export interface StoreSyncLogCreate {
+  storeConnectionId: string;
+  action: SyncAction;
+  status?: SyncStatus;
+  itemsProcessed?: number;
+  itemsFailed?: number;
+  errorDetails?: string | null;
+  startedAt: Date;
+  completedAt?: Date | null;
+}
+
+export interface StoreSyncLogUpdate {
+  status?: SyncStatus;
+  itemsProcessed?: number;
+  itemsFailed?: number;
+  errorDetails?: string | null;
+  completedAt?: Date | null;
+}
+
+// ===== GENERATION EVENT =====
+
+export interface GenerationEventCreate {
+  clientId: string;
+  userId?: string | null;
+  eventType: GenerationEventType;
+  generationFlowId?: string | null;
+  generatedAssetId?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 // ===== MEMBER =====
@@ -158,4 +307,4 @@ export interface MemberUpdate {
 
 // ===== SESSION TYPE =====
 
-export type SessionType = 'chat' | 'studio';
+export type SessionType = 'chat' | 'collection';

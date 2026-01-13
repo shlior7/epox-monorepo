@@ -2,7 +2,7 @@ import { asc, eq } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
 import { chatSession } from '../schema/sessions';
 import { product } from '../schema/products';
-import type { ChatSession, Product, ProductCreate, ProductImage, ProductUpdate, ProductWithDetails, ProductWithImages } from '../types';
+import type { ChatSession, Product, ProductCreate, ProductImage, ProductUpdate, ProductWithDetails, ProductWithImages } from 'visualizer-types';
 import { updateWithVersion } from '../utils/optimistic-lock';
 import { BaseRepository } from './base';
 
@@ -25,8 +25,18 @@ export class ProductRepository extends BaseRepository<Product> {
         category: data.category ?? null,
         roomTypes: data.roomTypes ?? null,
         modelFilename: data.modelFilename ?? null,
-        favoriteGeneratedImages: data.favoriteGeneratedImages ?? [],
-        sceneImages: data.sceneImages ?? [],
+        isFavorite: data.isFavorite ?? false,
+        source: data.source ?? 'uploaded',
+        storeConnectionId: data.storeConnectionId ?? null,
+        erpId: data.erpId ?? null,
+        erpSku: data.erpSku ?? null,
+        erpUrl: data.erpUrl ?? null,
+        importedAt: data.importedAt ?? null,
+        analysisData: data.analysisData ?? null,
+        analysisVersion: data.analysisVersion ?? null,
+        analyzedAt: data.analyzedAt ?? null,
+        price: data.price ?? null,
+        metadata: data.metadata ?? null,
         version: 1,
         createdAt: now,
         updatedAt: now,

@@ -163,9 +163,6 @@ export interface ClientMetadata {
   aiModelConfig?: AIModelConfig;
 }
 
-// Legacy alias for backward compatibility
-export type OrganizationMetadata = ClientMetadata;
-
 // ===== FLOW STATUS =====
 
 export type FlowStatus = 'empty' | 'configured' | 'generating' | 'completed' | 'error';

@@ -19,11 +19,18 @@ beforeEach(async () => {
   // Order matters due to foreign key constraints
   await testDb.execute(sql`
     TRUNCATE TABLE
+      generated_asset_product,
       favorite_image,
-      generated_image,
+      generated_asset,
+      user_favorite,
+      tag_assignment,
+      tag,
+      generation_event,
+      store_sync_log,
+      store_connection,
       message,
-      flow,
-      client_session,
+      generation_flow,
+      collection_session,
       chat_session,
       product_image,
       product,
@@ -32,7 +39,9 @@ beforeEach(async () => {
       session,
       account,
       verification,
-      organization,
+      admin_session,
+      admin_user,
+      client,
       "user"
     RESTART IDENTITY CASCADE
   `);

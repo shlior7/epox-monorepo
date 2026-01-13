@@ -2,6 +2,7 @@
 
 **Status**: Draft
 **Created**: 2026-01-10
+**Updated**: 2026-01-12
 **Author**: Claude
 **Related**: Design Log #001 (Architecture), Design Log #002 (Authentication), Design Log #003 (Data Model), Design Log #004 (User Flows), Design Log #005 (Screens & UI)
 
@@ -560,6 +561,152 @@ Without this documentation:
 **Scenario Example**:
 
 > Sarah's 45 furniture products are analyzed by AI. The system detects 18 Living Room items, 15 Bedroom items, 8 Dining Room items, and 4 Office items. It suggests "Modern", "Contemporary", and "Scandinavian" styles. These suggestions help Sarah find relevant inspiration images in the next step.
+
+---
+
+### UC-003A: Customizing Generation with Prompt Tags (Q&A Form)
+
+**Actor**: Logged-in user (during Step 2 of wizard, after analysis)
+
+**Preconditions**:
+- AI analysis completed (UC-003)
+- System has suggested prompt tags based on product analysis
+- User viewing Step 2 (Analysis Results + Q&A Form)
+
+**Main Flow**:
+
+1. User sees analysis results (room type distribution, product types)
+2. System displays Q&A form with prompt tags as clickable bubbles:
+   ```
+   ┌─────────────────────────────────────────────────────────────┐
+   │ Customize Your Generation Style                            │
+   ├─────────────────────────────────────────────────────────────┤
+   │ Room Type:                                                  │
+   │ [Living Room ✓] [Bedroom ✓] [Office] [Dining Room]         │
+   │                                                             │
+   │ Mood:                                                       │
+   │ [Cozy ✓] [Minimalist] [Elegant ✓] [Warm]                   │
+   │                                                             │
+   │ Lighting:                                                   │
+   │ [Natural ✓] [Warm] [Dramatic] [Soft]                       │
+   │                                                             │
+   │ Style:                                                      │
+   │ [Scandinavian ✓] [Modern] [Industrial] [Contemporary]      │
+   │                                                             │
+   │ Custom Tags: [Add custom tag...]                            │
+   │ [high ceilings ✓] [wooden floors ✓]                        │
+   ├─────────────────────────────────────────────────────────────┤
+   │ Preview: living room, bedroom, cozy, elegant, natural,     │
+   │          scandinavian, high ceilings, wooden floors        │
+   └─────────────────────────────────────────────────────────────┘
+   ```
+3. AI pre-selects relevant tags based on product analysis:
+   - Room types matching product metadata
+   - Mood/style matching product categories
+   - Lighting based on product types (e.g., "natural" for outdoor furniture)
+4. User reviews pre-selected tags
+5. User clicks a deselected tag to add it:
+   - User clicks "Modern" (not selected)
+   - Tag toggles to selected state (Modern ✓)
+   - Prompt preview updates: "...scandinavian, modern, high ceilings..."
+6. User clicks a selected tag to remove it:
+   - User clicks "Cozy ✓"
+   - Tag toggles to deselected state (Cozy)
+   - Prompt preview updates (removes "cozy")
+7. User adds custom tag:
+   - User clicks "Add custom tag..."
+   - Input field appears
+   - User types "open floor plan"
+   - User presses Enter or clicks Add
+   - Tag appears: [open floor plan ✓]
+   - Prompt preview updates
+8. System stores prompt tags:
+   ```typescript
+   const promptTags: PromptTags = {
+     roomType: ["living room", "bedroom"],
+     mood: ["elegant"],
+     lighting: ["natural"],
+     style: ["scandinavian", "modern"],
+     custom: ["high ceilings", "wooden floors", "open floor plan"]
+   };
+   ```
+9. User clicks "Next: Inspire"
+10. System saves tags to studioSession:
+    ```typescript
+    await db.studioSessions.update({
+      where: { id: studioSessionId },
+      data: {
+        settings: {
+          ...existingSettings,
+          promptTags
+        }
+      }
+    });
+    ```
+
+**Alternative Flows**:
+
+**A1: User accepts all AI suggestions (no changes)**
+- User reviews pre-selected tags
+- User is satisfied with suggestions
+- User clicks "Next: Inspire" without modifications
+- System uses AI-suggested tags as-is
+
+**A2: User clears all tags**
+- User clicks "Clear All" button
+- All tags deselected
+- Prompt preview shows empty
+- System warns: "No tags selected. Using default generation settings."
+- User can proceed or re-select tags
+
+**A3: User adds many custom tags**
+- User adds 5+ custom tags
+- System shows info: "5 custom tags added"
+- All custom tags included in prompt
+- Prompt preview shows all tags
+
+**A4: User removes a custom tag**
+- User clicks × on custom tag bubble
+- Tag removed from custom list
+- Prompt preview updates
+
+**Exception Handling**:
+
+- **Tags fail to save**: Auto-retry, show error "Failed to save preferences. Try again."
+- **Prompt preview too long**: Truncate display with "...", full prompt visible on hover
+- **Special characters in custom tag**: Sanitize input, remove special chars, show warning
+- **Duplicate custom tag**: Prevent duplicates, show info "Tag already exists"
+
+**Postconditions**:
+- StudioSession has `settings.promptTags` populated
+- Prompt tags reflected in generation prompt
+- User proceeds to Step 3 with customized settings
+- Tags converted to comma-separated prompt string for AI generation
+
+**Success Criteria**:
+- ✅ Tag toggle responds in <100ms (instant feedback)
+- ✅ Prompt preview updates in real-time
+- ✅ AI suggestions relevant to product analysis (>80% accuracy)
+- ✅ Custom tags allow any alphanumeric input
+- ✅ Tags persist if user goes back/forward in wizard
+- ✅ Clear visual distinction between selected/deselected tags
+
+**Related Components**:
+- Q&A Form / Prompt Tags component (Design Log #005, Step 2)
+- `PromptTagsForm` component
+- `PromptTags` interface (Design Log #003)
+- FlowGenerationSettings with promptTags field
+
+**Quantifiable Outcomes**:
+- **Time**: 30-60 seconds to customize tags
+- **Tags**: Average 8-12 tags per studioSession (5 AI-suggested + 3 custom)
+- **Customization rate**: 70% of users modify at least 1 tag
+- **Custom tags**: Average 2-3 custom tags added per studioSession
+- **Prompt length**: ~50-100 characters of comma-separated tags
+
+**Scenario Example**:
+
+> Sarah reviews the AI analysis of her 45 furniture products. The system suggests "Living Room", "Bedroom", "Cozy", "Natural Light", and "Scandinavian" tags. Sarah keeps most suggestions but adds "Modern" to the style tags and removes "Cozy" because she wants a more minimal look. She adds two custom tags: "high ceilings" and "wooden floors" to match her brand aesthetic. The prompt preview shows: "living room, bedroom, elegant, natural, scandinavian, modern, high ceilings, wooden floors". These tags will guide the AI to generate images matching her specific vision.
 
 ---
 

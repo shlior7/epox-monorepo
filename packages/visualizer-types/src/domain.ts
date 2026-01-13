@@ -8,18 +8,12 @@ import type { MessagePart, MessageRole } from './messages';
 
 // ===== BASE TYPES =====
 
-/**
- * Base entity with common fields for all database entities
- */
 export interface BaseEntity {
   id: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-/**
- * Entity with optimistic locking support
- */
 export interface VersionedEntity extends BaseEntity {
   version: number;
 }
@@ -33,7 +27,7 @@ export interface User extends BaseEntity {
   image: string | null;
 }
 
-// ===== CLIENT (formerly Organization) =====
+// ===== CLIENT =====
 
 export interface Client extends VersionedEntity {
   name: string;
@@ -41,9 +35,6 @@ export interface Client extends VersionedEntity {
   logo: string | null;
   metadata: ClientMetadata | null;
 }
-
-// Legacy alias for backward compatibility
-export type Organization = Client;
 
 // ===== MEMBER =====
 
@@ -55,6 +46,20 @@ export interface Member extends BaseEntity {
 
 // ===== PRODUCT =====
 
+export type ProductSource = 'imported' | 'uploaded';
+
+export interface ProductAnalysis {
+  analyzedAt: string;
+  productType: string;
+  materials: string[];
+  colors: { primary: string; accent?: string[] };
+  style: string[];
+  suggestedRoomTypes: string[];
+  scaleHints: { width: string; height: string };
+  promptKeywords: string[];
+  version: string;
+}
+
 export interface Product extends VersionedEntity {
   clientId: string;
   name: string;
@@ -62,8 +67,18 @@ export interface Product extends VersionedEntity {
   category: string | null;
   roomTypes: string[] | null;
   modelFilename: string | null;
-  favoriteGeneratedImages?: Array<{ imageId: string; sessionId: string }>;
-  sceneImages?: Array<{ imageId: string; sessionId: string }>;
+  isFavorite: boolean;
+  source: ProductSource;
+  storeConnectionId: string | null;
+  erpId: string | null;
+  erpSku: string | null;
+  erpUrl: string | null;
+  importedAt: Date | null;
+  analysisData: ProductAnalysis | null;
+  analysisVersion: string | null;
+  analyzedAt: Date | null;
+  price: string | null;
+  metadata: Record<string, unknown> | null;
 }
 
 // ===== PRODUCT IMAGE =====
@@ -83,23 +98,23 @@ export interface ChatSession extends VersionedEntity {
   selectedBaseImageId: string | null;
 }
 
-// ===== STUDIO SESSION (Multi-Product, formerly ClientSession) =====
+// ===== COLLECTION SESSION (Multi-Product) =====
 
-export interface StudioSession extends VersionedEntity {
+export type CollectionSessionStatus = 'draft' | 'generating' | 'completed';
+
+export interface CollectionSession extends VersionedEntity {
   clientId: string;
   name: string;
+  status: CollectionSessionStatus;
   productIds: string[];
   selectedBaseImages: Record<string, string>;
 }
-
-// Legacy alias for backward compatibility
-export type ClientSession = StudioSession;
 
 // ===== MESSAGE =====
 
 export interface Message extends VersionedEntity {
   chatSessionId: string | null;
-  studioSessionId: string | null;
+  collectionSessionId: string | null;
   role: MessageRole;
   parts: MessagePart[];
   baseImageId: string | null;
@@ -107,37 +122,143 @@ export interface Message extends VersionedEntity {
   inspirationImageId: string | null;
 }
 
-// ===== FLOW =====
+// ===== GENERATION FLOW =====
 
-export interface Flow extends VersionedEntity {
-  studioSessionId: string;
+export interface GenerationFlow extends VersionedEntity {
+  collectionSessionId: string | null;
+  clientId: string;
   name: string | null;
   productIds: string[];
   selectedBaseImages: Record<string, string>;
   status: FlowStatus;
   settings: FlowGenerationSettings;
+  isFavorite: boolean;
   currentImageIndex: number;
 }
 
-// ===== GENERATED IMAGE =====
+// ===== GENERATED ASSET =====
 
-export interface GeneratedImage extends BaseEntity {
+export type AssetType = 'image' | 'video' | '3d_model';
+export type AssetStatus = 'pending' | 'generating' | 'completed' | 'error';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+
+export interface AssetAnalysis {
+  analyzedAt: string;
+  objects?: Array<{ name: string; confidence: number; bounds?: { x: number; y: number; width: number; height: number } }>;
+  colors?: { dominant: string[]; palette: string[] };
+  lighting?: { type: string; direction?: string; intensity?: string };
+  composition?: { style: string; focalPoints?: Array<{ x: number; y: number }> };
+  masks?: Array<{ name: string; path: string }>;
+  version: string;
+}
+
+export interface GeneratedAsset extends BaseEntity {
   clientId: string;
-  flowId: string | null;
+  generationFlowId: string | null;
   chatSessionId: string | null;
-  r2Key: string;
+  assetUrl: string;
+  assetType: AssetType;
+  status: AssetStatus;
   prompt: string | null;
   settings: FlowGenerationSettings | null;
   productIds: string[] | null;
   jobId: string | null;
   error: string | null;
+  assetAnalysis: AssetAnalysis | null;
+  analysisVersion: string | null;
+  approvalStatus: ApprovalStatus;
+  approvedAt: Date | null;
+  approvedBy: string | null;
+  completedAt: Date | null;
+}
+
+// ===== GENERATED ASSET PRODUCT (Junction table) =====
+
+export interface GeneratedAssetProduct extends BaseEntity {
+  generatedAssetId: string;
+  productId: string;
+  isPrimary: boolean;
 }
 
 // ===== FAVORITE IMAGE =====
 
 export interface FavoriteImage extends BaseEntity {
   clientId: string;
-  generatedImageId: string;
+  generatedAssetId: string;
+}
+
+// ===== TAG =====
+
+export type TaggableEntityType = 'product' | 'generation_flow';
+
+export interface Tag extends BaseEntity {
+  clientId: string;
+  name: string;
+  color: string | null;
+}
+
+export interface TagAssignment extends BaseEntity {
+  tagId: string;
+  entityType: TaggableEntityType;
+  entityId: string;
+}
+
+// ===== USER FAVORITE =====
+
+export type FavoriteEntityType = 'product' | 'generation_flow';
+
+export interface UserFavorite extends BaseEntity {
+  userId: string;
+  entityType: FavoriteEntityType;
+  entityId: string;
+}
+
+// ===== STORE SYNC =====
+
+export type StoreType = 'shopify' | 'woocommerce' | 'magento' | 'custom';
+export type StoreConnectionStatus = 'active' | 'inactive' | 'error';
+export type SyncAction = 'import' | 'export' | 'sync';
+export type SyncStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
+
+export interface StoreConnection extends BaseEntity {
+  clientId: string;
+  storeType: StoreType;
+  storeName: string;
+  storeUrl: string;
+  status: StoreConnectionStatus;
+  credentials: Record<string, unknown>;
+  syncConfig: Record<string, unknown> | null;
+  lastSyncAt: Date | null;
+}
+
+export interface StoreSyncLog extends BaseEntity {
+  storeConnectionId: string;
+  action: SyncAction;
+  status: SyncStatus;
+  itemsProcessed: number;
+  itemsFailed: number;
+  errorDetails: string | null;
+  startedAt: Date;
+  completedAt: Date | null;
+}
+
+// ===== ANALYTICS =====
+
+export type GenerationEventType =
+  | 'generation_started'
+  | 'generation_completed'
+  | 'generation_failed'
+  | 'asset_approved'
+  | 'asset_rejected'
+  | 'asset_exported';
+
+export interface GenerationEvent extends BaseEntity {
+  clientId: string;
+  userId: string | null;
+  eventType: GenerationEventType;
+  generationFlowId: string | null;
+  generatedAssetId: string | null;
+  metadata: Record<string, unknown> | null;
 }
 
 // ===== COMBINED/AGGREGATE TYPES =====
@@ -155,16 +276,13 @@ export interface ChatSessionWithMessages extends ChatSession {
   messages: Message[];
 }
 
-export interface StudioSessionWithFlows extends StudioSession {
-  flows: Flow[];
+export interface CollectionSessionWithFlows extends CollectionSession {
+  generationFlows: GenerationFlow[];
   messages: Message[];
 }
 
-// Legacy alias for backward compatibility
-export type ClientSessionWithFlows = StudioSessionWithFlows;
-
-export interface FlowWithGeneratedImages extends Flow {
-  generatedImages: GeneratedImage[];
+export interface GenerationFlowWithAssets extends GenerationFlow {
+  generatedAssets: GeneratedAsset[];
 }
 
 // ===== FLOW GENERATED IMAGE (for client-side history) =====
@@ -172,6 +290,7 @@ export interface FlowWithGeneratedImages extends Flow {
 export interface FlowGeneratedImage {
   id: string;
   imageId: string;
+  imageFilename?: string;
   timestamp: string;
   productIds: string[];
   settings: FlowGenerationSettings;

@@ -4,7 +4,7 @@
  * Handles credential fetching and provider instantiation
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { DrizzleClient } from 'visualizer-db';
 import { CredentialsService } from './services/credentials-service';
 import { providerRegistry } from './registry';
 import type {
@@ -44,8 +44,8 @@ export class ERPService {
   private config: Required<ERPServiceConfig>;
   private providerCache = new Map<string, ERPProvider>();
 
-  constructor(supabaseClient: SupabaseClient, config: ERPServiceConfig = {}) {
-    this.credentialsService = new CredentialsService(supabaseClient);
+  constructor(drizzle: DrizzleClient, config: ERPServiceConfig = {}) {
+    this.credentialsService = new CredentialsService(drizzle);
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 

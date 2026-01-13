@@ -29,7 +29,12 @@ describe('SyncManager', () => {
     updateDelayMs = 0;
 
     apiModule = await import('@/lib/api-client');
-    vi.mocked(apiModule.apiClient.updateSession).mockClear();
+    vi.mocked(apiModule.apiClient.updateSession).mockReset();
+    vi.mocked(apiModule.apiClient.updateSession).mockImplementation(async () => {
+      if (updateDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, updateDelayMs));
+      }
+    });
 
     suppressConsole();
   });

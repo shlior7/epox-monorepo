@@ -85,7 +85,8 @@ Think of Scenergy Visualizer like a smart photo studio that understand your prod
 | **Tags** | Labels you create to organize your products and generations (e.g., "Summer 2026", "Modern Style"). |
 | **ERP ID** | Your store's product ID. We save this when importing so we can sync generated images back to the right product. |
 | **Credits** | Units for generation. Each image costs 1 credit. Your plan determines how many credits you get per month. |
-| **Product Analysis** | AI-powered understanding of your product (type, materials, colors, style) used to generate better images. |
+| **Product Analysis** | AI-powered understanding of your product (type, materials, colors, style, room types) performed on import/upload. Saved on product for future generations. |
+| **Prompt Tags** | Tag bubbles representing style attributes (room type, mood, lighting, etc.) that can be added/removed. Reflected in generation prompts as comma-separated values. |
 | **Imported Product** | Product brought in from your connected store. Supports approval and sync back to store. |
 | **Uploaded Product** | Product added manually. Supports generation and download only (no store sync). |
 
@@ -966,9 +967,31 @@ Automatic syncing with e-commerce platforms:
 
 **Steps**:
 1. **Select Products** → Checkboxes, filters, search
-2. **AI Analysis** → Automatic room/style detection
+2. **AI Analysis + Q&A Form** → AI analyzes products and presents prompt tags (room type, mood, style, lighting) as clickable bubbles. User can add/remove tags to customize the generation prompt.
 3. **Choose Inspiration** → Upload, Unsplash, or Library
-4. **Generate** → Review settings, launch generation
+4. **Generate** → Review final prompt (reflects tags as comma-separated values), launch generation
+
+**Prompt Tags Q&A Form**:
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    STYLE YOUR GENERATION                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Based on your products, we suggest:                                 │
+│                                                                      │
+│  Room Type:    [Living Room ✓] [Bedroom] [Office ✓] [+ Add]         │
+│  Mood:         [Cozy ✓] [Modern] [Minimalist ✓] [+ Add]             │
+│  Lighting:     [Natural ✓] [Warm] [Dramatic] [+ Add]                │
+│  Style:        [Scandinavian ✓] [Industrial] [Bohemian] [+ Add]     │
+│                                                                      │
+│  Click tags to toggle. Add custom tags with [+ Add].                 │
+│                                                                      │
+│  Prompt Preview:                                                     │
+│  "living room, office, cozy, minimalist, natural lighting,          │
+│   scandinavian style"                                                │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -1051,6 +1074,7 @@ Automatic syncing with e-commerce platforms:
 | 2026-01-11 | 1.0 | Initial PRD created | Product Team |
 | 2026-01-11 | 1.1 | Added: Cached image analysis, Approval workflow for store sync, Store sync details | Product Team |
 | 2026-01-11 | 1.2 | Added: Product import from stores (by IDs/category/all), subscription limits, ERP ID for sync, product analysis for prompts, detailed review/approval experience with side-by-side comparison and credit costs | Product Team |
+| 2026-01-12 | 1.3 | Added: Prompt Tags Q&A form in Collection Session Wizard, reordered flow phases | Product Team |
 
 ---
 

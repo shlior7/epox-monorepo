@@ -1,19 +1,18 @@
 import type { DrizzleClient } from './client';
 import { getDb } from './client';
-import type { ClientSessionRepository, OrganizationRepository } from './repositories/index';
 import {
   AdminUserRepository,
   AccountRepository,
   ChatSessionRepository,
   ClientRepository,
+  CollectionSessionRepository,
   FavoriteImageRepository,
-  FlowRepository,
-  GeneratedImageRepository,
+  GenerationFlowRepository,
+  GeneratedAssetRepository,
   MemberRepository,
   MessageRepository,
   ProductImageRepository,
   ProductRepository,
-  StudioSessionRepository,
   UserRepository,
 } from './repositories/index';
 
@@ -29,13 +28,11 @@ export interface DatabaseFacade {
   readonly products: ProductRepository;
   readonly productImages: ProductImageRepository;
   readonly chatSessions: ChatSessionRepository;
-  readonly studioSessions: StudioSessionRepository;
+  readonly collectionSessions: CollectionSessionRepository;
   readonly messages: MessageRepository;
-  readonly flows: FlowRepository;
-  readonly generatedImages: GeneratedImageRepository;
+  readonly generationFlows: GenerationFlowRepository;
+  readonly generatedAssets: GeneratedAssetRepository;
   readonly favoriteImages: FavoriteImageRepository;
-  readonly organizations: OrganizationRepository;
-  readonly clientSessions: ClientSessionRepository;
   /**
    * Execute multiple operations in a transaction.
    *
@@ -58,13 +55,11 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
   const products = new ProductRepository(drizzle);
   const productImages = new ProductImageRepository(drizzle);
   const chatSessions = new ChatSessionRepository(drizzle);
-  const studioSessions = new StudioSessionRepository(drizzle);
+  const collectionSessions = new CollectionSessionRepository(drizzle);
   const messages = new MessageRepository(drizzle);
-  const flows = new FlowRepository(drizzle);
-  const generatedImages = new GeneratedImageRepository(drizzle);
+  const generationFlows = new GenerationFlowRepository(drizzle);
+  const generatedAssets = new GeneratedAssetRepository(drizzle);
   const favoriteImages = new FavoriteImageRepository(drizzle);
-  const organizations = clients;
-  const clientSessions = studioSessions;
 
   async function transaction<T>(fn: (tx: DatabaseFacade) => Promise<T>): Promise<T> {
     // Check if the drizzle client supports transactions
@@ -105,13 +100,11 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
     products,
     productImages,
     chatSessions,
-    studioSessions,
+    collectionSessions,
     messages,
-    flows,
-    generatedImages,
+    generationFlows,
+    generatedAssets,
     favoriteImages,
-    organizations,
-    clientSessions,
     transaction,
   };
 }

@@ -1,7 +1,7 @@
 import { asc, eq, inArray } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
-import { flow } from '../schema/sessions';
-import type { Flow, FlowCreate, FlowGenerationSettings, FlowUpdate } from '../types';
+import { generationFlow } from '../schema/sessions';
+import type { GenerationFlow, GenerationFlowCreate, FlowGenerationSettings, GenerationFlowUpdate } from 'visualizer-types';
 import { DEFAULT_FLOW_SETTINGS, DEFAULT_POST_ADJUSTMENTS } from 'visualizer-types';
 import { updateWithVersion } from '../utils/optimistic-lock';
 import { BaseRepository } from './base';
@@ -30,26 +30,28 @@ function mergeFlowSettings(
   return merged;
 }
 
-export class FlowRepository extends BaseRepository<Flow> {
+export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
   constructor(drizzle: DrizzleClient) {
-    super(drizzle, flow);
+    super(drizzle, generationFlow);
   }
 
-  async create(studioSessionId: string, data: FlowCreate): Promise<Flow> {
+  async create(clientId: string, data: GenerationFlowCreate): Promise<GenerationFlow> {
     const id = this.generateId();
     const now = new Date();
     const settings = mergeFlowSettings(DEFAULT_FLOW_SETTINGS, data.settings ?? {});
 
     const [created] = await this.drizzle
-      .insert(flow)
+      .insert(generationFlow)
       .values({
         id,
-        studioSessionId,
+        collectionSessionId: data.collectionSessionId ?? null,
+        clientId,
         name: data.name ?? null,
         productIds: data.productIds ?? [],
         selectedBaseImages: data.selectedBaseImages ?? {},
         status: 'empty',
         settings,
+        isFavorite: data.isFavorite ?? false,
         currentImageIndex: 0,
         version: 1,
         createdAt: now,
@@ -62,22 +64,24 @@ export class FlowRepository extends BaseRepository<Flow> {
 
   async createWithId(
     id: string,
-    studioSessionId: string,
-    data: FlowCreate & { status?: Flow['status']; currentImageIndex?: number; createdAt?: Date; updatedAt?: Date }
-  ): Promise<Flow> {
+    clientId: string,
+    data: GenerationFlowCreate & { status?: GenerationFlow['status']; currentImageIndex?: number; createdAt?: Date; updatedAt?: Date }
+  ): Promise<GenerationFlow> {
     const now = new Date();
     const settings = mergeFlowSettings(DEFAULT_FLOW_SETTINGS, data.settings ?? {});
 
     const [created] = await this.drizzle
-      .insert(flow)
+      .insert(generationFlow)
       .values({
         id,
-        studioSessionId,
+        collectionSessionId: data.collectionSessionId ?? null,
+        clientId,
         name: data.name ?? null,
         productIds: data.productIds ?? [],
         selectedBaseImages: data.selectedBaseImages ?? {},
         status: data.status ?? 'empty',
         settings,
+        isFavorite: data.isFavorite ?? false,
         currentImageIndex: data.currentImageIndex ?? 0,
         version: 1,
         createdAt: data.createdAt ?? now,
@@ -89,25 +93,27 @@ export class FlowRepository extends BaseRepository<Flow> {
   }
 
   async createBatchWithIds(
-    studioSessionId: string,
+    clientId: string,
     entries: Array<
-      FlowCreate & { id: string; status?: Flow['status']; currentImageIndex?: number; createdAt?: Date; updatedAt?: Date }
+      GenerationFlowCreate & { id: string; status?: GenerationFlow['status']; currentImageIndex?: number; createdAt?: Date; updatedAt?: Date }
     >
-  ): Promise<Flow[]> {
+  ): Promise<GenerationFlow[]> {
     if (entries.length === 0) return [];
 
     const now = new Date();
     const rows = await this.drizzle
-      .insert(flow)
+      .insert(generationFlow)
       .values(
         entries.map((entry) => ({
           id: entry.id,
-          studioSessionId,
+          collectionSessionId: entry.collectionSessionId ?? null,
+          clientId,
           name: entry.name ?? null,
           productIds: entry.productIds ?? [],
           selectedBaseImages: entry.selectedBaseImages ?? {},
           status: entry.status ?? 'empty',
           settings: mergeFlowSettings(DEFAULT_FLOW_SETTINGS, entry.settings ?? {}),
+          isFavorite: entry.isFavorite ?? false,
           currentImageIndex: entry.currentImageIndex ?? 0,
           version: 1,
           createdAt: entry.createdAt ?? now,
@@ -119,42 +125,52 @@ export class FlowRepository extends BaseRepository<Flow> {
     return rows.map((row) => this.mapToEntity(row));
   }
 
-  async list(studioSessionId: string): Promise<Flow[]> {
+  async listByCollectionSession(collectionSessionId: string): Promise<GenerationFlow[]> {
     const rows = await this.drizzle
       .select()
-      .from(flow)
-      .where(eq(flow.studioSessionId, studioSessionId))
-      .orderBy(asc(flow.createdAt));
+      .from(generationFlow)
+      .where(eq(generationFlow.collectionSessionId, collectionSessionId))
+      .orderBy(asc(generationFlow.createdAt));
 
     return rows.map((row) => this.mapToEntity(row));
   }
 
-  async listByStudioSessionIds(studioSessionIds: string[]): Promise<Flow[]> {
-    if (studioSessionIds.length === 0) {
+  async listByClient(clientId: string): Promise<GenerationFlow[]> {
+    const rows = await this.drizzle
+      .select()
+      .from(generationFlow)
+      .where(eq(generationFlow.clientId, clientId))
+      .orderBy(asc(generationFlow.createdAt));
+
+    return rows.map((row) => this.mapToEntity(row));
+  }
+
+  async listByCollectionSessionIds(collectionSessionIds: string[]): Promise<GenerationFlow[]> {
+    if (collectionSessionIds.length === 0) {
       return [];
     }
 
     const rows = await this.drizzle
       .select()
-      .from(flow)
-      .where(inArray(flow.studioSessionId, studioSessionIds))
-      .orderBy(asc(flow.createdAt));
+      .from(generationFlow)
+      .where(inArray(generationFlow.collectionSessionId, collectionSessionIds))
+      .orderBy(asc(generationFlow.createdAt));
 
     return rows.map((row) => this.mapToEntity(row));
   }
 
-  async deleteByStudioSession(studioSessionId: string): Promise<void> {
-    await this.drizzle.delete(flow).where(eq(flow.studioSessionId, studioSessionId));
+  async deleteByCollectionSession(collectionSessionId: string): Promise<void> {
+    await this.drizzle.delete(generationFlow).where(eq(generationFlow.collectionSessionId, collectionSessionId));
   }
 
-  async update(id: string, data: FlowUpdate, expectedVersion?: number): Promise<Flow> {
+  async update(id: string, data: GenerationFlowUpdate, expectedVersion?: number): Promise<GenerationFlow> {
     if (data.settings) {
       const current = await this.requireById(id);
       const mergedSettings = mergeFlowSettings(current.settings, data.settings);
-      return updateWithVersion<Flow>(this.drizzle, flow, id, { ...data, settings: mergedSettings }, expectedVersion);
+      return updateWithVersion<GenerationFlow>(this.drizzle, generationFlow, id, { ...data, settings: mergedSettings }, expectedVersion);
     }
 
-    return updateWithVersion<Flow>(this.drizzle, flow, id, data as Partial<Flow>, expectedVersion);
+    return updateWithVersion<GenerationFlow>(this.drizzle, generationFlow, id, data as Partial<GenerationFlow>, expectedVersion);
   }
 
   async addProducts(
@@ -162,7 +178,7 @@ export class FlowRepository extends BaseRepository<Flow> {
     productIds: string[],
     baseImageIds?: Record<string, string>,
     expectedVersion?: number
-  ): Promise<Flow> {
+  ): Promise<GenerationFlow> {
     const current = await this.requireById(id);
     const mergedProductIds: string[] = [];
     const seen = new Set<string>();
@@ -188,9 +204,9 @@ export class FlowRepository extends BaseRepository<Flow> {
       }
     }
 
-    return updateWithVersion<Flow>(
+    return updateWithVersion<GenerationFlow>(
       this.drizzle,
-      flow,
+      generationFlow,
       id,
       {
         productIds: mergedProductIds,
@@ -200,15 +216,15 @@ export class FlowRepository extends BaseRepository<Flow> {
     );
   }
 
-  async removeProduct(id: string, productId: string, expectedVersion?: number): Promise<Flow> {
+  async removeProduct(id: string, productId: string, expectedVersion?: number): Promise<GenerationFlow> {
     const current = await this.requireById(id);
     const nextProductIds = current.productIds.filter((pid) => pid !== productId);
     const nextSelected = { ...current.selectedBaseImages };
     delete nextSelected[productId];
 
-    return updateWithVersion<Flow>(
+    return updateWithVersion<GenerationFlow>(
       this.drizzle,
-      flow,
+      generationFlow,
       id,
       {
         productIds: nextProductIds,
@@ -222,9 +238,9 @@ export class FlowRepository extends BaseRepository<Flow> {
     id: string,
     settings: Partial<FlowGenerationSettings>,
     expectedVersion?: number
-  ): Promise<Flow> {
+  ): Promise<GenerationFlow> {
     const current = await this.requireById(id);
     const mergedSettings = mergeFlowSettings(current.settings, settings);
-    return updateWithVersion<Flow>(this.drizzle, flow, id, { settings: mergedSettings }, expectedVersion);
+    return updateWithVersion<GenerationFlow>(this.drizzle, generationFlow, id, { settings: mergedSettings }, expectedVersion);
   }
 }

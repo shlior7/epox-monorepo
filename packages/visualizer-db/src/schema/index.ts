@@ -12,7 +12,6 @@ export {
   account,
   verification,
   client,
-  organization, // Legacy alias
   member,
   invitation,
   adminUserRelations,
@@ -21,7 +20,6 @@ export {
   sessionRelations,
   accountRelations,
   clientRelations,
-  organizationRelations, // Legacy alias
   memberRelations,
   invitationRelations,
 } from './auth';
@@ -33,33 +31,61 @@ export {
   productRelations,
   productImageRelations,
 } from './products';
+export type { ProductSource, ProductAnalysis } from './products';
 
 // Session tables
 export {
   chatSession,
-  studioSession,
-  clientSession, // Legacy alias
+  collectionSession,
   message,
-  flow,
+  generationFlow,
   chatSessionRelations,
-  studioSessionRelations,
-  clientSessionRelations, // Legacy alias
+  collectionSessionRelations,
   messageRelations,
-  flowRelations,
+  generationFlowRelations,
 } from './sessions';
 
-// Generated images
+// Generated assets
 export {
-  generatedImage,
+  generatedAsset,
+  generatedAssetProduct,
   favoriteImage,
-  generatedImageRelations,
+  generatedAssetRelations,
+  generatedAssetProductRelations,
   favoriteImageRelations,
 } from './generated-images';
+export type { AssetType, AssetStatus, ApprovalStatus, AssetAnalysis } from './generated-images';
+
+// Organization tables (tags, favorites)
+export {
+  tag,
+  tagAssignment,
+  userFavorite,
+  tagRelations,
+  tagAssignmentRelations,
+  userFavoriteRelations,
+} from './clients';
+export type { TaggableEntityType, FavoriteEntityType } from './clients';
+
+// Analytics tables
+export {
+  generationEvent,
+  generationEventRelations,
+} from './analytics';
+export type { GenerationEventType } from './analytics';
+
+// Store sync tables
+export {
+  storeConnection,
+  storeSyncLog,
+  storeConnectionRelations,
+  storeSyncLogRelations,
+} from './store-sync';
+export type { StoreType, StoreConnectionStatus, SyncAction, SyncStatus } from './store-sync';
 
 // Re-export types from visualizer-types for convenience
 export type {
   ClientMetadata,
-  OrganizationMetadata, // Legacy alias
   CommerceConfig,
   AIModelConfig,
   FlowStatus,

@@ -2,7 +2,7 @@
 
 **Status**: Draft
 **Created**: 2026-01-10
-**Updated**: 2026-01-11
+**Updated**: 2026-01-12
 **Author**: Claude
 **Related**: Design Log #001 (Architecture), Design Log #002 (Authentication), Design Log #003 (Data Model)
 
@@ -336,6 +336,10 @@ interface GeneratedImage {
 }
 
 interface FlowGenerationSettings {
+  // Prompt Tags (from Q&A form - primary configuration)
+  promptTags: PromptTags;
+
+  // Legacy/derived settings
   style: string;
   lighting: string;
   colorScheme: string;
@@ -347,7 +351,15 @@ interface FlowGenerationSettings {
   matchProductColors: boolean;
   roomType: string;
   cameraAngle: string;
-  promptText: string;
+  promptText: string;  // Generated from promptTags
+}
+
+interface PromptTags {
+  roomType: string[];     // ["living room", "office"]
+  mood: string[];         // ["cozy", "minimalist"]
+  lighting: string[];     // ["natural", "warm"]
+  style: string[];        // ["scandinavian", "modern"]
+  custom: string[];       // User-defined custom tags
 }
 ```
 
@@ -465,29 +477,69 @@ sequenceDiagram
 └────────────────────────────────────────────────────────┘
 ```
 
-**Results Display**:
+**Results Display with Q&A Form (Prompt Tags)**:
 ```text
 ┌────────────────────────────────────────────────────────┐
-│ Step 2 of 4: Analysis Results ✓                       │
+│ Step 2 of 4: Analysis Results + Style Your Generation │
 │                                                        │
-│ We analyzed 3 products and here's what we found:      │
+│ We analyzed 3 products. Now customize your style:     │
 │                                                        │
-│ 📊 Room Type Distribution                             │
-│    ● Office (1 product)                                │
-│    ● Living Room (1 product)                           │
-│    ● Bedroom (1 product)                               │
+│ ─────────────────────────────────────────────────────  │
 │                                                        │
-│ 🏷️  Product Types                                      │
-│    Desk, Sofa, Bed                                     │
+│ Room Type                                              │
+│ [Living Room ✓] [Office ✓] [Bedroom] [Outdoor] [+ Add]│
 │                                                        │
-│ 🎨 Suggested Styles for Inspiration                   │
-│    Modern, Contemporary, Minimalist                    │
+│ Mood                                                   │
+│ [Cozy ✓] [Modern] [Minimalist ✓] [Elegant] [+ Add]    │
 │                                                        │
-│ ℹ️  We'll use these insights to suggest relevant       │
-│    inspiration images in the next step.               │
+│ Lighting                                               │
+│ [Natural ✓] [Warm] [Dramatic] [Soft] [+ Add]          │
+│                                                        │
+│ Style                                                  │
+│ [Scandinavian ✓] [Industrial] [Bohemian] [+ Add]      │
+│                                                        │
+│ Custom Tags                                            │
+│ [high ceilings ✓] [wooden floors ✓] [+ Add]           │
+│                                                        │
+│ ─────────────────────────────────────────────────────  │
+│                                                        │
+│ Prompt Preview:                                        │
+│ "living room, office, cozy, minimalist, natural       │
+│  lighting, scandinavian style, high ceilings,         │
+│  wooden floors"                                        │
 │                                                        │
 │         [← Back]              [Next: Inspire →]        │
 └────────────────────────────────────────────────────────┘
+```
+
+**Q&A Form Behavior**:
+- AI suggests initial tags based on product analysis
+- User clicks tag bubbles to toggle on/off (✓ = selected)
+- User can add custom tags with [+ Add] button
+- Prompt preview updates in real-time as tags change
+- Tags are stored as `PromptTags` object on flow settings
+
+**Tag Categories**:
+| Category | Pre-filled Examples | Purpose |
+|----------|-------------------|---------|
+| Room Type | Living Room, Office, Bedroom | Where the product is placed |
+| Mood | Cozy, Modern, Minimalist, Elegant | Emotional feel of the scene |
+| Lighting | Natural, Warm, Dramatic, Soft | Light source and quality |
+| Style | Scandinavian, Industrial, Bohemian | Design aesthetic |
+| Custom | (user-defined) | Specific requests like "high ceilings" |
+
+**Prompt Generation**:
+```typescript
+function buildPromptFromTags(tags: PromptTags): string {
+  return [
+    ...tags.roomType,
+    ...tags.mood,
+    ...tags.lighting.map(l => `${l} lighting`),
+    ...tags.style.map(s => `${s} style`),
+    ...tags.custom,
+  ].filter(Boolean).join(", ");
+}
+// Result: "living room, office, cozy, minimalist, natural lighting, scandinavian style, high ceilings, wooden floors"
 ```
 
 **Analysis Data Structure**:

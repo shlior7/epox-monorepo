@@ -1,7 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
 import { favoriteImage } from '../schema/generated-images';
-import type { FavoriteImage } from '../types';
+import type { FavoriteImage } from 'visualizer-types';
 import { BaseRepository } from './base';
 
 export class FavoriteImageRepository extends BaseRepository<FavoriteImage> {
@@ -9,7 +9,7 @@ export class FavoriteImageRepository extends BaseRepository<FavoriteImage> {
     super(drizzle, favoriteImage);
   }
 
-  async create(clientId: string, generatedImageId: string): Promise<FavoriteImage> {
+  async create(clientId: string, generatedAssetId: string): Promise<FavoriteImage> {
     const id = this.generateId();
     const now = new Date();
 
@@ -18,7 +18,7 @@ export class FavoriteImageRepository extends BaseRepository<FavoriteImage> {
       .values({
         id,
         clientId,
-        generatedImageId,
+        generatedAssetId,
         createdAt: now,
         updatedAt: now,
       })

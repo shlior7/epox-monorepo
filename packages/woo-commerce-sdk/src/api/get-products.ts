@@ -2,7 +2,6 @@ import type WooCommerceRestApi from '@woocommerce/woocommerce-rest-api';
 import { getWooApi } from '../woocommerce';
 import fs from 'node:fs';
 import type { ProductData, WooProduct } from '../types';
-import _ from 'lodash';
 
 export const enrichProductData = async (wooProduct: Partial<WooProduct>, productData: ProductData): Promise<any> => {
   return {
@@ -32,7 +31,14 @@ export const getProductById = async (
     const client = api ?? getWooApi();
     const product = await client
       .get(`products/${productId}`)
-      .then((response) => _.pick(response.data, params))
+      .then((response) => {
+        const data = response.data as WooProduct;
+        const picked = params.reduce<Record<string, unknown>>((acc, key) => {
+          acc[key] = data[key];
+          return acc;
+        }, {});
+        return picked as Partial<WooProduct>;
+      })
       .catch((error: unknown) => {
         console.error(`Error fetching product ${productId}:`, error);
         return { slug: productId };

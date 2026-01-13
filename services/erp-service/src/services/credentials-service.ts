@@ -1,15 +1,17 @@
 /**
  * ERP Credentials Service
- * Handles secure storage and retrieval of provider credentials from Supabase Vault
+ * Handles secure storage and retrieval of provider credentials from Neon
  */
 
-import { SecretsService } from '@scenergy/supabase-service';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import crypto from 'node:crypto';
+import { sql } from 'drizzle-orm';
+import type { DrizzleClient } from 'visualizer-db';
 import type { ERPProviderType, ProviderCredentials, WooCommerceCredentials } from '../types/provider';
+import type { EncryptedCredentials, StoreCredentialsPayload } from '../types/credentials';
+import { decryptCredentials, encryptCredentials } from './credentials-crypto';
 
 /**
- * Secret structure stored in Supabase Vault
- * Secret name format: client-{clientId}
+ * Secret structure stored in Neon
  */
 export interface ClientProviderSecret {
   id: string; // Client ID
@@ -29,19 +31,7 @@ export interface CredentialsResult<T> {
  * Credentials Service for ERP providers
  */
 export class CredentialsService {
-  private secretsService: SecretsService;
-
-  constructor(supabaseClient: SupabaseClient) {
-    this.secretsService = new SecretsService(supabaseClient);
-  }
-
-  /**
-   * Generate the secret name for a client
-   * Format: client-{clientId}
-   */
-  private getSecretName(clientId: string): string {
-    return `client-${clientId}`;
-  }
+  constructor(private drizzle: DrizzleClient) {}
 
   /**
    * Store provider credentials for a client
@@ -52,35 +42,60 @@ export class CredentialsService {
     credentials: ProviderCredentials
   ): Promise<CredentialsResult<void>> {
     try {
-      const secretName = this.getSecretName(clientId);
-      const secretValue: ClientProviderSecret = {
-        id: clientId,
+      const payload: StoreCredentialsPayload = {
         provider,
         credentials,
       };
+      const encrypted = encryptCredentials(payload);
+      const now = new Date();
+      const storeUrl = credentials.baseUrl;
+      const storeName = provider === 'shopify' && 'shopName' in credentials ? credentials.shopName : null;
 
-      // Check if secret already exists
-      const { exists } = await this.secretsService.secretExists(secretName);
-
-      if (exists) {
-        // Update existing secret
-        const { error } = await this.secretsService.updateSecret(secretName, secretValue, {
-          description: `ERP credentials for client: ${clientId} (${provider})`,
-        });
-
-        if (error) {
-          return { data: null, error };
-        }
-      } else {
-        // Create new secret
-        const { error } = await this.secretsService.createSecret(secretName, secretValue, {
-          description: `ERP credentials for client: ${clientId} (${provider})`,
-        });
-
-        if (error) {
-          return { data: null, error };
-        }
-      }
+      await this.drizzle.execute(sql`
+        INSERT INTO store_connection (
+          id,
+          client_id,
+          store_type,
+          store_url,
+          store_name,
+          credentials_ciphertext,
+          credentials_iv,
+          credentials_tag,
+          credentials_key_id,
+          credentials_fingerprint,
+          token_expires_at,
+          status,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          ${crypto.randomUUID()},
+          ${clientId},
+          ${provider},
+          ${storeUrl},
+          ${storeName},
+          ${encrypted.ciphertext},
+          ${encrypted.iv},
+          ${encrypted.tag},
+          ${encrypted.keyId},
+          ${encrypted.fingerprint},
+          ${null},
+          'active',
+          ${now},
+          ${now}
+        )
+        ON CONFLICT (client_id, store_type, store_url)
+        DO UPDATE SET
+          store_name = EXCLUDED.store_name,
+          credentials_ciphertext = EXCLUDED.credentials_ciphertext,
+          credentials_iv = EXCLUDED.credentials_iv,
+          credentials_tag = EXCLUDED.credentials_tag,
+          credentials_key_id = EXCLUDED.credentials_key_id,
+          credentials_fingerprint = EXCLUDED.credentials_fingerprint,
+          token_expires_at = EXCLUDED.token_expires_at,
+          status = 'active',
+          updated_at = EXCLUDED.updated_at
+      `);
 
       return { data: undefined, error: null };
     } catch (error) {
@@ -96,32 +111,56 @@ export class CredentialsService {
    */
   async getCredentials(clientId: string): Promise<CredentialsResult<ClientProviderSecret>> {
     try {
-      const secretName = this.getSecretName(clientId);
-      const { data, error } = await this.secretsService.getSecret(secretName, true);
+      const result = await this.drizzle.execute(sql`
+        SELECT
+          id,
+          store_type,
+          credentials_ciphertext,
+          credentials_iv,
+          credentials_tag,
+          credentials_key_id,
+          credentials_fingerprint
+        FROM store_connection
+        WHERE client_id = ${clientId}
+        ORDER BY updated_at DESC
+        LIMIT 1
+      `);
 
-      if (error) {
-        return { data: null, error };
+      const row = result.rows[0] as
+        | {
+            id: string;
+            store_type: ERPProviderType;
+            credentials_ciphertext: string;
+            credentials_iv: string;
+            credentials_tag: string;
+            credentials_key_id: string;
+            credentials_fingerprint: string | null;
+          }
+        | undefined;
+
+      if (!row) {
+        return { data: null, error: new Error(`No credentials found for client: ${clientId}`) };
       }
 
-      if (!data || typeof data !== 'object') {
-        return {
-          data: null,
-          error: new Error(`No credentials found for client: ${clientId}`),
-        };
-      }
+      const encrypted: EncryptedCredentials = {
+        ciphertext: row.credentials_ciphertext,
+        iv: row.credentials_iv,
+        tag: row.credentials_tag,
+        keyId: row.credentials_key_id,
+        fingerprint: row.credentials_fingerprint ?? '',
+      };
 
-      const secret = data as ClientProviderSecret;
+      const payload = decryptCredentials(encrypted);
+      const provider = payload.provider ?? row.store_type;
 
-      // Validate the secret structure
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (!secret.id || !secret.provider || !secret.credentials) {
-        return {
-          data: null,
-          error: new Error(`Invalid credential format for client: ${clientId}`),
-        };
-      }
-
-      return { data: secret, error: null };
+      return {
+        data: {
+          id: clientId,
+          provider,
+          credentials: payload.credentials,
+        },
+        error: null,
+      };
     } catch (error) {
       return {
         data: null,
@@ -158,12 +197,10 @@ export class CredentialsService {
    */
   async deleteCredentials(clientId: string): Promise<CredentialsResult<void>> {
     try {
-      const secretName = this.getSecretName(clientId);
-      const { error } = await this.secretsService.deleteSecret(secretName);
-
-      if (error) {
-        return { data: null, error };
-      }
+      await this.drizzle.execute(sql`
+        DELETE FROM store_connection
+        WHERE client_id = ${clientId}
+      `);
 
       return { data: undefined, error: null };
     } catch (error) {
@@ -179,14 +216,14 @@ export class CredentialsService {
    */
   async hasCredentials(clientId: string): Promise<CredentialsResult<boolean>> {
     try {
-      const secretName = this.getSecretName(clientId);
-      const { exists, error } = await this.secretsService.secretExists(secretName);
+      const result = await this.drizzle.execute(sql`
+        SELECT 1
+        FROM store_connection
+        WHERE client_id = ${clientId}
+        LIMIT 1
+      `);
 
-      if (error) {
-        return { data: null, error };
-      }
-
-      return { data: exists, error: null };
+      return { data: result.rows.length > 0, error: null };
     } catch (error) {
       return {
         data: null,
@@ -199,16 +236,22 @@ export class CredentialsService {
    * Get the provider type for a client (without exposing credentials)
    */
   async getProviderType(clientId: string): Promise<CredentialsResult<ERPProviderType | null>> {
-    const result = await this.getCredentials(clientId);
+    try {
+      const result = await this.drizzle.execute(sql`
+        SELECT store_type
+        FROM store_connection
+        WHERE client_id = ${clientId}
+        ORDER BY updated_at DESC
+        LIMIT 1
+      `);
 
-    if (result.error) {
-      // If secret not found, return null instead of error
-      if (result.error.message.includes('not found')) {
-        return { data: null, error: null };
-      }
-      return { data: null, error: result.error };
+      const row = result.rows[0] as { store_type: ERPProviderType } | undefined;
+      return { data: row?.store_type ?? null, error: null };
+    } catch (error) {
+      return {
+        data: null,
+        error: error instanceof Error ? error : new Error('Failed to get provider type'),
+      };
     }
-
-    return { data: result.data?.provider ?? null, error: null };
   }
 }

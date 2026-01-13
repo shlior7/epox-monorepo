@@ -5,20 +5,20 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { MessageRepository } from '../../repositories/messages';
 import { testDb } from '../setup';
-import { createTestOrganization, createTestProduct, createTestClientSession } from '../helpers';
+import { createTestClient, createTestProduct, createTestCollectionSession } from '../helpers';
 import { sql } from 'drizzle-orm';
 
 describe('MessageRepository', () => {
   let repo: MessageRepository;
   let testChatSessionId: string;
-  let testClientSessionId: string;
+  let testCollectionSessionId: string;
 
   beforeEach(async () => {
     repo = new MessageRepository(testDb as any);
 
     // Create test data
-    const org = await createTestOrganization(testDb as any);
-    const product = await createTestProduct(testDb as any, org.id);
+    const client = await createTestClient(testDb as any);
+    const product = await createTestProduct(testDb as any, client.id);
 
     // Create a chat session
     const chatId = `chat-${Date.now()}`;
@@ -28,9 +28,9 @@ describe('MessageRepository', () => {
     `);
     testChatSessionId = chatId;
 
-    // Create a client session
-    const clientSession = await createTestClientSession(testDb as any, org.id);
-    testClientSessionId = clientSession.id;
+    // Create a collection session
+    const collectionSession = await createTestCollectionSession(testDb as any, client.id);
+    testCollectionSessionId = collectionSession.id;
   });
 
   describe('create', () => {
@@ -43,19 +43,19 @@ describe('MessageRepository', () => {
       expect(message).toBeDefined();
       expect(message.id).toBeDefined();
       expect(message.chatSessionId).toBe(testChatSessionId);
-      expect(message.clientSessionId).toBeNull();
+      expect(message.collectionSessionId).toBeNull();
       expect(message.role).toBe('user');
       expect(message.parts).toEqual([{ type: 'text', content: 'Hello!' }]);
     });
 
-    it('should create a message in client session', async () => {
-      const message = await repo.create(testClientSessionId, 'client', {
+    it('should create a message in collection session', async () => {
+      const message = await repo.create(testCollectionSessionId, 'collection', {
         role: 'assistant',
         parts: [{ type: 'text', content: 'Hi there!' }],
       });
 
       expect(message.chatSessionId).toBeNull();
-      expect(message.clientSessionId).toBe(testClientSessionId);
+      expect(message.collectionSessionId).toBe(testCollectionSessionId);
     });
 
     it('should create message with image parts', async () => {
@@ -108,13 +108,13 @@ describe('MessageRepository', () => {
       expect(messages[1].parts[0]).toMatchObject({ type: 'text', content: 'Second' });
     });
 
-    it('should list messages for a client session', async () => {
-      await repo.create(testClientSessionId, 'client', {
+    it('should list messages for a collection session', async () => {
+      await repo.create(testCollectionSessionId, 'collection', {
         role: 'user',
-        parts: [{ type: 'text', content: 'Client msg' }],
+        parts: [{ type: 'text', content: 'Collection msg' }],
       });
 
-      const messages = await repo.list(testClientSessionId, 'client');
+      const messages = await repo.list(testCollectionSessionId, 'collection');
 
       expect(messages.length).toBe(1);
     });

@@ -2,6 +2,7 @@
 
 **Status**: Draft
 **Created**: 2026-01-10
+**Updated**: 2026-01-12
 **Author**: Claude
 **Related**: Design Log #001 (Architecture), Design Log #002 (Authentication), Design Log #003 (Data Model), Design Log #004 (User Flows)
 
@@ -591,12 +592,35 @@ Request:
   name?: string;
   selectedProductIds?: string[];
   baseSettings?: Partial<FlowGenerationSettings>;
+  promptTags?: PromptTags;  // User-customized prompt tags from Q&A form
+}
+
+// PromptTags interface
+interface PromptTags {
+  roomType: string[];    // Selected room types
+  mood: string[];        // Selected moods (cozy, minimalist, elegant, etc.)
+  lighting: string[];    // Selected lighting (natural, warm, dramatic, etc.)
+  style: string[];       // Selected styles (scandinavian, modern, industrial, etc.)
+  custom: string[];      // User-defined custom tags
 }
 
 Response 200:
 {
   data: StudioSession;  // Updated studioSession
 }
+
+Example Request (saving prompt tags from Q&A form):
+```json
+{
+  "promptTags": {
+    "roomType": ["living room", "bedroom"],
+    "mood": ["elegant", "minimalist"],
+    "lighting": ["natural"],
+    "style": ["scandinavian", "modern"],
+    "custom": ["high ceilings", "wooden floors"]
+  }
+}
+```
 
 Errors:
 - 400: Invalid update (can't modify generating studioSession)
@@ -637,8 +661,18 @@ Response 200:
     suggestedStyles: string[];
     recommendedInspirationKeywords: string[];
     productRoomAssignments: Record<string, string>;  // productId → roomType
+    suggestedPromptTags: PromptTags;  // AI-suggested prompt tags for Q&A form
     analyzedAt: string;
   };
+}
+
+// PromptTags interface (for Q&A form customization)
+interface PromptTags {
+  roomType: string[];    // Suggested room types from product analysis
+  mood: string[];        // Mood suggestions (cozy, minimalist, elegant, etc.)
+  lighting: string[];    // Lighting suggestions (natural, warm, dramatic, etc.)
+  style: string[];       // Style suggestions (scandinavian, modern, industrial, etc.)
+  custom: string[];      // Empty by default, user can add custom tags
 }
 
 Example Response:
@@ -661,6 +695,13 @@ Example Response:
       "prod_123": "Office",
       "prod_456": "Living Room",
       "prod_789": "Bedroom"
+    },
+    "suggestedPromptTags": {
+      "roomType": ["living room", "bedroom", "office"],
+      "mood": ["cozy", "minimalist", "elegant"],
+      "lighting": ["natural", "warm", "soft"],
+      "style": ["modern", "contemporary", "scandinavian"],
+      "custom": []
     },
     "analyzedAt": "2026-01-10T14:30:52Z"
   }
@@ -763,6 +804,11 @@ Errors:
 
 ```typescript
 POST /api/sessions/{studioSessionId}/generate
+
+// Note: When generating, the system automatically converts promptTags to a
+// comma-separated prompt string that guides the AI generation.
+// Example: { roomType: ["living room"], mood: ["cozy"], style: ["modern"] }
+// Becomes: "living room, cozy, modern" in the generation prompt.
 
 Request:
 {
@@ -2488,6 +2534,36 @@ components:
           type: string
           format: date-time
 
+    PromptTags:
+      type: object
+      description: User-customizable prompt tags for AI generation (Q&A form)
+      properties:
+        roomType:
+          type: array
+          items:
+            type: string
+          example: ["living room", "bedroom"]
+        mood:
+          type: array
+          items:
+            type: string
+          example: ["cozy", "minimalist", "elegant"]
+        lighting:
+          type: array
+          items:
+            type: string
+          example: ["natural", "warm", "soft"]
+        style:
+          type: array
+          items:
+            type: string
+          example: ["scandinavian", "modern", "contemporary"]
+        custom:
+          type: array
+          items:
+            type: string
+          example: ["high ceilings", "wooden floors"]
+
     StudioSession:
       type: object
       properties:
@@ -2512,6 +2588,8 @@ components:
           $ref: '#/components/schemas/ProductAnalysisResult'
         baseSettings:
           $ref: '#/components/schemas/FlowGenerationSettings'
+        promptTags:
+          $ref: '#/components/schemas/PromptTags'
         createdAt:
           type: string
           format: date-time

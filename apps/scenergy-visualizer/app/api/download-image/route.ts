@@ -26,31 +26,46 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid URL format' }, { status: 400 });
     }
 
-    const s3 = getS3Client();
-    const bucket = getS3Bucket();
-    const command = new GetObjectCommand({
-      Bucket: bucket,
-      Key: key,
-    });
+    let imageBuffer: Uint8Array | null = null;
+    let contentType: string | null = null;
 
-    const response = await s3.send(command);
+    try {
+      const s3 = getS3Client();
+      const bucket = getS3Bucket();
+      const command = new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      });
 
-    // Get the image data as a buffer
-    const imageBuffer = await response.Body?.transformToByteArray();
+      const response = await s3.send(command);
+      imageBuffer = (await response.Body?.transformToByteArray()) ?? null;
+      contentType = response.ContentType ?? null;
+    } catch (error) {
+      console.warn('S3 download failed, falling back to direct fetch:', error);
+    }
+
+    if (!imageBuffer) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        return NextResponse.json({ error: 'Failed to download image' }, { status: response.status });
+      }
+      imageBuffer = new Uint8Array(await response.arrayBuffer());
+      contentType = response.headers.get('content-type');
+    }
 
     if (!imageBuffer) {
       return NextResponse.json({ error: 'Failed to retrieve image' }, { status: 500 });
     }
 
-    // Determine content type from S3 metadata or file extension
-    const contentType = response.ContentType || 'image/jpeg';
+    // Determine content type from metadata or file extension
+    const resolvedContentType = contentType || 'image/jpeg';
     const extension = key.split('.').pop()?.toLowerCase();
     const filename = `image-${Date.now()}.${extension || 'jpg'}`;
 
     // Return the image with appropriate headers
     return new NextResponse(Buffer.from(imageBuffer), {
       headers: {
-        'Content-Type': contentType,
+        'Content-Type': resolvedContentType,
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Cache-Control': 'no-cache',
       },

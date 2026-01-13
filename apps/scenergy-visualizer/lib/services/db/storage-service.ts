@@ -1,6 +1,6 @@
-import { DEFAULT_FLOW_SETTINGS, type ClientMetadata } from 'visualizer-types';
+import { DEFAULT_FLOW_SETTINGS, type ClientMetadata, type GeneratedAssetCreate } from 'visualizer-types';
 import { db } from 'visualizer-db';
-import { chatSession, flow, generatedImage, message, product, studioSession } from 'visualizer-db/schema';
+import { chatSession, collectionSession, generationFlow, generatedAsset, message, product } from 'visualizer-db/schema';
 import type {
   Client,
   CreateFlowPayload,
@@ -17,11 +17,11 @@ import type {
   AIModelConfig,
 } from '@/lib/types/app-types';
 
-type DbFlow = typeof flow.$inferSelect;
-type DbGeneratedImage = typeof generatedImage.$inferSelect;
+type DbGenerationFlow = typeof generationFlow.$inferSelect;
+type DbGeneratedAsset = typeof generatedAsset.$inferSelect;
 type DbMessage = typeof message.$inferSelect;
 type DbChatSession = typeof chatSession.$inferSelect;
-type DbStudioSession = typeof studioSession.$inferSelect;
+type DbCollectionSession = typeof collectionSession.$inferSelect;
 type DbProduct = typeof product.$inferSelect;
 
 const normalizeCategoryValue = (value?: string | null): string | undefined => {
@@ -62,8 +62,15 @@ const stripExtension = (filename: string): string => filename.replace(/\.[^/.]+$
 
 const getImageIdFromKey = (key: string): string => stripExtension(getFilenameFromKey(key));
 
-const buildGeneratedImageKey = (clientId: string, sessionId: string, imageId: string): string =>
-  `clients/${clientId}/sessions/${sessionId}/media/${imageId}`;
+const resolveGeneratedImageFilename = (image: { imageId: string; imageFilename?: string }): string =>
+  image.imageFilename ?? image.imageId;
+
+const buildGeneratedAssetUrl = (
+  clientId: string,
+  sessionId: string,
+  imageId: string,
+  imageFilename?: string
+): string => `clients/${clientId}/sessions/${sessionId}/media/${imageFilename ?? imageId}`;
 
 async function withTransaction<T>(fn: Parameters<typeof db.transaction>[0]): Promise<T> {
   return (await db.transaction(fn)) as T;
@@ -93,10 +100,12 @@ function mapChatSession(row: DbChatSession, messages: DbMessage[]): Session {
   };
 }
 
-function mapGeneratedImage(row: DbGeneratedImage, fallbackSettings: Flow['settings']): FlowGeneratedImage {
+function mapGeneratedAsset(row: DbGeneratedAsset, fallbackSettings: Flow['settings']): FlowGeneratedImage {
+  const filename = getFilenameFromKey(row.assetUrl);
   return {
     id: row.id,
-    imageId: getFilenameFromKey(row.r2Key),
+    imageId: stripExtension(filename),
+    imageFilename: filename,
     timestamp: toIsoString(row.createdAt),
     productIds: row.productIds ?? [],
     settings: row.settings ?? fallbackSettings,
@@ -106,7 +115,7 @@ function mapGeneratedImage(row: DbGeneratedImage, fallbackSettings: Flow['settin
   };
 }
 
-function mapFlow(row: DbFlow, images: DbGeneratedImage[]): Flow {
+function mapGenerationFlow(row: DbGenerationFlow, images: DbGeneratedAsset[]): Flow {
   const settings = row.settings ?? DEFAULT_FLOW_SETTINGS;
   return {
     id: row.id,
@@ -115,14 +124,14 @@ function mapFlow(row: DbFlow, images: DbGeneratedImage[]): Flow {
     selectedBaseImages: row.selectedBaseImages ?? {},
     status: row.status,
     settings,
-    generatedImages: images.map((image) => mapGeneratedImage(image, settings)),
+    generatedImages: images.map((image) => mapGeneratedAsset(image, settings)),
     currentImageIndex: row.currentImageIndex,
     createdAt: toIsoString(row.createdAt),
     updatedAt: toIsoString(row.updatedAt),
   };
 }
 
-function mapStudioSession(row: DbStudioSession, flows: Flow[], messages: DbMessage[]): ClientSession {
+function mapCollectionSession(row: DbCollectionSession, flows: Flow[], messages: DbMessage[]): ClientSession {
   return {
     id: row.id,
     name: row.name,
@@ -145,7 +154,7 @@ function mapProduct(row: DbProduct, imageIds: string[], sessions: Session[]): Pr
     roomTypes: row.roomTypes ?? undefined,
     productImageIds: imageIds,
     modelFilename: row.modelFilename ?? undefined,
-    favoriteGeneratedImages: row.favoriteGeneratedImages ?? [],
+    favoriteGeneratedImages: row.favoriteImages ?? [],
     sceneImages: row.sceneImages ?? [],
     createdAt: toIsoString(row.createdAt),
     updatedAt: toIsoString(row.updatedAt),
@@ -212,52 +221,53 @@ async function loadClient(clientId: string): Promise<Client | null> {
     images.sort((a, b) => a.sortOrder - b.sortOrder);
     const imageIds = images.map((image) => getImageIdFromKey(image.r2KeyBase));
 
-    return mapProduct(productRow as DbProduct, imageIds, mappedSessions);
+    return mapProduct(productRow as unknown as DbProduct, imageIds, mappedSessions);
   });
 
-  const studioSessions = await db.studioSessions.list(clientId);
-  const studioSessionIds = studioSessions.map((sessionRow) => sessionRow.id);
-  const flows = await db.flows.listByStudioSessionIds(studioSessionIds);
+  const collectionSessions = await db.collectionSessions.list(clientId);
+  const collectionSessionIds = collectionSessions.map((sessionRow) => sessionRow.id);
+  const flows = await db.generationFlows.listByCollectionSessionIds(collectionSessionIds);
   const flowIds = flows.map((flowRow) => flowRow.id);
-  const generatedImages = await db.generatedImages.listByFlowIds(flowIds);
-  const studioMessages = await db.messages.listBySessionIds(studioSessionIds, 'studio');
+  const generatedAssets = await db.generatedAssets.listByGenerationFlowIds(flowIds);
+  const collectionMessages = await db.messages.listBySessionIds(collectionSessionIds, 'collection');
 
-  const flowsBySession = new Map<string, DbFlow[]>();
+  const flowsBySession = new Map<string, DbGenerationFlow[]>();
   flows.forEach((flowRow) => {
-    const list = flowsBySession.get(flowRow.studioSessionId) ?? [];
-    list.push(flowRow as DbFlow);
-    flowsBySession.set(flowRow.studioSessionId, list);
+    if (!flowRow.collectionSessionId) return;
+    const list = flowsBySession.get(flowRow.collectionSessionId) ?? [];
+    list.push(flowRow as DbGenerationFlow);
+    flowsBySession.set(flowRow.collectionSessionId, list);
   });
 
-  const imagesByFlow = new Map<string, DbGeneratedImage[]>();
-  generatedImages.forEach((imageRow) => {
-    const flowId = imageRow.flowId;
+  const assetsByFlow = new Map<string, DbGeneratedAsset[]>();
+  generatedAssets.forEach((assetRow) => {
+    const flowId = assetRow.generationFlowId;
     if (!flowId) return;
-    const list = imagesByFlow.get(flowId) ?? [];
-    list.push(imageRow as DbGeneratedImage);
-    imagesByFlow.set(flowId, list);
+    const list = assetsByFlow.get(flowId) ?? [];
+    list.push(assetRow as DbGeneratedAsset);
+    assetsByFlow.set(flowId, list);
   });
 
-  const studioMessagesBySession = new Map<string, DbMessage[]>();
-  studioMessages.forEach((messageRow) => {
-    const sessionId = messageRow.studioSessionId;
+  const collectionMessagesBySession = new Map<string, DbMessage[]>();
+  collectionMessages.forEach((messageRow) => {
+    const sessionId = messageRow.collectionSessionId;
     if (!sessionId) return;
-    const list = studioMessagesBySession.get(sessionId) ?? [];
+    const list = collectionMessagesBySession.get(sessionId) ?? [];
     list.push(messageRow as DbMessage);
-    studioMessagesBySession.set(sessionId, list);
+    collectionMessagesBySession.set(sessionId, list);
   });
 
-  const mappedStudioSessions: ClientSession[] = studioSessions.map((sessionRow) => {
+  const mappedCollectionSessions: ClientSession[] = collectionSessions.map((sessionRow) => {
     const flowsForSession = flowsBySession.get(sessionRow.id) ?? [];
     const mappedFlows = flowsForSession.map((flowRow) => {
-      const images = imagesByFlow.get(flowRow.id) ?? [];
-      return mapFlow(flowRow, images);
+      const images = assetsByFlow.get(flowRow.id) ?? [];
+      return mapGenerationFlow(flowRow, images);
     });
-    const messages = studioMessagesBySession.get(sessionRow.id) ?? [];
-    return mapStudioSession(sessionRow as DbStudioSession, mappedFlows, messages);
+    const messages = collectionMessagesBySession.get(sessionRow.id) ?? [];
+    return mapCollectionSession(sessionRow as DbCollectionSession, mappedFlows, messages);
   });
 
-  return mapClient(clientRow, products, mappedStudioSessions);
+  return mapClient(clientRow, products, mappedCollectionSessions);
 }
 
 export async function listClients(): Promise<Client[]> {
@@ -282,9 +292,18 @@ export async function createClientRecord(params: {
     return;
   }
 
+  const commerceMetadata =
+    params.commerce && params.commerce.provider !== 'none'
+      ? {
+          provider: params.commerce.provider,
+          baseUrl: params.commerce.baseUrl,
+          secretName: params.commerce.secretName,
+        }
+      : undefined;
+
   const metadata: ClientMetadata = {
     ...(params.description ? { description: params.description } : {}),
-    ...(params.commerce ? { commerce: params.commerce } : {}),
+    ...(commerceMetadata ? { commerce: commerceMetadata } : {}),
     ...(params.aiModelConfig ? { aiModelConfig: params.aiModelConfig } : {}),
   };
 
@@ -309,10 +328,21 @@ export async function updateClientRecord(
     throw new Error('Client not found');
   }
 
+  const commerceMetadata =
+    updates.commerce === undefined
+      ? undefined
+      : updates.commerce.provider === 'none'
+        ? undefined
+        : {
+            provider: updates.commerce.provider,
+            baseUrl: updates.commerce.baseUrl,
+            secretName: updates.commerce.secretName,
+          };
+
   const metadata: ClientMetadata = {
     ...(current.metadata ?? {}),
     ...(updates.description !== undefined ? { description: updates.description } : {}),
-    ...(updates.commerce ? { commerce: updates.commerce } : {}),
+    ...(updates.commerce !== undefined ? { commerce: commerceMetadata } : {}),
     ...(updates.aiModelConfig ? { aiModelConfig: updates.aiModelConfig } : {}),
   };
 
@@ -335,7 +365,7 @@ export async function deleteClientRecord(clientId: string): Promise<void> {
 
 export async function createProductRecord(clientId: string, payload: CreateProductPayload): Promise<Product> {
   const created = await db.products.create(clientId, payload);
-  return mapProduct(created as DbProduct, [], []);
+  return mapProduct(created as unknown as DbProduct, [], []);
 }
 
 export async function createChatSessionRecord(_clientId: string, productId: string, payload: CreateSessionPayload): Promise<Session> {
@@ -349,22 +379,24 @@ export async function createChatSessionRecord(_clientId: string, productId: stri
 
 export async function createStudioSessionRecord(clientId: string, payload: CreateStudioSessionPayload): Promise<ClientSession> {
   const name = payload.name ?? `Studio Session ${new Date().toLocaleString()}`;
-  const created = await db.studioSessions.create(clientId, {
+  const created = await db.collectionSessions.create(clientId, {
     name,
     productIds: payload.productIds ?? [],
     selectedBaseImages: payload.selectedBaseImages ?? {},
   });
-  return mapStudioSession(created as DbStudioSession, [], []);
+  return mapCollectionSession(created as DbCollectionSession, [], []);
 }
 
-export async function createFlowRecord(_clientId: string, sessionId: string, payload: CreateFlowPayload): Promise<Flow> {
-  const created = await db.flows.create(sessionId, {
+export async function createFlowRecord(clientId: string, sessionId: string, payload: CreateFlowPayload): Promise<Flow> {
+  const created = await db.generationFlows.create(clientId, {
+    clientId,
+    collectionSessionId: sessionId,
     name: payload.name,
     productIds: payload.productIds ?? [],
     selectedBaseImages: payload.selectedBaseImages ?? {},
     settings: payload.settings,
   });
-  return mapFlow(created as DbFlow, []);
+  return mapGenerationFlow(created as DbGenerationFlow, []);
 }
 
 export async function updateProductRecord(_clientId: string, productId: string, updates: Partial<Product>): Promise<void> {
@@ -375,7 +407,7 @@ export async function updateProductRecord(_clientId: string, productId: string, 
   if (updates.roomTypes !== undefined) updatePayload.roomTypes = updates.roomTypes ?? null;
   if (updates.modelFilename !== undefined) updatePayload.modelFilename = updates.modelFilename ?? null;
   if (updates.favoriteGeneratedImages !== undefined) {
-    updatePayload.favoriteGeneratedImages = updates.favoriteGeneratedImages ?? [];
+    updatePayload.favoriteImages = updates.favoriteGeneratedImages ?? [];
   }
   if (updates.sceneImages !== undefined) {
     updatePayload.sceneImages = updates.sceneImages ?? [];
@@ -431,7 +463,7 @@ export async function deleteChatSession(sessionId: string): Promise<void> {
 export async function saveStudioSession(clientId: string, session: ClientSession): Promise<void> {
   await withTransaction(async (tx) => {
     const now = new Date();
-    await tx.studioSessions.upsertWithId(session.id, clientId, {
+    await tx.collectionSessions.upsertWithId(session.id, clientId, {
       name: session.name,
       productIds: session.productIds ?? [],
       selectedBaseImages: session.selectedBaseImages ?? {},
@@ -442,7 +474,7 @@ export async function saveStudioSession(clientId: string, session: ClientSession
     const messages = session.messages ?? [];
     await tx.messages.replaceForSession(
       session.id,
-      'studio',
+      'collection',
       messages.map((entry) => ({
         id: entry.id,
         role: entry.role,
@@ -455,17 +487,19 @@ export async function saveStudioSession(clientId: string, session: ClientSession
       }))
     );
 
-    const existingFlows = await tx.flows.list(session.id);
+    const existingFlows = await tx.generationFlows.listByCollectionSession(session.id);
     const existingFlowIds = existingFlows.map((entry) => entry.id);
-    await tx.generatedImages.deleteByFlowIds(existingFlowIds);
-    await tx.flows.deleteByStudioSession(session.id);
+    await tx.generatedAssets.deleteByGenerationFlowIds(existingFlowIds);
+    await tx.generationFlows.deleteByCollectionSession(session.id);
 
     const flows = session.flows ?? [];
     if (flows.length > 0) {
-      await tx.flows.createBatchWithIds(
-        session.id,
+      await tx.generationFlows.createBatchWithIds(
+        clientId,
         flows.map((entry) => ({
           id: entry.id,
+          clientId,
+          collectionSessionId: session.id,
           name: entry.name,
           productIds: entry.productIds ?? [],
           selectedBaseImages: entry.selectedBaseImages ?? {},
@@ -477,13 +511,15 @@ export async function saveStudioSession(clientId: string, session: ClientSession
         }))
       );
 
-      const generatedImages = flows.flatMap((flowEntry) =>
+      const generatedAssets: Array<GeneratedAssetCreate & { id: string; createdAt: Date; updatedAt: Date }> = flows.flatMap((flowEntry) =>
         flowEntry.generatedImages.map((image) => ({
           id: image.id,
           clientId,
-          flowId: flowEntry.id,
+          generationFlowId: flowEntry.id,
           chatSessionId: null,
-          r2Key: buildGeneratedImageKey(clientId, session.id, image.imageId),
+          assetUrl: buildGeneratedAssetUrl(clientId, session.id, image.imageId, resolveGeneratedImageFilename(image)),
+          assetType: 'image',
+          status: image.error ? 'error' : 'completed',
           prompt: image.prompt ?? null,
           settings: image.settings ?? flowEntry.settings ?? DEFAULT_FLOW_SETTINGS,
           productIds: image.productIds ?? flowEntry.productIds ?? [],
@@ -494,11 +530,11 @@ export async function saveStudioSession(clientId: string, session: ClientSession
         }))
       );
 
-      await tx.generatedImages.createBatchWithIds(generatedImages);
+      await tx.generatedAssets.createBatchWithIds(generatedAssets);
     }
   });
 }
 
 export async function deleteStudioSession(sessionId: string): Promise<void> {
-  await db.studioSessions.delete(sessionId);
+  await db.collectionSessions.delete(sessionId);
 }

@@ -17,7 +17,7 @@ export interface StorageObject {
 }
 
 export interface StorageFacade {
-  getUploadUrl(orgId: string, path: string, options?: UploadOptions): Promise<PresignedUrl>;
+  getUploadUrl(clientId: string, path: string, options?: UploadOptions): Promise<PresignedUrl>;
   getDownloadUrl(key: string, expiresIn?: number): Promise<string>;
   upload(key: string, data: Buffer | Blob | File, contentType?: string): Promise<void>;
   download(key: string): Promise<Buffer>;
@@ -25,11 +25,12 @@ export interface StorageFacade {
   exists(key: string): Promise<boolean>;
   list(prefix: string): Promise<StorageObject[]>;
   paths: {
-    productImageBase(orgId: string, productId: string, imageId: string): string;
-    productImagePreview(orgId: string, productId: string, imageId: string): string;
-    productModel(orgId: string, productId: string, filename: string): string;
-    sessionMedia(orgId: string, sessionId: string, filename: string): string;
-    generatedImage(orgId: string, imageId: string): string;
+    productImageBase(clientId: string, productId: string, imageId: string): string;
+    productImagePreview(clientId: string, productId: string, imageId: string): string;
+    productModel(clientId: string, productId: string, filename: string): string;
+    collectionAsset(clientId: string, collectionId: string, assetId: string, extension?: string): string;
+    generationAsset(clientId: string, generationFlowId: string, assetId: string, extension?: string): string;
+    generationAssetOriginal(clientId: string, generationFlowId: string, assetId: string, extension?: string): string;
   };
   getPublicUrl(key: string): string;
 }
