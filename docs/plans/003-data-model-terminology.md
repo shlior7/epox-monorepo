@@ -2,7 +2,7 @@
 
 **Status**: Updated
 **Created**: 2026-01-10
-**Updated**: 2026-01-12
+**Updated**: 2026-01-18
 **Author**: Claude
 **Related**: Design Log #001 (Architecture), Design Log #002 (Authentication)
 
@@ -1115,6 +1115,181 @@ CREATE TABLE store_sync_log (
 CREATE INDEX idx_sync_log_store ON store_sync_log(store_connection_id);
 CREATE INDEX idx_sync_log_asset ON store_sync_log(generated_asset_id);
 CREATE INDEX idx_sync_log_product ON store_sync_log(product_id);
+
+-- ====================
+-- Synced Assets (NEW - tracks platform-uploaded vs pre-existing images)
+-- ====================
+CREATE TABLE synced_asset (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  store_connection_id UUID NOT NULL REFERENCES store_connection(id) ON DELETE CASCADE,
+  generated_asset_id UUID NOT NULL REFERENCES generated_asset(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES product(id) ON DELETE CASCADE,
+  store_image_id TEXT,                       -- ID of image in store (for removal)
+  store_image_url TEXT,                      -- URL of image in store
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  synced_by UUID REFERENCES "user"(id),
+  status TEXT NOT NULL DEFAULT 'synced',     -- 'synced' | 'removed' | 'failed'
+  removed_at TIMESTAMPTZ,
+
+  UNIQUE(store_connection_id, generated_asset_id, product_id),
+  CONSTRAINT valid_status CHECK (status IN ('synced', 'removed', 'failed'))
+);
+
+CREATE INDEX idx_synced_asset_product ON synced_asset(product_id);
+CREATE INDEX idx_synced_asset_status ON synced_asset(status);
+
+-- ====================
+-- Settings Memory (NEW - auto-remember presets)
+-- ====================
+CREATE TABLE settings_memory (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  context_type TEXT NOT NULL,                -- 'scene_type' | 'product' | 'category' | 'collection'
+  context_id TEXT NOT NULL,                  -- The ID or name of the context
+  settings JSONB NOT NULL,                   -- GenerationFlowSettings
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  UNIQUE(client_id, user_id, context_type, context_id),
+  CONSTRAINT valid_context_type CHECK (context_type IN ('scene_type', 'product', 'category', 'collection'))
+);
+
+CREATE INDEX idx_settings_memory_user ON settings_memory(user_id);
+CREATE INDEX idx_settings_memory_lookup ON settings_memory(client_id, user_id, context_type);
+
+-- ====================
+-- User Presets (NEW)
+-- ====================
+CREATE TABLE user_preset (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  settings JSONB NOT NULL,                   -- GenerationFlowSettings
+  thumbnail_url TEXT,                        -- Preview image
+  is_default BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  UNIQUE(client_id, user_id, name)
+);
+
+CREATE INDEX idx_preset_user ON user_preset(user_id);
+
+-- ====================
+-- Notifications (NEW)
+-- ====================
+CREATE TABLE notification (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,                        -- 'generation_complete' | 'sync_complete' | 'credits_low' | 'weekly_summary'
+  title TEXT NOT NULL,
+  message TEXT,
+  data JSONB,                                -- Type-specific data (thumbnail, counts, etc.)
+  read BOOLEAN NOT NULL DEFAULT FALSE,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT valid_type CHECK (type IN ('generation_complete', 'sync_complete', 'sync_failed', 'credits_low', 'weekly_summary'))
+);
+
+CREATE INDEX idx_notification_user ON notification(user_id, read, created_at DESC);
+CREATE INDEX idx_notification_unread ON notification(user_id) WHERE read = FALSE;
+
+-- ====================
+-- Categories (NEW - hierarchical)
+-- ====================
+CREATE TABLE category (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  parent_id UUID REFERENCES category(id) ON DELETE SET NULL,
+  store_category_id TEXT,                    -- Original ID from store
+  product_count INTEGER NOT NULL DEFAULT 0,  -- Denormalized for fast display
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  UNIQUE(client_id, slug)
+);
+
+CREATE INDEX idx_category_client ON category(client_id);
+CREATE INDEX idx_category_parent ON category(parent_id);
+
+-- ====================
+-- Credits & Billing (NEW)
+-- ====================
+CREATE TABLE subscription (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  plan_id TEXT NOT NULL,                     -- 'free' | 'starter' | 'pro' | 'business' | 'enterprise'
+  status TEXT NOT NULL DEFAULT 'active',     -- 'active' | 'cancelled' | 'past_due'
+  stripe_subscription_id TEXT,
+  current_period_start TIMESTAMPTZ NOT NULL,
+  current_period_end TIMESTAMPTZ NOT NULL,
+  included_credits INTEGER NOT NULL,         -- Credits included per period
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  UNIQUE(client_id),
+  CONSTRAINT valid_status CHECK (status IN ('active', 'cancelled', 'past_due'))
+);
+
+CREATE TABLE credit_balance (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  balance INTEGER NOT NULL DEFAULT 0,
+  last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  UNIQUE(client_id),
+  CONSTRAINT positive_balance CHECK (balance >= 0)
+);
+
+CREATE TABLE credit_transaction (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL,                   -- Positive = add, Negative = deduct
+  type TEXT NOT NULL,                        -- 'subscription_grant' | 'purchase' | 'generation' | 'refund' | 'admin_adjustment'
+  reason TEXT,                               -- Human-readable reason
+  reference_id TEXT,                         -- Link to job, payment, etc.
+  created_by UUID REFERENCES "user"(id),     -- For admin adjustments
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT valid_type CHECK (type IN ('subscription_grant', 'purchase', 'generation', 'refund', 'admin_adjustment'))
+);
+
+CREATE INDEX idx_credit_tx_client ON credit_transaction(client_id, created_at DESC);
+
+CREATE TABLE credit_package (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  credits INTEGER NOT NULL,
+  price_cents INTEGER NOT NULL,              -- Price in cents
+  stripe_price_id TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ====================
+-- Asset Analytics (NEW - R2 view tracking)
+-- ====================
+CREATE TABLE asset_analytics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  generated_asset_id UUID NOT NULL REFERENCES generated_asset(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  view_count INTEGER NOT NULL DEFAULT 0,
+  unique_visitors INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  UNIQUE(generated_asset_id, date)
+);
+
+CREATE INDEX idx_asset_analytics_asset ON asset_analytics(generated_asset_id);
+CREATE INDEX idx_asset_analytics_date ON asset_analytics(date);
 
 -- ====================
 -- FUTURE: Inspiration Images (optional)

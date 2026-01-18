@@ -2,7 +2,7 @@
 
 **Status**: Living Document  
 **Created**: 2026-01-11  
-**Last Updated**: 2026-01-11  
+**Last Updated**: 2026-01-18  
 **Owner**: Product Team  
 **Audience**: Stakeholders, Designers, Business Teams  
 
@@ -174,19 +174,34 @@ graph LR
 #### Step 7: Sync to Store
 - Approved images automatically sync to connected store
 - Each image updates the product's imagery in the store using saved ERP ID
+- **Platform tracks which images it uploaded** vs images that existed before
 - View sync status: pending, synced, failed
+- **Store Management Page** shows:
+  - Per-product sync status (generated, approved, synced counts)
+  - Remove from store action (only for platform-synced images)
+  - Sync history and audit trail
 - Download option still available for manual use
 
 ---
 
 ## Getting Products Into Scenergy
 
-You have two ways to add products:
+You have three ways to add products:
 
 ### Option 1: Import from Connected Store
 Best for: Users with Shopify, WooCommerce, or BigCommerce stores
+- **WooCommerce** (Priority): REST API with Consumer Key/Secret authentication
+- **Shopify**: OAuth flow with Admin API
+- **BigCommerce**: OAuth flow with catalog API
 
-### Option 2: Upload Manually
+### Option 2: CSV Bulk Import
+Best for: Users with product data in spreadsheets or other systems
+- Upload CSV with product details (name, SKU, description, image URLs)
+- Column auto-detection and manual mapping
+- Batch image download from URLs
+- Validation and error reporting
+
+### Option 3: Upload Manually
 Best for: Users without a connected store, or products not yet in your store
 
 ```
@@ -538,11 +553,23 @@ We help you understand which generations perform best:
 | **Popular Styles** | Which inspiration styles get used most |
 | **Product Coverage** | Which products have been visualized |
 
+### R2 Image View Analytics
+
+We track which generated images are most viewed on your store using Cloudflare R2 analytics:
+
+| Metric | What It Tells You |
+|--------|------------------|
+| **View Count** | How many times each generated image was fetched from your store |
+| **Top Performers** | Which product images get the most customer attention |
+| **Store Traffic** | Identified by user-agent from Shopify/WooCommerce/BigCommerce bots |
+
+**Insights Example**: "Your sofa images get 3x more views than desk images - consider generating more sofa scenes"
+
 ### Future: Performance Insights (Roadmap)
 
-- Which generated images get the most downloads
 - A/B testing different styles for the same product
 - Recommendations: "Products similar to this one performed well with Modern style"
+- Conversion tracking (if store provides sales data)
 
 ---
 
@@ -1032,6 +1059,14 @@ Automatic syncing with e-commerce platforms:
 
 **Smart Editing**: When you open an image to edit, the AI analyzes it once and remembers what it found (objects, colors, lighting). The next time you edit the same image, it loads instantly—no waiting. If you make changes to the image, the analysis refreshes automatically.
 
+**Presets & Smart Defaults**: The system helps you work faster through:
+
+| Feature | How It Works |
+|---------|--------------|
+| **User Presets** | Save your favorite settings (scene type, mood, lighting, style) as named presets. Apply with one click. |
+| **Auto-Remember** | System remembers your last settings per context (product, category, collection, scene type). Priority: Product > Collection > Category > Scene Type. |
+| **Smart Toast** | "Using your previous settings for Sofas" notification when auto-loading. "Reset to defaults" link available. |
+
 ---
 
 ### 6. Settings
@@ -1075,6 +1110,7 @@ Automatic syncing with e-commerce platforms:
 | 2026-01-11 | 1.1 | Added: Cached image analysis, Approval workflow for store sync, Store sync details | Product Team |
 | 2026-01-11 | 1.2 | Added: Product import from stores (by IDs/category/all), subscription limits, ERP ID for sync, product analysis for prompts, detailed review/approval experience with side-by-side comparison and credit costs | Product Team |
 | 2026-01-12 | 1.3 | Added: Prompt Tags Q&A form in Collection Session Wizard, reordered flow phases | Product Team |
+| 2026-01-18 | 1.4 | Added: CSV bulk import, R2 image view analytics, Store Management Page with sync tracking, Presets & Auto-Remember system, WooCommerce as priority store | Product Team |
 
 ---
 

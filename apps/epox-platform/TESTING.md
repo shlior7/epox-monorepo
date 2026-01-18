@@ -4,7 +4,12 @@
 
 Comprehensive test suite for epox-platform covering:
 - **CRUD operations** for Products and Collections
+- **Collection flows and studio sessions** (create/list/update)
 - **Image generation flow** with queue service integration
+- **Generated assets listing/deletion** and job status tracking
+- **AI analysis/editing tools** (analyze, edit, remove background, upscale, vision scan)
+- **Uploads** with product linkage and subject analysis
+- **Dashboard and explore search** aggregation/mapping
 - **Storage integration** for file handling
 - **Input validation** and error handling
 
@@ -34,9 +39,21 @@ yarn test:coverage
 tests/
 ├── setup.ts                          # Test environment configuration
 ├── api/
-│   ├── products.test.ts              # Products CRUD tests
+│   ├── analyze-products.test.ts      # Product analysis tests
+│   ├── art-director.test.ts          # Prompt assembly tests
+│   ├── collections-flows.test.ts     # Collection flows tests
+│   ├── collections-generate.test.ts  # Collection generation tests
 │   ├── collections.test.ts           # Collections CRUD tests
-│   └── generate-images.test.ts       # Image generation flow tests
+│   ├── dashboard.test.ts             # Dashboard aggregation tests
+│   ├── explore-search.test.ts        # Unsplash search mapping tests
+│   ├── generate-images.test.ts       # Image generation flow tests
+│   ├── gemini-tools.test.ts          # Analyze/edit/remove/upscale/vision tests
+│   ├── generated-images.test.ts      # Generated assets list/delete tests
+│   ├── jobs.test.ts                  # Job status tests
+│   ├── products.test.ts              # Products CRUD tests
+│   ├── studio-settings.test.ts       # Studio settings tests
+│   ├── studio.test.ts                # Studio session tests
+│   └── upload.test.ts                # Upload flow tests
 └── integration/
     └── storage.test.ts               # Storage integration tests
 ```
@@ -123,6 +140,27 @@ tests/
 - ✅ Returns truncated prompt in response
 - ✅ Handles queue service errors gracefully
 
+### Additional API Coverage
+
+- **Analyze & AI Tools** (`tests/api/gemini-tools.test.ts`, `tests/api/analyze-products.test.ts`, `tests/api/art-director.test.ts`)
+  - ✅ Validation + success/error for analyze/edit/remove/upscale/vision endpoints
+  - ✅ AI analysis + fallback paths for product analysis
+  - ✅ Prompt assembly and scene matching for Art Director
+- **Collection Flows & Generation** (`tests/api/collections-flows.test.ts`, `tests/api/collections-generate.test.ts`)
+  - ✅ Flow listing with assets/base images
+  - ✅ Flow creation with scene-type matching
+  - ✅ Collection generation job creation + flow updates
+- **Assets & Jobs** (`tests/api/generated-images.test.ts`, `tests/api/jobs.test.ts`)
+  - ✅ Generated images list with filters + flowId path
+  - ✅ Generated image deletion with storage cleanup
+  - ✅ Job status mapping and error handling
+- **Studio & Uploads** (`tests/api/studio.test.ts`, `tests/api/studio-settings.test.ts`, `tests/api/upload.test.ts`)
+  - ✅ Studio session create/list + settings update/get
+  - ✅ Upload validation, product image linkage, and subject analysis
+- **Dashboard & Explore** (`tests/api/dashboard.test.ts`, `tests/api/explore-search.test.ts`)
+  - ✅ Dashboard aggregation + error handling
+  - ✅ Unsplash search mapping + failure handling
+
 ### Storage Integration Tests (`tests/integration/storage.test.ts`)
 
 **Storage Public URLs**
@@ -205,9 +243,9 @@ Coverage reports are generated in:
 
 - ⚠️ Database integration tests (requires running PostgreSQL)
 - ⚠️ End-to-end API tests (requires running Next.js server)
-- ⚠️ Image upload and processing
 - ⚠️ Actual AI generation (requires Gemini API)
 - ⚠️ Authentication flows (deferred)
+- ⚠️ Cloud storage (R2/S3) integration
 
 ## Running Tests in CI/CD
 
@@ -301,4 +339,4 @@ yarn test --inspect-brk
 
 ---
 
-**Last Updated:** 2026-01-14
+**Last Updated:** 2026-01-18

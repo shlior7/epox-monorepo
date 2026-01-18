@@ -2,6 +2,7 @@
 
 **Status**: Draft
 **Created**: 2026-01-11
+**Updated**: 2026-01-18
 **Author**: Claude
 **Related**: Design Log #001 (Architecture), Design Log #002 (Authentication), Design Log #003 (Data Model)
 
@@ -1206,6 +1207,95 @@ async function generateImage(productId: string) {
 | 25% | $1,341 | Strong incentive, lower revenue |
 
 **Decision**: 17% is competitive and improves cash flow.
+
+---
+
+## Admin Credit Management (2026-01-18 Addition)
+
+### Overview
+
+Administrators need the ability to manage client credits for:
+- Compensating for service issues
+- Granting promotional credits
+- Handling refund requests
+- Onboarding enterprise clients
+
+### Admin Actions
+
+| Action | Description | Requires |
+|--------|-------------|----------|
+| **Add Credits** | Grant credits to a client | Reason field (required) |
+| **Adjust Balance** | Correct balance errors | Reason field + approval |
+| **View History** | See all transactions | Read-only access |
+| **Export Report** | Download transaction CSV | Admin role |
+
+### Implementation
+
+```typescript
+// Admin adds credits
+POST /api/admin/credits/grant
+Request: {
+  clientId: string,
+  amount: number,
+  reason: string  // e.g., "Compensation for outage on 2026-01-15"
+}
+
+// Creates credit_transaction with type = 'admin_adjustment'
+// Audit log captures admin userId, timestamp, action
+```
+
+### Audit Requirements
+
+All admin credit actions must be:
+- Logged with admin user ID
+- Include reason/justification
+- Visible in admin dashboard
+- Reportable for accounting
+
+---
+
+## Credit Refund Policy (2026-01-18 Addition)
+
+### Automatic Refunds
+
+**Failed generations are automatically refunded:**
+
+| Scenario | Refund | Implementation |
+|----------|--------|----------------|
+| Generation fails (AI error) | 1 credit per failed image | Automatic via worker |
+| Timeout (>5 min no response) | 1 credit per image | Automatic via job monitor |
+| Duplicate charge | Full amount | Manual review, then auto |
+| Service outage | Pro-rated | Admin bulk grant |
+
+### Refund Flow
+
+```
+Generation fails
+    ↓
+Worker catches error
+    ↓
+Create credit_transaction: {
+  type: 'refund',
+  amount: 1,
+  reason: 'Generation failed: [error message]',
+  reference_id: job_id
+}
+    ↓
+Update credit_balance
+    ↓
+Show toast: "1 credit refunded due to generation failure"
+```
+
+### Manual Refund Requests
+
+**Not supported for purchased credits** (like gift cards):
+- Communicate clearly at purchase
+- Offer account credit instead
+- Exception: Major service issues (admin discretion)
+
+**Supported for subscriptions**:
+- Pro-rated refund on cancellation
+- Full refund within 7 days if no generations used
 
 ---
 

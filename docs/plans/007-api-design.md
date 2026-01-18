@@ -2,7 +2,7 @@
 
 **Status**: Draft
 **Created**: 2026-01-10
-**Updated**: 2026-01-12
+**Updated**: 2026-01-18
 **Author**: Claude
 **Related**: Design Log #001 (Architecture), Design Log #002 (Authentication), Design Log #003 (Data Model), Design Log #004 (User Flows)
 
@@ -3084,6 +3084,349 @@ Future: Support header-based versioning for gradual migration
 - ✅ CRUD: Sync (fast, <100ms)
 - ✅ Return 202 Accepted for async operations
 - ❌ Need polling mechanism for status
+
+---
+
+## New API Endpoints (2026-01-18)
+
+The following new endpoint sections have been added based on design decisions.
+
+### Store Connection Endpoints
+
+```typescript
+// Connect Store (OAuth initiation)
+POST /api/v1/store/connect
+Request: { storeType: 'woocommerce' | 'shopify' | 'bigcommerce', storeUrl: string }
+Response: { authUrl: string, state: string }
+
+// OAuth Callback
+GET /api/v1/store/callback
+Query: { code: string, state: string }
+Response: Redirect to /settings/store
+
+// Get Store Connection
+GET /api/v1/store
+Response: {
+  data: {
+    id: string,
+    storeType: string,
+    storeUrl: string,
+    storeName: string,
+    status: 'active' | 'disconnected' | 'error',
+    lastSyncAt: string,
+    productCount: number
+  } | null
+}
+
+// Disconnect Store
+DELETE /api/v1/store
+Response: { success: true }
+
+// Sync Status
+GET /api/v1/store/sync-status
+Response: {
+  data: {
+    totalProducts: number,
+    productsWithGenerations: number,
+    approvedAssets: number,
+    syncedAssets: number,
+    pendingSync: number,
+    lastSyncAt: string
+  }
+}
+```
+
+### Product Import Endpoints
+
+```typescript
+// Import from Store
+POST /api/v1/import/store
+Request: {
+  method: 'by_ids' | 'by_category' | 'all',
+  productIds?: string[],
+  categoryIds?: string[]
+}
+Response: {
+  data: { jobId: string, expectedCount: number }
+}
+
+// Import from CSV
+POST /api/v1/import/csv
+Content-Type: multipart/form-data
+Request: { file: File }
+Response: {
+  data: {
+    parsedRows: number,
+    detectedColumns: string[],
+    preview: Array<Record<string, string>>
+  }
+}
+
+// Confirm CSV Import
+POST /api/v1/import/csv/confirm
+Request: {
+  columnMapping: Record<string, string>,
+  skipRows: number[]
+}
+Response: {
+  data: { jobId: string, expectedCount: number }
+}
+
+// Import Job Status
+GET /api/v1/import/jobs/{jobId}
+Response: {
+  data: {
+    status: 'pending' | 'processing' | 'completed' | 'failed',
+    progress: number,
+    imported: number,
+    failed: number,
+    errors: Array<{ row: number, error: string }>
+  }
+}
+```
+
+### Store Sync Endpoints
+
+```typescript
+// List Products with Sync Status
+GET /api/v1/store/products
+Query: { status?: 'synced' | 'pending' | 'not_generated', search?: string }
+Response: {
+  data: Array<{
+    productId: string,
+    name: string,
+    sku: string,
+    generatedCount: number,
+    approvedCount: number,
+    syncedCount: number,
+    pendingCount: number
+  }>,
+  pagination: { ... }
+}
+
+// Get Product Sync Detail
+GET /api/v1/store/products/{productId}/sync
+Response: {
+  data: {
+    product: { id, name, sku },
+    assets: Array<{
+      id: string,
+      thumbnailUrl: string,
+      status: 'not_approved' | 'approved' | 'synced' | 'removed',
+      syncedAt?: string,
+      storeImageId?: string,
+      canRemoveFromStore: boolean
+    }>
+  }
+}
+
+// Sync Approved Assets
+POST /api/v1/store/sync
+Request: { assetIds?: string[], syncAll?: boolean }
+Response: {
+  data: { jobId: string, assetsToSync: number }
+}
+
+// Remove from Store
+DELETE /api/v1/store/assets/{assetId}
+Response: {
+  data: { success: true, removedAt: string }
+}
+
+// Sync History
+GET /api/v1/store/history
+Query: { productId?: string, limit?: number }
+Response: {
+  data: Array<{
+    id: string,
+    assetId: string,
+    productId: string,
+    action: 'upload' | 'update' | 'delete',
+    status: 'success' | 'failed',
+    timestamp: string,
+    error?: string
+  }>
+}
+```
+
+### Credit Endpoints
+
+```typescript
+// Get Credit Balance
+GET /api/v1/credits
+Response: {
+  data: {
+    balance: number,
+    subscription: {
+      plan: string,
+      includedCredits: number,
+      periodEnd: string
+    }
+  }
+}
+
+// Get Credit Packages
+GET /api/v1/credits/packages
+Response: {
+  data: Array<{
+    id: string,
+    name: string,
+    credits: number,
+    price: number,
+    pricePer: number
+  }>
+}
+
+// Purchase Credits
+POST /api/v1/credits/purchase
+Request: { packageId: string }
+Response: {
+  data: { checkoutUrl: string, sessionId: string }
+}
+
+// Credit History
+GET /api/v1/credits/history
+Query: { limit?: number }
+Response: {
+  data: Array<{
+    id: string,
+    amount: number,
+    type: 'subscription_grant' | 'purchase' | 'generation' | 'refund',
+    reason: string,
+    createdAt: string
+  }>,
+  pagination: { ... }
+}
+```
+
+### Preset Endpoints
+
+```typescript
+// List Presets
+GET /api/v1/presets
+Response: {
+  data: Array<{
+    id: string,
+    name: string,
+    description?: string,
+    settings: GenerationFlowSettings,
+    thumbnailUrl?: string,
+    isDefault: boolean,
+    createdAt: string
+  }>
+}
+
+// Create Preset
+POST /api/v1/presets
+Request: {
+  name: string,
+  description?: string,
+  settings: GenerationFlowSettings,
+  isDefault?: boolean
+}
+Response: { data: Preset }
+
+// Update Preset
+PATCH /api/v1/presets/{id}
+Request: { name?: string, description?: string, settings?: GenerationFlowSettings, isDefault?: boolean }
+Response: { data: Preset }
+
+// Delete Preset
+DELETE /api/v1/presets/{id}
+Response: { success: true }
+
+// Get Remembered Settings
+GET /api/v1/settings/remembered
+Query: { contextType: 'scene_type' | 'product' | 'category' | 'collection', contextId: string }
+Response: {
+  data: GenerationFlowSettings | null,
+  meta: { context: string, lastUsed: string }
+}
+```
+
+### Notification Endpoints
+
+```typescript
+// List Notifications
+GET /api/v1/notifications
+Query: { unreadOnly?: boolean, limit?: number }
+Response: {
+  data: Array<{
+    id: string,
+    type: string,
+    title: string,
+    message: string,
+    data?: any,
+    read: boolean,
+    createdAt: string
+  }>,
+  meta: { unreadCount: number }
+}
+
+// Mark as Read
+PATCH /api/v1/notifications/{id}/read
+Response: { success: true }
+
+// Mark All as Read
+POST /api/v1/notifications/read-all
+Response: { success: true, markedCount: number }
+
+// Notification Preferences
+GET /api/v1/notifications/preferences
+Response: {
+  data: {
+    emailEnabled: boolean,
+    generationComplete: boolean,
+    syncComplete: boolean,
+    creditsLow: boolean,
+    weeklyDigest: boolean
+  }
+}
+
+// Update Notification Preferences
+PATCH /api/v1/notifications/preferences
+Request: { [key: string]: boolean }
+Response: { data: NotificationPreferences }
+```
+
+### Analytics Endpoints
+
+```typescript
+// Get Dashboard Stats
+GET /api/v1/analytics/dashboard
+Response: {
+  data: {
+    totalProducts: number,
+    totalGenerations: number,
+    creditsUsedThisMonth: number,
+    creditsRemaining: number
+  }
+}
+
+// Get Usage Over Time
+GET /api/v1/analytics/usage
+Query: { period: '7d' | '30d' | '90d' }
+Response: {
+  data: {
+    generationsByDay: Array<{ date: string, count: number }>,
+    creditsByDay: Array<{ date: string, amount: number }>
+  }
+}
+
+// Get Top Performing Assets
+GET /api/v1/analytics/top-assets
+Query: { period: '7d' | '30d' | '90d', limit?: number }
+Response: {
+  data: Array<{
+    assetId: string,
+    productId: string,
+    productName: string,
+    thumbnailUrl: string,
+    viewCount: number,
+    uniqueVisitors: number
+  }>
+}
+```
 
 ---
 
