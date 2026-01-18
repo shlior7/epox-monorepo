@@ -3,10 +3,10 @@
  * Tests file upload, storage, and retrieval
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { storage } from '@/lib/services/storage';
+import { storage, storagePaths } from '@/lib/services/storage';
 import fs from 'fs/promises';
 import path from 'path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('Storage Integration', () => {
   const testStorageDir = '.test-storage';
@@ -58,52 +58,54 @@ describe('Storage Integration', () => {
   });
 
   it('should support getting storage paths', () => {
-    expect(storage.paths).toBeDefined();
-    expect(storage.paths.getProductImagePath).toBeDefined();
-    expect(storage.paths.getGeneratedImagePath).toBeDefined();
+    expect(storagePaths).toBeDefined();
+    expect(storagePaths.productImageBase).toBeDefined();
+    expect(storagePaths.generationAsset).toBeDefined();
   });
 
   it('should generate correct product image path', () => {
-    const path = storage.paths.getProductImagePath('demo-client', 'prod-1', 'image-1.jpg');
-    expect(path).toContain('clients/demo-client');
-    expect(path).toContain('products');
-    expect(path).toContain('prod-1');
-    expect(path).toContain('image-1.jpg');
+    const storagePath = storagePaths.productImageBase('demo-client', 'prod-1', 'image-1');
+    expect(storagePath).toContain('clients/demo-client');
+    expect(storagePath).toContain('products');
+    expect(storagePath).toContain('prod-1');
+    expect(storagePath).toContain('image-1.png');
   });
 
   it('should generate correct generated image path', () => {
-    const path = storage.paths.getGeneratedImagePath('demo-client', 'session-1', 'generated-1.jpg');
-    expect(path).toContain('clients/demo-client');
-    expect(path).toContain('generated');
-    expect(path).toContain('session-1');
-    expect(path).toContain('generated-1.jpg');
+    const storagePath = storagePaths.generationAsset('demo-client', 'flow-1', 'generated-1', 'jpg');
+    expect(storagePath).toContain('clients/demo-client');
+    expect(storagePath).toContain('generations');
+    expect(storagePath).toContain('flow-1');
+    expect(storagePath).toContain('generated-1.jpg');
   });
 });
 
 describe('Storage Path Helpers', () => {
   it('should generate session flow image paths', () => {
-    const path = storage.paths.getSessionFlowImagePath('demo-client', 'session-1', 'flow-1', 'image.jpg');
-    expect(path).toContain('clients/demo-client');
-    expect(path).toContain('session-1');
-    expect(path).toContain('flow-1');
+    const storagePath = storagePaths.generationAsset('demo-client', 'flow-1', 'image', 'jpg');
+    expect(storagePath).toContain('clients/demo-client');
+    expect(storagePath).toContain('generations');
+    expect(storagePath).toContain('flow-1');
   });
 
   it('should generate inspiration image paths', () => {
-    const path = storage.paths.getInspirationImagePath('demo-client', 'insp-1.jpg');
-    expect(path).toContain('clients/demo-client');
-    expect(path).toContain('inspiration');
+    const storagePath = storagePaths.inspirationImage('demo-client', 'session-1', 'insp-1', 'jpg');
+    expect(storagePath).toContain('clients/demo-client');
+    expect(storagePath).toContain('sessions');
+    expect(storagePath).toContain('session-1');
+    expect(storagePath).toContain('inspirations');
   });
 
   it('should handle filename sanitization', () => {
     // Test with special characters that might need sanitization
-    const filename = 'test image (1).jpg';
-    const path = storage.paths.getProductImagePath('demo-client', 'prod-1', filename);
-    expect(path).toBeTruthy();
+    const imageId = 'test image (1)';
+    const storagePath = storagePaths.productImageBase('demo-client', 'prod-1', imageId);
+    expect(storagePath).toBeTruthy();
   });
 
   it('should generate unique paths for different clients', () => {
-    const path1 = storage.paths.getProductImagePath('client-1', 'prod-1', 'image.jpg');
-    const path2 = storage.paths.getProductImagePath('client-2', 'prod-1', 'image.jpg');
+    const path1 = storagePaths.productImageBase('client-1', 'prod-1', 'image');
+    const path2 = storagePaths.productImageBase('client-2', 'prod-1', 'image');
 
     expect(path1).not.toBe(path2);
     expect(path1).toContain('client-1');
@@ -111,8 +113,8 @@ describe('Storage Path Helpers', () => {
   });
 
   it('should generate unique paths for different products', () => {
-    const path1 = storage.paths.getProductImagePath('demo-client', 'prod-1', 'image.jpg');
-    const path2 = storage.paths.getProductImagePath('demo-client', 'prod-2', 'image.jpg');
+    const path1 = storagePaths.productImageBase('demo-client', 'prod-1', 'image');
+    const path2 = storagePaths.productImageBase('demo-client', 'prod-2', 'image');
 
     expect(path1).not.toBe(path2);
     expect(path1).toContain('prod-1');

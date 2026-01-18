@@ -25,7 +25,7 @@ vi.mock('@/lib/services/db', () => ({
       listWithFiltersAndImages: vi.fn(),
       countWithFilters: vi.fn(),
       getDistinctCategories: vi.fn(),
-      getDistinctsceneTypes: vi.fn(),
+      getDistinctSceneTypes: vi.fn(),
     },
     generatedAssets: {
       listByProductId: vi.fn(),
@@ -52,7 +52,7 @@ describe('Products API - GET /api/products', () => {
     vi.mocked(db.products.countWithFilters).mockResolvedValue(0);
     vi.mocked(db.products.listWithFiltersAndImages).mockResolvedValue([]);
     vi.mocked(db.products.getDistinctCategories).mockResolvedValue([]);
-    vi.mocked(db.products.getDistinctsceneTypes).mockResolvedValue([]);
+    vi.mocked(db.products.getDistinctSceneTypes).mockResolvedValue([]);
   });
 
   it('should return empty list when no products exist', async () => {
