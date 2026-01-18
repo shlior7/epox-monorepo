@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
-import type { CollectionSessionStatus } from 'visualizer-types';
+import type { CollectionSessionStatus, FlowGenerationSettings } from 'visualizer-types';
 
 // TODO: Replace with actual auth when implemented
 const PLACEHOLDER_CLIENT_ID = 'test-client';
@@ -135,11 +135,11 @@ export async function POST(request: NextRequest) {
       : [];
 
     // Build collection settings
-    const collectionSettings = inspirationImagesArray.length > 0
+    const collectionSettings: FlowGenerationSettings | undefined = inspirationImagesArray.length > 0
       ? {
           inspirationImages: inspirationImagesArray,
           aspectRatio: '1:1',
-          imageQuality: '2K',
+          imageQuality: '2k' as import('visualizer-types').ImageQuality,
           variantsCount: 1,
         }
       : undefined;
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
           selectedBaseImages: {},
           settings: collectionSettings || {
             aspectRatio: '1:1',
-            imageQuality: '2K',
+            imageQuality: '2k' as import('visualizer-types').ImageQuality,
             variantsCount: 1,
           },
         });

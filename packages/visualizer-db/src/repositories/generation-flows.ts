@@ -2,7 +2,7 @@ import { asc, eq, inArray, and, sql } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
 import { generationFlow, generationFlowProduct } from '../schema/sessions';
 import type { GenerationFlow, GenerationFlowCreate, FlowGenerationSettings, GenerationFlowUpdate } from 'visualizer-types';
-import { DEFAULT_FLOW_SETTINGS, DEFAULT_POST_ADJUSTMENTS } from 'visualizer-types';
+import { DEFAULT_FLOW_SETTINGS, DEFAULT_POST_ADJUSTMENTS, normalizeImageQuality } from 'visualizer-types';
 import { updateWithVersion } from '../utils/optimistic-lock';
 import { BaseRepository } from './base';
 
@@ -29,6 +29,13 @@ function mergeFlowSettings(
         ...updates.postAdjustments.effects,
       },
     };
+  }
+  // Normalize imageQuality for backward compatibility (uppercase -> lowercase)
+  if (merged.imageQuality) {
+    const normalized = normalizeImageQuality(merged.imageQuality);
+    if (normalized) {
+      merged.imageQuality = normalized;
+    }
   }
   return merged;
 }

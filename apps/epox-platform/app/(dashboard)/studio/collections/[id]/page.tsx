@@ -21,11 +21,13 @@ import {
   Image as ImageIcon,
   Lightbulb,
   Settings2,
+  Video,
+  Package,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { SearchInput } from '@/components/ui/input';
+import { Input, SearchInput } from '@/components/ui/input';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -48,6 +50,7 @@ import type {
   StylePreset,
   LightingPreset,
   VisionAnalysisResult,
+  VideoPromptSettings,
 } from 'visualizer-types';
 import { STYLE_PRESETS, LIGHTING_PRESETS } from 'visualizer-types';
 
@@ -67,6 +70,16 @@ const ASPECT_OPTIONS = [
   { value: '9:16', label: '9:16', icon: '▯' },
   { value: '4:3', label: '4:3', icon: '▱' },
 ] as const;
+
+type StudioTab = 'images' | 'video';
+
+interface VideoPreset {
+  id: string;
+  name: string;
+  settings: VideoPromptSettings;
+}
+
+const VIDEO_PRESETS_STORAGE_KEY = 'epox_video_presets_v1';
 
 // Track per-flow generation state
 interface FlowJobState {
@@ -88,6 +101,8 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   const [searchQuery, setSearchQuery] = useState('');
   const [showConfigPanel, setShowConfigPanel] = useState(true);
   const [expandedSection, setExpandedSection] = useState<string | null>('scene-style');
+  const [activeTab, setActiveTab] = useState<StudioTab>('images');
+  const [videoExpandedSection, setVideoExpandedSection] = useState<string | null>('video-inputs');
 
   // Settings state (mirrors single product studio)
   const [inspirationImages, setInspirationImages] = useState<InspirationImage[]>([]);
@@ -102,9 +117,21 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     variantsCount: 1,
   });
 
+  const [selectedBaseImages, setSelectedBaseImages] = useState<Record<string, string>>({});
+
+  // Video Settings
+  const [videoPrompt, setVideoPrompt] = useState('');
+  const [videoInspirationUrl, setVideoInspirationUrl] = useState<string | null>(null);
+  const [videoInspirationNote, setVideoInspirationNote] = useState('');
+  const [videoSettings, setVideoSettings] = useState<VideoPromptSettings>({});
+  const [videoPresetId, setVideoPresetId] = useState<string | null>(null);
+  const [videoPresetName, setVideoPresetName] = useState('');
+  const [videoPresets, setVideoPresets] = useState<VideoPreset[]>([]);
+
   // Generation state
   const [flowJobs, setFlowJobs] = useState<Map<string, FlowJobState>>(new Map());
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [activeGenerationType, setActiveGenerationType] = useState<'image' | 'video' | null>(null);
 
   const isGenerationInProgress = flowJobs.size > 0;
   const generatingProductIds = Array.from(flowJobs.keys());
@@ -155,8 +182,32 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       if (s.aspectRatio) setOutputSettings((prev) => ({ ...prev, aspectRatio: s.aspectRatio! }));
       if (s.imageQuality) setOutputSettings((prev) => ({ ...prev, quality: s.imageQuality! }));
       if (s.variantsCount) setOutputSettings((prev) => ({ ...prev, variantsCount: s.variantsCount! }));
+      if (s.video) {
+        setVideoPrompt(s.video.prompt ?? '');
+        setVideoInspirationUrl(s.video.inspirationImageUrl ?? null);
+        setVideoInspirationNote(s.video.inspirationNote ?? '');
+        setVideoSettings(s.video.settings ?? {});
+        setVideoPresetId(s.video.presetId ?? null);
+      }
     }
   }, [collection?.settings]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = localStorage.getItem(VIDEO_PRESETS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as VideoPreset[];
+        setVideoPresets(parsed);
+      }
+    } catch (error) {
+      console.warn('Failed to load video presets:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    setExpandedSection(activeTab === 'images' ? 'scene-style' : 'video-inputs');
+  }, [activeTab]);
 
   // Filter products to only those in the collection
   const collectionProducts = useMemo(() => {
@@ -241,7 +292,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
           category: product.category,
         },
         baseImages: flowData?.baseImages || baseImages,
-        selectedBaseImageId: baseImages[0]?.id || '',
+        selectedBaseImageId: selectedBaseImages[product.id] || baseImages[0]?.id || '',
         revisions,
         status: getFlowStatus(product.id, flowData?.status),
         approvalStatus: 'pending' as ApprovalStatus,
@@ -249,7 +300,21 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
         sceneType: product.sceneTypes?.[0] || 'Living Room',
       };
     });
-  }, [collectionProducts, getFlowStatus, productToFlowMap, flowsData?.flows]);
+  }, [collectionProducts, getFlowStatus, productToFlowMap, flowsData?.flows, selectedBaseImages]);
+
+  useEffect(() => {
+    setSelectedBaseImages((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const flow of generationFlows) {
+        if (!next[flow.product.id] && flow.baseImages[0]?.id) {
+          next[flow.product.id] = flow.selectedBaseImageId || flow.baseImages[0].id;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [generationFlows]);
 
   const filteredFlows = useMemo(() => {
     return generationFlows.filter((flow) => {
@@ -311,16 +376,18 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       setFlowJobs(activeJobs);
 
       if (completedCount > 0) {
-        toast.success(`${completedCount} image(s) generated successfully!`);
+        const label = activeGenerationType === 'video' ? 'video' : 'image';
+        toast.success(`${completedCount} ${label}(s) generated successfully!`);
         queryClient.invalidateQueries({ queryKey: ['collection', id] });
         queryClient.invalidateQueries({ queryKey: ['collection-flows', id] });
         queryClient.invalidateQueries({ queryKey: ['products', 'all'] });
       }
       if (errorCount > 0) {
-        toast.error(`${errorCount} generation(s) failed`);
+        const label = activeGenerationType === 'video' ? 'video' : 'image';
+        toast.error(`${errorCount} ${label} generation(s) failed`);
       }
     }
-  }, [flowJobs, id, queryClient]);
+  }, [flowJobs, id, queryClient, activeGenerationType]);
 
   // Start/stop polling based on active jobs
   useEffect(() => {
@@ -330,6 +397,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     } else if (flowJobs.size === 0 && pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
+      setActiveGenerationType(null);
     }
 
     return () => {
@@ -364,6 +432,13 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
         aspectRatio: outputSettings.aspectRatio,
         imageQuality: outputSettings.quality as '1k' | '2k' | '4k',
         variantsCount: outputSettings.variantsCount,
+        video: {
+          prompt: videoPrompt || undefined,
+          inspirationImageUrl: videoInspirationUrl || undefined,
+          inspirationNote: videoInspirationNote || undefined,
+          settings: videoSettings,
+          presetId: videoPresetId,
+        },
       };
       return apiClient.updateCollection(id, { settings });
     },
@@ -380,7 +455,72 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       }
     }, 1000);
     return () => clearTimeout(timeoutId);
-  }, [inspirationImages, sceneTypeInspirations, stylePreset, lightingPreset, userPrompt, outputSettings]);
+  }, [
+    inspirationImages,
+    sceneTypeInspirations,
+    stylePreset,
+    lightingPreset,
+    userPrompt,
+    outputSettings,
+    videoPrompt,
+    videoInspirationUrl,
+    videoInspirationNote,
+    videoSettings,
+    videoPresetId,
+  ]);
+
+  const persistVideoPresets = (presets: VideoPreset[]) => {
+    setVideoPresets(presets);
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(VIDEO_PRESETS_STORAGE_KEY, JSON.stringify(presets));
+    } catch (error) {
+      console.warn('Failed to save video presets:', error);
+    }
+  };
+
+  const handleSaveVideoPreset = () => {
+    const name = videoPresetName.trim();
+    if (!name) {
+      toast.error('Preset name is required');
+      return;
+    }
+    const preset: VideoPreset = {
+      id: `preset_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      settings: { ...videoSettings },
+    };
+    const updated = [preset, ...videoPresets];
+    persistVideoPresets(updated);
+    setVideoPresetId(preset.id);
+    setVideoPresetName('');
+  };
+
+  const handleApplyVideoPreset = (presetIdToApply: string) => {
+    const preset = videoPresets.find((p) => p.id === presetIdToApply);
+    if (!preset) return;
+    setVideoSettings(preset.settings);
+    setVideoPresetId(preset.id);
+  };
+
+  const buildVideoPrompt = (
+    basePrompt: string,
+    settings: VideoPromptSettings,
+    inspirationNote: string
+  ) => {
+    const lines = [basePrompt.trim()];
+    if (settings.videoType) lines.push(`Video type: ${settings.videoType}`);
+    if (settings.cameraMotion) lines.push(`Camera motion: ${settings.cameraMotion}`);
+    if (settings.subjectAction) lines.push(`Subject action: ${settings.subjectAction}`);
+    if (settings.sceneAction) lines.push(`Scene action: ${settings.sceneAction}`);
+    if (settings.durationSeconds) lines.push(`Duration: ${settings.durationSeconds}s`);
+    if (inspirationNote.trim()) lines.push(`Style reference: ${inspirationNote.trim()}`);
+    return lines.filter(Boolean).join('\n');
+  };
+
+  const updateVideoSettings = (updates: Partial<VideoPromptSettings>) => {
+    setVideoSettings((prev) => ({ ...prev, ...updates }));
+  };
 
   // Generate all mutation
   const generateAllMutation = useMutation({
@@ -403,6 +543,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
         });
       });
       setFlowJobs(newJobStates);
+      setActiveGenerationType('image');
 
       // Call the new collection generate endpoint
       const result = await apiClient.generateCollection(id, {
@@ -441,7 +582,110 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     },
     onError: (error) => {
       setFlowJobs(new Map());
+      setActiveGenerationType(null);
       toast.error(error instanceof Error ? error.message : 'Failed to start generation');
+    },
+  });
+
+  const generateVideosMutation = useMutation({
+    mutationFn: async () => {
+      if (readyToGenerateFlows.length === 0) {
+        throw new Error('No flows ready to generate');
+      }
+      if (!videoPrompt.trim()) {
+        throw new Error('Video prompt is required');
+      }
+
+      // Create flows first before setting state
+      const flowsResult = await apiClient.createCollectionFlows(id);
+
+      // Only set active generation type after successful flow creation
+      setActiveGenerationType('video');
+      const flowIdMap = new Map(flowsResult.flows.map((flow) => [flow.productId, flow.flowId]));
+
+      const prompt = buildVideoPrompt(videoPrompt, videoSettings, videoInspirationNote);
+      const startedAt = Date.now();
+
+      // Use Promise.allSettled to handle partial failures gracefully
+      const results = await Promise.allSettled(
+        readyToGenerateFlows.map(async (flow) => {
+          const baseImageId = selectedBaseImages[flow.product.id] || flow.baseImages[0]?.id;
+          const baseImage =
+            flow.baseImages.find((img) => img.id === baseImageId) || flow.baseImages[0];
+          if (!baseImage?.url) {
+            throw new Error(`Missing base image for ${flow.product.name}`);
+          }
+
+          const flowId = flow.realFlowId || flowIdMap.get(flow.product.id);
+          if (!flowId) {
+            throw new Error(`Missing flow for ${flow.product.name}`);
+          }
+
+          const result = await apiClient.generateVideo({
+            sessionId: flowId,
+            productId: flow.product.id,
+            sourceImageUrl: baseImage.url,
+            prompt,
+            inspirationImageUrl: videoInspirationUrl || undefined,
+            inspirationNote: videoInspirationNote || undefined,
+            settings: {
+              durationSeconds: videoSettings.durationSeconds,
+            },
+          });
+
+          return { productId: flow.product.id, jobId: result.jobId };
+        })
+      );
+
+      // Separate fulfilled and rejected results
+      const fulfilledJobs: Array<{ productId: string; jobId: string }> = [];
+      const errors: string[] = [];
+
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          fulfilledJobs.push(result.value);
+        } else {
+          const flowName = readyToGenerateFlows[index]?.product.name || `Flow ${index}`;
+          errors.push(`${flowName}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`);
+        }
+      });
+
+      // Log errors for debugging
+      if (errors.length > 0) {
+        console.error('Video generation failures:', errors);
+      }
+
+      // Update flow jobs with successful ones
+      const updatedJobs = new Map<string, FlowJobState>();
+      fulfilledJobs.forEach(({ productId, jobId }) => {
+        updatedJobs.set(productId, {
+          jobId,
+          status: 'generating',
+          progress: 10,
+          startedAt,
+        });
+      });
+      setFlowJobs(updatedJobs);
+
+      return {
+        productCount: fulfilledJobs.length,
+        errorCount: errors.length,
+        errors: errors.length > 0 ? errors : undefined,
+      };
+    },
+    onSuccess: (data) => {
+      if (data.productCount > 0) {
+        toast.success(`Started generating ${data.productCount} videos`);
+      }
+      if (data.errorCount > 0) {
+        toast.error(`${data.errorCount} video generation(s) failed to start`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['collection-flows', id] });
+    },
+    onError: (error) => {
+      setFlowJobs(new Map());
+      setActiveGenerationType(null);
+      toast.error(error instanceof Error ? error.message : 'Failed to start video generation');
     },
   });
 
@@ -521,6 +765,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   const handleRemoveInspiration = (index: number) => {
     const imageToRemove = inspirationImages[index];
     setInspirationImages((prev) => prev.filter((_, i) => i !== index));
+    setVideoInspirationUrl((prev) => (prev === imageToRemove.url ? null : prev));
 
     // Also remove from scene type inspirations
     setSceneTypeInspirations((prev) => {
@@ -647,7 +892,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
             <Button
               variant="glow"
               onClick={() => generateAllMutation.mutate()}
-              disabled={readyToGenerateFlows.length === 0 || generateAllMutation.isPending}
+              disabled={readyToGenerateFlows.length === 0 || generateAllMutation.isPending || isGenerationInProgress}
             >
               {generateAllMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -659,17 +904,18 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
           </div>
         </div>
 
-        {/* Progress Bar */}
-        {isGenerating && (
-          <div className="mt-4">
-            <div className="mb-2 flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-muted-foreground">
-                  Generating {generatingProductIds.length} image
+          {/* Progress Bar */}
+          {isGenerating && (
+            <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-muted-foreground">
+                  Generating {generatingProductIds.length}{' '}
+                  {activeGenerationType === 'video' ? 'video' : 'image'}
                   {generatingProductIds.length !== 1 ? 's' : ''}...
-                </span>
-              </div>
+                  </span>
+                </div>
               <span className="font-medium">
                 {(() => {
                   const progressValues = Array.from(flowJobs.values()).map((j) => j.progress);
@@ -767,6 +1013,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                     approvalStatus={flow.approvalStatus}
                     isPinned={flow.isPinned}
                     sceneType={flow.sceneType}
+                    onChangeBaseImage={(imageId) => {
+                      setSelectedBaseImages((prev) => ({ ...prev, [flow.product.id]: imageId }));
+                    }}
                     onDeleteRevision={handleDeleteRevision}
                     onClick={() => handleProductClick(flow.product.id, flow.realFlowId)}
                     className={cn('animate-fade-in cursor-pointer opacity-0', `stagger-${Math.min(index + 1, 6)}`)}
@@ -791,6 +1040,32 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
         {showConfigPanel && (
           <aside className="w-96 overflow-y-auto border-l border-border bg-card/50">
             <div className="space-y-1 p-4">
+              <div className="mb-3 grid grid-cols-2 gap-1 rounded-lg bg-muted/50 p-1 text-xs font-semibold">
+                <button
+                  onClick={() => setActiveTab('images')}
+                  className={cn(
+                    'rounded-md px-2 py-2 transition-colors',
+                    activeTab === 'images'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Images
+                </button>
+                <button
+                  onClick={() => setActiveTab('video')}
+                  className={cn(
+                    'rounded-md px-2 py-2 transition-colors',
+                    activeTab === 'video'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Video
+                </button>
+              </div>
+              {activeTab === 'images' ? (
+                <>
               {/* Section 1: Scene Style (Inspiration Images) */}
               <div className="rounded-lg border border-border/50 bg-card">
                 <button
@@ -1068,6 +1343,235 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                   </div>
                 )}
               </div>
+                </>
+              ) : (
+                <>
+                  {/* Video Section: Inputs */}
+                  <div className="rounded-lg border border-border/50 bg-card">
+                    <button
+                      className="flex w-full items-center justify-between p-4"
+                      onClick={() => setVideoExpandedSection(videoExpandedSection === 'video-inputs' ? null : 'video-inputs')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Video className="h-4 w-4 text-primary" />
+                        <span className="font-medium">Video Inputs</span>
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 text-muted-foreground transition-transform',
+                          videoExpandedSection === 'video-inputs' && 'rotate-180'
+                        )}
+                      />
+                    </button>
+
+                    {videoExpandedSection === 'video-inputs' && (
+                      <div className="border-t border-border/50 p-4 pt-3">
+                        <p className="mb-2 text-xs text-muted-foreground">
+                          Uses the selected base image per product card
+                        </p>
+                        <div className="mb-4">
+                          <p className="mb-2 text-xs text-muted-foreground">Inspiration Image</p>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => setVideoInspirationUrl(null)}
+                              className={cn(
+                                'rounded-md border px-2 py-1 text-[10px] font-medium',
+                                videoInspirationUrl === null
+                                  ? 'border-primary bg-primary/10 text-primary'
+                                  : 'border-border text-muted-foreground hover:border-primary/50'
+                              )}
+                            >
+                              None
+                            </button>
+                            {inspirationImages.map((img) => (
+                              <button
+                                key={img.url}
+                                onClick={() => setVideoInspirationUrl(img.url)}
+                                className={cn(
+                                  'relative aspect-square h-12 w-12 overflow-hidden rounded-lg border-2 transition-all',
+                                  videoInspirationUrl === img.url
+                                    ? 'border-primary ring-2 ring-primary/30'
+                                    : 'border-border hover:border-primary/50'
+                                )}
+                              >
+                                <Image src={img.url} alt="Inspiration" fill className="object-cover" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Video Section: Prompt */}
+                  <div className="rounded-lg border border-border/50 bg-card">
+                    <button
+                      className="flex w-full items-center justify-between p-4"
+                      onClick={() => setVideoExpandedSection(videoExpandedSection === 'video-prompt' ? null : 'video-prompt')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="font-medium">Video Prompt</span>
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 text-muted-foreground transition-transform',
+                          videoExpandedSection === 'video-prompt' && 'rotate-180'
+                        )}
+                      />
+                    </button>
+
+                    {videoExpandedSection === 'video-prompt' && (
+                      <div className="border-t border-border/50 p-4 pt-3">
+                        <Textarea
+                          placeholder="Describe the video you want to generate..."
+                          value={videoPrompt}
+                          onChange={(e) => setVideoPrompt(e.target.value)}
+                          className="min-h-[80px] resize-none text-sm"
+                        />
+                        <div className="mt-3">
+                          <Input
+                            placeholder="Inspiration note (optional)"
+                            value={videoInspirationNote}
+                            onChange={(e) => setVideoInspirationNote(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Video Section: Settings */}
+                  <div className="rounded-lg border border-border/50 bg-card">
+                    <button
+                      className="flex w-full items-center justify-between p-4"
+                      onClick={() => setVideoExpandedSection(videoExpandedSection === 'video-settings' ? null : 'video-settings')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Settings2 className="h-4 w-4 text-primary" />
+                        <span className="font-medium">Video Settings</span>
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 text-muted-foreground transition-transform',
+                          videoExpandedSection === 'video-settings' && 'rotate-180'
+                        )}
+                      />
+                    </button>
+
+                    {videoExpandedSection === 'video-settings' && (
+                      <div className="border-t border-border/50 p-4 pt-3 space-y-3">
+                        <Input
+                          placeholder="Video type (e.g., pan over product)"
+                          value={videoSettings.videoType || ''}
+                          onChange={(e) => updateVideoSettings({ videoType: e.target.value })}
+                        />
+                        <Input
+                          placeholder="Camera motion"
+                          value={videoSettings.cameraMotion || ''}
+                          onChange={(e) => updateVideoSettings({ cameraMotion: e.target.value })}
+                        />
+                        <Input
+                          placeholder="Subject action"
+                          value={videoSettings.subjectAction || ''}
+                          onChange={(e) => updateVideoSettings({ subjectAction: e.target.value })}
+                        />
+                        <Input
+                          placeholder="Scene action / atmosphere"
+                          value={videoSettings.sceneAction || ''}
+                          onChange={(e) => updateVideoSettings({ sceneAction: e.target.value })}
+                        />
+                        <Input
+                          type="number"
+                          min={1}
+                          placeholder="Duration (seconds)"
+                          value={videoSettings.durationSeconds ? String(videoSettings.durationSeconds) : ''}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            updateVideoSettings({ durationSeconds: value ? Number(value) : undefined });
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Video Section: Presets */}
+                  <div className="rounded-lg border border-border/50 bg-card">
+                    <button
+                      className="flex w-full items-center justify-between p-4"
+                      onClick={() => setVideoExpandedSection(videoExpandedSection === 'video-presets' ? null : 'video-presets')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4 text-primary" />
+                        <span className="font-medium">Presets</span>
+                        {videoPresets.length > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {videoPresets.length}
+                          </Badge>
+                        )}
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          'h-4 w-4 text-muted-foreground transition-transform',
+                          videoExpandedSection === 'video-presets' && 'rotate-180'
+                        )}
+                      />
+                    </button>
+
+                    {videoExpandedSection === 'video-presets' && (
+                      <div className="border-t border-border/50 p-4 pt-3 space-y-3">
+                        <Select
+                          value={videoPresetId ?? ''}
+                          onValueChange={(value) => {
+                            setVideoPresetId(value || null);
+                            if (value) {
+                              handleApplyVideoPreset(value);
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select preset" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {videoPresets.map((preset) => (
+                              <SelectItem key={preset.id} value={preset.id}>
+                                {preset.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Preset name"
+                            value={videoPresetName}
+                            onChange={(e) => setVideoPresetName(e.target.value)}
+                          />
+                          <Button variant="outline" onClick={handleSaveVideoPreset}>
+                            Save
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    variant="glow"
+                    onClick={() => generateVideosMutation.mutate()}
+                    disabled={
+                      isGenerationInProgress ||
+                      generateVideosMutation.isPending ||
+                      readyToGenerateFlows.length === 0 ||
+                      !videoPrompt.trim()
+                    }
+                  >
+                    {generateVideosMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Video className="mr-2 h-4 w-4" />
+                    )}
+                    Generate Videos ({readyToGenerateFlows.length})
+                  </Button>
+                </>
+              )}
             </div>
           </aside>
         )}

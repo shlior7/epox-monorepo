@@ -102,10 +102,7 @@ export function buildEnumTypeNames(enumMap: Map<string, string[]>): Map<string, 
   return result;
 }
 
-export function resolveColumnType(
-  column: ColumnTypeInfo,
-  enumTypeNames: Map<string, string>
-): string {
+export function resolveColumnType(column: ColumnTypeInfo, enumTypeNames: Map<string, string>): string {
   const isArray = column.dataType.toUpperCase() === 'ARRAY';
   const udtName = isArray ? column.udtName.replace(/^_/, '') : column.udtName;
   const enumType = enumTypeNames.get(udtName);
@@ -152,10 +149,7 @@ function renderEnumTypes(enumMap: Map<string, string[]>, enumTypeNames: Map<stri
   return lines;
 }
 
-function renderInterfaces(
-  tables: Map<string, ColumnRow[]>,
-  enumTypeNames: Map<string, string>
-): string[] {
+function renderInterfaces(tables: Map<string, ColumnRow[]>, enumTypeNames: Map<string, string>): string[] {
   const lines: string[] = [];
   lines.push('// Tables');
   for (const [tableName, columns] of tables) {
@@ -180,8 +174,6 @@ function renderInterfaces(
 }
 
 async function generateInterfaces(): Promise<string> {
-  loadEnv();
-
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is not set');
@@ -251,6 +243,16 @@ async function generateInterfaces(): Promise<string> {
 }
 
 async function main(): Promise<void> {
+  loadEnv();
+
+  // If DATABASE_URL is not set, skip generation and use existing types
+  // This allows CI/CD builds to succeed without database access
+  if (!process.env.DATABASE_URL) {
+    console.log('⚠️ DATABASE_URL not set - skipping type generation, using existing types');
+    console.log(`   Existing types file: ${outputPath}`);
+    return;
+  }
+
   const output = await generateInterfaces();
   await fs.writeFile(outputPath, output, 'utf8');
   console.log(`Generated ${outputPath}`);

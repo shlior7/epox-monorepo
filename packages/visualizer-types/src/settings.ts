@@ -71,6 +71,24 @@ export const DEFAULT_PROMPT_TAGS: PromptTags = {
   custom: [],
 };
 
+// ===== VIDEO SETTINGS =====
+
+export interface VideoPromptSettings {
+  videoType?: string;
+  cameraMotion?: string;
+  subjectAction?: string;
+  sceneAction?: string;
+  durationSeconds?: number;
+}
+
+export interface VideoGenerationSettings {
+  prompt?: string;
+  inspirationImageUrl?: string;
+  inspirationNote?: string;
+  settings: VideoPromptSettings;
+  presetId?: string | null;
+}
+
 // ===== FLOW GENERATION SETTINGS =====
 
 export interface FlowGenerationSettings {
@@ -89,6 +107,9 @@ export interface FlowGenerationSettings {
   imageQuality?: ImageQuality;
   variantsCount?: number;
 
+  // ===== VIDEO SETTINGS =====
+  video?: VideoGenerationSettings;
+
   // ===== MODEL SETTINGS =====
   imageModel?: string;
   postAdjustments?: PostAdjustments;
@@ -100,7 +121,7 @@ export const DEFAULT_FLOW_SETTINGS: FlowGenerationSettings = {
   stylePreset: 'Modern Minimalist',
   lightingPreset: 'Studio Soft Light',
   aspectRatio: '1:1',
-  imageQuality: '2K',
+  imageQuality: '2k',
   userPrompt: '',
 };
 
@@ -174,7 +195,22 @@ export type FlowStatus = 'empty' | 'configured' | 'generating' | 'completed' | '
 
 // ===== IMAGE QUALITY =====
 
-export type ImageQuality = '1K' | '2K' | '4K';
+export type ImageQuality = '1k' | '2k' | '4k';
+
+/**
+ * Normalize ImageQuality values for backward compatibility.
+ * Converts legacy uppercase formats ('1K', '2K', '4K') to lowercase ('1k', '2k', '4k').
+ */
+export function normalizeImageQuality(value: string | undefined): ImageQuality | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const normalized = value.toLowerCase();
+  if (normalized === '1k' || normalized === '2k' || normalized === '4k') {
+    return normalized as ImageQuality;
+  }
+  return undefined;
+}
 
 // ===== SCENE CATEGORY =====
 

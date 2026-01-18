@@ -39,7 +39,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         ...settings,
         inspirationImages: inspirationImagesArray,
         aspectRatio: settings?.aspectRatio ?? '1:1',
-        imageQuality: settings?.imageQuality ?? '2K',
+        imageQuality: settings?.imageQuality ?? '2k',
         variantsCount: settings?.variantsCount ?? 1,
       };
     }

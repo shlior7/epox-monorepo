@@ -6,6 +6,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
+import { getClientId } from '@/lib/services/get-auth';
 import type { FlowGenerationSettings } from 'visualizer-types';
 
 /**
@@ -14,7 +15,13 @@ import type { FlowGenerationSettings } from 'visualizer-types';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { productId, productName, mode = 'generate', clientId } = body;
+    const { productId, productName, mode = 'generate' } = body;
+
+    // Always use authenticated client ID - never accept from request body
+    const clientId = await getClientId(request);
+    if (!clientId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
 
     if (!productId) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
@@ -41,7 +48,7 @@ export async function POST(request: NextRequest) {
       status: 'draft',
       settings: {
         aspectRatio: '1:1',
-        imageQuality: '1K',
+        imageQuality: '1k',
         variantsCount: 1,
         matchProductColors: true,
       } as Partial<FlowGenerationSettings>,

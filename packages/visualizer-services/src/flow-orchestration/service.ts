@@ -55,7 +55,7 @@ export class FlowOrchestrationService {
 
       // Output Settings (Section 4)
       aspectRatio: advancedSettings?.aspectRatio ?? '1:1',
-      imageQuality: advancedSettings?.imageQuality ?? '2K',
+      imageQuality: advancedSettings?.imageQuality ?? '2k',
       variantsCount: advancedSettings?.variantsCount ?? 4,
 
       // Model settings

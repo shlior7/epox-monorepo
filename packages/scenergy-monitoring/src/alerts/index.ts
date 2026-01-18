@@ -7,7 +7,7 @@
 /**
  * Alert channels
  */
-export type AlertChannel = 'slack' | 'discord' | 'webhook' | 'email';
+export type AlertChannel = 'webhook' | 'email';
 
 /**
  * Alert configuration
@@ -89,38 +89,11 @@ export class AlertService {
     payload: AlertPayload
   ): Record<string, unknown> {
     switch (type) {
-      case 'slack':
+      case 'email':
         return {
-          text: `${this.getSeverityEmoji(payload.severity)} *${payload.type}*: ${payload.message}`,
-          attachments: payload.details
-            ? [
-                {
-                  color: this.getSeverityColor(payload.severity),
-                  fields: Object.entries(payload.details).map(([key, value]) => ({
-                    title: key,
-                    value: String(value),
-                    short: true,
-                  })),
-                },
-              ]
-            : undefined,
-        };
-
-      case 'discord':
-        return {
-          content: `${this.getSeverityEmoji(payload.severity)} **${payload.type}**: ${payload.message}`,
-          embeds: payload.details
-            ? [
-                {
-                  color: parseInt(this.getSeverityColor(payload.severity).slice(1), 16),
-                  fields: Object.entries(payload.details).map(([key, value]) => ({
-                    name: key,
-                    value: String(value),
-                    inline: true,
-                  })),
-                },
-              ]
-            : undefined,
+          subject: `[${payload.severity.toUpperCase()}] ${payload.type}: ${payload.message}`,
+          body: this.formatEmailBody(payload),
+          severity: payload.severity,
         };
 
       case 'webhook':
@@ -135,33 +108,28 @@ export class AlertService {
     }
   }
 
-  private getSeverityEmoji(severity: AlertPayload['severity']): string {
-    switch (severity) {
-      case 'critical':
-        return '🚨';
-      case 'error':
-        return '❌';
-      case 'warning':
-        return '⚠️';
-      case 'info':
-      default:
-        return 'ℹ️';
+  /**
+   * Format email body with details
+   */
+  private formatEmailBody(payload: AlertPayload): string {
+    let body = `Alert Type: ${payload.type}\n`;
+    body += `Severity: ${payload.severity}\n`;
+    body += `Message: ${payload.message}\n`;
+    body += `Timestamp: ${payload.timestamp.toISOString()}\n`;
+
+    if (payload.details) {
+      body += '\nDetails:\n';
+      for (const [key, value] of Object.entries(payload.details)) {
+        const formattedValue = typeof value === 'object' && value !== null
+          ? JSON.stringify(value, null, 2)
+          : String(value);
+        body += `  ${key}: ${formattedValue}\n`;
+      }
     }
+
+    return body;
   }
 
-  private getSeverityColor(severity: AlertPayload['severity']): string {
-    switch (severity) {
-      case 'critical':
-        return '#FF0000';
-      case 'error':
-        return '#E53E3E';
-      case 'warning':
-        return '#DD6B20';
-      case 'info':
-      default:
-        return '#3182CE';
-    }
-  }
 }
 
 // Singleton
@@ -179,17 +147,13 @@ export function createAlertService(config: AlertConfig): AlertService {
  */
 export function getAlertService(): AlertService | null {
   if (!_alertService) {
-    const slackWebhook = process.env.SLACK_WEBHOOK_URL;
-    const discordWebhook = process.env.DISCORD_WEBHOOK_URL;
+    const emailWebhook = process.env.EMAIL_WEBHOOK_URL;
     const genericWebhook = process.env.ALERT_WEBHOOK_URL;
 
     const channels: AlertChannelConfig[] = [];
 
-    if (slackWebhook) {
-      channels.push({ type: 'slack', url: slackWebhook, enabled: true });
-    }
-    if (discordWebhook) {
-      channels.push({ type: 'discord', url: discordWebhook, enabled: true });
+    if (emailWebhook) {
+      channels.push({ type: 'email', url: emailWebhook, enabled: true });
     }
     if (genericWebhook) {
       channels.push({ type: 'webhook', url: genericWebhook, enabled: true });

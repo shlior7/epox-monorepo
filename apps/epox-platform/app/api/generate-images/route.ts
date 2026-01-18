@@ -20,8 +20,9 @@ interface FlexiblePromptTags {
   [key: string]: string | string[] | undefined;
 }
 
+// Note: clientId is NOT accepted from request body for security reasons
+// It is always derived from the authenticated session
 interface GenerateImagesRequest {
-  clientId?: string;
   sessionId: string;
   productIds: string[];
   promptTags?: FlexiblePromptTags;
@@ -82,8 +83,11 @@ export async function POST(request: NextRequest) {
       inspirationImageUrls,
       urgent,
     } = body;
-    // Use clientId from body (for API calls) or from auth session
-    const clientId = body.clientId ?? (await getClientId(request));
+    // Always use authenticated client ID - never accept from request body
+    const clientId = await getClientId(request);
+    if (!clientId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
 
     // Validate required fields
     if (!sessionId || !Array.isArray(productIds) || productIds.length === 0) {

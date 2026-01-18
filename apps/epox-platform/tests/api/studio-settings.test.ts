@@ -48,7 +48,7 @@ describe('Studio Settings API - PATCH /api/studio/[id]/settings', () => {
       id: 'flow-1',
       settings: {
         aspectRatio: '16:9',
-        imageQuality: '4K',
+        imageQuality: '4k',
         variantsCount: 3,
         userPrompt: 'Warm lighting',
       },
@@ -58,7 +58,7 @@ describe('Studio Settings API - PATCH /api/studio/[id]/settings', () => {
       method: 'PATCH',
       body: JSON.stringify({
         aspectRatio: '16:9',
-        imageQuality: '4K',
+        imageQuality: '4k',
         variantsCount: 3,
         userPrompt: 'Warm lighting',
       }),
@@ -70,9 +70,68 @@ describe('Studio Settings API - PATCH /api/studio/[id]/settings', () => {
     expect(response.status).toBe(200);
     expect(db.generationFlows.updateSettings).toHaveBeenCalledWith('flow-1', {
       aspectRatio: '16:9',
-      imageQuality: '4K',
+      imageQuality: '4k',
       variantsCount: 3,
       userPrompt: 'Warm lighting',
+    });
+    expect(data.success).toBe(true);
+  });
+
+  it('should update video settings', async () => {
+    vi.mocked(db.generationFlows.getById).mockResolvedValue({
+      id: 'flow-1',
+      settings: {},
+    } as any);
+    vi.mocked(db.generationFlows.updateSettings).mockResolvedValue({
+      id: 'flow-1',
+      settings: {
+        video: {
+          prompt: 'Slow pan around the chair',
+          inspirationImageUrl: 'https://example.com/inspo.jpg',
+          inspirationNote: 'Warm studio lighting',
+          settings: {
+            videoType: 'product pan',
+            cameraMotion: 'dolly',
+            durationSeconds: 6,
+          },
+          presetId: 'preset-1',
+        },
+      },
+    } as any);
+
+    const request = new NextRequest('http://localhost:3000/api/studio/flow-1/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        video: {
+          prompt: 'Slow pan around the chair',
+          inspirationImageUrl: 'https://example.com/inspo.jpg',
+          inspirationNote: 'Warm studio lighting',
+          settings: {
+            videoType: 'product pan',
+            cameraMotion: 'dolly',
+            durationSeconds: 6,
+          },
+          presetId: 'preset-1',
+        },
+      }),
+    });
+
+    const response = await updateSettings(request, { params: Promise.resolve({ id: 'flow-1' }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(db.generationFlows.updateSettings).toHaveBeenCalledWith('flow-1', {
+      video: {
+        prompt: 'Slow pan around the chair',
+        inspirationImageUrl: 'https://example.com/inspo.jpg',
+        inspirationNote: 'Warm studio lighting',
+        settings: {
+          videoType: 'product pan',
+          cameraMotion: 'dolly',
+          durationSeconds: 6,
+        },
+        presetId: 'preset-1',
+      },
     });
     expect(data.success).toBe(true);
   });
@@ -114,7 +173,12 @@ describe('Studio Settings API - GET /api/studio/[id]/settings', () => {
   it('should return flow settings', async () => {
     vi.mocked(db.generationFlows.getById).mockResolvedValue({
       id: 'flow-1',
-      settings: { aspectRatio: '1:1' },
+      settings: {
+        aspectRatio: '1:1',
+        video: {
+          prompt: 'Slow pan around the chair',
+        },
+      },
       productIds: ['prod-1'],
       selectedBaseImages: { 'prod-1': 'img-1' },
     } as any);
@@ -125,6 +189,7 @@ describe('Studio Settings API - GET /api/studio/[id]/settings', () => {
 
     expect(response.status).toBe(200);
     expect(data.settings.aspectRatio).toBe('1:1');
+    expect(data.settings.video.prompt).toBe('Slow pan around the chair');
     expect(data.productIds).toEqual(['prod-1']);
   });
 });

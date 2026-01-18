@@ -1,20 +1,23 @@
-import { DEFAULT_FLOW_SETTINGS, type ClientMetadata, type GeneratedAssetCreate } from 'visualizer-types';
+import { type ClientMetadata, type GeneratedAssetCreate } from 'visualizer-types';
+import type { FlowGenerationSettings as DbFlowGenerationSettings } from 'visualizer-types';
 import { db } from 'visualizer-db';
 import { chatSession, collectionSession, generationFlow, generatedAsset, message, product } from 'visualizer-db/schema';
-import type {
-  Client,
-  CreateFlowPayload,
-  CreateProductPayload,
-  CreateSessionPayload,
-  CreateStudioSessionPayload,
-  Flow,
-  FlowGeneratedImage,
-  Message,
-  Product,
-  Session,
-  ClientSession,
-  CommerceConfig,
-  AIModelConfig,
+import {
+  DEFAULT_FLOW_SETTINGS,
+  type Client,
+  type CreateFlowPayload,
+  type CreateProductPayload,
+  type CreateSessionPayload,
+  type CreateStudioSessionPayload,
+  type Flow,
+  type FlowGeneratedImage,
+  type FlowGenerationSettings,
+  type Message,
+  type Product,
+  type Session,
+  type ClientSession,
+  type CommerceConfig,
+  type AIModelConfig,
 } from '@/lib/types/app-types';
 
 type DbGenerationFlow = typeof generationFlow.$inferSelect;
@@ -102,7 +105,7 @@ function mapGeneratedAsset(row: DbGeneratedAsset, fallbackSettings: Flow['settin
     imageFilename: filename,
     timestamp: toIsoString(row.createdAt),
     productIds: row.productIds ?? [],
-    settings: row.settings ?? fallbackSettings,
+    settings: (row.settings ?? fallbackSettings) as unknown as FlowGenerationSettings,
     prompt: row.prompt ?? undefined,
     jobId: row.jobId ?? undefined,
     error: row.error ?? undefined,
@@ -110,7 +113,7 @@ function mapGeneratedAsset(row: DbGeneratedAsset, fallbackSettings: Flow['settin
 }
 
 function mapGenerationFlow(row: DbGenerationFlow, images: DbGeneratedAsset[]): Flow {
-  const settings = row.settings ?? DEFAULT_FLOW_SETTINGS;
+  const settings = (row.settings ?? DEFAULT_FLOW_SETTINGS) as unknown as FlowGenerationSettings;
   return {
     id: row.id,
     name: row.name ?? undefined,
@@ -381,12 +384,11 @@ export async function createStudioSessionRecord(clientId: string, payload: Creat
 
 export async function createFlowRecord(clientId: string, sessionId: string, payload: CreateFlowPayload): Promise<Flow> {
   const created = await db.generationFlows.create(clientId, {
-    clientId,
     collectionSessionId: sessionId,
     name: payload.name,
     productIds: payload.productIds ?? [],
     selectedBaseImages: payload.selectedBaseImages ?? {},
-    settings: payload.settings,
+    settings: payload.settings as unknown as DbFlowGenerationSettings,
   });
   return mapGenerationFlow(created as DbGenerationFlow, []);
 }
@@ -505,10 +507,10 @@ export async function saveStudioSession(clientId: string, session: ClientSession
           generationFlowId: flowEntry.id,
           chatSessionId: null,
           assetUrl: buildGeneratedAssetUrl(clientId, session.id, image.imageId, resolveGeneratedImageFilename(image)),
-          assetType: 'image',
-          status: image.error ? 'error' : 'completed',
+          assetType: 'image' as const,
+          status: (image.error ? 'error' : 'completed') as 'error' | 'completed',
           prompt: image.prompt ?? null,
-          settings: image.settings ?? flowEntry.settings ?? DEFAULT_FLOW_SETTINGS,
+          settings: (image.settings ?? flowEntry.settings ?? DEFAULT_FLOW_SETTINGS) as unknown as DbFlowGenerationSettings,
           productIds: image.productIds ?? flowEntry.productIds ?? [],
           jobId: image.jobId ?? null,
           error: image.error ?? null,

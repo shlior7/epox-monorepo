@@ -1,32 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
-import {
-  Images,
-  Package,
-  FolderKanban,
-  Download,
-  Pin,
-  Check,
-  Eye,
-  MoreVertical,
-  Filter,
-  Search,
-  Grid,
-  List,
-  Loader2,
-  ArrowUpDown,
-  Clock,
-  Star,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/layout';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { EmptyState } from '@/components/ui/empty-state';
 import { SearchInput } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -34,25 +14,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { EmptyState } from '@/components/ui/empty-state';
-import { PageHeader } from '@/components/layout';
-import { cn, formatRelativeTime } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { apiClient } from '@/lib/api-client';
+import { formatRelativeTime } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import {
+  ArrowUpDown,
+  Check,
+  Clock,
+  Download,
+  Eye,
+  FolderKanban,
+  Grid,
+  Images,
+  List,
+  Loader2,
+  Package,
+  Pin
+} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useState } from 'react';
 
 interface GeneratedAsset {
   id: string;
   url: string;
   productId?: string;
   productName?: string;
-  collectionId?: string;
+  flowId?: string;
   collectionName?: string;
   sceneType: string;
   isPinned: boolean;
@@ -115,11 +104,13 @@ export default function AssetsPage() {
   );
 
   // Group assets by collection
+  // Note: This requires matching asset flowIds to their parent collection
+  // For now, this may be empty since we'd need to query which flows belong to which collections
   const assetsByCollection = collections.reduce(
     (acc, collection) => {
-      const collectionAssets = assets.filter(
-        (a: GeneratedAsset) => a.collectionId === collection.id
-      );
+      // TODO: Need to fetch flows for each collection to properly group
+      // For now, assets have flowId but not direct collectionId
+      const collectionAssets: GeneratedAsset[] = [];
       if (collectionAssets.length > 0) {
         acc[collection.id] = {
           collection,

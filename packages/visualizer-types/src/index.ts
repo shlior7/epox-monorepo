@@ -10,6 +10,8 @@ export type {
   EffectsAdjustments,
   PostAdjustments,
   FlowGenerationSettings,
+  VideoPromptSettings,
+  VideoGenerationSettings,
   PromptSettings,
   PromptTags,
   AIModelConfig,
@@ -41,6 +43,8 @@ export {
   // New presets for studio settings
   STYLE_PRESETS,
   LIGHTING_PRESETS,
+  // Utility functions
+  normalizeImageQuality,
 } from './settings';
 
 // Message types

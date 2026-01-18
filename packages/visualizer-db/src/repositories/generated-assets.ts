@@ -6,7 +6,8 @@ import { NotFoundError } from '../errors';
 import { BaseRepository } from './base';
 
 export interface GeneratedAssetListOptions {
-  collectionId?: string;
+  /** Filter by generation flow ID */
+  flowId?: string;
   productId?: string;
   pinned?: boolean;
   status?: AssetStatus;
@@ -362,10 +363,8 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
   private buildFilterConditions(clientId: string, options: Omit<GeneratedAssetListOptions, 'limit' | 'offset' | 'sort'>): SQL[] {
     const conditions: SQL[] = [eq(generatedAsset.clientId, clientId), isNull(generatedAsset.deletedAt)];
 
-    if (options.collectionId) {
-      conditions.push(
-        sql`(${generatedAsset.generationFlowId} = ${options.collectionId} OR ${generatedAsset.chatSessionId} = ${options.collectionId})`
-      );
+    if (options.flowId) {
+      conditions.push(eq(generatedAsset.generationFlowId, options.flowId));
     }
 
     if (options.productId) {
@@ -451,6 +450,46 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
       .limit(1);
 
     return rows[0] ? this.mapToEntity(rows[0]) : null;
+  }
+
+  /**
+   * Get distinct scene types for a client's assets (for filter dropdown)
+   */
+  async getDistinctSceneTypes(
+    clientId: string,
+    options?: Pick<GeneratedAssetListOptions, 'flowId' | 'productId' | 'status'>
+  ): Promise<string[]> {
+    const conditions: SQL[] = [eq(generatedAsset.clientId, clientId), isNull(generatedAsset.deletedAt)];
+
+    if (options?.flowId) {
+      conditions.push(eq(generatedAsset.generationFlowId, options.flowId));
+    }
+
+    if (options?.productId) {
+      // productIds is a JSONB column, use jsonb containment operator with proper jsonb cast
+      conditions.push(sql`${generatedAsset.productIds} @> ${JSON.stringify([options.productId])}::jsonb`);
+    }
+
+    if (options?.status) {
+      conditions.push(eq(generatedAsset.status, options.status));
+    }
+
+    // Query to extract distinct scene types from settings JSONB
+    // Uses jsonb_typeof guard to ensure sceneType is an array before expanding
+    const result = await this.drizzle.execute(sql`
+      SELECT DISTINCT jsonb_array_elements_text(
+        (settings->'promptTags'->'sceneType')
+      ) as scene_type
+      FROM ${generatedAsset}
+      WHERE ${and(...conditions)}
+        AND settings->'promptTags'->'sceneType' IS NOT NULL
+        AND jsonb_typeof(settings->'promptTags'->'sceneType') = 'array'
+      ORDER BY scene_type
+    `);
+
+    return (result.rows as Array<{ scene_type: string }>)
+      .map((row) => row.scene_type)
+      .filter((sceneType) => sceneType && sceneType.trim().length > 0);
   }
 
   // ===== HARD DELETE (with product links) =====

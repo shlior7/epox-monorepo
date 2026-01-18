@@ -174,6 +174,19 @@ export interface Collection {
     aspectRatio?: string;
     imageQuality?: '1k' | '2k' | '4k';
     variantsCount?: number;
+    video?: {
+      prompt?: string;
+      inspirationImageUrl?: string;
+      inspirationNote?: string;
+      settings?: {
+        videoType?: string;
+        cameraMotion?: string;
+        subjectAction?: string;
+        sceneAction?: string;
+        durationSeconds?: number;
+      };
+      presetId?: string | null;
+    };
   };
 }
 
@@ -238,6 +251,19 @@ export interface UpdateCollectionPayload {
     aspectRatio?: string;
     imageQuality?: '1k' | '2k' | '4k';
     variantsCount?: number;
+    video?: {
+      prompt?: string;
+      inspirationImageUrl?: string;
+      inspirationNote?: string;
+      settings?: {
+        videoType?: string;
+        cameraMotion?: string;
+        subjectAction?: string;
+        sceneAction?: string;
+        durationSeconds?: number;
+      };
+      presetId?: string | null;
+    };
   };
 }
 
@@ -304,6 +330,19 @@ export interface UpdateStudioSettingsPayload {
   aspectRatio?: string;
   imageQuality?: '1k' | '2k' | '4k' | '1K' | '2K' | '4K';
   variantsCount?: number;
+  video?: {
+    prompt?: string;
+    inspirationImageUrl?: string;
+    inspirationNote?: string;
+    settings?: {
+      videoType?: string;
+      cameraMotion?: string;
+      subjectAction?: string;
+      sceneAction?: string;
+      durationSeconds?: number;
+    };
+    presetId?: string | null;
+  };
 
   // Legacy fields (for backward compat during transition)
   promptTags?: Partial<PromptTags>;
@@ -321,6 +360,7 @@ export interface StudioSettingsResponse {
 export interface GeneratedAsset {
   id: string;
   url: string;
+  assetType?: 'image' | 'video' | '3d_model';
   productId: string;
   productName: string;
   collectionId: string;
@@ -349,9 +389,9 @@ export interface GeneratedImagesResponse {
 }
 
 export interface GeneratedImagesParams {
-  collectionId?: string;
+  /** Filter by generation flow ID */
+  flowId?: string;
   productId?: string;
-  flowId?: string; // Filter by generation flow ID
   pinned?: boolean;
   status?: 'pending' | 'generating' | 'completed' | 'error';
   approval?: 'pending' | 'approved' | 'rejected';
@@ -384,7 +424,31 @@ export interface GenerateImagesResponse {
   expectedImageCount: number;
   prompt: string;
   message: string;
-  queueType: 'redis' | 'memory';
+  queueType: 'redis' | 'memory' | 'postgres';
+}
+
+export interface GenerateVideoPayload {
+  clientId?: string;
+  sessionId: string;
+  productId: string;
+  sourceImageUrl: string;
+  prompt: string;
+  inspirationImageUrl?: string;
+  inspirationNote?: string;
+  settings?: {
+    durationSeconds?: number;
+    fps?: number;
+    model?: string;
+  };
+  urgent?: boolean;
+}
+
+export interface GenerateVideoResponse {
+  jobId: string;
+  status: 'queued' | 'completed' | 'failed' | 'processing';
+  message?: string;
+  error?: string;
+  queueType?: 'redis' | 'memory' | 'postgres';
 }
 
 export interface JobStatus {
@@ -393,6 +457,7 @@ export interface JobStatus {
   progress?: number;
   result?: unknown;
   error?: string;
+  videoIds?: string[];
 }
 
 export interface UploadResponse {
@@ -733,6 +798,14 @@ class ApiClient {
     });
   }
 
+  async generateVideo(payload: GenerateVideoPayload): Promise<GenerateVideoResponse> {
+    return this.request<GenerateVideoResponse>('/api/generate-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  }
+
   async getJobStatus(jobId: string): Promise<JobStatus> {
     return this.request<JobStatus>(`/api/jobs/${jobId}`);
   }
@@ -740,14 +813,11 @@ class ApiClient {
   // ===== Generated Images / Assets =====
   async listGeneratedImages(params?: GeneratedImagesParams): Promise<GeneratedImagesResponse> {
     const searchParams = new URLSearchParams();
-    if (params?.collectionId) {
-      searchParams.set('collectionId', params.collectionId);
+    if (params?.flowId) {
+      searchParams.set('flowId', params.flowId);
     }
     if (params?.productId) {
       searchParams.set('productId', params.productId);
-    }
-    if (params?.flowId) {
-      searchParams.set('flowId', params.flowId);
     }
     if (params?.pinned !== undefined) {
       searchParams.set('pinned', String(params.pinned));

@@ -81,7 +81,7 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
       settings: {
         inspirationImages: [{ url: 'https://example.com/inspo.jpg' }],
         aspectRatio: '1:1',
-        imageQuality: '2K',
+        imageQuality: '2k',
         variantsCount: 1,
       },
     } as any);
@@ -97,7 +97,7 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
       method: 'POST',
       body: JSON.stringify({
         settings: {
-          imageQuality: '4K',
+          imageQuality: '4k',
           variantsCount: 2,
         },
       }),
@@ -113,7 +113,7 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
         payload: expect.objectContaining({
           productIds: ['prod-1'],
           settings: expect.objectContaining({
-            imageQuality: '4K',
+            imageQuality: '4k',
             numberOfVariants: 2,
           }),
         }),

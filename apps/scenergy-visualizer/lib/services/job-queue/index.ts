@@ -155,7 +155,6 @@ export const imageGenerationQueue = {
   }): Promise<EnqueueResult> {
     const payload: ImageGenerationPayload = {
       prompt: request.prompt,
-      productId: request.productId,
       productIds: [request.productId],
       sessionId: request.sessionId,
       settings: {

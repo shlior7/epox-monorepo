@@ -17,9 +17,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     // Parse query parameters with defaults
-    const collectionId = searchParams.get('collectionId') ?? undefined;
-    const productId = searchParams.get('productId') ?? undefined;
     const flowId = searchParams.get('flowId') ?? undefined;
+    const productId = searchParams.get('productId') ?? undefined;
     const pinnedFilter = searchParams.get('pinned') ?? undefined;
     const statusFilter = searchParams.get('status') ?? undefined;
     const approvalFilter = searchParams.get('approval') ?? undefined;
@@ -82,6 +81,7 @@ export async function GET(request: NextRequest) {
       const mappedAssets = paginatedAssets.map((asset) => ({
         id: asset.id,
         url: asset.assetUrl,
+        assetType: asset.assetType,
         productId: asset.productIds?.[0] ?? '',
         productName: asset.productIds?.[0]
           ? (productMap.get(asset.productIds[0]) ?? 'Unknown Product')
@@ -104,21 +104,26 @@ export async function GET(request: NextRequest) {
 
     // Build filter options for regular query
     const filterOptions = {
-      collectionId,
+      flowId,
       productId,
       pinned: pinnedFilter === 'true' ? true : pinnedFilter === 'false' ? false : undefined,
       status: statusFilter as AssetStatus | undefined,
       approvalStatus: approvalFilter as ApprovalStatus | undefined,
     };
 
-    // Execute count and list queries in parallel
-    const [total, assets] = await Promise.all([
+    // Execute count, list, and distinct scene types queries in parallel
+    const [total, assets, sceneTypes] = await Promise.all([
       db.generatedAssets.countWithFilters(PLACEHOLDER_CLIENT_ID, filterOptions),
       db.generatedAssets.listWithFilters(PLACEHOLDER_CLIENT_ID, {
         ...filterOptions,
         sort,
         limit,
         offset,
+      }),
+      db.generatedAssets.getDistinctSceneTypes(PLACEHOLDER_CLIENT_ID, {
+        flowId: filterOptions.flowId,
+        productId: filterOptions.productId,
+        status: filterOptions.status,
       }),
     ]);
 
@@ -142,27 +147,34 @@ export async function GET(request: NextRequest) {
         : new Map<string, string>();
 
     // Map to frontend format
-    const mappedAssets = assets.map((asset) => ({
-      id: asset.id,
-      url: asset.assetUrl,
-      productId: asset.productIds?.[0] ?? '',
-      productName: asset.productIds?.[0]
-        ? (productMap.get(asset.productIds[0]) ?? 'Unknown')
-        : 'Unknown',
-      collectionId: asset.chatSessionId ?? asset.generationFlowId ?? '',
-      sceneType: '', // TODO: Extract from settings if needed
-      rating: 0, // TODO: Add rating field to schema
-      isPinned: asset.pinned,
-      approvalStatus: asset.approvalStatus,
-      status: asset.status,
-      createdAt: asset.createdAt.toISOString(),
-      settings: asset.settings
-        ? {
-            aspectRatio: asset.settings.aspectRatio,
-            imageQuality: asset.settings.imageQuality,
-          }
-        : undefined,
-    }));
+    const mappedAssets = assets.map((asset) => {
+      const sceneType =
+        (asset.settings as { promptTags?: { sceneType?: string[] } } | undefined)?.promptTags
+          ?.sceneType?.[0] ?? '';
+
+      return {
+        id: asset.id,
+        url: asset.assetUrl,
+        assetType: asset.assetType,
+        productId: asset.productIds?.[0] ?? '',
+        productName: asset.productIds?.[0]
+          ? (productMap.get(asset.productIds[0]) ?? 'Unknown')
+          : 'Unknown',
+        flowId: asset.generationFlowId ?? '',
+        sceneType,
+        rating: 0, // TODO: Add rating field to schema
+        isPinned: asset.pinned,
+        approvalStatus: asset.approvalStatus,
+        status: asset.status,
+        createdAt: asset.createdAt.toISOString(),
+        settings: asset.settings
+          ? {
+              aspectRatio: asset.settings.aspectRatio,
+              imageQuality: asset.settings.imageQuality,
+            }
+          : undefined,
+      };
+    });
 
     return NextResponse.json({
       images: mappedAssets,
@@ -172,7 +184,7 @@ export async function GET(request: NextRequest) {
       totalPages,
       hasMore: page < totalPages,
       filters: {
-        sceneTypes: [], // TODO: Extract from settings if needed
+        sceneTypes,
       },
     });
   } catch (error: unknown) {

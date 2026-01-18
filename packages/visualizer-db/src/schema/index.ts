@@ -30,14 +30,14 @@ export type { ProductSource, ProductAnalysis } from './products';
 
 // Session tables
 export {
-  // chatSession,
+  chatSession,
   collectionSession,
-  // message,
+  message,
   generationFlow,
   generationFlowProduct,
-  // chatSessionRelations,
+  chatSessionRelations,
   collectionSessionRelations,
-  // messageRelations,
+  messageRelations,
   generationFlowRelations,
   generationFlowProductRelations,
 } from './sessions';
@@ -71,7 +71,7 @@ export type { PlanType } from './usage';
 
 // Generation Jobs (PostgreSQL queue)
 export { generationJob, generationJobRelations } from './jobs';
-export type { JobType, JobStatus, ImageGenerationPayload, ImageEditPayload, JobResult } from './jobs';
+export type { JobType, JobStatus, ImageGenerationPayload, ImageEditPayload, VideoGenerationPayload, JobResult } from './jobs';
 
 // Re-export types from visualizer-types for convenience
 export type {
