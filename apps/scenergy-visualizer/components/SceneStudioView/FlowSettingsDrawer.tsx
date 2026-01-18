@@ -6,7 +6,7 @@ import clsx from 'clsx';
 import type { Flow, FlowGenerationSettings } from '@/lib/types/app-types';
 import {
   STYLE_OPTIONS,
-  ROOM_TYPES,
+  SCENE_TYPES,
   LIGHTING_OPTIONS,
   SURROUNDING_OPTIONS,
   COLOR_SCHEMES,
@@ -137,11 +137,11 @@ export function FlowSettingsDrawer({ isOpen, onClose, flow, onUpdateSettings, on
           <div className={styles.settingsSection}>
             <label className={styles.settingsLabel}>Room Type</label>
             <select
-              value={settings.roomType}
-              onChange={(e) => handleChange('roomType', e.target.value)}
+              value={settings.sceneType}
+              onChange={(e) => handleChange('sceneType', e.target.value)}
               className={styles.settingsSelect}
             >
-              {ROOM_TYPES.map((opt) => (
+              {SCENE_TYPES.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>

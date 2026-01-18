@@ -1,0 +1,25 @@
+{
+  "name": "@repo/ai-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "scenergy-monitoring": "1.0.0",
+    "scenergy-queue": "1.0.0",
+    "visualizer-storage": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^24.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.2"
+  }
+}

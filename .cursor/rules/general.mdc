@@ -1,0 +1,7 @@
+---
+alwaysApply: true
+---
+1. use the facade repos only never use drizzle directly.
+if needed create the necessary functionality and then use that.
+
+2. use the visualizer-types directly wherever possible always checking there are no duplicated types keeping the types as closely as possible to the db types and only creating abstraction over them if its really necessary helpful

@@ -11,17 +11,8 @@ import { client } from './auth';
 export type ProductSource = 'imported' | 'uploaded';
 
 // Product analysis data for prompt engineering
-export interface ProductAnalysis {
-  analyzedAt: string;
-  productType: string;
-  materials: string[];
-  colors: { primary: string; accent?: string[] };
-  style: string[];
-  suggestedRoomTypes: string[];
-  scaleHints: { width: string; height: string };
-  promptKeywords: string[];
-  version: string;
-}
+// NOTE: This is re-exported from visualizer-types for consistency
+import type { ProductAnalysis } from 'visualizer-types';
 
 // ===== PRODUCT =====
 export const product = pgTable(
@@ -34,7 +25,7 @@ export const product = pgTable(
     name: text('name').notNull(),
     description: text('description'),
     category: text('category'),
-    roomTypes: jsonb('room_types').$type<string[]>(),
+    sceneTypes: jsonb('scene_types').$type<string[]>(),
     modelFilename: text('model_filename'),
 
     // Favorites tracking
@@ -45,9 +36,9 @@ export const product = pgTable(
 
     // Store import fields (for bidirectional sync - only for source='imported')
     storeConnectionId: text('store_connection_id'),
-    erpId: text('erp_id'),              // Original product ID in store
-    erpSku: text('erp_sku'),            // Store SKU
-    erpUrl: text('erp_url'),            // Product URL in store
+    erpId: text('erp_id'), // Original product ID in store
+    erpSku: text('erp_sku'), // Store SKU
+    erpUrl: text('erp_url'), // Product URL in store
     importedAt: timestamp('imported_at', { mode: 'date' }),
 
     // Product analysis (for prompt engineering)
@@ -58,10 +49,6 @@ export const product = pgTable(
     // Price and metadata
     price: decimal('price', { precision: 10, scale: 2 }),
     metadata: jsonb('metadata').$type<Record<string, unknown>>(),
-
-    // Legacy fields (keep for backward compatibility)
-    favoriteImages: jsonb('favorite_images').$type<Array<{ imageId: string; sessionId: string }>>().notNull().default([]),
-    sceneImages: jsonb('scene_images').$type<Array<{ imageId: string; sessionId: string }>>().notNull().default([]),
 
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
@@ -97,6 +84,9 @@ export const productImage = pgTable(
   ]
 );
 
+// Import junction table - must use dynamic import to avoid circular dependency
+import { generationFlowProduct } from './sessions';
+
 // ===== RELATIONS =====
 export const productRelations = relations(product, ({ one, many }) => ({
   client: one(client, {
@@ -104,6 +94,7 @@ export const productRelations = relations(product, ({ one, many }) => ({
     references: [client.id],
   }),
   images: many(productImage),
+  flowProducts: many(generationFlowProduct),
 }));
 
 export const productImageRelations = relations(productImage, ({ one }) => ({
@@ -112,3 +103,5 @@ export const productImageRelations = relations(productImage, ({ one }) => ({
     references: [product.id],
   }),
 }));
+
+export { type SubjectAnalysis, type ProductAnalysis } from 'visualizer-types';

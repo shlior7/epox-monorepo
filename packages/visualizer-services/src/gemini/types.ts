@@ -92,7 +92,7 @@ export interface ComponentAnalysisResult {
 }
 
 export interface SceneAnalysisResult {
-  roomType: string;
+  sceneType: string;
   style: string;
   lighting: string;
   cameraAngle: string;
@@ -100,4 +100,41 @@ export interface SceneAnalysisResult {
   colorScheme: string;
   props: string[];
   promptText: string;
+}
+
+// ===== VISION SCANNER TYPES (Inspiration Image Analysis) =====
+
+/** Raw output from Vision Scanner AI analysis */
+export interface VisionScannerOutput {
+  styleSummary: string;              // "A serene, cream-white Japandi bedroom..."
+  detectedSceneType: string;         // "Bedroom", "Office" - AI-detected from image
+  heroObjectAccessories: {
+    identity: string;
+    materialPhysics: string;
+    placement: string;
+  } | null;
+  sceneInventory: Array<{
+    identity: string;                // "Back Wall", "Floor Lamp"
+    geometry: string;                // "Arched", "Tall and columnar"
+    surfacePhysics: string;          // "Rough hewn limestone"
+    colorGrading: string;            // "Warm terracotta"
+    spatialContext: string;          // "Framing the view"
+  }>;
+  lightingPhysics: {
+    sourceDirection: string;         // "Hard sunlight from top-left"
+    shadowQuality: string;           // "Long, sharp shadows"
+    colorTemperature: string;        // "Golden hour warm"
+  };
+}
+
+// ===== SUBJECT SCANNER TYPES (Product Analysis) =====
+
+/** Raw output from Subject Scanner AI analysis */
+export interface SubjectScannerOutput {
+  subjectClassHyphenated: string;    // "Dining-Chair", "Serum-Bottle"
+  nativeSceneTypes: string[];        // ["Living-Room", "Office", "Bedroom"]
+  nativeSceneCategory: 'Indoor Room' | 'Outdoor Nature' | 'Urban/Street' | 'Studio';
+  inputCameraAngle: 'Frontal' | 'Angled' | 'Top-Down' | 'Low Angle';
+  dominantColors?: string[];         // Optional: extracted palette
+  materialTags?: string[];           // Optional: "wood", "metal", "fabric"
 }

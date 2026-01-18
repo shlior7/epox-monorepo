@@ -43,6 +43,12 @@ yarn-error.log*
 # build
 .turbo
 
+# Database migrations (auto-generated)
+**/drizzle/
+
+# Test artifacts
+**/.test-storage/
+
 **/_*
 !**/__*
 

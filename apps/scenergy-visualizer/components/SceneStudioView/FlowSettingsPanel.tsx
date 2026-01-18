@@ -26,7 +26,7 @@ import { ModelSelector } from '../common/ModelSelector';
 import { AI_MODELS } from '@/lib/services/shared/constants';
 import {
   STYLE_OPTIONS,
-  ROOM_TYPES,
+  SCENE_TYPES,
   LIGHTING_OPTIONS,
   SURROUNDING_OPTIONS,
   COLOR_SCHEMES,
@@ -247,7 +247,7 @@ export function FlowSettingsPanel({
 
         // Apply all extracted settings
         onUpdateSettings({
-          roomType: analysis.roomType || undefined,
+          sceneType: analysis.sceneType || undefined,
           style: analysis.style || undefined,
           lighting: analysis.lighting || undefined,
           cameraAngle: analysis.cameraAngle || undefined,
@@ -276,7 +276,7 @@ export function FlowSettingsPanel({
     return {
       scene: getMixedValue(selectedFlows, (s) => s.scene),
       sceneImageUrl: getMixedValue(selectedFlows, (s) => s.sceneImageUrl),
-      roomType: getMixedValue(selectedFlows, (s) => s.roomType),
+      sceneType: getMixedValue(selectedFlows, (s) => s.sceneType),
       style: getMixedValue(selectedFlows, (s) => s.style),
       lighting: getMixedValue(selectedFlows, (s) => s.lighting),
       cameraAngle: getMixedValue(selectedFlows, (s) => s.cameraAngle),
@@ -541,7 +541,7 @@ export function FlowSettingsPanel({
                   </Accordion.Header>
                   <Accordion.Content className={styles.accordionContent}>
                     <div className={styles.accordionContentInner}>
-                      {renderSelect('Room Type', 'roomType', ROOM_TYPES, mixedSettings?.roomType as MixedValue)}
+                      {renderSelect('Room Type', 'sceneType', SCENE_TYPES, mixedSettings?.sceneType as MixedValue)}
                       {renderSelect(
                         'Aesthetic Style',
                         'style',

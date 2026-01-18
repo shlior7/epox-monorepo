@@ -86,6 +86,24 @@ export async function fileToGenerativePart(file: File) {
 const DATA_URL_PATTERN = /^data:([^;]+);base64,([\s\S]+)$/;
 
 /**
+ * Infer MIME type from URL path extension when content-type is unreliable
+ */
+function inferMimeTypeFromUrl(url: string): string {
+  const pathname = new URL(url).pathname.toLowerCase();
+  const extension = pathname.split('.').pop();
+  const mimeTypes: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    avif: 'image/avif',
+    svg: 'image/svg+xml',
+  };
+  return mimeTypes[extension || ''] || 'image/jpeg';
+}
+
+/**
  * Normalizes an image input (URL or data URL) into a consistent format.
  */
 export const normalizeImageInput = async (input: string): Promise<{ mimeType: string; base64Data: string }> => {
@@ -111,7 +129,15 @@ export const normalizeImageInput = async (input: string): Promise<{ mimeType: st
 
   const imageBuffer = await response.arrayBuffer();
   const base64Data = Buffer.from(imageBuffer).toString('base64');
-  const mimeType = response.headers.get('content-type') || 'image/jpeg';
+  
+  // Get content-type from headers, but handle unreliable values
+  let mimeType = response.headers.get('content-type') || '';
+  
+  // If content-type is missing or unreliable (octet-stream, binary), infer from URL
+  if (!mimeType || mimeType === 'application/octet-stream' || mimeType === 'binary/octet-stream') {
+    mimeType = inferMimeTypeFromUrl(input);
+    console.warn(`⚠️ normalizeImageInput: Inferred MIME type '${mimeType}' from URL (original: '${response.headers.get('content-type')}')`);
+  }
 
   return { mimeType, base64Data };
 };

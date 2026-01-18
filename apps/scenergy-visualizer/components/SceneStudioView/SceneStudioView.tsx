@@ -482,15 +482,12 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
   );
 
   // Check if an image is favorited for a product
+  // TODO: Implement using pinned field on generated_asset
   const checkIsFavorite = useCallback(
-    (imageId: string, productId: string): boolean => {
-      const product = products.find((p) => p.id === productId);
-      if (!product?.favoriteGeneratedImages) return false;
-      return product.favoriteGeneratedImages.some(
-        (img) => img.imageId === imageId && img.sessionId === clientSession.id
-      );
+    (_imageId: string, _productId: string): boolean => {
+      return false; // Favorites now tracked via pinned on generated_asset
     },
-    [products, clientSession.id]
+    []
   );
 
   // Handle toggling scene for a generated image
@@ -506,15 +503,12 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
   );
 
   // Check if an image is a scene for a product
+  // TODO: Implement using pinned field on generated_asset
   const checkIsScene = useCallback(
-    (imageId: string, productId: string): boolean => {
-      const product = products.find((p) => p.id === productId);
-      if (!product?.sceneImages) return false;
-      return product.sceneImages.some(
-        (img) => img.imageId === imageId && img.sessionId === clientSession.id
-      );
+    (_imageId: string, _productId: string): boolean => {
+      return false; // Scenes now tracked via pinned on generated_asset
     },
-    [products, clientSession.id]
+    []
   );
 
   // Handle uploading a scene image

@@ -251,10 +251,10 @@ export function selectBestModel(context: ModelSelectionContext): {
  */
 export function getUpgradeRecommendation(currentModelId: string): AIModelOption | null {
   const currentModel = AVAILABLE_IMAGE_MODELS.find((m) => m.id === currentModelId);
-  if (!currentModel?.upgradeRecommendations?.length) return null;
+  if (!currentModel?.upgradeRecommendations?.length) {return null;}
 
   const upgradeId = currentModel.upgradeRecommendations[0];
-  return AVAILABLE_IMAGE_MODELS.find((m) => m.id === upgradeId) || null;
+  return AVAILABLE_IMAGE_MODELS.find((m) => m.id === upgradeId) ?? null;
 }
 
 /**
@@ -272,7 +272,7 @@ export function modelSupportsCapability(
   capability: keyof ModelCapabilities
 ): boolean {
   const model = getModelById(modelId);
-  if (!model) return false;
+  if (!model) {return false;}
   return Boolean(model.capabilities[capability]);
 }
 

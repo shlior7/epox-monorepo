@@ -1,0 +1,74 @@
+# Cloud Build configuration for AI Worker
+# Deploy to Cloud Run with:
+#   gcloud builds submit --config services/ai-worker/cloudbuild.yaml
+
+substitutions:
+  _SERVICE_NAME: ai-worker
+  _REGION: us-central1
+  _CONCURRENCY: "5"
+  _GEMINI_RPM: "60"  # Gemini rate limit: 10 (free), 60 (pay-as-you-go), 1000+ (scale)
+  _MIN_INSTANCES: "0"
+  _MAX_INSTANCES: "10"
+
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest'
+      - '-f'
+      - 'services/ai-worker/Dockerfile'
+      - '.'
+
+  # Push the Docker image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$COMMIT_SHA'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--cpu'
+      - '2'
+      - '--memory'
+      - '2Gi'
+      - '--min-instances'
+      - '${_MIN_INSTANCES}'
+      - '--max-instances'
+      - '${_MAX_INSTANCES}'
+      - '--cpu-throttling'
+      - '--no-cpu-boost'
+      - '--ingress'
+      - 'internal'
+      - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'WORKER_CONCURRENCY=${_CONCURRENCY},GEMINI_RPM=${_GEMINI_RPM}'
+      - '--set-secrets'
+      - 'REDIS_URL=redis-url:latest,GOOGLE_AI_STUDIO_API_KEY=gemini-api-key:latest'
+
+images:
+  - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+

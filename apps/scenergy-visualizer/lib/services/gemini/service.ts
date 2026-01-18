@@ -76,7 +76,7 @@ const SCENE_ANALYSIS_PROMPT = `Analyze this interior/scene image and extract the
 Your response must be a valid JSON object with these exact fields:
 
 {
-  "roomType": "one of: Studio Set, Office, Living Room, Bedroom, Kitchen, Outdoor Patio, Rooftop Terrace, Garden, Poolside Deck, Beach, or Custom",
+  "sceneType": "one of: Studio Set, Office, Living Room, Bedroom, Kitchen, Outdoor Patio, Rooftop Terrace, Garden, Poolside Deck, Beach, or Custom",
   "style": "one of: Modern Minimalist, Luxury / Premium, Rustic / Natural, Scandinavian, Industrial Loft, Futuristic / Tech, Bohemian Chic, Coastal / Mediterranean, Vintage / Retro, Artistic Conceptual, or Custom",
   "lighting": "one of: Natural Daylight, Golden Hour / Sunset Glow, Studio Soft Light, Bright Noon Sunlight, Overcast Ambient, Neon / LED Accent, Candlelight / Warm Interior, HDRI Environmental Light, or Custom",
   "cameraAngle": "one of: Front, 3/4 View, Side, Top-Down, Eye-Level",

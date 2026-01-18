@@ -244,9 +244,9 @@ interface DashboardData {
 
 ### 3. StudioSessions List
 
-**Route**: `/studioSessions`
+**Route**: `/collections`
 
-**Purpose**: Browse all studioSessions, filter by status
+**Purpose**: Browse all collections, filter by status
 
 **Layout**:
 ```text

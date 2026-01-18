@@ -81,11 +81,11 @@ describe('MessageRepository', () => {
       const message = await repo.create(testChatSessionId, 'chat', {
         role: 'user',
         parts: [{ type: 'text', content: 'Generate' }],
-        baseImageId: 'base-123',
+        baseImageIds: { 'product-1': 'base-123' },
         inspirationImageId: 'inspo-456',
       });
 
-      expect(message.baseImageId).toBe('base-123');
+      expect(message.baseImageIds).toEqual({ 'product-1': 'base-123' });
       expect(message.inspirationImageId).toBe('inspo-456');
     });
   });

@@ -1,9 +1,20 @@
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, asc, eq, inArray, isNull, isNotNull, lt, sql, type SQL } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
-import { generatedAsset } from '../schema/generated-images';
-import type { GeneratedAsset, GeneratedAssetCreate, GeneratedAssetUpdate } from 'visualizer-types';
+import { generatedAsset, generatedAssetProduct } from '../schema/generated-images';
+import type { GeneratedAsset, GeneratedAssetCreate, GeneratedAssetUpdate, AssetStatus, ApprovalStatus } from 'visualizer-types';
 import { NotFoundError } from '../errors';
 import { BaseRepository } from './base';
+
+export interface GeneratedAssetListOptions {
+  collectionId?: string;
+  productId?: string;
+  pinned?: boolean;
+  status?: AssetStatus;
+  approvalStatus?: ApprovalStatus;
+  sort?: 'date' | 'oldest';
+  limit?: number;
+  offset?: number;
+}
 
 type GeneratedAssetInsert = GeneratedAssetCreate & { id: string; createdAt?: Date; updatedAt?: Date };
 
@@ -37,8 +48,10 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
         approvedAt: data.approvedAt ?? null,
         approvedBy: data.approvedBy ?? null,
         completedAt: data.completedAt ?? null,
+        pinned: data.pinned ?? false,
         createdAt: now,
         updatedAt: now,
+        deletedAt: null,
       })
       .returning();
 
@@ -73,8 +86,10 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
           approvedAt: entry.approvedAt ?? null,
           approvedBy: entry.approvedBy ?? null,
           completedAt: entry.completedAt ?? null,
+          pinned: entry.pinned ?? false,
           createdAt: entry.createdAt ?? now,
           updatedAt: entry.updatedAt ?? now,
+          deletedAt: null,
         }))
       )
       .returning();
@@ -82,10 +97,16 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
     return rows.map((row) => this.mapToEntity(row));
   }
 
-  async list(clientId: string, options?: { generationFlowId?: string; limit?: number }): Promise<GeneratedAsset[]> {
+  async list(
+    clientId: string,
+    options?: { generationFlowId?: string; limit?: number; includeDeleted?: boolean }
+  ): Promise<GeneratedAsset[]> {
     const conditions = [eq(generatedAsset.clientId, clientId)];
     if (options?.generationFlowId) {
       conditions.push(eq(generatedAsset.generationFlowId, options.generationFlowId));
+    }
+    if (!options?.includeDeleted) {
+      conditions.push(isNull(generatedAsset.deletedAt));
     }
 
     const rows = await this.drizzle
@@ -98,11 +119,16 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
     return rows.map((row) => this.mapToEntity(row));
   }
 
-  async listByGenerationFlow(generationFlowId: string): Promise<GeneratedAsset[]> {
+  async listByGenerationFlow(generationFlowId: string, includeDeleted = false): Promise<GeneratedAsset[]> {
+    const conditions = [eq(generatedAsset.generationFlowId, generationFlowId)];
+    if (!includeDeleted) {
+      conditions.push(isNull(generatedAsset.deletedAt));
+    }
+
     const rows = await this.drizzle
       .select()
       .from(generatedAsset)
-      .where(eq(generatedAsset.generationFlowId, generationFlowId))
+      .where(and(...conditions))
       .orderBy(desc(generatedAsset.createdAt));
 
     return rows.map((row) => this.mapToEntity(row));
@@ -130,7 +156,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
   }
 
   async update(id: string, data: GeneratedAssetUpdate): Promise<GeneratedAsset> {
-    const [updated] = await this.drizzle
+    const result = await this.drizzle
       .update(generatedAsset)
       .set({
         ...data,
@@ -139,11 +165,10 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
       .where(eq(generatedAsset.id, id))
       .returning();
 
-    if (!updated) {
+    if (result.length === 0) {
       throw new NotFoundError('generated_asset', id);
     }
-
-    return this.mapToEntity(updated);
+    return this.mapToEntity(result[0]);
   }
 
   async approve(id: string, userId: string): Promise<GeneratedAsset> {
@@ -176,5 +201,265 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
       .returning();
 
     return this.mapToEntity(updated);
+  }
+
+  // ===== SOFT DELETE =====
+
+  async softDelete(id: string): Promise<GeneratedAsset> {
+    const now = new Date();
+    const result = await this.drizzle
+      .update(generatedAsset)
+      .set({
+        deletedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(generatedAsset.id, id))
+      .returning();
+
+    if (result.length === 0) {
+      throw new NotFoundError('generated_asset', id);
+    }
+    return this.mapToEntity(result[0]);
+  }
+
+  async restore(id: string): Promise<GeneratedAsset> {
+    const result = await this.drizzle
+      .update(generatedAsset)
+      .set({
+        deletedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(generatedAsset.id, id))
+      .returning();
+
+    if (result.length === 0) {
+      throw new NotFoundError('generated_asset', id);
+    }
+    return this.mapToEntity(result[0]);
+  }
+
+  async listDeleted(clientId: string, limit = 100): Promise<GeneratedAsset[]> {
+    const rows = await this.drizzle
+      .select()
+      .from(generatedAsset)
+      .where(and(eq(generatedAsset.clientId, clientId), isNotNull(generatedAsset.deletedAt)))
+      .orderBy(desc(generatedAsset.deletedAt))
+      .limit(limit);
+
+    return rows.map((row) => this.mapToEntity(row));
+  }
+
+  async permanentDeleteOld(daysOld = 30): Promise<number> {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - daysOld);
+
+    const result = await this.drizzle
+      .delete(generatedAsset)
+      .where(and(isNotNull(generatedAsset.deletedAt), lt(generatedAsset.deletedAt, cutoff)))
+      .returning();
+
+    return result.length;
+  }
+
+  // ===== PIN/UNPIN =====
+
+  async togglePin(id: string): Promise<GeneratedAsset> {
+    const current = await this.requireById(id);
+    const [updated] = await this.drizzle
+      .update(generatedAsset)
+      .set({
+        pinned: !current.pinned,
+        updatedAt: new Date(),
+      })
+      .where(eq(generatedAsset.id, id))
+      .returning();
+
+    return this.mapToEntity(updated);
+  }
+
+  async pin(id: string): Promise<GeneratedAsset> {
+    const result = await this.drizzle
+      .update(generatedAsset)
+      .set({
+        pinned: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(generatedAsset.id, id))
+      .returning();
+
+    if (result.length === 0) {
+      throw new NotFoundError('generated_asset', id);
+    }
+    return this.mapToEntity(result[0]);
+  }
+
+  async unpin(id: string): Promise<GeneratedAsset> {
+    const result = await this.drizzle
+      .update(generatedAsset)
+      .set({
+        pinned: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(generatedAsset.id, id))
+      .returning();
+
+    if (result.length === 0) {
+      throw new NotFoundError('generated_asset', id);
+    }
+    return this.mapToEntity(result[0]);
+  }
+
+  async listPinned(clientId: string): Promise<GeneratedAsset[]> {
+    const rows = await this.drizzle
+      .select()
+      .from(generatedAsset)
+      .where(and(eq(generatedAsset.clientId, clientId), eq(generatedAsset.pinned, true), isNull(generatedAsset.deletedAt)))
+      .orderBy(desc(generatedAsset.createdAt));
+
+    return rows.map((row) => this.mapToEntity(row));
+  }
+
+  // ===== FIND BY JOB ID =====
+
+  async findByJobId(clientId: string, jobId: string): Promise<GeneratedAsset[]> {
+    const rows = await this.drizzle
+      .select()
+      .from(generatedAsset)
+      .where(and(eq(generatedAsset.clientId, clientId), eq(generatedAsset.jobId, jobId), isNull(generatedAsset.deletedAt)))
+      .orderBy(desc(generatedAsset.createdAt));
+
+    return rows.map((row) => this.mapToEntity(row));
+  }
+
+  // ===== LIST WITH FILTERS =====
+
+  async listWithFilters(clientId: string, options: GeneratedAssetListOptions = {}): Promise<GeneratedAsset[]> {
+    const conditions = this.buildFilterConditions(clientId, options);
+    const orderByClause = options.sort === 'oldest' ? asc(generatedAsset.createdAt) : desc(generatedAsset.createdAt);
+
+    const rows = await this.drizzle
+      .select()
+      .from(generatedAsset)
+      .where(and(...conditions))
+      .orderBy(orderByClause)
+      .limit(options.limit ?? 100)
+      .offset(options.offset ?? 0);
+
+    return rows.map((row) => this.mapToEntity(row));
+  }
+
+  async countWithFilters(clientId: string, options: Omit<GeneratedAssetListOptions, 'limit' | 'offset' | 'sort'> = {}): Promise<number> {
+    const conditions = this.buildFilterConditions(clientId, options);
+
+    const [result] = await this.drizzle
+      .select({ count: sql<number>`count(*)::int` })
+      .from(generatedAsset)
+      .where(and(...conditions));
+
+    return result.count;
+  }
+
+  private buildFilterConditions(clientId: string, options: Omit<GeneratedAssetListOptions, 'limit' | 'offset' | 'sort'>): SQL[] {
+    const conditions: SQL[] = [eq(generatedAsset.clientId, clientId), isNull(generatedAsset.deletedAt)];
+
+    if (options.collectionId) {
+      conditions.push(
+        sql`(${generatedAsset.generationFlowId} = ${options.collectionId} OR ${generatedAsset.chatSessionId} = ${options.collectionId})`
+      );
+    }
+
+    if (options.productId) {
+      conditions.push(sql`${generatedAsset.productIds} @> ${JSON.stringify([options.productId])}::jsonb`);
+    }
+
+    if (options.pinned !== undefined) {
+      conditions.push(eq(generatedAsset.pinned, options.pinned));
+    }
+
+    if (options.status) {
+      conditions.push(eq(generatedAsset.status, options.status));
+    }
+
+    if (options.approvalStatus) {
+      conditions.push(eq(generatedAsset.approvalStatus, options.approvalStatus));
+    }
+
+    return conditions;
+  }
+
+  // ===== LIST BY PRODUCT ID =====
+
+  async listByProductId(clientId: string, productId: string, limit = 100): Promise<GeneratedAsset[]> {
+    return this.listWithFilters(clientId, { productId, limit });
+  }
+
+  // ===== COUNT BY STATUS =====
+
+  async countByStatus(clientId: string, status: AssetStatus): Promise<number> {
+    return this.countWithFilters(clientId, { status });
+  }
+
+  // ===== COUNT BY PRODUCT IDS (for dashboard) =====
+
+  async countByProductIds(clientId: string, productIds: string[], status?: AssetStatus): Promise<number> {
+    if (productIds.length === 0) {
+      return 0;
+    }
+
+    const arrayLiteral = `array[${productIds.map((id) => `'${id.replaceAll("'", "''")}'`).join(', ')}]`;
+    const conditions: SQL[] = [
+      eq(generatedAsset.clientId, clientId),
+      isNull(generatedAsset.deletedAt),
+      sql`${generatedAsset.productIds} ?| ${sql.raw(arrayLiteral)}`,
+    ];
+
+    if (status) {
+      conditions.push(eq(generatedAsset.status, status));
+    }
+
+    const [result] = await this.drizzle
+      .select({ count: sql<number>`count(*)::int` })
+      .from(generatedAsset)
+      .where(and(...conditions));
+
+    return result.count;
+  }
+
+  // ===== GET FIRST BY PRODUCT IDS (for thumbnails) =====
+
+  async getFirstByProductIds(clientId: string, productIds: string[], status?: AssetStatus): Promise<GeneratedAsset | null> {
+    if (productIds.length === 0) {
+      return null;
+    }
+
+    const arrayLiteral = `array[${productIds.map((id) => `'${id.replaceAll("'", "''")}'`).join(', ')}]`;
+    const conditions: SQL[] = [
+      eq(generatedAsset.clientId, clientId),
+      isNull(generatedAsset.deletedAt),
+      sql`${generatedAsset.productIds} ?| ${sql.raw(arrayLiteral)}`,
+    ];
+
+    if (status) {
+      conditions.push(eq(generatedAsset.status, status));
+    }
+
+    const rows = await this.drizzle
+      .select()
+      .from(generatedAsset)
+      .where(and(...conditions))
+      .orderBy(desc(generatedAsset.createdAt))
+      .limit(1);
+
+    return rows[0] ? this.mapToEntity(rows[0]) : null;
+  }
+
+  // ===== HARD DELETE (with product links) =====
+
+  async hardDelete(id: string): Promise<void> {
+    // Delete product links first (foreign key constraint)
+    await this.drizzle.delete(generatedAssetProduct).where(eq(generatedAssetProduct.generatedAssetId, id));
+
+    // Delete the asset
+    await this.delete(id);
   }
 }

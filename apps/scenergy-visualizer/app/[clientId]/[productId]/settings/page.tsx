@@ -242,7 +242,8 @@ export default function ProductSettingsPage() {
     });
   };
 
-  const favoriteImages = product.favoriteGeneratedImages || [];
+  // TODO: Fetch pinned assets from generated_asset table
+  const favoriteImages: { imageId: string; sessionId: string }[] = [];
   const hasFavorites = favoriteImages.length > 0;
   const hasBaseImages = product.productImageIds && product.productImageIds.length > 0;
 

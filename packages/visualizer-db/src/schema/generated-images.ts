@@ -59,10 +59,14 @@ export const generatedAsset = pgTable(
     approvedAt: timestamp('approved_at', { mode: 'date' }),
     approvedBy: text('approved_by').references(() => user.id, { onDelete: 'set null' }),
 
+    // User actions
+    pinned: boolean('pinned').notNull().default(false),
+
     // Timestamps
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
     completedAt: timestamp('completed_at', { mode: 'date' }),
+    deletedAt: timestamp('deleted_at', { mode: 'date' }),
   },
   (table) => [
     index('generated_asset_client_id_idx').on(table.clientId),
@@ -72,6 +76,8 @@ export const generatedAsset = pgTable(
     index('generated_asset_job_id_idx').on(table.jobId),
     index('generated_asset_status_idx').on(table.status),
     index('generated_asset_approval_status_idx').on(table.clientId, table.approvalStatus),
+    index('generated_asset_deleted_at_idx').on(table.deletedAt),
+    index('generated_asset_pinned_idx').on(table.clientId, table.pinned),
   ]
 );
 

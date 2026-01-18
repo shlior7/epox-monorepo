@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Loader2, MessageCircle, X, Sparkles, Bot } from 'lucide-react';
 import clsx from 'clsx';
 import type { Flow, FlowGenerationSettings, Product } from '@/lib/types/app-types';
-import { STYLE_OPTIONS, ROOM_TYPES, LIGHTING_OPTIONS, CAMERA_ANGLES, ASPECT_RATIOS } from './constants';
+import { STYLE_OPTIONS, SCENE_TYPES, LIGHTING_OPTIONS, CAMERA_ANGLES, ASPECT_RATIOS } from './constants';
 import styles from './SceneStudioView.module.scss';
 
 interface AssistantMessage {
@@ -71,11 +71,11 @@ function parseUserIntent(
   }
 
   // Check for room type requests
-  const roomMatch = ROOM_TYPES.find((r) => lowerMessage.includes(r.toLowerCase()));
+  const roomMatch = SCENE_TYPES.find((r) => lowerMessage.includes(r.toLowerCase()));
   if (roomMatch && (lowerMessage.includes('room') || lowerMessage.includes('scene') || lowerMessage.includes('setting'))) {
     actions.push({
       type: 'update_settings',
-      payload: { roomType: roomMatch },
+      payload: { sceneType: roomMatch },
       label: `Set room type to ${roomMatch}`,
     });
     response += (response ? ' ' : '') + `I'll set the room type to "${roomMatch}".`;

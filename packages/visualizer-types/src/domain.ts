@@ -3,7 +3,7 @@
  * Core business domain types for the visualizer application
  */
 
-import type { FlowGenerationSettings, FlowStatus, ClientMetadata } from './settings';
+import type { FlowGenerationSettings, FlowStatus, ClientMetadata, SubjectAnalysis } from './settings';
 import type { MessagePart, MessageRole } from './messages';
 
 // ===== BASE TYPES =====
@@ -54,10 +54,12 @@ export interface ProductAnalysis {
   materials: string[];
   colors: { primary: string; accent?: string[] };
   style: string[];
-  suggestedRoomTypes: string[];
+  sceneTypes: string[];              // Renamed from suggestedsceneTypes
   scaleHints: { width: string; height: string };
   promptKeywords: string[];
   version: string;
+  // Subject Scanner output (pre-computed on product creation)
+  subject?: SubjectAnalysis;
 }
 
 export interface Product extends VersionedEntity {
@@ -65,7 +67,7 @@ export interface Product extends VersionedEntity {
   name: string;
   description: string | null;
   category: string | null;
-  roomTypes: string[] | null;
+  sceneTypes: string[] | null;
   modelFilename: string | null;
   isFavorite: boolean;
   source: ProductSource;
@@ -108,6 +110,7 @@ export interface CollectionSession extends VersionedEntity {
   status: CollectionSessionStatus;
   productIds: string[];
   selectedBaseImages: Record<string, string>;
+  settings: FlowGenerationSettings | null;
 }
 
 // ===== MESSAGE =====
@@ -117,7 +120,6 @@ export interface Message extends VersionedEntity {
   collectionSessionId: string | null;
   role: MessageRole;
   parts: MessagePart[];
-  baseImageId: string | null;
   baseImageIds: Record<string, string> | null;
   inspirationImageId: string | null;
 }
@@ -170,6 +172,8 @@ export interface GeneratedAsset extends BaseEntity {
   approvedAt: Date | null;
   approvedBy: string | null;
   completedAt: Date | null;
+  pinned: boolean;
+  deletedAt: Date | null;
 }
 
 // ===== GENERATED ASSET PRODUCT (Junction table) =====
@@ -180,37 +184,20 @@ export interface GeneratedAssetProduct extends BaseEntity {
   isPrimary: boolean;
 }
 
+// ===== GENERATION FLOW PRODUCT (Junction table for many-to-many) =====
+
+export interface GenerationFlowProduct {
+  id: string;
+  generationFlowId: string;
+  productId: string;
+  createdAt: Date;
+}
+
 // ===== FAVORITE IMAGE =====
 
 export interface FavoriteImage extends BaseEntity {
   clientId: string;
   generatedAssetId: string;
-}
-
-// ===== TAG =====
-
-export type TaggableEntityType = 'product' | 'generation_flow';
-
-export interface Tag extends BaseEntity {
-  clientId: string;
-  name: string;
-  color: string | null;
-}
-
-export interface TagAssignment extends BaseEntity {
-  tagId: string;
-  entityType: TaggableEntityType;
-  entityId: string;
-}
-
-// ===== USER FAVORITE =====
-
-export type FavoriteEntityType = 'product' | 'generation_flow';
-
-export interface UserFavorite extends BaseEntity {
-  userId: string;
-  entityType: FavoriteEntityType;
-  entityId: string;
 }
 
 // ===== STORE SYNC =====

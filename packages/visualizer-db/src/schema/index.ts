@@ -25,24 +25,21 @@ export {
 } from './auth';
 
 // Product tables
-export {
-  product,
-  productImage,
-  productRelations,
-  productImageRelations,
-} from './products';
+export { product, productImage, productRelations, productImageRelations } from './products';
 export type { ProductSource, ProductAnalysis } from './products';
 
 // Session tables
 export {
-  chatSession,
+  // chatSession,
   collectionSession,
-  message,
+  // message,
   generationFlow,
-  chatSessionRelations,
+  generationFlowProduct,
+  // chatSessionRelations,
   collectionSessionRelations,
-  messageRelations,
+  // messageRelations,
   generationFlowRelations,
+  generationFlowProductRelations,
 } from './sessions';
 
 // Generated assets
@@ -56,32 +53,25 @@ export {
 } from './generated-images';
 export type { AssetType, AssetStatus, ApprovalStatus, AssetAnalysis } from './generated-images';
 
-// Organization tables (tags, favorites)
-export {
-  tag,
-  tagAssignment,
-  userFavorite,
-  tagRelations,
-  tagAssignmentRelations,
-  userFavoriteRelations,
-} from './clients';
-export type { TaggableEntityType, FavoriteEntityType } from './clients';
-
 // Analytics tables
-export {
-  generationEvent,
-  generationEventRelations,
-} from './analytics';
+export { generationEvent, generationEventRelations } from './analytics';
 export type { GenerationEventType } from './analytics';
 
 // Store sync tables
-export {
-  storeConnection,
-  storeSyncLog,
-  storeConnectionRelations,
-  storeSyncLogRelations,
-} from './store-sync';
+export { storeConnection, storeSyncLog, storeConnectionRelations, storeSyncLogRelations } from './store-sync';
 export type { StoreType, StoreConnectionStatus, SyncAction, SyncStatus } from './store-sync';
+
+// User settings tables
+export { userSettings, userSettingsRelations, DEFAULT_NOTIFICATION_SETTINGS, DEFAULT_GENERATION_DEFAULTS } from './user-settings';
+export type { NotificationSettings, DefaultGenerationSettings } from './user-settings';
+
+// Usage/Quota tables
+export { usageRecord, quotaLimit, usageRecordRelations, quotaLimitRelations } from './usage';
+export type { PlanType } from './usage';
+
+// Generation Jobs (PostgreSQL queue)
+export { generationJob, generationJobRelations } from './jobs';
+export type { JobType, JobStatus, ImageGenerationPayload, ImageEditPayload, JobResult } from './jobs';
 
 // Re-export types from visualizer-types for convenience
 export type {
@@ -96,3 +86,6 @@ export type {
   ImageMessagePart,
   PromptSettingsMessagePart,
 } from 'visualizer-types';
+
+// Re-export all generated DB types for type-safe database operations
+export type * from './generated/db-types.generated';

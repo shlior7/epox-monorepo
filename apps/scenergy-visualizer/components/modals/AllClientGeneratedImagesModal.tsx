@@ -2,7 +2,7 @@
 
 /**
  * AllClientGeneratedImagesModal
- * 
+ *
  * Shows all generated images across all products and sessions for a client.
  */
 
@@ -226,9 +226,8 @@ export function AllClientGeneratedImagesModal({
     const images: GroupedImage[] = [];
 
     for (const product of client.products) {
-      const favoriteSet = new Set(
-        (product.favoriteGeneratedImages || []).map(f => `${f.imageId}-${f.sessionId}`)
-      );
+      // TODO: Implement using pinned field on generated_asset
+      const favoriteSet = new Set<string>();
 
       for (const session of product.sessions) {
         for (const message of session.messages) {

@@ -32,7 +32,7 @@ import {
   Download,
 } from 'lucide-react';
 import {
-  ROOM_TYPES,
+  SCENE_TYPES,
   STYLE_OPTIONS,
   LIGHTING_OPTIONS,
   CAMERA_ANGLES,
@@ -453,7 +453,7 @@ export default function SceneStudioPage() {
                   {/* Config & Execute */}
                   <div className={styles.slotRight}>
                     <div className={styles.configTags}>
-                      <span className={styles.tagRoomType}>{row.settings.roomType}</span>
+                      <span className={styles.tagsceneType}>{row.settings.sceneType}</span>
                       <span className={styles.tagStyle}>{row.settings.style}</span>
                       <span className={styles.tagLighting}>{row.settings.lighting}</span>
                       <span className={styles.tagCamera}>{row.settings.cameraAngle}</span>
@@ -609,14 +609,14 @@ export default function SceneStudioPage() {
                     <label className={styles.propertyLabel}>Room Template</label>
                     <select
                       value={
-                        getMixedValue('roomType') === 'Mixed'
+                        getMixedValue('sceneType') === 'Mixed'
                           ? ''
-                          : String(getMixedValue('roomType'))
+                          : String(getMixedValue('sceneType'))
                       }
-                      onChange={(e) => updateSelectedRows({ roomType: e.target.value })}
+                      onChange={(e) => updateSelectedRows({ sceneType: e.target.value })}
                       className={styles.select}
                     >
-                      {ROOM_TYPES.map((opt) => (
+                      {SCENE_TYPES.map((opt) => (
                         <option key={opt} value={opt}>
                           {opt}
                         </option>

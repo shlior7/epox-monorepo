@@ -7,7 +7,7 @@ import { useData } from '@/lib/contexts/DataContext';
 import { Portal } from '../common/Portal';
 import { buildTestId } from '@/lib/utils/test-ids';
 import type { Product } from '@/lib/types/app-types';
-import { ROOM_TYPES } from '@/components/SceneStudioView/constants';
+import { SCENE_TYPES } from '@/components/SceneStudioView/constants';
 
 interface EditProductSettingsModalProps {
   isOpen: boolean;
@@ -96,7 +96,7 @@ export function EditProductSettingsModal({ isOpen, product, onClose, onSave }: E
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description || '');
   const [category, setCategory] = useState(product.category || '');
-  const [roomTypes, setRoomTypes] = useState<string[]>(product.roomTypes || []);
+  const [sceneTypes, setsceneTypes] = useState<string[]>(product.sceneTypes || []);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const client = getClient(product.clientId);
@@ -106,7 +106,7 @@ export function EditProductSettingsModal({ isOpen, product, onClose, onSave }: E
       setName(product.name);
       setDescription(product.description || '');
       setCategory(product.category || '');
-      setRoomTypes(product.roomTypes || []);
+      setsceneTypes(product.sceneTypes || []);
       setError(null);
       setIsSaving(false);
     }
@@ -129,7 +129,7 @@ export function EditProductSettingsModal({ isOpen, product, onClose, onSave }: E
         name: name.trim(),
         description: description.trim() || undefined,
         category: category.trim() || undefined,
-        roomTypes: roomTypes.length > 0 ? roomTypes : undefined,
+        sceneTypes: sceneTypes.length > 0 ? sceneTypes : undefined,
       };
 
       await onSave(updates);
@@ -146,7 +146,7 @@ export function EditProductSettingsModal({ isOpen, product, onClose, onSave }: E
     name.trim() !== product.name ||
     (description.trim() || '') !== (product.description || '') ||
     (category.trim() || '') !== (product.category || '') ||
-    JSON.stringify([...roomTypes].sort()) !== JSON.stringify([...(product.roomTypes || [])].sort());
+    JSON.stringify([...sceneTypes].sort()) !== JSON.stringify([...(product.sceneTypes || [])].sort());
 
   return (
     <Portal>
@@ -208,23 +208,23 @@ export function EditProductSettingsModal({ isOpen, product, onClose, onSave }: E
 
               {/* Room Types */}
               <div style={styles.formGroup}>
-                <label htmlFor="productRoomTypes" style={styles.label}>
+                <label htmlFor="productsceneTypes" style={styles.label}>
                   Room Types
                 </label>
                 <select
-                  id="productRoomTypes"
+                  id="productsceneTypes"
                   multiple
-                  value={roomTypes}
+                  value={sceneTypes}
                   onChange={(e) => {
                     const selected = Array.from(e.target.selectedOptions).map((option) => option.value);
-                    setRoomTypes(selected);
+                    setsceneTypes(selected);
                   }}
                   style={{ ...styles.select, height: '120px' }}
                   data-testid={buildTestId('edit-product-settings-modal', 'room-types-select')}
                 >
-                  {ROOM_TYPES.map((roomType) => (
-                    <option key={roomType} value={roomType}>
-                      {roomType}
+                  {SCENE_TYPES.map((sceneType) => (
+                    <option key={sceneType} value={sceneType}>
+                      {sceneType}
                     </option>
                   ))}
                 </select>

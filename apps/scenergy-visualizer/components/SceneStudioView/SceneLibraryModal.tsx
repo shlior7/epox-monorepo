@@ -119,46 +119,14 @@ export function SceneLibraryModal({
     [clientId]
   );
 
-  // Gather all generated images from all products' sessions that are favorites or scenes
+  // Gather all generated images from all products' sessions
+  // TODO: Implement favorites/scenes using pinned field on generated_asset
   const generatedScenes = useMemo((): GeneratedScene[] => {
     const scenes: GeneratedScene[] = [];
+    const seenIds = new Set<string>();
 
     products.forEach((product) => {
-      // Add favorite images
-      product.favoriteGeneratedImages?.forEach((fav) => {
-        const isScene = product.sceneImages?.some((s) => s.imageId === fav.imageId && s.sessionId === fav.sessionId) ?? false;
-        scenes.push({
-          id: `${product.id}-${fav.imageId}`,
-          imageId: fav.imageId,
-          sessionId: fav.sessionId,
-          productId: product.id,
-          productName: product.name,
-          isFavorite: true,
-          isScene,
-          imageUrl: getGeneratedImageUrl(product.id, fav.sessionId, fav.imageId, product),
-        });
-      });
-
-      // Add scene images that are not favorites
-      product.sceneImages?.forEach((sceneImg) => {
-        const alreadyAddedAsFavorite = product.favoriteGeneratedImages?.some(
-          (f) => f.imageId === sceneImg.imageId && f.sessionId === sceneImg.sessionId
-        );
-        if (!alreadyAddedAsFavorite) {
-          scenes.push({
-            id: `${product.id}-${sceneImg.imageId}`,
-            imageId: sceneImg.imageId,
-            sessionId: sceneImg.sessionId,
-            productId: product.id,
-            productName: product.name,
-            isFavorite: false,
-            isScene: true,
-            imageUrl: getGeneratedImageUrl(product.id, sceneImg.sessionId, sceneImg.imageId, product),
-          });
-        }
-      });
-
-      // Also add recent generated images from sessions (last 10 per product)
+      // Add recent generated images from sessions (last 10 per product)
       product.sessions.forEach((session) => {
         // Get image parts from messages
         const allImageIds: string[] = [];
@@ -175,18 +143,17 @@ export function SceneLibraryModal({
 
         // Add unique image IDs
         allImageIds.forEach((imageId) => {
-          const isFav = product.favoriteGeneratedImages?.some((f) => f.imageId === imageId && f.sessionId === session.id);
-          const isScene = product.sceneImages?.some((s) => s.imageId === imageId && s.sessionId === session.id);
-          // Only add if not already added as favorite or scene
-          if (!isFav && !isScene) {
+          const uniqueKey = `${product.id}-${imageId}`;
+          if (!seenIds.has(uniqueKey)) {
+            seenIds.add(uniqueKey);
             scenes.push({
-              id: `${product.id}-${imageId}`,
+              id: uniqueKey,
               imageId,
               sessionId: session.id,
               productId: product.id,
               productName: product.name,
-              isFavorite: false,
-              isScene: false,
+              isFavorite: false, // TODO: Check pinned on generated_asset
+              isScene: false, // TODO: Check pinned on generated_asset
               imageUrl: S3Service.getImageUrl(S3Service.S3Paths.getMediaFilePath(clientId, product.id, session.id, imageId)),
             });
           }

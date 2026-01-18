@@ -1,5 +1,11 @@
 /**
- * Image Generation Queue - Job system with polling support
+ * @deprecated This Redis-based queue is deprecated.
+ * Use the new PostgreSQL-based queue in ../job-queue/index.ts instead.
+ * 
+ * This file is kept for reference during migration.
+ * Can be deleted once PostgreSQL queue is confirmed working.
+ * 
+ * OLD: Image Generation Queue - Job system with polling support
  * Now with Redis persistence for job survival across restarts
  */
 

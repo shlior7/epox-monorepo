@@ -190,10 +190,8 @@ export function MessageBubble({
                           : S3Service.getImageUrl(S3Service.S3Paths.getMediaFilePath(clientId, targetProductId, targetSessionId, imageId));
 
                         const targetProduct = isClientSession ? sessionProducts?.find((p) => p.id === targetProductId) : product;
-                        const isFavorite =
-                          targetProduct?.favoriteGeneratedImages?.some(
-                            (img) => img.imageId === imageId && img.sessionId === targetSessionId
-                          ) || false;
+                        // TODO: Check pinned on generated_asset instead
+                        const isFavorite = false;
                         const productName = isClientSession ? targetProduct?.name : undefined;
 
                         return (
@@ -223,8 +221,8 @@ export function MessageBubble({
                         const imageUrl = S3Service.getImageUrl(
                           S3Service.S3Paths.getMediaFilePath(clientId, productId!, sessionId!, imageId)
                         );
-                        const isFavorite =
-                          product?.favoriteGeneratedImages?.some((img) => img.imageId === imageId && img.sessionId === sessionId) || false;
+                        // TODO: Check pinned on generated_asset instead
+                        const isFavorite = false;
                         return (
                           <GeneratedImage
                             key={imageId}

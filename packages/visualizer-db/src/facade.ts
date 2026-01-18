@@ -9,11 +9,16 @@ import {
   FavoriteImageRepository,
   GenerationFlowRepository,
   GeneratedAssetRepository,
+  GenerationJobRepository,
   MemberRepository,
   MessageRepository,
   ProductImageRepository,
   ProductRepository,
   UserRepository,
+  InvitationRepository,
+  UserSettingsRepository,
+  UsageRecordRepository,
+  QuotaLimitRepository,
 } from './repositories/index';
 
 /**
@@ -32,7 +37,12 @@ export interface DatabaseFacade {
   readonly messages: MessageRepository;
   readonly generationFlows: GenerationFlowRepository;
   readonly generatedAssets: GeneratedAssetRepository;
+  readonly generationJobs: GenerationJobRepository;
   readonly favoriteImages: FavoriteImageRepository;
+  readonly invitations: InvitationRepository;
+  readonly userSettings: UserSettingsRepository;
+  readonly usageRecords: UsageRecordRepository;
+  readonly quotaLimits: QuotaLimitRepository;
   /**
    * Execute multiple operations in a transaction.
    *
@@ -59,7 +69,12 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
   const messages = new MessageRepository(drizzle);
   const generationFlows = new GenerationFlowRepository(drizzle);
   const generatedAssets = new GeneratedAssetRepository(drizzle);
+  const generationJobs = new GenerationJobRepository(drizzle);
   const favoriteImages = new FavoriteImageRepository(drizzle);
+  const invitations = new InvitationRepository(drizzle);
+  const userSettings = new UserSettingsRepository(drizzle);
+  const usageRecords = new UsageRecordRepository(drizzle);
+  const quotaLimits = new QuotaLimitRepository(drizzle);
 
   async function transaction<T>(fn: (tx: DatabaseFacade) => Promise<T>): Promise<T> {
     // Check if the drizzle client supports transactions
@@ -104,7 +119,12 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
     messages,
     generationFlows,
     generatedAssets,
+    generationJobs,
     favoriteImages,
+    invitations,
+    userSettings,
+    usageRecords,
+    quotaLimits,
     transaction,
   };
 }

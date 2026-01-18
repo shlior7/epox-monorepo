@@ -62,15 +62,10 @@ const stripExtension = (filename: string): string => filename.replace(/\.[^/.]+$
 
 const getImageIdFromKey = (key: string): string => stripExtension(getFilenameFromKey(key));
 
-const resolveGeneratedImageFilename = (image: { imageId: string; imageFilename?: string }): string =>
-  image.imageFilename ?? image.imageId;
+const resolveGeneratedImageFilename = (image: { imageId: string; imageFilename?: string }): string => image.imageFilename ?? image.imageId;
 
-const buildGeneratedAssetUrl = (
-  clientId: string,
-  sessionId: string,
-  imageId: string,
-  imageFilename?: string
-): string => `clients/${clientId}/sessions/${sessionId}/media/${imageFilename ?? imageId}`;
+const buildGeneratedAssetUrl = (clientId: string, sessionId: string, imageId: string, imageFilename?: string): string =>
+  `clients/${clientId}/sessions/${sessionId}/media/${imageFilename ?? imageId}`;
 
 async function withTransaction<T>(fn: Parameters<typeof db.transaction>[0]): Promise<T> {
   return (await db.transaction(fn)) as T;
@@ -83,7 +78,6 @@ function mapMessage(row: DbMessage): Message {
     parts: row.parts as Message['parts'],
     timestamp: toIsoString(row.createdAt),
     inspirationImageId: row.inspirationImageId ?? undefined,
-    baseImageId: row.baseImageId ?? undefined,
     baseImageIds: row.baseImageIds ?? undefined,
   };
 }
@@ -151,11 +145,9 @@ function mapProduct(row: DbProduct, imageIds: string[], sessions: Session[]): Pr
     name: row.name,
     description: row.description ?? undefined,
     category: normalizeCategoryValue(row.category),
-    roomTypes: row.roomTypes ?? undefined,
+    sceneTypes: row.sceneTypes ?? undefined,
     productImageIds: imageIds,
     modelFilename: row.modelFilename ?? undefined,
-    favoriteGeneratedImages: row.favoriteImages ?? [],
-    sceneImages: row.sceneImages ?? [],
     createdAt: toIsoString(row.createdAt),
     updatedAt: toIsoString(row.updatedAt),
     sessions,
@@ -404,14 +396,9 @@ export async function updateProductRecord(_clientId: string, productId: string, 
   if (updates.name !== undefined) updatePayload.name = updates.name;
   if (updates.description !== undefined) updatePayload.description = updates.description ?? null;
   if (updates.category !== undefined) updatePayload.category = updates.category ?? null;
-  if (updates.roomTypes !== undefined) updatePayload.roomTypes = updates.roomTypes ?? null;
+  if (updates.sceneTypes !== undefined) updatePayload.sceneTypes = updates.sceneTypes ?? null;
   if (updates.modelFilename !== undefined) updatePayload.modelFilename = updates.modelFilename ?? null;
-  if (updates.favoriteGeneratedImages !== undefined) {
-    updatePayload.favoriteImages = updates.favoriteGeneratedImages ?? [];
-  }
-  if (updates.sceneImages !== undefined) {
-    updatePayload.sceneImages = updates.sceneImages ?? [];
-  }
+  // NOTE: favoriteGeneratedImages and sceneImages columns removed - use pinned on generated_asset
 
   await withTransaction(async (tx) => {
     if (Object.keys(updatePayload).length > 0) {

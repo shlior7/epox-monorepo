@@ -19,7 +19,7 @@ export function buildSystemImageGenerationPrompt(userPrompt: string, settings?: 
     const style = settings.style === 'Custom' ? settings.customStyle : settings.style;
     const lighting = settings.lighting === 'Custom' ? settings.customLighting : settings.lighting;
     const surroundings = settings.surroundings === 'Custom' ? settings.customSurroundings : settings.surroundings;
-    const roomType = settings.roomType;
+    const sceneType = settings.sceneType;
     const cameraAngle = settings.cameraAngle;
     const colorScheme = settings.colorScheme;
     const props = Array.isArray(settings.props) ? settings.props : null;
@@ -28,7 +28,7 @@ export function buildSystemImageGenerationPrompt(userPrompt: string, settings?: 
     if (style) parts.push(`Style: ${style}`);
     if (lighting) parts.push(`Lighting: ${lighting}`);
     if (surroundings) parts.push(`Surroundings: ${surroundings}`);
-    if (roomType) parts.push(`Room Type: ${roomType}`);
+    if (sceneType) parts.push(`Room Type: ${sceneType}`);
     if (cameraAngle) parts.push(`Camera Angle: ${cameraAngle}`);
     if (colorScheme) parts.push(`Color Scheme: ${colorScheme}`);
     if (props && props.length > 0) parts.push(`Props: ${props.join(', ')}`);
@@ -38,8 +38,8 @@ export function buildSystemImageGenerationPrompt(userPrompt: string, settings?: 
         clamped <= 3
           ? 'Follow the backdrop closely with minimal creative deviation.'
           : clamped <= 7
-          ? 'Balance fidelity to the backdrop with tasteful creativity.'
-          : 'Use the backdrop as loose inspiration with more creative freedom.';
+            ? 'Balance fidelity to the backdrop with tasteful creativity.'
+            : 'Use the backdrop as loose inspiration with more creative freedom.';
       parts.push(`Interpretation: ${clamped}/10. ${interpretation}`);
     }
     if (settings.matchProductColors) parts.push('Match the color palette to the product colors.');
@@ -52,7 +52,7 @@ export function buildSystemImageGenerationPrompt(userPrompt: string, settings?: 
       style ||
       lighting ||
       surroundings ||
-      roomType ||
+      sceneType ||
       cameraAngle ||
       colorScheme ||
       (props && props.length > 0) ||

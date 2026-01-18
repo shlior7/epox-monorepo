@@ -1,0 +1,826 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Epox Platform Design System
+ *
+ * Inspired by modern AI generation platforms (Ideogram, Kling, Midjourney)
+ * with a cinematic, premium aesthetic focused on:
+ * - Deep, rich dark backgrounds with subtle gradients
+ * - Vibrant indigo/violet primary accents with warm amber highlights
+ * - Electric cyan secondary accents for variety
+ * - Sophisticated glass morphism effects
+ * - Premium typography with clear hierarchy
+ */
+
+@layer base {
+  :root {
+    /* ====================================================================
+       CORE THEME - Dark Neutral (matching scenergy-visualizer)
+       ==================================================================== */
+
+    /* Background colors - Neutral charcoal */
+    --background: 0 0% 10%;          /* #1a1a1a - app background */
+    --background-alt: 0 0% 15%;      /* #262626 - alternate background */
+    --background-deep: 0 0% 9%;      /* #171717 - deeper surfaces */
+
+    /* Foreground/Text - Clear hierarchy */
+    --foreground: 0 0% 90%;          /* #e5e5e5 - primary text */
+    --foreground-muted: 0 0% 64%;    /* #a3a3a3 - secondary text */
+
+    /* Cards & Surfaces */
+    --card: 0 0% 15%;                /* #262626 - card background */
+    --card-foreground: 0 0% 90%;     /* #e5e5e5 - card text */
+
+    /* Popover (tooltips, dropdowns) */
+    --popover: 0 0% 15%;             /* #262626 */
+    --popover-foreground: 0 0% 90%; /* #e5e5e5 */
+
+    /* Primary - Indigo/Purple */
+    --primary: 239 84% 67%;          /* #6366f1 */
+    --primary-foreground: 0 0% 100%; /* white */
+
+    /* Secondary - Elevated surface */
+    --secondary: 0 0% 17%;           /* #2a2a2a - elevated surfaces */
+    --secondary-foreground: 0 0% 83%; /* #d4d4d4 */
+
+    /* Muted elements */
+    --muted: 0 0% 20%;               /* #333333 - muted surfaces */
+    --muted-foreground: 0 0% 45%;    /* #737373 - muted text */
+
+    /* Accent - Cyan */
+    --accent: 185 75% 50%;           /* cyan */
+    --accent-foreground: 0 0% 6%;
+
+    /* Warm accent - Amber */
+    --warm: 38 95% 55%;
+    --warm-foreground: 0 0% 6%;
+
+    /* Destructive - Red */
+    --destructive: 0 84% 60%;        /* #ef4444 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success - Green */
+    --success: 142 76% 36%;          /* #16a34a */
+    --success-foreground: 0 0% 100%;
+
+    /* Warning - Amber */
+    --warning: 38 92% 50%;           /* #f59e0b */
+    --warning-foreground: 0 0% 6%;
+
+    /* Borders & Inputs */
+    --border: 0 0% 20%;              /* #333333 */
+    --border-subtle: 0 0% 17%;       /* #2a2a2a */
+    --border-strong: 0 0% 25%;       /* #404040 */
+    --input: 0 0% 9%;                /* #171717 - input background */
+    --ring: 239 84% 67%;
+
+    /* Radius */
+    --radius: 0.5rem;
+
+    /* Shadows */
+    --shadow-color: 0 0% 0%;
+  }
+
+  /* Light theme (optional future support) */
+  .light {
+    --background: 220 20% 97%;
+    --background-alt: 220 20% 100%;
+    --background-deep: 220 15% 94%;
+
+    --foreground: 225 30% 12%;
+    --foreground-muted: 225 15% 45%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 225 30% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 30% 12%;
+
+    --primary: 239 84% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 15% 93%;
+    --secondary-foreground: 225 25% 20%;
+
+    --muted: 220 15% 90%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 185 75% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --warm: 38 95% 50%;
+    --warm-foreground: 225 15% 6%;
+
+    --destructive: 350 85% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 160 75% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 225 15% 6%;
+
+    --border: 220 15% 88%;
+    --border-subtle: 220 15% 90%;
+    --border-strong: 220 15% 82%;
+    --input: 220 15% 95%;
+    --ring: 239 84% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply antialiased;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1,
+      'ss01' 1;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Roboto', 'Arial', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Headings */
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight;
+  }
+
+  /* Code/mono elements */
+  code,
+  kbd,
+  pre {
+    font-family: 'Roboto Mono', Consolas, Monaco, monospace;
+  }
+
+  /* Custom scrollbar - Sleek and minimal */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  /* Focus visible styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-primary/30 text-foreground;
+  }
+}
+
+@layer components {
+  /* ====================================================================
+     GLOW EFFECTS - Premium accent glows
+     ==================================================================== */
+
+  .glow-primary {
+    box-shadow:
+      0 0 20px hsla(var(--primary), 0.25),
+      0 0 40px hsla(var(--primary), 0.1),
+      0 0 60px hsla(var(--primary), 0.05);
+  }
+
+  .glow-primary-sm {
+    box-shadow: 0 0 15px hsla(var(--primary), 0.2);
+  }
+
+  .glow-primary-lg {
+    box-shadow:
+      0 0 30px hsla(var(--primary), 0.35),
+      0 0 60px hsla(var(--primary), 0.15),
+      0 0 90px hsla(var(--primary), 0.05);
+  }
+
+  .glow-accent {
+    box-shadow:
+      0 0 20px hsla(var(--accent), 0.3),
+      0 0 40px hsla(var(--accent), 0.1);
+  }
+
+  .glow-warm {
+    box-shadow:
+      0 0 20px hsla(var(--warm), 0.3),
+      0 0 40px hsla(var(--warm), 0.1);
+  }
+
+  .glow-success {
+    box-shadow:
+      0 0 20px hsla(var(--success), 0.3),
+      0 0 40px hsla(var(--success), 0.1);
+  }
+
+  /* ====================================================================
+     GRADIENT TEXT - Premium text effects
+     ==================================================================== */
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--primary)) 0%,
+      hsl(260 70% 70%) 50%,
+      hsl(var(--accent)) 100%
+    );
+  }
+
+  .text-gradient-warm {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--warm)) 0%,
+      hsl(45 100% 70%) 50%,
+      hsl(var(--warm)) 100%
+    );
+  }
+
+  .text-gradient-aurora {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #6366f1 0%, #8b5cf6 25%, #06b6d4 75%, #22d3ee 100%);
+  }
+
+  /* ====================================================================
+     GLASS MORPHISM - Sophisticated frosted effects
+     ==================================================================== */
+
+  .glass {
+    @apply bg-card/60 backdrop-blur-xl;
+    border: 1px solid hsla(var(--border), 0.5);
+  }
+
+  .glass-strong {
+    @apply bg-card/80 backdrop-blur-2xl;
+    border: 1px solid hsla(var(--border), 0.6);
+  }
+
+  .glass-subtle {
+    @apply bg-card/40 backdrop-blur-lg;
+    border: 1px solid hsla(var(--border), 0.3);
+  }
+
+  /* ====================================================================
+     GRADIENT BORDERS - Premium card treatments
+     ==================================================================== */
+
+  .gradient-border {
+    position: relative;
+    background:
+      linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+      linear-gradient(135deg, hsla(var(--primary), 0.5), hsla(var(--accent), 0.5)) border-box;
+    border: 1px solid transparent;
+  }
+
+  .gradient-border-warm {
+    position: relative;
+    background:
+      linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+      linear-gradient(135deg, hsla(var(--warm), 0.5), hsla(var(--primary), 0.3)) border-box;
+    border: 1px solid transparent;
+  }
+
+  .gradient-border-subtle {
+    position: relative;
+    background:
+      linear-gradient(hsl(var(--card)), hsl(var(--card))) padding-box,
+      linear-gradient(135deg, hsla(var(--border-strong), 0.8), hsla(var(--border), 0.3)) border-box;
+    border: 1px solid transparent;
+  }
+
+  /* ====================================================================
+     SURFACES - Card and container variations
+     ==================================================================== */
+
+  .surface {
+    @apply rounded-lg border border-border bg-card;
+  }
+
+  .surface-elevated {
+    @apply rounded-lg border border-border bg-card shadow-lg;
+  }
+
+  .surface-interactive {
+    @apply rounded-lg border border-border bg-card transition-all duration-200;
+    @apply hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5;
+  }
+
+  .surface-accent {
+    @apply rounded-lg border border-primary/20 bg-primary/5;
+  }
+
+  /* ====================================================================
+     SKELETON LOADING - Animated placeholders
+     ==================================================================== */
+
+  .skeleton {
+    @apply relative overflow-hidden rounded bg-muted;
+  }
+
+  .skeleton::after {
+    @apply absolute inset-0 -translate-x-full;
+    content: '';
+    background: linear-gradient(90deg, transparent, hsla(var(--foreground), 0.04), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  /* ====================================================================
+     BACKGROUND PATTERNS - Subtle depth and texture
+     ==================================================================== */
+
+  .pattern-dots {
+    background-image: radial-gradient(hsla(var(--primary), 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .pattern-dots-dense {
+    background-image: radial-gradient(hsla(var(--primary), 0.06) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+
+  .pattern-grid {
+    background-image:
+      linear-gradient(hsla(var(--border), 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, hsla(var(--border), 0.3) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .pattern-grid-dense {
+    background-image:
+      linear-gradient(hsla(var(--border), 0.2) 1px, transparent 1px),
+      linear-gradient(90deg, hsla(var(--border), 0.2) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* ====================================================================
+     RADIAL OVERLAYS - Ambient depth effects
+     ==================================================================== */
+
+  .bg-radial {
+    background: radial-gradient(ellipse at top, hsla(var(--primary), 0.08), transparent 60%);
+  }
+
+  .bg-radial-bottom {
+    background: radial-gradient(ellipse at bottom, hsla(var(--primary), 0.05), transparent 50%);
+  }
+
+  .bg-radial-center {
+    background: radial-gradient(ellipse at center, hsla(var(--primary), 0.06), transparent 70%);
+  }
+
+  .bg-gradient-subtle {
+    background: linear-gradient(180deg, hsla(var(--primary), 0.03) 0%, transparent 50%);
+  }
+
+  /* ====================================================================
+     INTERACTIVE STATES - Hover and focus treatments
+     ==================================================================== */
+
+  .hover-lift {
+    @apply transition-all duration-200;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-0.5 shadow-lg;
+  }
+
+  .hover-glow {
+    @apply transition-all duration-200;
+  }
+
+  .hover-glow:hover {
+    box-shadow: 0 0 20px hsla(var(--primary), 0.2);
+  }
+
+  .hover-border {
+    @apply transition-colors duration-200;
+  }
+
+  .hover-border:hover {
+    @apply border-primary/50;
+  }
+
+  /* ====================================================================
+     BUTTON VARIATIONS - Beyond default variants
+     ==================================================================== */
+
+  .btn-aurora {
+    @apply relative overflow-hidden;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary)) 0%,
+      hsl(260 70% 60%) 50%,
+      hsl(var(--accent)) 100%
+    );
+    background-size: 200% 200%;
+  }
+
+  .btn-aurora:hover {
+    animation: gradient-shift 6s ease infinite;
+  }
+
+  .btn-warm {
+    background: linear-gradient(135deg, hsl(var(--warm)) 0%, hsl(45 100% 60%) 100%);
+    @apply font-semibold text-black;
+  }
+
+  .btn-glass {
+    @apply glass text-foreground hover:bg-card/80;
+  }
+
+  /* ====================================================================
+     STATUS INDICATORS - Dots and badges
+     ==================================================================== */
+
+  .status-dot {
+    @apply h-2 w-2 rounded-full;
+  }
+
+  .status-dot-success {
+    @apply bg-success;
+    box-shadow: 0 0 8px hsla(var(--success), 0.5);
+  }
+
+  .status-dot-warning {
+    @apply bg-warning;
+    box-shadow: 0 0 8px hsla(var(--warning), 0.5);
+  }
+
+  .status-dot-error {
+    @apply bg-destructive;
+    box-shadow: 0 0 8px hsla(var(--destructive), 0.5);
+  }
+
+  .status-dot-processing {
+    @apply bg-primary;
+    box-shadow: 0 0 8px hsla(var(--primary), 0.5);
+  }
+
+  .status-dot-processing:hover {
+    animation: pulse-subtle 3s ease-in-out infinite;
+  }
+
+  /* ====================================================================
+     IMAGE TREATMENTS - For generated images display
+     ==================================================================== */
+
+  .image-frame {
+    @apply overflow-hidden rounded-lg border border-border bg-card;
+  }
+
+  .image-frame-glow {
+    @apply overflow-hidden rounded-lg;
+    box-shadow:
+      0 0 0 1px hsla(var(--border), 0.5),
+      0 4px 12px hsla(var(--shadow-color), 0.3);
+  }
+
+  .image-frame-interactive {
+    @apply overflow-hidden rounded-lg border border-border bg-card transition-all duration-300;
+    @apply hover:scale-[1.02] hover:border-primary/50 hover:shadow-xl hover:shadow-primary/10;
+  }
+
+  /* ====================================================================
+     DIVIDERS - Decorative separators
+     ==================================================================== */
+
+  .divider-gradient {
+    @apply h-px w-full;
+    background: linear-gradient(90deg, transparent, hsla(var(--border), 0.8), transparent);
+  }
+
+  .divider-glow {
+    @apply h-px w-full;
+    background: linear-gradient(90deg, transparent, hsla(var(--primary), 0.5), transparent);
+  }
+}
+
+@layer utilities {
+  /* ====================================================================
+     KEYFRAMES
+     ==================================================================== */
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in-down {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slide-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slide-in-left {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 15px hsla(var(--primary), 0.15);
+    }
+    50% {
+      box-shadow: 0 0 25px hsla(var(--primary), 0.25);
+    }
+  }
+
+  @keyframes pulse-subtle {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes gradient-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ====================================================================
+     ANIMATION UTILITIES
+     ==================================================================== */
+
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-out forwards;
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.6s ease-out forwards;
+  }
+
+  .animate-fade-in-down {
+    animation: fade-in-down 0.5s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.3s ease-out forwards;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.4s ease-out forwards;
+  }
+
+  .animate-slide-in-left {
+    animation: slide-in-left 0.4s ease-out forwards;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 4s ease-in-out infinite;
+  }
+
+  .animate-pulse-subtle {
+    animation: pulse-subtle 3s ease-in-out infinite;
+  }
+
+  /* Only animate on hover */
+  .hover-animate-pulse-glow:hover {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  .hover-animate-pulse-subtle:hover {
+    animation: pulse-subtle 2.5s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-gradient {
+    animation: gradient-shift 8s ease infinite;
+    background-size: 200% 200%;
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+  }
+
+  /* ====================================================================
+     STAGGER DELAYS - For cascading animations
+     ==================================================================== */
+
+  .stagger-1 {
+    animation-delay: 0.05s;
+  }
+  .stagger-2 {
+    animation-delay: 0.1s;
+  }
+  .stagger-3 {
+    animation-delay: 0.15s;
+  }
+  .stagger-4 {
+    animation-delay: 0.2s;
+  }
+  .stagger-5 {
+    animation-delay: 0.25s;
+  }
+  .stagger-6 {
+    animation-delay: 0.3s;
+  }
+  .stagger-7 {
+    animation-delay: 0.35s;
+  }
+  .stagger-8 {
+    animation-delay: 0.4s;
+  }
+  .stagger-9 {
+    animation-delay: 0.45s;
+  }
+  .stagger-10 {
+    animation-delay: 0.5s;
+  }
+
+  /* ====================================================================
+     SCROLLBAR UTILITIES
+     ==================================================================== */
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  /* ====================================================================
+     TEXT UTILITIES
+     ==================================================================== */
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* Line clamp extensions */
+  .line-clamp-4 {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-5 {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ====================================================================
+     BACKDROP UTILITIES
+     ==================================================================== */
+
+  .backdrop-blur-xs {
+    backdrop-filter: blur(2px);
+  }
+
+  .backdrop-saturate-150 {
+    backdrop-filter: saturate(1.5);
+  }
+
+  /* ====================================================================
+     INTERACTION UTILITIES
+     ==================================================================== */
+
+  .cursor-grab {
+    cursor: grab;
+  }
+
+  .cursor-grab:active {
+    cursor: grabbing;
+  }
+
+  /* Prevent text selection on interactive elements */
+  .select-none-children * {
+    user-select: none;
+  }
+}

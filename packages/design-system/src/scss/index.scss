@@ -1,0 +1,15 @@
+/// Design System SCSS Entry Point
+/// Import this file to get access to all design system tokens
+///
+/// Usage:
+/// @use '@repo/design-system/scss' as ds;
+/// 
+/// .element {
+///   color: ds.color(ds.$indigo, 500);
+///   padding: ds.spacing('4');
+///   border-radius: ds.radius('lg');
+/// }
+
+@forward 'tokens';
+
+

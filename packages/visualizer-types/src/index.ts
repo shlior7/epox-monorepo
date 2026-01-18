@@ -11,18 +11,36 @@ export type {
   PostAdjustments,
   FlowGenerationSettings,
   PromptSettings,
+  PromptTags,
   AIModelConfig,
   CommerceProvider,
   CommerceConfig,
   ClientMetadata,
   FlowStatus,
   ImageQuality,
+  // New types for studio settings redesign
+  NativeSceneCategory,
+  InputCameraAngle,
+  SubjectAnalysis,
+  VisionAnalysisJson,
+  VisionAnalysisResult,
+  InspirationSourceType,
+  InspirationImage,
+  SceneTypeInspiration,
+  SceneTypeInspirationMap,
+  StylePreset,
+  LightingPreset,
 } from './settings';
 
 export {
   DEFAULT_POST_ADJUSTMENTS,
   DEFAULT_FLOW_SETTINGS,
   DEFAULT_PROMPT_SETTINGS,
+  DEFAULT_PROMPT_TAGS,
+  PROMPT_TAG_OPTIONS,
+  // New presets for studio settings
+  STYLE_PRESETS,
+  LIGHTING_PRESETS,
 } from './settings';
 
 // Message types
@@ -52,6 +70,7 @@ export type {
   CollectionSessionStatus,
   Message,
   GenerationFlow,
+  GenerationFlowProduct,
   GeneratedAsset,
   AssetType,
   AssetStatus,
@@ -59,11 +78,6 @@ export type {
   AssetAnalysis,
   GeneratedAssetProduct,
   FavoriteImage,
-  Tag,
-  TagAssignment,
-  TaggableEntityType,
-  UserFavorite,
-  FavoriteEntityType,
   StoreConnection,
   StoreType,
   StoreConnectionStatus,
@@ -79,6 +93,37 @@ export type {
   GenerationFlowWithAssets,
   FlowGeneratedImage,
 } from './domain';
+
+// Queue types (for scenergy-queue)
+export type {
+  AIJobType,
+  JobStatus,
+  JobPriority,
+  BaseJobPayload,
+  ImageGenerationPayload,
+  ImageGenerationSettings,
+  ImageEditPayload,
+  VideoGenerationPayload,
+  UpscalePayload,
+  BackgroundRemovalPayload,
+  JobPayloadMap,
+  JobPayload,
+  BaseJobResult,
+  ImageGenerationResult,
+  ImageEditResult,
+  VideoGenerationResult,
+  UpscaleResult,
+  BackgroundRemovalResult,
+  JobResultMap,
+  JobResult,
+  JobInfo,
+  EnqueueOptions,
+  QueueStats,
+  QueueClientConfig,
+  WorkerConfig,
+} from './queue';
+
+export { JOB_PRIORITIES } from './queue';
 
 // Database operation types
 export type {
@@ -100,10 +145,6 @@ export type {
   GeneratedAssetUpdate,
   GeneratedAssetProductCreate,
   FavoriteImageCreate,
-  TagCreate,
-  TagUpdate,
-  TagAssignmentCreate,
-  UserFavoriteCreate,
   StoreConnectionCreate,
   StoreConnectionUpdate,
   StoreSyncLogCreate,

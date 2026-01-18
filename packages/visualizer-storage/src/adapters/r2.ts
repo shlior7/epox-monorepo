@@ -7,7 +7,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import type { PresignedUrl, StorageAdapter, StorageObject, UploadOptions } from '../types.js';
+import type { PresignedUrl, StorageAdapter, StorageObject, UploadOptions } from '../types';
 
 export interface R2AdapterConfig {
   endpoint: string;

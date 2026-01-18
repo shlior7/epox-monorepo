@@ -5,9 +5,6 @@
  * Entry point of the application
  */
 
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useData } from '@/lib/contexts/DataContext';
 import { WelcomeView } from '@/components/WelcomeView';
 
 const styles = {
@@ -19,7 +16,6 @@ const styles = {
 };
 
 export default function HomePage() {
-  const { clients } = useData();
 
   // Show welcome view - no auto-redirect
   // User must explicitly select a client to proceed

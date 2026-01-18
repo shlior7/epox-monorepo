@@ -1,6 +1,6 @@
-import { getStorageAdapter } from './client.js';
-import { storagePaths } from './paths.js';
-import type { PresignedUrl, StorageAdapter, StorageFacade, UploadOptions } from './types.js';
+import { getStorageAdapter } from './client';
+import { storagePaths } from './paths';
+import type { PresignedUrl, StorageAdapter, StorageFacade, UploadOptions } from './types';
 
 function normalizeKey(clientId: string, path: string): string {
   const trimmed = path.replace(/^\/+/, '');

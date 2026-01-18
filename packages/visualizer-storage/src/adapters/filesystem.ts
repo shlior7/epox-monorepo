@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { PresignedUrl, StorageAdapter, StorageObject, UploadOptions } from '../types.js';
+import type { PresignedUrl, StorageAdapter, StorageObject, UploadOptions } from '../types';
 
 export type FilesystemAdapterConfig = {
   rootDir: string;

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Play, Plus, Trash2, Image as ImageIcon, Loader2, X, Paintbrush, Sun, Layout, Star, Bug, Copy, Pencil, MoreVertical, Layers, ImagePlus, ChevronDown, ChevronUp, Settings, Palette, MapPin, Home } from 'lucide-react';
 import clsx from 'clsx';
-import type { Flow, Product, FlowGenerationSettings } from '@/lib/types/app-types';
+import type { Flow, Product, FlowGenerationSettings, FlowGeneratedImage } from '@/lib/types/app-types';
 import * as S3Service from '@/lib/services/s3/browser';
 import { generateFilterString, hasAdjustments } from './PostAdjustmentsPanel';
 import { BaseImageGalleryPopup } from './BaseImageGalleryPopup';
@@ -234,12 +234,12 @@ export function FlowCard({
     const { settings } = flow;
 
     // Room Type
-    if (settings.roomType && settings.roomType !== 'Custom') {
+    if (settings.sceneType && settings.sceneType !== 'Custom') {
       tags.push({
-        label: settings.roomType,
+        label: settings.sceneType,
         icon: <Home />,
         type: 'scene',
-        settings: { roomType: settings.roomType },
+        settings: { sceneType: settings.sceneType },
       });
     }
 

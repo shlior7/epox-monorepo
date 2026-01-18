@@ -17,7 +17,7 @@ export const STYLE_OPTIONS = [
   'Custom',
 ];
 
-export const ROOM_TYPES = [
+export const SCENE_TYPES = [
   'Studio Set',
   'Office',
   'Living Room',
@@ -98,7 +98,7 @@ export interface StockScene {
   name: string;
   imageUrl: string;
   category: string;
-  roomType: string;
+  sceneType: string;
 }
 
 export const STOCK_SCENES: StockScene[] = [
@@ -107,55 +107,55 @@ export const STOCK_SCENES: StockScene[] = [
     name: 'Modern Loft',
     imageUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
     category: 'Interior',
-    roomType: 'Living Room',
+    sceneType: 'Living Room',
   },
   {
     id: 's2',
     name: 'Scandi Office',
     imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800',
     category: 'Interior',
-    roomType: 'Office',
+    sceneType: 'Office',
   },
   {
     id: 's3',
     name: 'Cozy Bedroom',
     imageUrl: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=800',
     category: 'Interior',
-    roomType: 'Bedroom',
+    sceneType: 'Bedroom',
   },
   {
     id: 's4',
     name: 'Minimalist Kitchen',
     imageUrl: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800',
     category: 'Interior',
-    roomType: 'Kitchen',
+    sceneType: 'Kitchen',
   },
   {
     id: 's5',
     name: 'Outdoor Terrace',
     imageUrl: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800',
     category: 'Outdoor',
-    roomType: 'Outdoor Patio',
+    sceneType: 'Outdoor Patio',
   },
   {
     id: 's6',
     name: 'Beach View',
     imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800',
     category: 'Outdoor',
-    roomType: 'Beach',
+    sceneType: 'Beach',
   },
   {
     id: 's7',
     name: 'Garden Setting',
     imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',
     category: 'Outdoor',
-    roomType: 'Garden',
+    sceneType: 'Garden',
   },
   {
     id: 's8',
     name: 'Studio White',
     imageUrl: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=800',
     category: 'Studio',
-    roomType: 'Studio Set',
+    sceneType: 'Studio Set',
   },
 ];

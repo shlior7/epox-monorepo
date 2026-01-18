@@ -13,7 +13,7 @@ let _testDb: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
 export function getTestConnectionString(): string {
   return (
-    process.env.DATABASE_URL || 'postgresql://test:test@localhost:5433/visualizer_test'
+    process.env.DATABASE_URL || 'postgresql://test:test@localhost:5434/visualizer_test'
   );
 }
 

@@ -215,6 +215,7 @@ export function AppShell({ children }: AppShellProps) {
       alert('Product created but failed to create initial session. Please try creating a new session manually.');
     }
   };
+
   // Handle product added - automatically create first session and navigate to it
   const handleProductAdded = async (productId: string) => {
     if (!addProductClientId) return;

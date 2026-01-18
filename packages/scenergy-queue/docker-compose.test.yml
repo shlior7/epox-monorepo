@@ -1,0 +1,28 @@
+version: '3.8'
+
+# Test infrastructure for scenergy-queue
+# Redis is REQUIRED for all tests
+# PostgreSQL is OPTIONAL (from visualizer-db)
+
+services:
+  redis-test:
+    image: 'redis/redis-stack-server:latest'
+    container_name: scenergy-queue-redis-test
+    ports:
+      - '6399:6379'
+    environment:
+      REDIS_ARGS: '--maxmemory 256mb --maxmemory-policy noeviction'
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-p', '6379', 'ping']
+      interval: 1s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis-queue-test-data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  redis-queue-test-data:

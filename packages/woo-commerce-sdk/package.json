@@ -29,7 +29,7 @@
     "puppeteer": "^23.10.4"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0",
+    "@types/express": "^5.0.1",
     "@types/jest": "^29.5.14",
     "@types/lodash": "^4.14.202",
     "@types/node": "^24.1.0",

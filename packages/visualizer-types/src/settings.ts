@@ -53,59 +53,55 @@ export const DEFAULT_POST_ADJUSTMENTS: PostAdjustments = {
   },
 };
 
+// ===== PROMPT TAGS (Q&A Form) =====
+
+export interface PromptTags {
+  sceneType: string[];
+  mood: string[];
+  lighting: string[];
+  style: string[];
+  custom: string[];
+}
+
+export const DEFAULT_PROMPT_TAGS: PromptTags = {
+  sceneType: [],
+  mood: [],
+  lighting: [],
+  style: [],
+  custom: [],
+};
+
 // ===== FLOW GENERATION SETTINGS =====
 
 export interface FlowGenerationSettings {
-  // Scene settings
-  scene?: string; // Scene/backdrop name or 'Custom'
-  sceneImageUrl?: string; // URL of the backdrop image
-  customScene?: string;
+  // ===== SCENE STYLE (Section 1) =====
+  inspirationImages: InspirationImage[]; // Multiple images (raw uploads)
+  sceneTypeInspirations?: SceneTypeInspirationMap; // Grouped by detected scene type
+  stylePreset?: StylePreset; // Simple Mode dropdown
+  lightingPreset?: LightingPreset; // Simple Mode dropdown
 
-  // Environment settings
-  roomType: string;
-  style: string;
-  customStyle?: string;
-  lighting: string;
-  customLighting?: string;
-  cameraAngle: string;
+  // ===== USER PROMPT (Section 3) =====
+  // User's additional details - gets APPENDED to generated prompt, not replacing it
+  userPrompt?: string;
+
+  // ===== OUTPUT SETTINGS (Section 4) =====
   aspectRatio: string;
-  surroundings: string;
-  customSurroundings?: string;
-  colorScheme: string;
-  props: string[];
+  imageQuality?: ImageQuality;
+  variantsCount?: number;
 
-  // Generation settings
-  varietyLevel: number; // 0-100
-  matchProductColors: boolean;
-  includeAccessories: boolean;
-
-  // Prompt settings
-  promptText: string; // Auto-generated from settings above
-  customPrompt?: string; // User-written override
-  useCustomPrompt?: boolean; // Toggle: true = use customPrompt, false = use promptText
-
-  // Model settings
-  imageModel?: string; // AI model for image generation
-  imageQuality?: '1k' | '2k' | '4k'; // Output image resolution
-  postAdjustments?: PostAdjustments; // Post-processing adjustments
+  // ===== MODEL SETTINGS =====
+  imageModel?: string;
+  postAdjustments?: PostAdjustments;
 }
 
 export const DEFAULT_FLOW_SETTINGS: FlowGenerationSettings = {
-  scene: 'Studio Set',
-  roomType: 'Studio Set',
-  style: 'Modern Minimalist',
-  lighting: 'Studio Soft Light',
-  cameraAngle: 'Front',
+  inspirationImages: [],
+  sceneTypeInspirations: {},
+  stylePreset: 'Modern Minimalist',
+  lightingPreset: 'Studio Soft Light',
   aspectRatio: '1:1',
-  surroundings: 'Minimal (No Props)',
-  colorScheme: 'Neutral',
-  props: [],
-  varietyLevel: 50,
-  matchProductColors: true,
-  includeAccessories: false,
-  promptText: '',
-  customPrompt: '',
-  useCustomPrompt: false,
+  imageQuality: '2K',
+  userPrompt: '',
 };
 
 // ===== PROMPT SETTINGS (Legacy/Simple) =====
@@ -131,6 +127,15 @@ export const DEFAULT_PROMPT_SETTINGS: PromptSettings = {
   aspectRatio: '1:1 (Square)',
   numberOfVariants: 1,
 };
+
+// ===== PROMPT TAG OPTIONS (suggested values for Q&A form) =====
+
+export const PROMPT_TAG_OPTIONS = {
+  sceneType: ['Living Room', 'Bedroom', 'Office', 'Kitchen', 'Dining Room', 'Bathroom', 'Outdoor', 'Studio'],
+  mood: ['Cozy', 'Modern', 'Minimalist', 'Elegant', 'Rustic', 'Industrial', 'Bohemian', 'Luxurious'],
+  lighting: ['Natural', 'Warm', 'Soft', 'Dramatic', 'Studio', 'Golden Hour', 'Cool', 'Ambient'],
+  style: ['Scandinavian', 'Mid-Century Modern', 'Contemporary', 'Traditional', 'Art Deco', 'Farmhouse', 'Coastal', 'Japandi'],
+} as const;
 
 // ===== AI MODEL CONFIGURATION =====
 
@@ -169,4 +174,119 @@ export type FlowStatus = 'empty' | 'configured' | 'generating' | 'completed' | '
 
 // ===== IMAGE QUALITY =====
 
-export type ImageQuality = '1k' | '2k' | '4k';
+export type ImageQuality = '1K' | '2K' | '4K';
+
+// ===== SCENE CATEGORY =====
+
+export type NativeSceneCategory = 'Indoor Room' | 'Outdoor Nature' | 'Urban/Street' | 'Studio';
+
+// ===== CAMERA ANGLE =====
+
+export type InputCameraAngle = 'Frontal' | 'Angled' | 'Top-Down' | 'Low Angle';
+
+// ===== SUBJECT SCANNER OUTPUT (stored in product.analysis.subject) =====
+
+export interface SubjectAnalysis {
+  subjectClassHyphenated: string; // e.g., "Dining-Chair", "Serum-Bottle"
+  nativeSceneTypes: string[]; // ARRAY: ["Living-Room", "Office", "Bedroom"]
+  nativeSceneCategory: NativeSceneCategory;
+  inputCameraAngle: InputCameraAngle;
+  dominantColors?: string[]; // Optional: extracted palette
+  materialTags?: string[]; // Optional: "wood", "metal", "fabric"
+}
+
+// ===== VISION SCANNER OUTPUT (per inspiration image) =====
+
+export interface VisionAnalysisJson {
+  styleSummary: string; // "A serene, cream-white Japandi bedroom..."
+  detectedSceneType: string; // "Bedroom", "Office" - AI-detected from image
+  heroObjectAccessories?: {
+    identity: string;
+    materialPhysics: string;
+    placement: string;
+  } | null;
+  sceneInventory: Array<{
+    identity: string; // "Back Wall", "Floor Lamp"
+    geometry: string; // "Arched", "Tall and columnar"
+    surfacePhysics: string; // "Rough hewn limestone"
+    colorGrading: string; // "Warm terracotta"
+    spatialContext: string; // "Framing the view"
+  }>;
+  lightingPhysics: {
+    sourceDirection: string; // "Hard sunlight from top-left"
+    shadowQuality: string; // "Long, sharp shadows"
+    colorTemperature: string; // "Golden hour warm"
+  };
+}
+
+export interface VisionAnalysisResult {
+  json: VisionAnalysisJson;
+  promptText: string; // Auto-generated text prompt for UI display
+}
+
+// ===== INSPIRATION IMAGE (with metadata) =====
+
+export type InspirationSourceType = 'upload' | 'library' | 'stock' | 'unsplash';
+
+export interface InspirationImage {
+  url: string;
+  thumbnailUrl?: string;
+  tags?: string[]; // User-added or auto-detected tags
+  addedAt: string; // ISO date
+  sourceType: InspirationSourceType;
+}
+
+// ===== SCENE-TYPE GROUPED INSPIRATION (stored in flow settings) =====
+
+export interface SceneTypeInspiration {
+  inspirationImages: InspirationImage[]; // Images that match this scene type
+  mergedAnalysis: VisionAnalysisResult; // Combined/dominant analysis for this scene type
+}
+
+export type SceneTypeInspirationMap = Record<string, SceneTypeInspiration>;
+
+// ===== STYLE PRESET (for Simple Mode) =====
+
+export type StylePreset =
+  | 'Modern Minimalist'
+  | 'Scandinavian'
+  | 'Industrial'
+  | 'Bohemian'
+  | 'Mid-Century'
+  | 'Rustic'
+  | 'Coastal'
+  | 'Luxurious'
+  | 'Studio Clean';
+
+export const STYLE_PRESETS: StylePreset[] = [
+  'Modern Minimalist',
+  'Scandinavian',
+  'Industrial',
+  'Bohemian',
+  'Mid-Century',
+  'Rustic',
+  'Coastal',
+  'Luxurious',
+  'Studio Clean',
+];
+
+// ===== LIGHTING PRESET (for Simple Mode) =====
+
+export type LightingPreset =
+  | 'Natural Daylight'
+  | 'Studio Soft Light'
+  | 'Golden Hour'
+  | 'Dramatic Shadow'
+  | 'Bright & Airy'
+  | 'Moody Low-Key'
+  | 'Cool Overcast';
+
+export const LIGHTING_PRESETS: LightingPreset[] = [
+  'Natural Daylight',
+  'Studio Soft Light',
+  'Golden Hour',
+  'Dramatic Shadow',
+  'Bright & Airy',
+  'Moody Low-Key',
+  'Cool Overcast',
+];

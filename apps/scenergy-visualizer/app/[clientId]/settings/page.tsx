@@ -618,8 +618,10 @@ export default function ClientSettingsPage() {
   ];
 
   // Render inline favorites gallery for a product
-  const renderProductFavoritesGallery = (product: Product) => {
-    const favoriteImages = product.favoriteGeneratedImages || [];
+  // TODO: Implement using pinned field on generated_asset
+  const renderProductFavoritesGallery = (_product: Product) => {
+    // favoriteGeneratedImages removed - use pinned on generated_asset instead
+    const favoriteImages: { imageId: string; sessionId: string }[] = [];
 
     if (favoriteImages.length === 0) {
       return <div className={styles.inlineFavoritesEmpty}>No favorites yet. Star images in sessions to add them here.</div>;
@@ -629,16 +631,16 @@ export default function ClientSettingsPage() {
       <div className={styles.inlineFavoritesGallery}>
         {favoriteImages.map(({ imageId, sessionId }) => {
           // Check if this session belongs to the product or is a client session
-          const isProductSession = product.sessions.some((s) => s.id === sessionId);
+          const isProductSession = _product.sessions.some((s) => s.id === sessionId);
 
           // Use the correct path based on session type
           const primaryUrl = isProductSession
-            ? getImageUrl(S3Paths.getMediaFilePath(clientId, product.id, sessionId, imageId))
+            ? getImageUrl(S3Paths.getMediaFilePath(clientId, _product.id, sessionId, imageId))
             : getImageUrl(S3Paths.getClientSessionMediaFilePath(clientId, sessionId, imageId));
 
           const fallbackUrl = isProductSession
             ? getImageUrl(S3Paths.getClientSessionMediaFilePath(clientId, sessionId, imageId))
-            : getImageUrl(S3Paths.getMediaFilePath(clientId, product.id, sessionId, imageId));
+            : getImageUrl(S3Paths.getMediaFilePath(clientId, _product.id, sessionId, imageId));
 
           return (
             <div
@@ -661,7 +663,7 @@ export default function ClientSettingsPage() {
                 className={styles.removeFavoriteButton}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleRemoveFromFavorites(product.id, imageId, sessionId);
+                  handleRemoveFromFavorites(_product.id, imageId, sessionId);
                 }}
                 aria-label="Remove from favorites"
                 title="Remove from favorites"
@@ -679,7 +681,8 @@ export default function ClientSettingsPage() {
   // Per-product accordion sections
   const productAccordionSections = client.products.map((product) => {
     const hasImages = product.productImageIds.length > 0;
-    const favoriteImages = product.favoriteGeneratedImages || [];
+    // TODO: Count pinned assets from generated_asset table
+    const favoriteCount: number = 0;
 
     return {
       value: product.id,
@@ -687,8 +690,8 @@ export default function ClientSettingsPage() {
         <div className={styles.productAccordionTitle}>
           <span className={styles.productAccordionName}>{product.name}</span>
           <span className={styles.productAccordionMeta}>
-            {product.productImageIds.length} image{product.productImageIds.length !== 1 ? 's' : ''} • {favoriteImages.length} favorite
-            {favoriteImages.length !== 1 ? 's' : ''} • {product.sessions.length} session{product.sessions.length !== 1 ? 's' : ''}
+            {product.productImageIds.length} image{product.productImageIds.length !== 1 ? 's' : ''} • {favoriteCount} favorite
+            {favoriteCount !== 1 ? 's' : ''} • {product.sessions.length} session{product.sessions.length !== 1 ? 's' : ''}
           </span>
         </div>
       ),
@@ -738,7 +741,7 @@ export default function ClientSettingsPage() {
           <div className={styles.productAccordionSection}>
             <div className={styles.productAccordionSectionHeader}>
               <Star size={16} className={styles.favoriteSectionIcon} />
-              <span>Favorites ({favoriteImages.length})</span>
+              <span>Favorites ({favoriteCount})</span>
             </div>
             {renderProductFavoritesGallery(product)}
           </div>

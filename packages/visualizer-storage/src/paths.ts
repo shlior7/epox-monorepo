@@ -13,6 +13,15 @@ export const storagePaths = {
     `${CLIENT_PREFIX}/${clientId}/generations/${generationFlowId}/assets/${assetId}.${extension.replace(/^\./, '')}`,
   generationAssetOriginal: (clientId: string, generationFlowId: string, assetId: string, extension = 'png') =>
     `${CLIENT_PREFIX}/${clientId}/generations/${generationFlowId}/assets/${assetId}_original.${extension.replace(/^\./, '')}`,
+  // Session inspiration images
+  inspirationImage: (clientId: string, sessionId: string, imageId: string, extension = 'jpg') =>
+    `${CLIENT_PREFIX}/${clientId}/sessions/${sessionId}/inspirations/${imageId}.${extension.replace(/^\./, '')}`,
+  // User profile photos
+  userPhoto: (userId: string, extension = 'jpg') =>
+    `users/${userId}/photo.${extension.replace(/^\./, '')}`,
+  // Bulk download ZIPs
+  downloadZip: (clientId: string, jobId: string) =>
+    `${CLIENT_PREFIX}/${clientId}/downloads/${jobId}.zip`,
 } as const;
 
 export type StoragePaths = typeof storagePaths;

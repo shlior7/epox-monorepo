@@ -30,7 +30,7 @@ export function createDefaultConfig(): AIServiceConfig {
   return {
     gemini: {
       apiKey: process.env.GOOGLE_AI_STUDIO_API_KEY,
-      endpoint: process.env.GEMINI_API_ENDPOINT || 'https://generativelanguage.googleapis.com/v1beta',
+      endpoint: process.env.GEMINI_API_ENDPOINT ?? 'https://generativelanguage.googleapis.com/v1beta',
       imageModel: DEFAULT_AI_MODEL_CONFIG.imageModel,
       editModel: DEFAULT_AI_MODEL_CONFIG.editModel,
       fallbackImageModel: DEFAULT_AI_MODEL_CONFIG.fallbackImageModel,

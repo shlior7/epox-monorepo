@@ -8,7 +8,7 @@ import { colors, Z_INDEX } from '@/lib/styles/common-styles';
 import { Portal } from '../common/Portal';
 import { FileUploadSection, type FileUploadResult } from '../shared/FileUploadSection';
 import { buildTestId } from '@/lib/utils/test-ids';
-import { ROOM_TYPES } from '@/components/SceneStudioView/constants';
+import { SCENE_TYPES } from '@/components/SceneStudioView/constants';
 
 interface AddProductModalProps {
   isOpen: boolean;
@@ -201,7 +201,7 @@ export function AddProductModal({ isOpen, clientId, onClose, onProductAdded }: A
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [roomTypes, setRoomTypes] = useState<string[]>([]);
+  const [sceneTypes, setsceneTypes] = useState<string[]>([]);
   const [uploadResult, setUploadResult] = useState<FileUploadResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const client = clientId ? getClient(clientId) : null;
@@ -269,7 +269,7 @@ export function AddProductModal({ isOpen, clientId, onClose, onProductAdded }: A
         description.trim() || undefined,
         uploadResult.files,
         category.trim() || undefined,
-        roomTypes.length > 0 ? roomTypes : undefined
+        sceneTypes.length > 0 ? sceneTypes : undefined
       );
 
       console.log('✅ AddProductModal - Product created:', {
@@ -321,7 +321,7 @@ export function AddProductModal({ isOpen, clientId, onClose, onProductAdded }: A
       setName('');
       setDescription('');
       setCategory('');
-      setRoomTypes([]);
+      setsceneTypes([]);
       setUploadResult(null);
 
       onClose();
@@ -338,7 +338,7 @@ export function AddProductModal({ isOpen, clientId, onClose, onProductAdded }: A
       setName('');
       setDescription('');
       setCategory('');
-      setRoomTypes([]);
+      setsceneTypes([]);
       setUploadResult(null);
       onClose();
     }
@@ -412,25 +412,25 @@ export function AddProductModal({ isOpen, clientId, onClose, onProductAdded }: A
             </div>
 
             <div style={styles.formGroup}>
-              <label htmlFor="productRoomTypes" style={styles.label}>
+              <label htmlFor="productsceneTypes" style={styles.label}>
                 Room Types
               </label>
               <select
-                id="productRoomTypes"
+                id="productsceneTypes"
                 multiple
-                value={roomTypes}
+                value={sceneTypes}
                 onChange={(e) => {
                   const selected = Array.from(e.target.selectedOptions).map((option) => option.value);
-                  setRoomTypes(selected);
+                  setsceneTypes(selected);
                 }}
                 style={{ ...styles.select, height: '120px' }}
                 onFocus={(e) => (e.currentTarget.style.borderColor = colors.indigo[500])}
                 onBlur={(e) => (e.currentTarget.style.borderColor = colors.slate[600])}
                 data-testid={buildTestId('add-product-modal', 'room-types-select')}
               >
-                {ROOM_TYPES.map((roomType) => (
-                  <option key={roomType} value={roomType}>
-                    {roomType}
+                {SCENE_TYPES.map((sceneType) => (
+                  <option key={sceneType} value={sceneType}>
+                    {sceneType}
                   </option>
                 ))}
               </select>

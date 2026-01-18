@@ -19,8 +19,7 @@
   "workspaces": [
     "services/*",
     "packages/*",
-    "apps/*",
-    "workers/*"
+    "apps/*"
   ],
   "devDependencies": {
     "@evilmartians/lefthook": "^1.9.0",
@@ -35,7 +34,7 @@
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-unicorn": "^55.0.0",
     "lint-staged": "^15.2.10",
-    "prettier": "^3.3.3",
+    "prettier": "^3.4.0",
     "syncpack": "^13.0.0",
     "turbo": "^2.5.5",
     "typescript": "^5.7.2"

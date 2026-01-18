@@ -37,7 +37,7 @@ interface DataContextValue extends DataContextState {
     description: string | undefined,
     productImageFiles: File[],
     category?: string,
-    roomTypes?: string[]
+    sceneTypes?: string[]
   ) => Promise<Product>;
   updateProduct: (
     clientId: string,
@@ -125,18 +125,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const normalizeProduct = useCallback((product: Product): Product => {
     const legacyCategory = (product as { productType?: string }).productType;
     const normalizedCategory = normalizeCategoryValue(product.category ?? legacyCategory);
-    const normalizedRoomTypes = Array.isArray(product.roomTypes)
-      ? Array.from(new Set(product.roomTypes.filter(Boolean)))
+    const normalizedsceneTypes = Array.isArray(product.sceneTypes)
+      ? Array.from(new Set(product.sceneTypes.filter(Boolean)))
       : undefined;
 
     return {
       ...product,
       category: normalizedCategory,
-      roomTypes: normalizedRoomTypes,
+      sceneTypes: normalizedsceneTypes,
       productImageIds: Array.isArray(product.productImageIds) ? Array.from(new Set(product.productImageIds.filter(Boolean))) : [],
-      favoriteGeneratedImages: Array.isArray(product.favoriteGeneratedImages)
-        ? Array.from(new Set(product.favoriteGeneratedImages.filter(Boolean)))
-        : [],
     };
   }, []);
 
@@ -328,14 +325,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       description: string | undefined,
       productImageFiles: File[],
       category?: string,
-      roomTypes?: string[]
+      sceneTypes?: string[]
     ): Promise<Product> => {
       console.log(`🆕 addProduct called:`, {
         clientId,
         name,
         description,
         category,
-        roomTypes,
+        sceneTypes,
         filesCount: productImageFiles.length,
         fileNames: productImageFiles.map((f) => f.name),
       });
@@ -349,7 +346,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         throw new Error('Client not found');
       }
 
-      const normalizedRoomTypes = Array.isArray(roomTypes) ? Array.from(new Set(roomTypes.filter(Boolean))) : undefined;
+      const normalizedsceneTypes = Array.isArray(sceneTypes) ? Array.from(new Set(sceneTypes.filter(Boolean))) : undefined;
       const normalizedCategory = normalizeCategoryValue(category);
 
       // Extract image IDs from filenames (but don't upload yet)
@@ -363,17 +360,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
           name,
           description,
           category: normalizedCategory,
-          roomTypes: normalizedRoomTypes,
+          sceneTypes: normalizedsceneTypes,
         });
 
         const newProduct: Product = {
           ...createdProduct,
           description: description ?? createdProduct.description,
           category: normalizedCategory ?? createdProduct.category,
-          roomTypes: normalizedRoomTypes ?? createdProduct.roomTypes,
+          sceneTypes: normalizedsceneTypes ?? createdProduct.sceneTypes,
           productImageIds: imageIds,
-          favoriteGeneratedImages: createdProduct.favoriteGeneratedImages ?? [],
-          sceneImages: createdProduct.sceneImages ?? [],
           sessions: createdProduct.sessions ?? [],
           clientId,
         };
@@ -1077,53 +1072,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // ===== FAVORITE OPERATIONS =====
 
   const toggleFavoriteGeneratedImage = useCallback(
-    async (clientId: string, productId: string, imageId: string, sessionId: string) => {
-      try {
-        const product = getProduct(clientId, productId);
-        if (!product) {
-          throw new Error('Product not found');
-        }
-
-        const favoriteGeneratedImages = product.favoriteGeneratedImages || [];
-        const isFavorite = favoriteGeneratedImages.some((img) => img.imageId === imageId && img.sessionId === sessionId);
-
-        const updatedFavorites = isFavorite
-          ? favoriteGeneratedImages.filter((img) => img.imageId !== imageId || img.sessionId !== sessionId)
-          : [...favoriteGeneratedImages, { imageId, sessionId }];
-
-        await updateProduct(clientId, productId, { favoriteGeneratedImages: updatedFavorites }, null);
-      } catch (error) {
-        console.error('Failed to toggle favorite generated image:', error);
-        throw error;
-      }
+    async (_clientId: string, _productId: string, _imageId: string, _sessionId: string) => {
+      // TODO: Implement using pinned field on generated_asset table instead
+      console.warn('toggleFavoriteGeneratedImage: Not implemented - use pinned on generated_asset');
     },
-    [getProduct, updateProduct]
+    []
   );
 
   // ===== SCENE IMAGES OPERATIONS =====
 
   const toggleSceneImage = useCallback(
-    async (clientId: string, productId: string, imageId: string, sessionId: string) => {
-      try {
-        const product = getProduct(clientId, productId);
-        if (!product) {
-          throw new Error('Product not found');
-        }
-
-        const sceneImages = product.sceneImages || [];
-        const isScene = sceneImages.some((img) => img.imageId === imageId && img.sessionId === sessionId);
-
-        const updatedScenes = isScene
-          ? sceneImages.filter((img) => img.imageId !== imageId || img.sessionId !== sessionId)
-          : [...sceneImages, { imageId, sessionId }];
-
-        await updateProduct(clientId, productId, { sceneImages: updatedScenes }, null);
-      } catch (error) {
-        console.error('Failed to toggle scene image:', error);
-        throw error;
-      }
+    async (_clientId: string, _productId: string, _imageId: string, _sessionId: string) => {
+      // TODO: Implement using pinned field on generated_asset table instead
+      console.warn('toggleSceneImage: Not implemented - use pinned on generated_asset');
     },
-    [getProduct, updateProduct]
+    []
   );
 
   // ===== CLIENT SESSION MESSAGE OPERATIONS =====

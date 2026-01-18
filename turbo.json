@@ -16,7 +16,8 @@
         "build/**",
         "dist/**",
         ".next/**",
-        "!.next/cache/**"
+        "!.next/cache/**",
+        "src/schema/generated/**"
       ]
     },
     "test": {

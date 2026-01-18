@@ -6,7 +6,7 @@
 import { Scene, SceneGenerationSettings, SlotStatus } from '../types/app-types';
 
 // Room Types
-export const ROOM_TYPES = [
+export const SCENE_TYPES = [
   'Living Room',
   'Bedroom',
   'Kitchen',
@@ -146,7 +146,7 @@ export const DEFAULT_SCENE: Scene = STOCK_SCENES[0];
 // Default Generation Settings
 export const DEFAULT_SCENE_SETTINGS: SceneGenerationSettings = {
   scene: DEFAULT_SCENE,
-  roomType: 'Living Room',
+  sceneType: 'Living Room',
   style: 'Modern',
   lighting: 'Natural Light',
   cameraAngle: 'Eye Level',

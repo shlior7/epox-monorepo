@@ -11,9 +11,25 @@ import * as schema from './schema/index';
 let _db: ReturnType<typeof createDrizzleClient> | null = null;
 let _pool: Pool | null = null;
 
-function getWebSocketConstructor(): unknown {
-  const globalAny = globalThis as Record<string, unknown>;
-  return globalAny.WebSocket;
+/**
+ * Configure WebSocket for Neon in Node.js environment
+ * Uses 'ws' package for WebSocket support since Node.js doesn't have native WebSocket
+ *
+ * Top-level await ensures this completes before any exports are used.
+ */
+const isNode = typeof process !== 'undefined' && process.versions?.node;
+
+if (isNode && !neonConfig.webSocketConstructor) {
+  try {
+    const ws = await import('ws');
+    neonConfig.webSocketConstructor = ws.default as unknown as typeof WebSocket;
+  } catch {
+    // ws not available, will use native WebSocket if available
+    const globalAny = globalThis as Record<string, unknown>;
+    if (globalAny.WebSocket) {
+      neonConfig.webSocketConstructor = globalAny.WebSocket as typeof WebSocket;
+    }
+  }
 }
 
 function createPool() {
@@ -21,11 +37,6 @@ function createPool() {
 
   if (!databaseUrl) {
     throw new Error('DATABASE_URL environment variable is not set');
-  }
-
-  const webSocketConstructor = getWebSocketConstructor();
-  if (webSocketConstructor) {
-    neonConfig.webSocketConstructor = webSocketConstructor as any;
   }
 
   return new Pool({ connectionString: databaseUrl });

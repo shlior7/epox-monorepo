@@ -92,7 +92,7 @@ export interface ComponentAnalysisResult {
 }
 
 export interface SceneAnalysisResult {
-  roomType: string;
+  sceneType: string;
   style: string;
   lighting: string;
   cameraAngle: string;

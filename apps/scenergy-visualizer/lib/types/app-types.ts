@@ -138,7 +138,7 @@ export interface FlowGenerationSettings {
   scene?: string; // Scene/backdrop name or 'Custom'
   sceneImageUrl?: string; // URL of the backdrop image
   customScene?: string;
-  roomType: string;
+  sceneType: string;
   style: string;
   customStyle?: string;
   lighting: string;
@@ -173,7 +173,7 @@ export interface FlowGeneratedImage {
 
 export const DEFAULT_FLOW_SETTINGS: FlowGenerationSettings = {
   scene: 'Studio Set',
-  roomType: 'Studio Set',
+  sceneType: 'Studio Set',
   style: 'Modern Minimalist',
   lighting: 'Studio Soft Light',
   cameraAngle: 'Front',
@@ -241,11 +241,9 @@ export interface Product {
   name: string;
   description?: string;
   category?: string; // User-defined category (lowercase)
-  roomTypes?: string[]; // Room types this product is associated with
+  sceneTypes?: string[]; // Room types this product is associated with
   productImageIds: string[]; // References to product images in media folder
   modelFilename?: string; // Stored GLB filename in S3 (media/models/)
-  favoriteGeneratedImages?: { imageId: string; sessionId: string }[]; // References to favorite/starred generated images from sessions
-  sceneImages?: { imageId: string; sessionId: string }[]; // References to images saved as scenes for backdrop use
   createdAt: string; // ISO 8601 format
   updatedAt: string; // ISO 8601 format
   sessions: Session[];
@@ -256,10 +254,9 @@ export interface CreateProductPayload {
   name: string;
   description?: string;
   category?: string;
-  roomTypes?: string[];
+  sceneTypes?: string[];
   modelFilename?: string;
-  favoriteGeneratedImages?: { imageId: string; sessionId: string }[];
-  sceneImages?: { imageId: string; sessionId: string }[];
+  // NOTE: favoriteGeneratedImages and sceneImages removed - use pinned on generated_asset
 }
 
 export interface CreateSessionPayload {
@@ -439,7 +436,7 @@ export interface Scene {
  */
 export interface SceneGenerationSettings {
   scene: Scene;
-  roomType: string;
+  sceneType: string;
   style: string;
   lighting: string;
   cameraAngle: string;

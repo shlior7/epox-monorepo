@@ -13,8 +13,6 @@ import type {
   AssetStatus,
   ApprovalStatus,
   AssetAnalysis,
-  TaggableEntityType,
-  FavoriteEntityType,
   StoreType,
   StoreConnectionStatus,
   SyncAction,
@@ -44,7 +42,7 @@ export interface ProductCreate {
   name: string;
   description?: string;
   category?: string;
-  roomTypes?: string[];
+  sceneTypes?: string[]; // Renamed from sceneTypes
   modelFilename?: string;
   isFavorite?: boolean;
   source?: ProductSource;
@@ -64,7 +62,7 @@ export interface ProductUpdate {
   name?: string;
   description?: string | null;
   category?: string | null;
-  roomTypes?: string[] | null;
+  sceneTypes?: string[] | null; // Renamed from sceneTypes
   modelFilename?: string | null;
   isFavorite?: boolean;
   source?: ProductSource;
@@ -112,6 +110,7 @@ export interface CollectionSessionCreate {
   status?: CollectionSessionStatus;
   productIds?: string[];
   selectedBaseImages?: Record<string, string>;
+  settings?: FlowGenerationSettings;
 }
 
 export interface CollectionSessionUpdate {
@@ -119,6 +118,7 @@ export interface CollectionSessionUpdate {
   status?: CollectionSessionStatus;
   productIds?: string[];
   selectedBaseImages?: Record<string, string>;
+  settings?: FlowGenerationSettings;
 }
 
 // ===== MESSAGE =====
@@ -126,7 +126,6 @@ export interface CollectionSessionUpdate {
 export interface MessageCreate {
   role: MessageRole;
   parts: MessagePart[];
-  baseImageId?: string;
   baseImageIds?: Record<string, string>;
   inspirationImageId?: string;
 }
@@ -139,7 +138,6 @@ export interface MessageUpdate {
 
 export interface GenerationFlowCreate {
   collectionSessionId?: string | null;
-  clientId: string;
   name?: string;
   productIds?: string[];
   selectedBaseImages?: Record<string, string>;
@@ -177,6 +175,7 @@ export interface GeneratedAssetCreate {
   approvedAt?: Date | null;
   approvedBy?: string | null;
   completedAt?: Date | null;
+  pinned?: boolean;
 }
 
 export interface GeneratedAssetUpdate {
@@ -194,6 +193,8 @@ export interface GeneratedAssetUpdate {
   approvedAt?: Date | null;
   approvedBy?: string | null;
   completedAt?: Date | null;
+  pinned?: boolean;
+  deletedAt?: Date | null;
 }
 
 // ===== GENERATED ASSET PRODUCT =====
@@ -209,35 +210,6 @@ export interface GeneratedAssetProductCreate {
 export interface FavoriteImageCreate {
   clientId: string;
   generatedAssetId: string;
-}
-
-// ===== TAG =====
-
-export interface TagCreate {
-  clientId: string;
-  name: string;
-  color?: string;
-}
-
-export interface TagUpdate {
-  name?: string;
-  color?: string | null;
-}
-
-// ===== TAG ASSIGNMENT =====
-
-export interface TagAssignmentCreate {
-  tagId: string;
-  entityType: TaggableEntityType;
-  entityId: string;
-}
-
-// ===== USER FAVORITE =====
-
-export interface UserFavoriteCreate {
-  userId: string;
-  entityType: FavoriteEntityType;
-  entityId: string;
 }
 
 // ===== STORE CONNECTION =====

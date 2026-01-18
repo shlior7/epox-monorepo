@@ -66,7 +66,7 @@ const SCHEMA_NAME = 'public';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const packageRoot = path.resolve(__dirname, '..');
-const outputPath = path.join(packageRoot, 'src/schema/db-types.generated.ts');
+const outputPath = path.join(packageRoot, 'src/schema/generated/db-types.generated.ts');
 
 export function toCamelCase(value: string): string {
   const normalized = value.replace(/[_\s-]+([a-zA-Z0-9])/g, (_, char: string) => {

@@ -1,30 +1,32 @@
-import { GoogleGenAI, ImageConfig } from '@google/genai';
+import type { ImageConfig } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { createDefaultConfig } from '../config';
-const AI_CONFIG = createDefaultConfig();
 import { AI_MODELS, ERROR_MESSAGES } from '../constants';
 import { estimateTokenUsage } from '../utils';
+const AI_CONFIG = createDefaultConfig();
 
 /** Gemini 3 model ID - required for 2K/4K image generation */
 const GEMINI_3_MODEL = 'gemini-3-pro-image-preview';
 
-import {
-  extractMaterials,
-  extractColors,
-  extractStyle,
-  getDefaultAnalysisFromFileName,
-  fileToGenerativePart,
-  normalizeImageInput,
-} from './utils';
+import type { ProductAnalysis, ProductAsset } from '../types';
 import type {
-  GeminiGenerationRequest,
-  GeminiGenerationResponse,
+  ComponentAnalysisResult,
   EditImageRequest,
   EditImageResponse,
-  ComponentAnalysisResult,
+  GeminiGenerationRequest,
+  GeminiGenerationResponse,
   SceneAnalysisResult,
-  AdjustmentHint,
+  SubjectScannerOutput,
+  VisionScannerOutput,
 } from './types';
-import type { ProductAsset, ProductAnalysis } from '../types';
+import {
+  extractColors,
+  extractMaterials,
+  extractStyle,
+  fileToGenerativePart,
+  getDefaultAnalysisFromFileName,
+  normalizeImageInput,
+} from './utils';
 
 const COMPONENT_ANALYSIS_PROMPT = `Analyze this image and identify all the distinct visual components/elements in it.
 
@@ -77,7 +79,7 @@ const SCENE_ANALYSIS_PROMPT = `Analyze this interior/scene image and extract the
 Your response must be a valid JSON object with these exact fields:
 
 {
-  "roomType": "one of: Studio Set, Office, Living Room, Bedroom, Kitchen, Outdoor Patio, Rooftop Terrace, Garden, Poolside Deck, Beach, or Custom",
+  "sceneType": "one of: Studio Set, Office, Living Room, Bedroom, Kitchen, Outdoor Patio, Rooftop Terrace, Garden, Poolside Deck, Beach, or Custom",
   "style": "one of: Modern Minimalist, Luxury / Premium, Rustic / Natural, Scandinavian, Industrial Loft, Futuristic / Tech, Bohemian Chic, Coastal / Mediterranean, Vintage / Retro, Artistic Conceptual, or Custom",
   "lighting": "one of: Natural Daylight, Golden Hour / Sunset Glow, Studio Soft Light, Bright Noon Sunlight, Overcast Ambient, Neon / LED Accent, Candlelight / Warm Interior, HDRI Environmental Light, or Custom",
   "cameraAngle": "one of: Front, 3/4 View, Side, Top-Down, Eye-Level",
@@ -89,19 +91,81 @@ Your response must be a valid JSON object with these exact fields:
 
 `;
 
+// ===== VISION SCANNER PROMPT (for inspiration image analysis) =====
+const VISION_SCANNER_PROMPT = `You are a Forensic Interior Architecture Scanner. Your goal is to analyze the input image and extract a structured inventory of visual elements for a generative 3D reconstruction pipeline.
+
+### CRITICAL INSTRUCTIONS
+1. **NO SUMMARIZATION:** Do not describe the "vibe." Break the scene down into atomic elements.
+2. **STRICT JSON OUTPUT:** You must output ONLY valid JSON. No markdown formatting, no conversational text.
+3. **UNIVERSAL SCANNING:** Detect every major surface, prop, and light source.
+4. **STYLING DETECTION:** Explicitly look for accessories placed ON the main furniture/subject in the reference (e.g., throw blankets, pillows, open books) and extract them separately.
+
+### OUTPUT SCHEMA (JSON)
+{
+  "styleSummary": "A concise, one-sentence visual hook describing the overall vibe (e.g., 'A serene, cream-white Japandi bedroom with soft organic curves.')",
+  "detectedSceneType": "The type of scene/room detected (e.g., 'Bedroom', 'Living-Room', 'Office', 'Kitchen', 'Garden', 'Studio'). Use hyphenated format for multi-word types.",
+  "heroObjectAccessories": {
+    "description": "If the reference image contains a main object (like a bed, sofa, or table) with decor ON it, describe it here. If none, return null.",
+    "identity": "String (e.g., 'Chunky Knit Throw Blanket', 'Ceramic Vase with dried flowers')",
+    "materialPhysics": "String (e.g., 'Cream wool with heavy drape', 'Matte white porcelain')",
+    "placement": "String (e.g., 'Draped casually over the bottom left corner', 'Centered on the table surface')"
+  },
+  "sceneInventory": [
+    {
+      "identity": "String (e.g., 'Back Wall', 'Curtain', 'Floor Lamp')",
+      "geometry": "String (e.g., 'Arched', 'Tall and columnar', 'Flat and expansive')",
+      "surfacePhysics": "String (e.g., 'Rough hewn limestone', 'Semi-transparent linen', 'Polished concrete')",
+      "colorGrading": "String (e.g., 'Warm terracotta', 'Desaturated sage green', 'Deep navy')",
+      "spatialContext": "String (e.g., 'Framing the view', 'Draping loosely over the window', 'Receding into shadow')"
+    }
+  ],
+  "lightingPhysics": {
+    "sourceDirection": "String (e.g., 'Hard sunlight from top-left')",
+    "shadowQuality": "String (e.g., 'Long, sharp, high-contrast shadows')",
+    "colorTemperature": "String (e.g., 'Golden hour warm', 'Cool overcast blue')"
+  }
+}
+`;
+
+// ===== SUBJECT SCANNER PROMPT (for product image analysis) =====
+const SUBJECT_SCANNER_PROMPT = `You are a Product Taxonomy and Computer Vision Analyst. Your goal is to analyze the input product image and output strict metadata to control a generative pipeline.
+
+### OUTPUT SCHEMA (JSON)
+{
+  "subjectClassHyphenated": "String (e.g., 'Dining-Chair', 'Serum-Bottle', 'Floor-Lamp', 'Coffee-Table'). Hyphenate multi-word names to treat them as a single token.",
+  "nativeSceneTypes": "Array of strings - ALL logical environments where this object could naturally function. Use hyphenated format. Examples: ['Living-Room', 'Office', 'Bedroom'] for a chair, ['Bathroom', 'Vanity-Counter'] for skincare, ['Kitchen', 'Dining-Room'] for cookware.",
+  "nativeSceneCategory": "Enum (Select ONE strictly: 'Indoor Room', 'Outdoor Nature', 'Urban/Street', 'Studio'). Based on where this product is typically used.",
+  "inputCameraAngle": "Enum (Select ONE strictly: 'Frontal', 'Angled', 'Top-Down', 'Low Angle'). Based on the product's perspective in the frame.",
+  "dominantColors": "Array of color names detected in the product (e.g., ['Walnut Brown', 'Brass Gold', 'Cream White'])",
+  "materialTags": "Array of material keywords (e.g., ['wood', 'metal', 'fabric', 'glass', 'leather', 'ceramic'])"
+}
+
+### IMPORTANT RULES
+1. For nativeSceneTypes, include ALL plausible scene types where this product could be placed. A dining chair could work in a dining room, office, or living room. A bed only works in a bedroom.
+2. Use hyphenated format for multi-word scene types: "Living-Room" not "Living Room"
+3. Be specific with subjectClassHyphenated - "Accent-Chair" is better than just "Chair"
+4. Detect the actual camera angle from the image perspective, not what would be ideal
+`;
+
 const SUPPORTED_ASPECT_RATIOS = new Set(['1:1', '3:4', '4:3', '9:16', '16:9']);
 
 const normalizeAspectRatio = (value?: string): string => {
-  const fallback = AI_CONFIG.optimization?.defaultAspectRatio || '1:1';
-  if (!value) return fallback;
-  const match = value.match(/\d+:\d+/);
-  if (!match) return fallback;
+  const fallback = AI_CONFIG.optimization?.defaultAspectRatio ?? '1:1';
+  if (!value) {
+    return fallback;
+  }
+  const match = /\d+:\d+/.exec(value);
+  if (!match) {
+    return fallback;
+  }
   const ratio = match[0];
   return SUPPORTED_ASPECT_RATIOS.has(ratio) ? ratio : fallback;
 };
 
 const normalizeImageSize = (value?: string, model?: string): string | undefined => {
-  if (!value) return undefined;
+  if (!value) {
+    return undefined;
+  }
   const normalized = value.toUpperCase();
 
   if (model !== GEMINI_3_MODEL) {
@@ -132,7 +196,7 @@ export class GeminiService {
     const useVertex = process.env.GOOGLE_GENAI_USE_VERTEXAI === 'true';
     if (useVertex) {
       const vertexProject = process.env.GOOGLE_CLOUD_PROJECT;
-      const vertexLocation = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+      const vertexLocation = process.env.GOOGLE_CLOUD_LOCATION ?? 'us-central1';
       if (!vertexProject) {
         throw new Error('Vertex AI requires GOOGLE_CLOUD_PROJECT environment variable.');
       }
@@ -197,7 +261,7 @@ export class GeminiService {
   async editImage(request: EditImageRequest): Promise<EditImageResponse> {
     const { baseImageDataUrl, prompt, referenceImages, modelOverrides } = request;
 
-    console.log('🎨 Editing image with prompt:', prompt.substring(0, 100) + '...');
+    console.log('🎨 Editing image with prompt:', `${prompt.substring(0, 100)}...`);
 
     // Build the edit prompt with guard rails
     const editGuard =
@@ -208,8 +272,8 @@ export class GeminiService {
 
     // Use Gemini models for editing - they support multimodal input/output via generateContent API
     // Default to Gemini 3 Pro Image for best editing results, fallback to Gemini 2.5 Flash Image
-    const primaryModel = modelOverrides?.imageModel || this.editModel;
-    const fallbackModel = modelOverrides?.fallbackImageModel || this.fallbackImageModel;
+    const primaryModel = modelOverrides?.imageModel ?? this.editModel;
+    const fallbackModel = modelOverrides?.fallbackImageModel ?? this.fallbackImageModel;
 
     console.log(`🔧 Using ${primaryModel} for image editing`);
 
@@ -222,7 +286,7 @@ export class GeminiService {
    */
   private async urlToBase64(imageUrl: string): Promise<{ mimeType: string; base64Data: string }> {
     // If it's already a data URL, extract the parts
-    const base64Match = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+    const base64Match = /^data:([^;]+);base64,(.+)$/.exec(imageUrl);
     if (base64Match) {
       return {
         mimeType: base64Match[1],
@@ -232,10 +296,10 @@ export class GeminiService {
 
     // If it's a regular URL, fetch and convert to base64
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('/')) {
-      console.log('📥 Fetching image from URL:', imageUrl.substring(0, 100) + '...');
+      console.log('📥 Fetching image from URL:', `${imageUrl.substring(0, 100)}...`);
 
       // Handle relative URLs
-      const fetchUrl = imageUrl.startsWith('/') ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${imageUrl}` : imageUrl;
+      const fetchUrl = imageUrl.startsWith('/') ? `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}${imageUrl}` : imageUrl;
 
       const response = await fetch(fetchUrl);
       if (!response.ok) {
@@ -244,7 +308,7 @@ export class GeminiService {
 
       const arrayBuffer = await response.arrayBuffer();
       const base64Data = Buffer.from(arrayBuffer).toString('base64');
-      const mimeType = response.headers.get('content-type') || 'image/png';
+      const mimeType = response.headers.get('content-type') ?? 'image/png';
 
       return { mimeType, base64Data };
     }
@@ -262,7 +326,7 @@ export class GeminiService {
     fallbackModel: string
   ): Promise<EditImageResponse> {
     console.log('🚀 Sending edit request to Gemini...');
-    console.log('📷 Base image URL type:', baseImageDataUrl.substring(0, 50) + '...');
+    console.log('📷 Base image URL type:', `${baseImageDataUrl.substring(0, 50)}...`);
 
     const imageClient = this.vertexClient ?? this.client;
     const modelName = this.vertexClient ? normalizeVertexModelName(primaryModel) : primaryModel;
@@ -298,7 +362,7 @@ export class GeminiService {
           if (candidate.content?.parts) {
             for (const part of candidate.content.parts) {
               if ('inlineData' in part && part.inlineData?.data) {
-                const resultMimeType = part.inlineData.mimeType || 'image/png';
+                const resultMimeType = part.inlineData.mimeType ?? 'image/png';
                 console.log('✅ Image editing complete with Gemini');
                 return {
                   editedImageDataUrl: `data:${resultMimeType};base64,${part.inlineData.data}`,
@@ -339,7 +403,7 @@ export class GeminiService {
             if (candidate.content?.parts) {
               for (const part of candidate.content.parts) {
                 if ('inlineData' in part && part.inlineData?.data) {
-                  const resultMimeType = part.inlineData.mimeType || 'image/png';
+                  const resultMimeType = part.inlineData.mimeType ?? 'image/png';
                   console.log('✅ Image editing complete with fallback Gemini model');
                   return {
                     editedImageDataUrl: `data:${resultMimeType};base64,${part.inlineData.data}`,
@@ -386,7 +450,7 @@ export class GeminiService {
               if (candidate.content?.parts) {
                 for (const part of candidate.content.parts) {
                   if ('inlineData' in part && part.inlineData?.data) {
-                    const resultMimeType = part.inlineData.mimeType || 'image/png';
+                    const resultMimeType = part.inlineData.mimeType ?? 'image/png';
                     console.log('✅ Image editing complete with fallback Gemini model');
                     return {
                       editedImageDataUrl: `data:${resultMimeType};base64,${part.inlineData.data}`,
@@ -415,12 +479,12 @@ export class GeminiService {
     aspectRatio: string,
     imageSize?: string
   ): Promise<GeminiGenerationResponse> {
-    const imageCount = Math.max(1, request.count || 1);
+    const imageCount = Math.max(1, request.count ?? 1);
 
     console.log(`🎨 GEMINI: Generating ${imageCount} images with ${primaryModel}...`);
 
     // Build prompt with any reference context
-    let finalPrompt = request.prompt;
+    const finalPrompt = request.prompt;
 
     if (request.productImages && request.productImages.length > 0) {
       console.log(`📦 Including ${request.productImages.length} product reference images`);
@@ -434,9 +498,9 @@ export class GeminiService {
     console.log('🚀 Making Gemini generateContent API call...');
 
     const imageClient = this.vertexClient ?? this.client;
-    let usedModel = primaryModel;
+    const usedModel = primaryModel;
     const imageConfig: ImageConfig | undefined =
-      imageSize || aspectRatio ? { ...(aspectRatio && { aspectRatio }), ...(imageSize && { imageSize }) } : undefined;
+      (imageSize ?? aspectRatio) ? { ...(aspectRatio && { aspectRatio }), ...(imageSize && { imageSize }) } : undefined;
 
     console.log('⚙️ Image config:', imageConfig);
     try {
@@ -499,10 +563,10 @@ export class GeminiService {
             for (const part of candidate.content.parts) {
               // Check for inline image data
               if ('inlineData' in part && part.inlineData?.data) {
-                const mimeType = part.inlineData.mimeType || 'image/png';
+                const mimeType = part.inlineData.mimeType ?? 'image/png';
                 images.push({
                   url: `data:${mimeType};base64,${part.inlineData.data}`,
-                  format: mimeType.split('/')[1] || 'png',
+                  format: mimeType.split('/')[1] ?? 'png',
                   width: 1024,
                   height: 1024,
                 });
@@ -546,16 +610,14 @@ export class GeminiService {
     const imageSize = normalizeImageSize(request.imageQuality);
 
     // Use model override if provided, otherwise fall back to instance defaults
-    let primaryModel = request.modelOverrides?.imageModel || this.imageModel;
+    let primaryModel = request.modelOverrides?.imageModel ?? this.imageModel;
     console.log(`🎯 Requested model: ${primaryModel}`);
     console.log(`🖼️ Requested image size: ${imageSize}`);
 
     // Enforce Gemini 3 for 2K/4K image quality
-    if (imageSize === '2K' || imageSize === '4K') {
-      if (primaryModel !== GEMINI_3_MODEL) {
-        console.log(`📐 High-res (${imageSize}) requested - enforcing ${GEMINI_3_MODEL}`);
-        primaryModel = GEMINI_3_MODEL;
-      }
+    if ((imageSize === '2K' || imageSize === '4K') && primaryModel !== GEMINI_3_MODEL) {
+      console.log(`📐 High-res (${imageSize}) requested - enforcing ${GEMINI_3_MODEL}`);
+      primaryModel = GEMINI_3_MODEL;
     }
 
     return this.generateImagesWithGemini(request, primaryModel, aspectRatio, imageSize);
@@ -565,7 +627,7 @@ export class GeminiService {
    * Analyze scene image using Gemini vision capabilities
    */
   async analyzeScene(imageUrl: string): Promise<SceneAnalysisResult> {
-    console.log('🔍 Analyzing scene image:', imageUrl.substring(0, 100) + '...');
+    console.log('🔍 Analyzing scene image:', `${imageUrl.substring(0, 100)}...`);
 
     const image = await normalizeImageInput(imageUrl);
     const imagePart = {
@@ -589,7 +651,7 @@ export class GeminiService {
           responseMimeType: 'application/json',
         },
       })
-      .catch(async (error) => {
+      .catch(async (error: unknown) => {
         if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel) {
           console.warn(`⚠️ Scene analysis failed on ${this.textModel}, retrying with ${this.fallbackTextModel}...`);
           return this.client.models.generateContent({
@@ -624,7 +686,7 @@ export class GeminiService {
       });
     }
 
-    const text = response.text || '';
+    const text = response.text ?? '';
     console.log('📝 Gemini response:', text);
 
     return JSON.parse(text);
@@ -634,7 +696,7 @@ export class GeminiService {
    * Analyze image components using Gemini vision capabilities
    */
   async analyzeComponents(imageUrl: string): Promise<ComponentAnalysisResult> {
-    console.log('🔍 Analyzing image components:', imageUrl.substring(0, 100) + '...');
+    console.log('🔍 Analyzing image components:', `${imageUrl.substring(0, 100)}...`);
 
     const image = await normalizeImageInput(imageUrl);
     const imagePart = {
@@ -658,7 +720,7 @@ export class GeminiService {
           responseMimeType: 'application/json',
         },
       })
-      .catch(async (error) => {
+      .catch(async (error: unknown) => {
         if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel) {
           console.warn(`⚠️ Component analysis failed on ${this.textModel}, retrying with ${this.fallbackTextModel}...`);
           return this.client.models.generateContent({
@@ -693,7 +755,7 @@ export class GeminiService {
       });
     }
 
-    const text = response.text || '';
+    const text = response.text ?? '';
     console.log('📝 Gemini response:', text);
 
     return JSON.parse(text);
@@ -728,7 +790,7 @@ export class GeminiService {
             responseMimeType: 'application/json',
           },
         })
-        .catch(async (error) => {
+        .catch(async (error: unknown) => {
           if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel) {
             console.warn(`⚠️ Product analysis failed on ${this.textModel}, retrying with ${this.fallbackTextModel}...`);
             return this.client.models.generateContent({
@@ -762,7 +824,7 @@ export class GeminiService {
           },
         });
       }
-      const text = response.text || '';
+      const text = response.text ?? '';
 
       console.log(`💰 Analysis tokens used: ~${estimateTokenUsage(text)}`);
 
@@ -794,6 +856,146 @@ export class GeminiService {
       return getDefaultAnalysisFromFileName(asset.file.name);
     }
   }
+
+  /**
+   * Vision Scanner: Analyze inspiration/reference image for scene reconstruction
+   * Extracts structured inventory of visual elements for prompt engineering
+   */
+  async analyzeInspirationImage(imageUrl: string): Promise<VisionScannerOutput> {
+    console.log('🔍 Vision Scanner analyzing inspiration image:', `${imageUrl.substring(0, 100)}...`);
+
+    const image = await normalizeImageInput(imageUrl);
+    const imagePart = {
+      inlineData: {
+        data: image.base64Data,
+        mimeType: image.mimeType,
+      },
+    };
+
+    console.log('🚀 Sending inspiration image to Gemini for Vision Scanner analysis...');
+    let response = await this.client.models
+      .generateContent({
+        model: this.resolveTextModel(this.textModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: VISION_SCANNER_PROMPT }, imagePart],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      })
+      .catch(async (error: unknown) => {
+        if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel) {
+          console.warn(`⚠️ Vision Scanner failed on ${this.textModel}, retrying with ${this.fallbackTextModel}...`);
+          return this.client.models.generateContent({
+            model: this.resolveTextModel(this.fallbackTextModel),
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: VISION_SCANNER_PROMPT }, imagePart],
+              },
+            ],
+            config: {
+              responseMimeType: 'application/json',
+            },
+          });
+        }
+        throw error;
+      });
+
+    if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel && !response.text) {
+      console.warn(`⚠️ No text returned by ${this.textModel}, retrying with fallback ${this.fallbackTextModel}...`);
+      response = await this.client.models.generateContent({
+        model: this.resolveTextModel(this.fallbackTextModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: VISION_SCANNER_PROMPT }, imagePart],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+    }
+
+    const text = response.text ?? '';
+    console.log('📝 Vision Scanner response:', text.substring(0, 500));
+
+    return JSON.parse(text) as VisionScannerOutput;
+  }
+
+  /**
+   * Subject Scanner: Analyze product image for taxonomy and constraints
+   * Extracts product identity, compatible scene types, and camera angle
+   */
+  async analyzeProductSubject(imageUrl: string): Promise<SubjectScannerOutput> {
+    console.log('🔍 Subject Scanner analyzing product image:', `${imageUrl.substring(0, 100)}...`);
+
+    const image = await normalizeImageInput(imageUrl);
+    const imagePart = {
+      inlineData: {
+        data: image.base64Data,
+        mimeType: image.mimeType,
+      },
+    };
+
+    console.log('🚀 Sending product image to Gemini for Subject Scanner analysis...');
+    let response = await this.client.models
+      .generateContent({
+        model: this.resolveTextModel(this.textModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: SUBJECT_SCANNER_PROMPT }, imagePart],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      })
+      .catch(async (error: unknown) => {
+        if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel) {
+          console.warn(`⚠️ Subject Scanner failed on ${this.textModel}, retrying with ${this.fallbackTextModel}...`);
+          return this.client.models.generateContent({
+            model: this.resolveTextModel(this.fallbackTextModel),
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: SUBJECT_SCANNER_PROMPT }, imagePart],
+              },
+            ],
+            config: {
+              responseMimeType: 'application/json',
+            },
+          });
+        }
+        throw error;
+      });
+
+    if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel && !response.text) {
+      console.warn(`⚠️ No text returned by ${this.textModel}, retrying with fallback ${this.fallbackTextModel}...`);
+      response = await this.client.models.generateContent({
+        model: this.resolveTextModel(this.fallbackTextModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: SUBJECT_SCANNER_PROMPT }, imagePart],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+    }
+
+    const text = response.text ?? '';
+    console.log('📝 Subject Scanner response:', text.substring(0, 500));
+
+    return JSON.parse(text) as SubjectScannerOutput;
+  }
 }
 
 // Cached singleton instance - avoids re-initialization on every API route
@@ -804,8 +1006,6 @@ let cachedService: GeminiService | null = null;
  * Creates a new instance on first call, then returns the cached instance.
  */
 export function getGeminiService(): GeminiService {
-  if (!cachedService) {
-    cachedService = new GeminiService();
-  }
+  cachedService ??= new GeminiService();
   return cachedService;
 }

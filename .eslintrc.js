@@ -37,6 +37,7 @@ module.exports = {
     // '@typescript-eslint/consistent-type-exports': 'error',
     '@typescript-eslint/no-unnecessary-template-expression': 'error',
     '@typescript-eslint/no-unnecessary-condition': 'error',
+    '@typescript-eslint/prefer-nullish-coalescing': 'error',
     '@typescript-eslint/method-signature-style': 'error',
     '@typescript-eslint/no-redundant-type-constituents': 'error',
     '@typescript-eslint/no-unnecessary-type-parameters': 'error',
