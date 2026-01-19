@@ -4,7 +4,6 @@
  * by merging product subject analysis with inspiration scene analysis
  */
 
-import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import type {
   SubjectAnalysis,
@@ -13,12 +12,13 @@ import type {
   LightingPreset,
   VisionAnalysisResult,
 } from 'visualizer-types';
+import { withSecurity } from '@/lib/security';
 
 // ===== REQUEST/RESPONSE TYPES =====
 
 interface ArtDirectorRequest {
-  subjectAnalysis: SubjectAnalysis;
-  sceneTypeInspirations: SceneTypeInspirationMap;
+  subjectAnalysis?: SubjectAnalysis;
+  sceneTypeInspirations?: SceneTypeInspirationMap;
   stylePreset?: StylePreset;
   lightingPreset?: LightingPreset;
   userPrompt?: string;
@@ -72,7 +72,7 @@ function deriveGeometricDescription(cameraAngle: SubjectAnalysis['inputCameraAng
     case 'Angled':
       return 'A three-quarter perspective view.';
     case 'Top-Down':
-      return 'A direct top-down bird\'s-eye view. The surface acts as a flat canvas filling the frame, with no walls visible, focusing entirely on the texture of the ground.';
+      return "A direct top-down bird's-eye view. The surface acts as a flat canvas filling the frame, with no walls visible, focusing entirely on the texture of the ground.";
     case 'Low Angle':
       return 'A low-angle composition looking slightly upwards. The horizon is low, emphasizing the height of the vertical elements and sky.';
     default:
@@ -86,7 +86,7 @@ function deriveGeometricDescription(cameraAngle: SubjectAnalysis['inputCameraAng
  */
 function findMatchingInspiration(
   productSceneTypes: string[],
-  sceneTypeInspirations: SceneTypeInspirationMap
+  sceneTypeInspirations: SceneTypeInspirationMap | undefined = {}
 ): { matchedSceneType: string; analysis: VisionAnalysisResult } | null {
   const availableSceneTypes = Object.keys(sceneTypeInspirations);
 
@@ -145,11 +145,13 @@ function buildSceneNarrative(
   );
 
   // The Shell (walls and floor from scene inventory)
-  const walls = visionAnalysis.json.sceneInventory.find(
-    (item) => item.identity.toLowerCase().includes('wall')
+  const walls = visionAnalysis.json.sceneInventory.find((item) =>
+    item.identity.toLowerCase().includes('wall')
   );
   const floor = visionAnalysis.json.sceneInventory.find(
-    (item) => item.identity.toLowerCase().includes('floor') || item.identity.toLowerCase().includes('ground')
+    (item) =>
+      item.identity.toLowerCase().includes('floor') ||
+      item.identity.toLowerCase().includes('ground')
   );
 
   if (walls || floor) {
@@ -160,7 +162,7 @@ function buildSceneNarrative(
     if (floor) {
       shellParts.push(`the ${floor.identity} is ${floor.surfacePhysics}`);
     }
-    parts.push(shellParts.join(' and ') + '.');
+    parts.push(`${shellParts.join(' and ')}.`);
   }
 
   // The Styling (hero accessories)
@@ -200,77 +202,70 @@ function buildSceneNarrative(
 
 // ===== MAIN HANDLER =====
 
-export async function POST(request: NextRequest): Promise<NextResponse<ArtDirectorResponse>> {
-  try {
-    const body: ArtDirectorRequest = await request.json();
+export const POST = withSecurity(async (request): Promise<NextResponse<ArtDirectorResponse>> => {
+  const body: ArtDirectorRequest = await request.json();
 
-    const { subjectAnalysis, sceneTypeInspirations, stylePreset, lightingPreset, userPrompt } = body;
+  const { subjectAnalysis, sceneTypeInspirations, stylePreset, lightingPreset, userPrompt } = body;
 
-    if (!subjectAnalysis) {
-      return NextResponse.json({ success: false, error: 'Missing subjectAnalysis' }, { status: 400 });
-    }
+  if (!subjectAnalysis) {
+    return NextResponse.json({ success: false, error: 'Missing subjectAnalysis' }, { status: 400 });
+  }
 
-    // Find matching inspiration for this product
-    const match = findMatchingInspiration(subjectAnalysis.nativeSceneTypes, sceneTypeInspirations);
+  // Find matching inspiration for this product
+  const match = findMatchingInspiration(subjectAnalysis.nativeSceneTypes, sceneTypeInspirations);
 
-    if (!match) {
-      return NextResponse.json(
-        { success: false, error: 'No inspiration images available for scene type matching' },
-        { status: 400 }
-      );
-    }
-
-    const { matchedSceneType, analysis: visionAnalysis } = match;
-    const subjectClass = subjectAnalysis.subjectClassHyphenated;
-
-    // Derive context variables
-    const { environmentType, designDiscipline } = deriveEnvironmentContext(subjectAnalysis.nativeSceneCategory);
-    const geometricDescription = deriveGeometricDescription(subjectAnalysis.inputCameraAngle);
-
-    // Build the 3 segments
-    const introAnchor = `Create an ${environmentType} ${subjectClass} scene with this ${subjectClass} from the attached image and keep the visual integrity of the ${subjectClass} from the attached image exactly as it is in terms of shape and size and proportion and material and color and camera angle, with the exact camera angle as in the attached image, do not change any aspect of the ${subjectClass} as it is in the attached image, and simply place this ${subjectClass} at the scene as described:`;
-
-    const sceneNarrative = buildSceneNarrative(
-      subjectClass,
-      matchedSceneType,
-      designDiscipline,
-      geometricDescription,
-      visionAnalysis,
-      stylePreset,
-      lightingPreset
-    );
-
-    // User additions (appended, not replacing)
-    const userAdditions = userPrompt?.trim() || '';
-
-    const outroAnchor = `keep the visual integrity of the ${subjectClass} from the attached image exactly as it is in terms of shape and size and proportion and material and color and camera angle, with the exact camera angle as in the attached image, do not change any aspect of the ${subjectClass} as it is in the attached image, and simply place this ${subjectClass} at the scene as described`;
-
-    // Combine segments into final prompt
-    const promptParts = [introAnchor, sceneNarrative];
-    if (userAdditions) {
-      promptParts.push(userAdditions);
-    }
-    promptParts.push(outroAnchor);
-
-    const finalPrompt = promptParts.join('\n\n');
-
-    return NextResponse.json({
-      success: true,
-      finalPrompt,
-      matchedSceneType,
-      segments: {
-        introAnchor,
-        sceneNarrative,
-        userAdditions,
-        outroAnchor,
-      },
-    });
-  } catch (error) {
-    console.error('❌ Art Director failed:', error);
+  if (!match) {
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed to construct prompt' },
-      { status: 500 }
+      { success: false, error: 'No inspiration images available for scene type matching' },
+      { status: 400 }
     );
   }
-}
 
+  const { matchedSceneType, analysis: visionAnalysis } = match;
+  const subjectClass = subjectAnalysis.subjectClassHyphenated;
+
+  // Derive context variables
+  const { environmentType, designDiscipline } = deriveEnvironmentContext(
+    subjectAnalysis.nativeSceneCategory
+  );
+  const geometricDescription = deriveGeometricDescription(subjectAnalysis.inputCameraAngle);
+
+  // Build the 3 segments
+  const introAnchor = `Create an ${environmentType} ${subjectClass} scene with this ${subjectClass} from the attached image and keep the visual integrity of the ${subjectClass} from the attached image exactly as it is in terms of shape and size and proportion and material and color and camera angle, with the exact camera angle as in the attached image, do not change any aspect of the ${subjectClass} as it is in the attached image, and simply place this ${subjectClass} at the scene as described:`;
+
+  const sceneNarrative = buildSceneNarrative(
+    subjectClass,
+    matchedSceneType,
+    designDiscipline,
+    geometricDescription,
+    visionAnalysis,
+    stylePreset,
+    lightingPreset
+  );
+
+  // User additions (appended, not replacing)
+  const userAdditions = userPrompt?.trim() ?? '';
+
+  const outroAnchor = `keep the visual integrity of the ${subjectClass} from the attached image exactly as it is in terms of shape and size and proportion and material and color and camera angle, with the exact camera angle as in the attached image, do not change any aspect of the ${subjectClass} as it is in the attached image, and simply place this ${subjectClass} at the scene as described`;
+
+  // Combine segments into final prompt
+  const promptParts = [introAnchor, sceneNarrative];
+  if (userAdditions) {
+    promptParts.push(userAdditions);
+  }
+  promptParts.push(outroAnchor);
+
+  const finalPrompt = promptParts.join('\n\n');
+
+  return NextResponse.json({
+    success: true,
+    finalPrompt,
+    matchedSceneType,
+    segments: {
+      introAnchor,
+      sceneNarrative,
+      userAdditions,
+      outroAnchor,
+    },
+  });
+});

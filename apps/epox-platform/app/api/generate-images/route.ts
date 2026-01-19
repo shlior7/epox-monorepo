@@ -3,12 +3,11 @@
  * POST /api/generate-images
  */
 
-import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
-import { getClientId } from '@/lib/services/get-auth';
 import { buildFullGenerationPrompt } from '@/lib/services/prompt-builder';
 import type { PromptTags } from '@/lib/types';
+import { withGenerationSecurity, validateUrls } from '@/lib/security';
 
 // Flexible input that accepts strings or arrays
 interface FlexiblePromptTags {
@@ -71,93 +70,105 @@ function normalizePromptTags(input?: FlexiblePromptTags): PromptTags {
   return tags;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body: GenerateImagesRequest = await request.json();
-    const {
-      sessionId,
-      productIds,
-      promptTags,
-      settings,
-      productImageUrls,
-      inspirationImageUrls,
-      urgent,
-    } = body;
-    // Always use authenticated client ID - never accept from request body
-    const clientId = await getClientId(request);
-    if (!clientId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+export const POST = withGenerationSecurity(async (request, context) => {
+  const clientId = context.clientId!;
 
-    // Validate required fields
-    if (!sessionId || !Array.isArray(productIds) || productIds.length === 0) {
+  const body: GenerateImagesRequest = await request.json();
+  const {
+    sessionId,
+    productIds,
+    promptTags,
+    settings,
+    productImageUrls,
+    inspirationImageUrls,
+    urgent,
+  } = body;
+
+  // Validate required fields
+  if (!sessionId || !Array.isArray(productIds) || productIds.length === 0) {
+    return NextResponse.json(
+      { error: 'Missing required parameters: sessionId, productIds' },
+      { status: 400 }
+    );
+  }
+
+  // Validate image URLs for SSRF protection
+  if (productImageUrls && productImageUrls.length > 0) {
+    const urlValidation = validateUrls(productImageUrls, { allowDataUrls: true });
+    if (!urlValidation.valid) {
       return NextResponse.json(
-        { error: 'Missing required parameters: sessionId, productIds' },
+        { error: 'Invalid product image URLs', details: urlValidation.errors },
         { status: 400 }
       );
     }
-
-    console.log('🚀 Starting image generation job');
-    console.log('📋 Request:', {
-      clientId,
-      sessionId,
-      productCount: productIds.length,
-      promptTags,
-    });
-
-    // Build the prompt - always include system requirements, add user prompt to custom tags
-    const normalizedTags = normalizePromptTags(promptTags);
-
-    // If user provided a custom prompt, add it to the custom tags
-    if (body.prompt?.trim()) {
-      normalizedTags.custom.push(body.prompt.trim());
-    }
-
-    const prompt = buildFullGenerationPrompt('Product', normalizedTags);
-    console.log('📝 Generated prompt:', `${prompt.substring(0, 200)}...`);
-    if (body.prompt) {
-      console.log('📝 User custom prompt included:', body.prompt);
-    }
-
-    const expectedImageCount = productIds.length * (settings?.variantsPerProduct ?? 4);
-
-    // Create job in PostgreSQL queue
-    const job = await db.generationJobs.create({
-      clientId,
-      type: 'image_generation',
-      priority: urgent ? 50 : 100, // Lower number = higher priority
-      flowId: sessionId, // sessionId is actually the generationFlowId from the studio
-      payload: {
-        prompt,
-        productIds,
-        sessionId,
-        settings: {
-          aspectRatio: settings?.aspectRatio,
-          imageQuality: settings?.imageQuality,
-          numberOfVariants: settings?.variantsPerProduct ?? 4,
-        },
-        promptTags: normalizedTags,
-        customPrompt: body.prompt?.trim() ? body.prompt.trim() : undefined,
-        productImageUrls,
-        inspirationImageUrls,
-        isClientSession: false,
-      },
-    });
-
-    console.log('✅ Job created in PostgreSQL:', job.id);
-
-    return NextResponse.json({
-      jobId: job.id,
-      jobIds: [job.id],
-      status: 'queued',
-      expectedImageCount,
-      prompt: prompt.substring(0, 500),
-      message: `Generation queued for ${productIds.length} products`,
-      queueType: 'postgres',
-    });
-  } catch (error) {
-    console.error('❌ Failed to start image generation:', error);
-    const message = error instanceof Error ? error.message : 'Failed to start image generation';
-    return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+
+  if (inspirationImageUrls && inspirationImageUrls.length > 0) {
+    const urlValidation = validateUrls(inspirationImageUrls, { allowDataUrls: true });
+    if (!urlValidation.valid) {
+      return NextResponse.json(
+        { error: 'Invalid inspiration image URLs', details: urlValidation.errors },
+        { status: 400 }
+      );
+    }
+  }
+
+  console.log('🚀 Starting image generation job');
+  console.log('📋 Request:', {
+    clientId,
+    sessionId,
+    productCount: productIds.length,
+    promptTags,
+  });
+
+  // Build the prompt - always include system requirements, add user prompt to custom tags
+  const normalizedTags = normalizePromptTags(promptTags);
+
+  // If user provided a custom prompt, add it to the custom tags
+  if (body.prompt?.trim()) {
+    normalizedTags.custom.push(body.prompt.trim());
+  }
+
+  const prompt = buildFullGenerationPrompt('Product', normalizedTags);
+  console.log('📝 Generated prompt:', `${prompt.substring(0, 200)}...`);
+  if (body.prompt) {
+    console.log('📝 User custom prompt included:', body.prompt);
+  }
+
+  const expectedImageCount = productIds.length * (settings?.variantsPerProduct ?? 4);
+
+  // Create job in PostgreSQL queue
+  const job = await db.generationJobs.create({
+    clientId,
+    type: 'image_generation',
+    priority: urgent ? 50 : 100, // Lower number = higher priority
+    flowId: sessionId, // sessionId is actually the generationFlowId from the studio
+    payload: {
+      prompt,
+      productIds,
+      sessionId,
+      settings: {
+        aspectRatio: settings?.aspectRatio,
+        imageQuality: settings?.imageQuality,
+        numberOfVariants: settings?.variantsPerProduct ?? 4,
+      },
+      promptTags: normalizedTags,
+      customPrompt: body.prompt?.trim() ? body.prompt.trim() : undefined,
+      productImageUrls,
+      inspirationImageUrls,
+      isClientSession: false,
+    },
+  });
+
+  console.log('✅ Job created in PostgreSQL:', job.id);
+
+  return NextResponse.json({
+    jobId: job.id,
+    jobIds: [job.id],
+    status: 'queued',
+    expectedImageCount,
+    prompt: prompt.substring(0, 500),
+    message: `Generation queued for ${productIds.length} products`,
+    queueType: 'postgres',
+  });
+});
