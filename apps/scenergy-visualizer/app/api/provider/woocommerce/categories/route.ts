@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createERPService, type ProviderCategory } from '@scenergy/erp-service';
-import { getDb } from 'visualizer-db';
+import { createStoreService, type ProviderCategory } from '@scenergy/erp-service';
+import { db } from 'visualizer-db';
 
 export interface WooCommerceCategory {
   id: number;
@@ -31,20 +31,11 @@ export async function POST(request: Request): Promise<NextResponse<FetchCategori
 
     console.log('🏷️ Fetching WooCommerce categories for client:', clientId);
 
-    // Use ERP service to fetch categories (handles credentials securely using clientId)
-    const erpService = createERPService(getDb());
+    // Use store service to fetch categories (handles credentials securely using clientId)
+    const storeService = createStoreService(db);
+    const providerCategories = await storeService.getCategories(clientId);
 
-    const result = await erpService.getCategories(clientId);
-
-    if (result.error) {
-      console.error('Failed to fetch WooCommerce categories:', result.error);
-      return NextResponse.json(
-        { success: false, error: result.error.message },
-        { status: 500 }
-      );
-    }
-
-    const categories: WooCommerceCategory[] = (result.data?.categories || []).map(
+    const categories: WooCommerceCategory[] = providerCategories.map(
       (cat: ProviderCategory) => ({
         id: typeof cat.id === 'string' ? parseInt(cat.id, 10) : cat.id,
         name: cat.name,

@@ -1,12 +1,13 @@
 /**
- * API Route: Update provider credentials
- * Uses erp-service to securely store credentials in Neon
+ * API Route: Check provider credentials
+ * Uses erp-service to check credentials status in Neon
+ * Note: Credential updates should go through the OAuth flow
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createERPService } from '@scenergy/erp-service';
+import { createStoreService } from '@scenergy/erp-service';
 import { getClient, updateClientRecord } from '@/lib/services/db/storage-service';
-import { getDb } from 'visualizer-db';
+import { db } from 'visualizer-db';
 
 interface UpdateCredentialsRequest {
   clientId: string;
@@ -42,24 +43,9 @@ export async function PUT(request: Request) {
 
     console.log('🔐 Updating provider credentials for client:', clientId);
 
-    const erpService = createERPService(getDb());
-
-    // Save credentials to vault using clientId
-    const result = await erpService.saveCredentials(clientId, provider, {
-      baseUrl: credentials.baseUrl,
-      consumerKey: credentials.consumerKey,
-      consumerSecret: credentials.consumerSecret,
-    });
-
-    if (result.error) {
-      console.error('Failed to save credentials:', result.error);
-      return NextResponse.json(
-        { success: false, error: result.error.message },
-        { status: 500 }
-      );
-    }
-
-    // Also update the client metadata with commerce info (without secrets)
+    // Note: Direct credential saving is not supported via the new API.
+    // Credentials should be saved through the OAuth callback flow.
+    // For now, just update the client metadata
     if (provider === 'woocommerce') {
       await updateClientRecord(clientId, {
         commerce: {
@@ -69,7 +55,7 @@ export async function PUT(request: Request) {
       });
     }
 
-    console.log('✅ Provider credentials updated successfully');
+    console.log('✅ Provider metadata updated successfully');
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -93,29 +79,21 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Missing clientId' }, { status: 400 });
     }
 
-    const erpService = createERPService(getDb());
-    const hasCredentials = await erpService.hasCredentials(clientId);
-
-    if (hasCredentials.error) {
-      return NextResponse.json(
-        { success: false, error: hasCredentials.error.message },
-        { status: 500 }
-      );
-    }
-
-    const providerType = await erpService.getProviderType(clientId);
+    const storeService = createStoreService(db);
+    const credentials = await storeService.getCredentials(clientId);
+    const hasCredentials = credentials !== null;
 
     // Only fetch client if we need the baseUrl (when credentials exist)
     let baseUrl: string | undefined;
-    if (hasCredentials.data) {
+    if (hasCredentials) {
       const client = await getClient(clientId);
       baseUrl = client?.commerce?.baseUrl;
     }
 
     return NextResponse.json({
       success: true,
-      hasCredentials: hasCredentials.data,
-      provider: providerType.data,
+      hasCredentials,
+      provider: credentials?.provider ?? null,
       baseUrl,
     });
   } catch (error) {

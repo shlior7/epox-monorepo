@@ -4,8 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createERPService } from '@scenergy/erp-service';
-import { getDb } from 'visualizer-db';
+import { providers, type ProviderType, type ProviderCredentials } from '@scenergy/erp-service';
 
 interface TestConnectionRequest {
   provider: 'woocommerce' | 'shopify' | 'wix';
@@ -36,16 +35,9 @@ export async function POST(request: Request) {
 
     console.log('🔌 Testing connection to', provider, 'at', credentials.baseUrl);
 
-    const erpService = createERPService(getDb());
-
-    // Create a temporary provider instance to test the connection
-    const testProvider = erpService.createProviderWithCredentials(provider, {
-      baseUrl: credentials.baseUrl,
-      consumerKey: credentials.consumerKey,
-      consumerSecret: credentials.consumerSecret,
-    });
-
-    const connected = await testProvider.testConnection();
+    // Get the provider implementation and test connection directly
+    const providerImpl = providers.require(provider as ProviderType);
+    const connected = await providerImpl.testConnection(credentials as ProviderCredentials);
 
     if (connected) {
       console.log('✅ Connection test successful');

@@ -3,7 +3,7 @@
  * Provides access to the store service for store connections and product imports
  */
 
-import { createStoreService, type StoreService } from 'erp-service';
+import { createStoreService, type StoreService } from '@scenergy/erp-service';
 import { db } from './db';
 
 let _storeService: StoreService | null = null;

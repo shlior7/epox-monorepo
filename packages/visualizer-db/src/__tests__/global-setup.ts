@@ -75,9 +75,7 @@ export async function setup(): Promise<void> {
   try {
     execSync('docker info', { stdio: 'pipe' });
   } catch {
-    throw new Error(
-      'Docker is not running. Please start Docker (Rancher Desktop) and try again.'
-    );
+    throw new Error('Docker is not running. Please start Docker (Rancher Desktop) and try again.');
   }
 
   // Start the test database container

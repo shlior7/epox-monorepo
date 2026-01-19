@@ -17,7 +17,7 @@
   "files": [],
   "references": [
     {
-      "path": "./packages/scenergy-types"
+      "path": "./packages/visualizer-types"
     }
   ]
 }

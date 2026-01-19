@@ -5,7 +5,7 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { getStoreService } from '@/lib/services/erp';
-import type { ShopifyCallbackParams } from 'erp-service';
+import type { ShopifyCallbackParams } from '@scenergy/erp-service';
 
 export async function GET(request: NextRequest) {
   try {

@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createERPService, type ProviderProduct } from '@scenergy/erp-service';
-import { getDb } from 'visualizer-db';
+import { createStoreService, type ProviderProduct } from '@scenergy/erp-service';
+import { db } from 'visualizer-db';
 
 // Simplified product response for the import modal
 export interface WooCommerceProductPreview {
@@ -57,30 +57,21 @@ export async function POST(request: Request): Promise<NextResponse<FetchProducts
 
     console.log('🛒 Fetching WooCommerce products for client:', clientId);
 
-    // Use ERP service to fetch products (handles credentials securely using clientId)
-    const erpService = createERPService(getDb());
+    // Use store service to fetch products (handles credentials securely using clientId)
+    const storeService = createStoreService(db);
 
     // Fetch products using clientId to retrieve credentials
-    const result = await erpService.getProducts(clientId, {
+    const result = await storeService.getProducts(clientId, {
       limit,
-      productIds,
+      ids: productIds,
       category,
-      status,
       search,
     });
 
-    if (result.error) {
-      console.error('Failed to fetch WooCommerce products:', result.error);
-      return NextResponse.json(
-        { success: false, error: result.error.message },
-        { status: 500 }
-      );
-    }
-
-    console.log(`✅ Fetched ${result.data?.products.length || 0} products from WooCommerce`);
+    console.log(`✅ Fetched ${result.items.length} products from WooCommerce`);
 
     // Transform to preview format
-    const previews: WooCommerceProductPreview[] = (result.data?.products || []).map((product: ProviderProduct) => ({
+    const previews: WooCommerceProductPreview[] = result.items.map((product: ProviderProduct) => ({
       id: typeof product.id === 'string' ? parseInt(product.id, 10) : product.id,
       name: product.name,
       description: product.description,
@@ -88,7 +79,6 @@ export async function POST(request: Request): Promise<NextResponse<FetchProducts
       images: product.images.map((img) => ({
         id: img.id,
         src: img.src,
-        name: img.name,
         alt: img.alt,
       })),
       categories: product.categories.map((cat) => ({
@@ -104,7 +94,7 @@ export async function POST(request: Request): Promise<NextResponse<FetchProducts
     return NextResponse.json({
       success: true,
       products: previews,
-      total: result.data?.total || previews.length,
+      total: result.total,
     });
   } catch (error) {
     console.error('❌ Failed to fetch WooCommerce products:', error);

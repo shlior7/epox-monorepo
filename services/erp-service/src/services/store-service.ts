@@ -4,7 +4,7 @@
 
 import crypto from 'node:crypto';
 import type { DatabaseFacade, StoreConnectionInfo, StoreType } from 'visualizer-db';
-import { providers, type AuthParams, type AuthState, type ProviderCredentials, type ProviderType } from '../providers';
+import { providers, type AuthParams, type AuthState, type FetchOptions, type ProviderCredentials, type ProviderType } from '../providers';
 import { encryptCredentials, decryptCredentials } from './credentials-crypto';
 import type { StoreCredentialsPayload } from '../types/credentials';
 
@@ -48,7 +48,7 @@ export class StoreService {
 
   // Credentials
 
-  private async saveCredentials(clientId: string, provider: ProviderType, credentials: ProviderCredentials) {
+  async saveCredentials(clientId: string, provider: ProviderType, credentials: ProviderCredentials) {
     const payload: StoreCredentialsPayload = { provider, credentials };
     await this.db.storeConnections.upsert({
       clientId,
@@ -70,7 +70,7 @@ export class StoreService {
 
   // API Operations
 
-  async getProducts(clientId: string, options?: { limit?: number; page?: number; search?: string }) {
+  async getProducts(clientId: string, options?: FetchOptions) {
     const creds = await this.requireCredentials(clientId);
     return providers.require(creds.provider).getProducts(creds.credentials, options);
   }
