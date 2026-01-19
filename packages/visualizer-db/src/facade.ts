@@ -19,6 +19,7 @@ import {
   UserSettingsRepository,
   UsageRecordRepository,
   QuotaLimitRepository,
+  StoreConnectionRepository,
 } from './repositories/index';
 
 /**
@@ -43,6 +44,7 @@ export interface DatabaseFacade {
   readonly userSettings: UserSettingsRepository;
   readonly usageRecords: UsageRecordRepository;
   readonly quotaLimits: QuotaLimitRepository;
+  readonly storeConnections: StoreConnectionRepository;
   /**
    * Execute multiple operations in a transaction.
    *
@@ -75,6 +77,7 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
   const userSettings = new UserSettingsRepository(drizzle);
   const usageRecords = new UsageRecordRepository(drizzle);
   const quotaLimits = new QuotaLimitRepository(drizzle);
+  const storeConnections = new StoreConnectionRepository(drizzle);
 
   async function transaction<T>(fn: (tx: DatabaseFacade) => Promise<T>): Promise<T> {
     // Check if the drizzle client supports transactions
@@ -125,6 +128,7 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
     userSettings,
     usageRecords,
     quotaLimits,
+    storeConnections,
     transaction,
   };
 }

@@ -1,14 +1,14 @@
-import type { ERPProviderType, ProviderCredentials } from './provider';
+import type { ProviderType, ProviderCredentials } from '../providers';
 
-export type StoreCredentialsPayload = {
-  provider: ERPProviderType;
+export interface StoreCredentialsPayload {
+  provider: ProviderType;
   credentials: ProviderCredentials;
-};
+}
 
 export interface EncryptedCredentials {
   ciphertext: string;
   iv: string;
   tag: string;
   keyId: string;
-  fingerprint: string;
+  fingerprint: string | null;
 }

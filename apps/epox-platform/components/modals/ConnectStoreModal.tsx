@@ -1,17 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import {
   Store,
   ArrowRight,
   ArrowLeft,
-  Key,
   Globe,
-  Check,
   Loader2,
-  ExternalLink,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 import {
   Dialog,
@@ -23,7 +20,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -35,6 +31,7 @@ const STORES: {
   logo: string;
   color: string;
   description: string;
+  usesOAuth: boolean;
 }[] = [
   {
     type: 'shopify',
@@ -42,6 +39,7 @@ const STORES: {
     logo: '/shopify-logo.svg',
     color: 'bg-[#95BF47]/15 border-[#95BF47]/30 hover:border-[#95BF47]',
     description: 'Connect your Shopify store',
+    usesOAuth: true,
   },
   {
     type: 'woocommerce',
@@ -49,6 +47,7 @@ const STORES: {
     logo: '/woocommerce-logo.svg',
     color: 'bg-[#96588A]/15 border-[#96588A]/30 hover:border-[#96588A]',
     description: 'Connect your WooCommerce store',
+    usesOAuth: true,
   },
 ];
 
@@ -64,16 +63,12 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
   const [step, setStep] = useState<Step>('select');
   const [selectedStore, setSelectedStore] = useState<StoreType | null>(null);
   const [storeUrl, setStoreUrl] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [apiSecret, setApiSecret] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
 
   const handleClose = () => {
     setStep('select');
     setSelectedStore(null);
     setStoreUrl('');
-    setApiKey('');
-    setApiSecret('');
     onClose();
   };
 
@@ -86,30 +81,42 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
     if (!selectedStore || !storeUrl) return;
 
     setIsConnecting(true);
-    
+
     try {
-      // TODO: Implement actual store connection logic
-      // This would call an API endpoint that validates the credentials
-      // and sets up webhooks for product sync
-      
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulated delay
-      
-      toast.success(`Connected to ${selectedStore === 'shopify' ? 'Shopify' : 'WooCommerce'} successfully!`);
-      onStoreConnected?.(selectedStore, storeUrl);
-      handleClose();
-    } catch {
-      toast.error('Failed to connect store. Please check your credentials.');
-    } finally {
+      // Generic OAuth flow for all providers
+      const response = await fetch(`/api/store-connection/${selectedStore}/authorize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storeUrl,
+          returnUrl: window.location.href,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error ?? 'Failed to initiate connection');
+      }
+
+      const { authUrl } = await response.json();
+
+      // Store info for callback handling
+      sessionStorage.setItem(
+        'pendingStoreConnection',
+        JSON.stringify({ storeType: selectedStore, storeUrl })
+      );
+
+      // Redirect to provider's authorization page
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error('Store connection error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to connect store');
       setIsConnecting(false);
     }
   };
 
   const selectedStoreInfo = STORES.find((s) => s.type === selectedStore);
-
-  const canConnect =
-    selectedStore &&
-    storeUrl.trim() &&
-    (selectedStore === 'shopify' || (apiKey.trim() && apiSecret.trim()));
+  const canConnect = selectedStore && storeUrl.trim();
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -140,7 +147,6 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
                   >
                     <div className="flex items-center gap-4">
                       <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white p-2 shadow-sm">
-                        {/* Placeholder for logos - in production you'd have actual SVGs */}
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-accent/10 text-lg font-bold text-primary">
                           {store.type === 'shopify' ? 'S' : 'W'}
                         </div>
@@ -177,7 +183,7 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
                   Connect {selectedStoreInfo?.name}
                 </DialogTitle>
                 <DialogDescription>
-                  Enter your store credentials to import products
+                  Enter your store URL to start the secure connection
                 </DialogDescription>
               </DialogHeader>
 
@@ -199,57 +205,22 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
                   />
                 </div>
 
-                {selectedStore === 'shopify' ? (
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                    <p className="text-sm">
-                      <strong>Shopify</strong> uses OAuth for secure authentication.
-                      You&apos;ll be redirected to Shopify to authorize access.
-                    </p>
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="mt-0.5 h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">One-Click Authorization</p>
+                      <p className="text-xs text-muted-foreground">
+                        You&apos;ll be redirected to {selectedStoreInfo?.name} to securely authorize access.
+                        No need to manually create API keys!
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-sm font-medium">
-                        <Key className="h-4 w-4 text-muted-foreground" />
-                        Consumer Key
-                      </label>
-                      <Input
-                        placeholder="ck_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-sm font-medium">
-                        <Key className="h-4 w-4 text-muted-foreground" />
-                        Consumer Secret
-                      </label>
-                      <Input
-                        type="password"
-                        placeholder="cs_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                        value={apiSecret}
-                        onChange={(e) => setApiSecret(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="text-xs text-muted-foreground">
-                      <a
-                        href="https://woocommerce.com/document/woocommerce-rest-api/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-primary hover:underline"
-                      >
-                        How to generate API keys
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
-                  </>
-                )}
+                </div>
 
                 <div className="rounded-lg border border-border/50 bg-secondary/30 p-3">
                   <p className="text-xs text-muted-foreground">
-                    <strong className="text-foreground">What we import:</strong> Product names, 
+                    <strong className="text-foreground">What we access:</strong> Product names,
                     descriptions, images, categories, and pricing. We never modify your store data.
                   </p>
                 </div>
@@ -285,15 +256,10 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Connecting...
                   </>
-                ) : selectedStore === 'shopify' ? (
-                  <>
-                    Continue with Shopify
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
                 ) : (
                   <>
-                    <Check className="mr-2 h-4 w-4" />
-                    Connect Store
+                    Continue to {selectedStoreInfo?.name}
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </>
                 )}
               </Button>
@@ -304,4 +270,3 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
     </Dialog>
   );
 }
-
