@@ -5,7 +5,7 @@ import { X, Download, MoreVertical, Pencil, Star, Layers, Trash2 } from 'lucide-
 import { colors } from '@/lib/styles/common-styles';
 import * as S3Service from '@/lib/services/s3/browser';
 import type { Session } from '@/lib/types/app-types';
-import { parseSize } from '../../lib/services';
+import { parseSize } from 'visualizer-ai/client';
 import { SafeNextImage } from '../common/SafeImage';
 import { ImageModal } from './ImageModal';
 import { ImageProps } from 'next/image';

@@ -7,7 +7,9 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/services/db';
+import * as Sentry from '@sentry/nextjs';
+import { getJobStatus } from 'visualizer-ai';
+import { logger } from '@/lib/logger';
 
 export async function GET(
   _request: NextRequest,
@@ -21,7 +23,7 @@ export async function GET(
     }
 
     // Get job from PostgreSQL
-    const job = await db.generationJobs.getById(id);
+    const job = await getJobStatus(id);
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
@@ -46,7 +48,8 @@ export async function GET(
       completedAt: job.completedAt,
     });
   } catch (error) {
-    console.error('Failed to get job status:', error);
+    const eventId = Sentry.captureException(error);
+    logger.error({ err: error, sentryEventId: eventId }, 'Failed to get job status');
     return NextResponse.json({ error: 'Failed to get job status' }, { status: 500 });
   }
 }

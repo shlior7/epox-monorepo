@@ -18,7 +18,7 @@ import {
   getProductAnalysisService,
   getGeminiService,
   type AIAnalysisResult,
-} from 'visualizer-services';
+} from 'visualizer-ai';
 import { getAISuggestedTags } from '@/lib/services/prompt-builder';
 import type { PromptTags } from '@/lib/types';
 import { withSecurity, validateUrls } from '@/lib/security';

@@ -63,7 +63,7 @@ const { generateImagesMock, GeminiServiceMock } = vi.hoisted(() => {
   return { generateImagesMock, GeminiServiceMock };
 });
 
-vi.mock('../gemini', () => ({
+vi.mock('visualizer-ai', () => ({
   GeminiService: GeminiServiceMock,
   getGeminiService: () => new GeminiServiceMock(),
 }));

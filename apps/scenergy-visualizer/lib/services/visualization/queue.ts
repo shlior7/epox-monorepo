@@ -76,7 +76,7 @@ export class VisualizationQueue {
 
       // Fetch all jobs for this batch using mget for better performance
       if (keys.length > 0) {
-        const jobDataList = await redis.mget<string[]>(...keys);
+        const jobDataList = await redis.mget<string>(...keys);
         for (const jobData of jobDataList) {
           if (jobData) {
             jobs.push(JSON.parse(jobData));

@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { getClientId } from '@/lib/services/get-auth';
 import type { FlowGenerationSettings } from 'visualizer-types';
+import { enqueueImageGeneration } from 'visualizer-ai';
 
 interface GenerateRequest {
   productIds?: string[]; // Optional: specific products to generate (defaults to all)
@@ -111,12 +112,9 @@ export async function POST(
     // Use the first flow ID as the session ID (for job tracking)
     const primaryFlowId = flowIds[0];
 
-    const job = await db.generationJobs.create({
+    const { jobId } = await enqueueImageGeneration(
       clientId,
-      type: 'image_generation',
-      priority: 100,
-      flowId: primaryFlowId,
-      payload: {
+      {
         prompt: '', // Will be built by the worker using Art Director
         productIds: productIdsToGenerate,
         sessionId: primaryFlowId,
@@ -128,17 +126,21 @@ export async function POST(
         productImageUrls,
         inspirationImageUrls,
       },
-    });
+      {
+        priority: 100,
+        flowId: primaryFlowId,
+      }
+    );
 
     // Update collection status to generating
     await db.collectionSessions.update(collectionId, { status: 'generating' });
 
-    console.log(`🚀 Started generation job ${job.id} for collection ${collectionId}`);
+    console.log(`🚀 Started generation job ${jobId} for collection ${collectionId}`);
     console.log(`   Products: ${productIdsToGenerate.length}, Flows: ${flowIds.length}`);
 
     return NextResponse.json({
       success: true,
-      jobId: job.id,
+      jobId,
       flowIds,
       flows: createdFlows,
       productCount: productIdsToGenerate.length,
@@ -150,4 +152,3 @@ export async function POST(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

@@ -126,6 +126,152 @@ export const AVAILABLE_TEXT_MODELS: TextModelOption[] = [
   },
 ];
 
+// ===== SMART MODEL SELECTION HELPERS =====
+
+/** Context for smart model selection */
+export interface ModelSelectionContext {
+  task: ModelTask;
+  hasReferenceImages: boolean;
+  referenceImageCount?: number;
+  preferSpeed?: boolean;
+  preferQuality?: boolean;
+  maxBudgetPerImage?: number;
+}
+
+/**
+ * Get models filtered by task and capabilities
+ */
+export function getModelsForTask(task: ModelTask): AIModelOption[] {
+  return AVAILABLE_IMAGE_MODELS.filter((model) => model.recommendedFor.includes(task));
+}
+
+/**
+ * Get models that support reference images
+ */
+export function getModelsWithReferenceSupport(): AIModelOption[] {
+  return AVAILABLE_IMAGE_MODELS.filter((model) => model.capabilities.supportsReferenceImages);
+}
+
+/**
+ * Get models that support editing
+ */
+export function getModelsWithEditingSupport(): AIModelOption[] {
+  return AVAILABLE_IMAGE_MODELS.filter((model) => model.capabilities.supportsEditing);
+}
+
+/**
+ * Get models that support text-to-image generation
+ */
+export function getModelsForGeneration(): AIModelOption[] {
+  return AVAILABLE_IMAGE_MODELS.filter((model) => model.capabilities.supportsTextToImage);
+}
+
+/**
+ * Smart model selection based on context
+ * Returns the best model for the given context, with fallback options
+ */
+export function selectBestModel(context: ModelSelectionContext): {
+  recommended: AIModelOption;
+  alternatives: AIModelOption[];
+  reason: string;
+} {
+  let candidates = AVAILABLE_IMAGE_MODELS.filter((m) => m.recommendedFor.includes(context.task));
+
+  // Filter by reference image support if needed
+  if (context.hasReferenceImages) {
+    candidates = candidates.filter((m) => m.capabilities.supportsReferenceImages);
+
+    // Further filter by max reference images if specified
+    if (context.referenceImageCount) {
+      candidates = candidates.filter(
+        (m) => !m.capabilities.maxReferenceImages || m.capabilities.maxReferenceImages >= context.referenceImageCount!
+      );
+    }
+  }
+
+  // Filter by budget if specified
+  if (context.maxBudgetPerImage) {
+    candidates = candidates.filter((m) => m.costPerImage <= context.maxBudgetPerImage!);
+  }
+
+  // Sort by preference
+  if (context.preferSpeed) {
+    candidates.sort((a, b) => {
+      const speedOrder = { fast: 0, standard: 1, slow: 2 };
+      return speedOrder[a.speed] - speedOrder[b.speed];
+    });
+  } else if (context.preferQuality) {
+    candidates.sort((a, b) => {
+      const qualityOrder = { standard: 0, high: 1, ultra: 2 };
+      return qualityOrder[b.quality] - qualityOrder[a.quality];
+    });
+  } else {
+    // Default: balance cost and quality (tier-based)
+    candidates.sort((a, b) => {
+      const tierOrder = { economy: 0, standard: 1, premium: 2, ultra: 3 };
+      return tierOrder[a.tier] - tierOrder[b.tier];
+    });
+  }
+
+  if (candidates.length === 0) {
+    // Fallback to Gemini Flash which supports everything
+    const fallback = AVAILABLE_IMAGE_MODELS.find((m) => m.id === 'gemini-2.5-flash-image')!;
+    return {
+      recommended: fallback,
+      alternatives: [],
+      reason: 'No models match your criteria. Using Gemini 2.5 Flash Image as fallback.',
+    };
+  }
+
+  const recommended = candidates[0];
+  const alternatives = candidates.slice(1, 4); // Top 3 alternatives
+
+  let reason = '';
+  if (context.hasReferenceImages) {
+    reason = `Selected ${recommended.name} because it supports reference images.`;
+  } else if (context.task === 'editing') {
+    reason = `Selected ${recommended.name} for editing capabilities.`;
+  } else if (context.preferSpeed) {
+    reason = `Selected ${recommended.name} for fastest generation.`;
+  } else if (context.preferQuality) {
+    reason = `Selected ${recommended.name} for highest quality.`;
+  } else {
+    reason = `Selected ${recommended.name} for best value.`;
+  }
+
+  return { recommended, alternatives, reason };
+}
+
+/**
+ * Get upgrade recommendation for a model
+ */
+export function getUpgradeRecommendation(currentModelId: string): AIModelOption | null {
+  const currentModel = AVAILABLE_IMAGE_MODELS.find((m) => m.id === currentModelId);
+  if (!currentModel?.upgradeRecommendations?.length) return null;
+
+  const upgradeId = currentModel.upgradeRecommendations[0];
+  return AVAILABLE_IMAGE_MODELS.find((m) => m.id === upgradeId) || null;
+}
+
+/**
+ * Get model by ID
+ */
+export function getModelById(modelId: string): AIModelOption | undefined {
+  return AVAILABLE_IMAGE_MODELS.find((m) => m.id === modelId);
+}
+
+/**
+ * Check if a model supports a specific capability
+ */
+export function modelSupportsCapability(
+  modelId: string,
+  capability: keyof ModelCapabilities
+): boolean {
+  const model = getModelById(modelId);
+  if (!model) return false;
+  return Boolean(model.capabilities[capability]);
+}
+
 // ===== DEFAULT AI MODEL CONFIGURATION =====
 export const DEFAULT_AI_MODEL_CONFIG = {
   imageModel: AI_MODELS.IMAGE,
@@ -134,6 +280,7 @@ export const DEFAULT_AI_MODEL_CONFIG = {
   textModel: AI_MODELS.TEXT,
   fallbackTextModel: AI_MODELS.FALLBACK_TEXT,
 };
+export type AIModelConfig = typeof DEFAULT_AI_MODEL_CONFIG;
 
 // ===== OPTIMIZATION DEFAULTS =====
 export const OPTIMIZATION_DEFAULTS = {
@@ -142,6 +289,12 @@ export const OPTIMIZATION_DEFAULTS = {
   DEFAULT_IMAGE_SIZE: '1024x1024',
   DEFAULT_ASPECT_RATIO: '1:1',
   MAX_RETRIES: 2,
+};
+
+// ===== COST ESTIMATES =====
+export const COST_ESTIMATES = {
+  IMAGE_GENERATION: 0.001,
+  TEXT_ANALYSIS: 0.0001,
 };
 
 // ===== ERROR MESSAGES =====
@@ -194,4 +347,3 @@ export const STYLE_MAP = {
   rustic: 'rustic',
   scandinavian: 'scandinavian',
 } as const;
-

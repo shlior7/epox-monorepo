@@ -2,7 +2,7 @@
  * Services - Centralized exports for all shared services
  *
  * This file re-exports from shared packages:
- * - visualizer-services: AI/Gemini generation
+ * - visualizer-ai: AI/Gemini generation
  * - visualizer-db: Database operations
  * - visualizer-storage: File storage (R2/S3)
  * - visualizer-auth: Authentication
@@ -24,6 +24,9 @@ export * from './storage';
 
 // Auth Service
 export * from './auth';
+
+// AI Initialization
+export { initAIServices, isAIServicesInitialized } from './ai-init';
 
 // ===== App-Specific Utilities =====
 

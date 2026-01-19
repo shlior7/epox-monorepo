@@ -686,15 +686,21 @@ export class GeminiService {
 
   /**
    * Generate a single video using Gemini video generation API.
+   * Uses exponential backoff for polling to reduce API calls.
    */
   async generateVideo(request: GeminiVideoRequest): Promise<GeminiVideoResponse> {
     const operationName = await this.startVideoGeneration(request);
     let result: GeminiVideoResponse | null = null;
 
-    // Prevent infinite polling with a timeout (10 minutes)
+    // Exponential backoff configuration
     const maxTimeoutMs = 10 * 60 * 1000; // 10 minutes
-    const pollIntervalMs = 5000; // 5 seconds
+    const initialPollIntervalMs = 2000; // Start at 2 seconds
+    const maxPollIntervalMs = 30000; // Cap at 30 seconds
+    const backoffMultiplier = 1.5; // 1.5x increase each time
     const startTime = Date.now();
+
+    let currentPollIntervalMs = initialPollIntervalMs;
+    let pollCount = 0;
 
     while (!result) {
       const elapsedMs = Date.now() - startTime;
@@ -702,7 +708,9 @@ export class GeminiService {
         throw new Error(`Video generation timed out after ${Math.round(elapsedMs / 1000)}s (operation: ${operationName})`);
       }
 
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      // Exponential backoff: 2s, 3s, 4.5s, 6.75s, 10.1s, 15.2s, 22.8s, 30s (cap)
+      await new Promise((resolve) => setTimeout(resolve, currentPollIntervalMs));
+
       result = await this.pollVideoGeneration({
         operationName,
         prompt: request.prompt,
@@ -710,8 +718,16 @@ export class GeminiService {
         durationSeconds: request.durationSeconds,
         fps: request.fps,
       });
+
+      // Increase interval for next poll (capped at max)
+      if (!result) {
+        pollCount++;
+        currentPollIntervalMs = Math.min(currentPollIntervalMs * backoffMultiplier, maxPollIntervalMs);
+        console.log(`🎬 Video still processing... (poll #${pollCount}, next check in ${Math.round(currentPollIntervalMs / 1000)}s)`);
+      }
     }
 
+    console.log(`✅ Video completed after ${pollCount} polls in ${Math.round((Date.now() - startTime) / 1000)}s`);
     return result;
   }
 

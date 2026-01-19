@@ -23,7 +23,7 @@ import type { Flow, FlowGenerationSettings, PostAdjustments } from '@/lib/types/
 import { DEFAULT_POST_ADJUSTMENTS } from '@/lib/types/app-types';
 import { PostAdjustmentsPanel } from './PostAdjustmentsPanel';
 import { ModelSelector } from '../common/ModelSelector';
-import { AI_MODELS } from '@/lib/services/shared/constants';
+import { AI_MODELS } from 'visualizer-ai/client';
 import {
   STYLE_OPTIONS,
   SCENE_TYPES,

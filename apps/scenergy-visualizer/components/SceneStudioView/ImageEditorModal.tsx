@@ -22,10 +22,10 @@ import {
 } from 'lucide-react';
 import { Portal, Z_INDEX } from '../common/Portal';
 import { ModelSelector } from '../common/ModelSelector';
-import { AI_MODELS } from '@/lib/services/shared/constants';
+import { AI_MODELS } from 'visualizer-ai/client';
 import { PostAdjustmentsPanel, generateFilterString, hasAdjustments } from './PostAdjustmentsPanel';
 import type { PostAdjustments } from '@/lib/types/app-types';
-import type { AdjustmentHint } from '@/lib/services/gemini/types';
+import type { AdjustmentHint } from 'visualizer-ai/client';
 import { DEFAULT_POST_ADJUSTMENTS } from '@/lib/types/app-types';
 import { ImageModal } from '../modals/ImageModal';
 import {

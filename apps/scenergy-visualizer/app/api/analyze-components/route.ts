@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiService } from '@/lib/services/gemini';
+import { getGeminiService } from 'visualizer-ai';
 
 export async function POST(request: Request) {
   try {
@@ -30,4 +30,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

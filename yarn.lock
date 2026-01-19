@@ -3556,9 +3556,9 @@ __metadata:
     tailwindcss: "npm:^3.4.0"
     tailwindcss-animate: "npm:^1.0.7"
     typescript: "npm:^5.7.2"
+    visualizer-ai: "npm:1.0.0"
     visualizer-auth: "npm:1.0.0"
     visualizer-db: "npm:1.0.0"
-    visualizer-services: "npm:1.0.0"
     visualizer-storage: "npm:1.0.0"
     visualizer-types: "npm:1.0.0"
     vitest: "npm:^3.2.4"
@@ -5044,35 +5044,6 @@ __metadata:
   version: 1.11.1
   resolution: "@unrs/resolver-binding-win32-x64-msvc@npm:1.11.1"
   conditions: os=win32 & cpu=x64
-  languageName: node
-  linkType: hard
-
-"@upstash/core-analytics@npm:^0.0.10":
-  version: 0.0.10
-  resolution: "@upstash/core-analytics@npm:0.0.10"
-  dependencies:
-    "@upstash/redis": "npm:^1.28.3"
-  checksum: 10c0/c90b1bfaf1f54eed8a48f2aa679f8e082083f49931cf08bd90a0a0035b010f65b6e7420268677f15df1d04687f7e5a9093320c591ef4dbd45d804ea83d890f3f
-  languageName: node
-  linkType: hard
-
-"@upstash/ratelimit@npm:^2.0.5":
-  version: 2.0.7
-  resolution: "@upstash/ratelimit@npm:2.0.7"
-  dependencies:
-    "@upstash/core-analytics": "npm:^0.0.10"
-  peerDependencies:
-    "@upstash/redis": ^1.34.3
-  checksum: 10c0/a90145c0c59812cb3f1e286934e2085468cb2acedc7267ac72af67912cfa736f3508b8b39e921fbfb208a1d3588dea6a27eef99f5a3189345619f784938f1816
-  languageName: node
-  linkType: hard
-
-"@upstash/redis@npm:^1.28.3, @upstash/redis@npm:^1.35.6":
-  version: 1.36.0
-  resolution: "@upstash/redis@npm:1.36.0"
-  dependencies:
-    uncrypto: "npm:^0.1.3"
-  checksum: 10c0/b33badef3014357c9486e318282114932ee9eb0f3730024115c2cd0282d8428eca66c3b30f2895f91b2eb5e4a89001cf6312bfff4dc2be34ee1d7c6f438392bb
   languageName: node
   linkType: hard
 
@@ -12303,7 +12274,6 @@ __metadata:
     "@aws-sdk/lib-storage": "npm:^3.921.0"
     "@babylonjs/core": "npm:8.42.0"
     "@babylonjs/loaders": "npm:8.42.0"
-    "@google/genai": "npm:^1.33.0"
     "@playwright/test": "npm:^1.46.1"
     "@radix-ui/react-accordion": "npm:^1.2.12"
     "@radix-ui/react-dialog": "npm:^1.1.4"
@@ -12318,7 +12288,6 @@ __metadata:
     "@types/react": "npm:^19.0.0"
     "@types/react-dom": "npm:^19.0.0"
     "@types/uuid": "npm:^10.0.0"
-    "@upstash/redis": "npm:^1.35.6"
     "@vitest/coverage-v8": "npm:^3.2.4"
     "@vitest/ui": "npm:^3.2.4"
     clsx: "npm:^2.1.1"
@@ -12338,6 +12307,7 @@ __metadata:
     sharp: "npm:^0.34.5"
     typescript: "npm:^5.7.2"
     uuid: "npm:^13.0.0"
+    visualizer-ai: "npm:1.0.0"
     visualizer-auth: "npm:1.0.0"
     visualizer-db: "npm:1.0.0"
     vite-tsconfig-paths: "npm:^5.1.4"
@@ -13725,13 +13695,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"uncrypto@npm:^0.1.3":
-  version: 0.1.3
-  resolution: "uncrypto@npm:0.1.3"
-  checksum: 10c0/74a29afefd76d5b77bedc983559ceb33f5bbc8dada84ff33755d1e3355da55a4e03a10e7ce717918c436b4dfafde1782e799ebaf2aadd775612b49f7b5b2998e
-  languageName: node
-  linkType: hard
-
 "undici-types@npm:~7.16.0":
   version: 7.16.0
   resolution: "undici-types@npm:7.16.0"
@@ -14057,6 +14020,7 @@ __metadata:
     "@google/genai": "npm:^1.33.0"
     "@types/node": "npm:^24.1.0"
     typescript: "npm:^5.7.2"
+    visualizer-db: "npm:1.0.0"
   languageName: unknown
   linkType: soft
 
@@ -14096,19 +14060,13 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"visualizer-services@npm:1.0.0, visualizer-services@workspace:packages/visualizer-services":
+"visualizer-services@workspace:packages/visualizer-services":
   version: 0.0.0-use.local
   resolution: "visualizer-services@workspace:packages/visualizer-services"
   dependencies:
     "@google/genai": "npm:^1.33.0"
     "@types/node": "npm:^24.1.0"
-    "@upstash/ratelimit": "npm:^2.0.5"
-    "@upstash/redis": "npm:^1.35.6"
     jose: "npm:^6.1.3"
-    nanoid: "npm:^5.1.6"
-    p-retry: "npm:^7.1.0"
-    redis: "npm:^5.9.0"
-    sharp: "npm:^0.34.5"
     typescript: "npm:^5.7.2"
     visualizer-types: "npm:1.0.0"
     vitest: "npm:^3.2.4"

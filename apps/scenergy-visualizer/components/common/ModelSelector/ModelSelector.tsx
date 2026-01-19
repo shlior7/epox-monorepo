@@ -5,7 +5,7 @@ import { ChevronDown, Image, Wand2 } from 'lucide-react';
 import {
   AVAILABLE_IMAGE_MODELS,
   type ModelTask,
-} from '@/lib/services/shared/constants';
+} from 'visualizer-ai/client';
 import styles from './ModelSelector.module.scss';
 
 export interface ModelSelectorContext {

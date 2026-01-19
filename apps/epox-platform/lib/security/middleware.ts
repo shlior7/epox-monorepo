@@ -58,7 +58,7 @@ export interface SecurityOptions {
 
 // ============================================================================
 // IN-MEMORY RATE LIMITING (Simple implementation)
-// For production, use Redis/Upstash
+// For production, use a shared store if you need distributed rate limiting
 // ============================================================================
 
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();

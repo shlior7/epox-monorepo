@@ -14,9 +14,9 @@ export const AI_CONFIG = {
   },
   // Cost optimization settings
   optimization: {
-    maxPromptTokens: OPTIMIZATION_DEFAULTS.MAX_PROMPT_TOKENS,
+    maxPromptTokens: 400,
     defaultImageCount: OPTIMIZATION_DEFAULTS.DEFAULT_IMAGE_COUNT,
-    defaultImageSize: OPTIMIZATION_DEFAULTS.DEFAULT_IMAGE_SIZE,
+    defaultImageSize: '1K',
     defaultAspectRatio: OPTIMIZATION_DEFAULTS.DEFAULT_ASPECT_RATIO,
     maxRetries: OPTIMIZATION_DEFAULTS.MAX_RETRIES,
     enableBatchRequests: true,

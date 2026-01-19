@@ -1,6 +1,6 @@
 /**
  * Rate Limiter Middleware - Prevent API abuse and quota exhaustion
- * Uses Redis for distributed rate limiting across multiple server instances
+ * Uses in-memory counters (per-process, non-distributed)
  *
  * Configuration via environment variables:
  * - RATE_LIMIT_TIER: 'free' | 'standard' | 'vertex' | 'unlimited' (default: 'standard')

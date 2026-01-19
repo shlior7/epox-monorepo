@@ -4,8 +4,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getGeminiService } from 'visualizer-services';
-import type { EditImageRequest, EditImageResponse } from 'visualizer-services';
+import { getGeminiService, RateLimitError } from 'visualizer-ai';
+import type { EditImageRequest, EditImageResponse } from 'visualizer-ai';
 import { withSecurity, validateImageUrl } from '@/lib/security';
 
 export const POST = withSecurity(

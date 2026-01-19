@@ -1,0 +1,166 @@
+/**
+ * AI Cost Tracker
+ *
+ * Helper to track AI operation costs in the database.
+ * Automatically integrates with logger for request tracing.
+ */
+
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import type { AIOperationType, CreateCostRecord } from 'visualizer-db/repositories';
+import { AICostTrackingRepository } from 'visualizer-db/repositories';
+import { createLogger, type Logger } from './logger';
+
+// Singleton cost tracker instance
+let costTrackerInstance: CostTracker | null = null;
+let dbInstance: PostgresJsDatabase | null = null;
+
+/**
+ * Initialize cost tracking with database
+ */
+export function initCostTracking(db: PostgresJsDatabase): void {
+  dbInstance = db;
+  costTrackerInstance = new CostTracker(db);
+  console.log('✅ Cost tracking initialized');
+}
+
+/**
+ * Get the singleton cost tracker instance
+ */
+export function getCostTracker(): CostTracker {
+  if (!costTrackerInstance || !dbInstance) {
+    throw new Error('Cost tracker not initialized. Call initCostTracking() first.');
+  }
+  return costTrackerInstance;
+}
+
+/**
+ * Check if cost tracking is initialized
+ */
+export function isCostTrackingInitialized(): boolean {
+  return costTrackerInstance !== null && dbInstance !== null;
+}
+
+/**
+ * Cost tracking helper
+ */
+export class CostTracker {
+  private repository: AICostTrackingRepository;
+
+  constructor(db: PostgresJsDatabase) {
+    this.repository = new AICostTrackingRepository(db);
+  }
+
+  /**
+   * Track an AI operation cost
+   */
+  async trackCost(data: Omit<CreateCostRecord, 'provider'> & { provider?: string; logger?: Logger }): Promise<void> {
+    try {
+      // Extract request ID from logger if provided
+      const requestId = data.logger?.getRequestId() ?? data.requestId;
+
+      await this.repository.create({
+        ...data,
+        requestId,
+        provider: data.provider ?? 'google-gemini',
+      });
+
+      // Log the cost tracking
+      if (data.logger) {
+        data.logger.info('Cost tracked', {
+          costUsd: data.costUsd,
+          model: data.model,
+          operationType: data.operationType,
+        });
+      }
+    } catch (error) {
+      console.error('❌ Failed to track cost:', error);
+      // Don't throw - cost tracking should not break the application
+    }
+  }
+
+  /**
+   * Get cost summary for a client
+   */
+  async getCostSummary(clientId: string, options?: { startDate?: Date; endDate?: Date }) {
+    return this.repository.getCostSummary(clientId, options);
+  }
+
+  /**
+   * Get current month cost
+   */
+  async getCurrentMonthCost(clientId: string): Promise<number> {
+    return this.repository.getCurrentMonthCost(clientId);
+  }
+
+  /**
+   * Check if over budget
+   */
+  async isOverBudget(clientId: string, monthlyBudgetUsd: number): Promise<boolean> {
+    return this.repository.isOverBudget(clientId, monthlyBudgetUsd);
+  }
+}
+
+/**
+ * Helper to wrap an AI operation with cost tracking
+ */
+export async function trackAIOperation<T>(
+  operation: () => Promise<T>,
+  costData: {
+    clientId: string;
+    userId?: string;
+    operationType: AIOperationType;
+    model: string;
+    estimatedCostUsd: number;
+    logger?: Logger;
+    jobId?: string;
+    imageCount?: number;
+    videoDurationSeconds?: number;
+  }
+): Promise<T> {
+  const startTime = Date.now();
+  const logger = costData.logger ?? createLogger({ operation: costData.operationType });
+
+  try {
+    const result = await operation();
+    const durationMs = Date.now() - startTime;
+
+    // Track successful operation
+    if (isCostTrackingInitialized()) {
+      await getCostTracker().trackCost({
+        clientId: costData.clientId,
+        userId: costData.userId,
+        operationType: costData.operationType,
+        model: costData.model,
+        costUsd: costData.estimatedCostUsd,
+        success: true,
+        durationMs,
+        logger,
+        jobId: costData.jobId,
+        imageCount: costData.imageCount,
+        videoDurationSeconds: costData.videoDurationSeconds,
+      });
+    }
+
+    return result;
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+
+    // Track failed operation
+    if (isCostTrackingInitialized()) {
+      await getCostTracker().trackCost({
+        clientId: costData.clientId,
+        userId: costData.userId,
+        operationType: costData.operationType,
+        model: costData.model,
+        costUsd: 0, // No cost for failed operations
+        success: false,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        durationMs,
+        logger,
+        jobId: costData.jobId,
+      });
+    }
+
+    throw error;
+  }
+}

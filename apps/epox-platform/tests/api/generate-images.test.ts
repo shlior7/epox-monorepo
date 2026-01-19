@@ -10,13 +10,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { POST as generateImages } from '@/app/api/generate-images/route';
 import { NextRequest } from 'next/server';
 
-// Mock the database module
-vi.mock('@/lib/services/db', () => ({
-  db: {
-    generationJobs: {
-      create: vi.fn(),
-    },
-  },
+vi.mock('visualizer-ai', () => ({
+  enqueueImageGeneration: vi.fn(),
 }));
 
 // Mock auth
@@ -24,22 +19,16 @@ vi.mock('@/lib/services/get-auth', () => ({
   getClientId: vi.fn(() => Promise.resolve('test-client')),
 }));
 
-import { db } from '@/lib/services/db';
+import { enqueueImageGeneration } from 'visualizer-ai';
 
 describe('Image Generation Flow - POST /api/generate-images', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     
     // Default mock implementation
-    vi.mocked(db.generationJobs.create).mockResolvedValue({
-      id: 'job-123',
-      clientId: 'test-client',
-      type: 'image_generation',
-      status: 'pending',
-      priority: 100,
-      payload: {},
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    vi.mocked(enqueueImageGeneration).mockResolvedValue({
+      jobId: 'job-123',
+      expectedImageIds: [],
     });
   });
 
@@ -113,15 +102,16 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
       const response = await generateImages(request);
 
       expect(response.status).toBe(200);
-      expect(db.generationJobs.create).toHaveBeenCalledTimes(1);
-      expect(db.generationJobs.create).toHaveBeenCalledWith(
+      expect(enqueueImageGeneration).toHaveBeenCalledTimes(1);
+      expect(enqueueImageGeneration).toHaveBeenCalledWith(
+        'test-client',
         expect.objectContaining({
-          clientId: 'test-client',
-          type: 'image_generation',
-          payload: expect.objectContaining({
-            sessionId: 'session-1',
-            productIds: ['prod-1'],
-          }),
+          sessionId: 'session-1',
+          productIds: ['prod-1'],
+        }),
+        expect.objectContaining({
+          flowId: 'session-1',
+          priority: 100,
         })
       );
     });
@@ -197,17 +187,17 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
       await generateImages(request);
 
-      expect(db.generationJobs.create).toHaveBeenCalledWith(
+      expect(enqueueImageGeneration).toHaveBeenCalledWith(
+        'test-client',
         expect.objectContaining({
-          payload: expect.objectContaining({
-            promptTags: expect.objectContaining({
-              sceneType: ['Living Room'],
-              mood: ['Cozy'],
-              lighting: ['Natural'],
-              style: ['Modern'],
-            }),
+          promptTags: expect.objectContaining({
+            sceneType: ['Living Room'],
+            mood: ['Cozy'],
+            lighting: ['Natural'],
+            style: ['Modern'],
           }),
-        })
+        }),
+        expect.anything()
       );
     });
 
@@ -231,14 +221,14 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
       await generateImages(request);
 
-      expect(db.generationJobs.create).toHaveBeenCalledWith(
+      expect(enqueueImageGeneration).toHaveBeenCalledWith(
+        'test-client',
         expect.objectContaining({
-          payload: expect.objectContaining({
-            promptTags: expect.objectContaining({
-              custom: expect.arrayContaining(['material: wood', 'color: white']),
-            }),
+          promptTags: expect.objectContaining({
+            custom: expect.arrayContaining(['material: wood', 'color: white']),
           }),
-        })
+        }),
+        expect.anything()
       );
     });
   });
@@ -256,12 +246,12 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
       await generateImages(request);
 
-      expect(db.generationJobs.create).toHaveBeenCalledWith(
+      expect(enqueueImageGeneration).toHaveBeenCalledWith(
+        'test-client',
         expect.objectContaining({
-          payload: expect.objectContaining({
-            customPrompt: 'Show product on a marble countertop',
-          }),
-        })
+          customPrompt: 'Show product on a marble countertop',
+        }),
+        expect.anything()
       );
     });
 
@@ -277,12 +267,12 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
       await generateImages(request);
 
-      expect(db.generationJobs.create).toHaveBeenCalledWith(
+      expect(enqueueImageGeneration).toHaveBeenCalledWith(
+        'test-client',
         expect.objectContaining({
-          payload: expect.objectContaining({
-            customPrompt: 'Show product outdoors',
-          }),
-        })
+          customPrompt: 'Show product outdoors',
+        }),
+        expect.anything()
       );
     });
 
@@ -298,12 +288,12 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
       await generateImages(request);
 
-      expect(db.generationJobs.create).toHaveBeenCalledWith(
+      expect(enqueueImageGeneration).toHaveBeenCalledWith(
+        'test-client',
         expect.objectContaining({
-          payload: expect.objectContaining({
-            customPrompt: undefined,
-          }),
-        })
+          customPrompt: undefined,
+        }),
+        expect.anything()
       );
     });
   });
@@ -325,16 +315,16 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
       await generateImages(request);
 
-      expect(db.generationJobs.create).toHaveBeenCalledWith(
+      expect(enqueueImageGeneration).toHaveBeenCalledWith(
+        'test-client',
         expect.objectContaining({
-          payload: expect.objectContaining({
-            settings: expect.objectContaining({
-              aspectRatio: '16:9',
-              imageQuality: '4k',
-              numberOfVariants: 2,
-            }),
+          settings: expect.objectContaining({
+            aspectRatio: '16:9',
+            imageQuality: '4k',
+            numberOfVariants: 2,
           }),
-        })
+        }),
+        expect.anything()
       );
     });
 
@@ -351,13 +341,13 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
       await generateImages(request);
 
-      expect(db.generationJobs.create).toHaveBeenCalledWith(
+      expect(enqueueImageGeneration).toHaveBeenCalledWith(
+        'test-client',
         expect.objectContaining({
-          payload: expect.objectContaining({
-            productImageUrls: ['https://example.com/product.jpg'],
-            inspirationImageUrls: ['https://example.com/inspo.jpg'],
-          }),
-        })
+          productImageUrls: ['https://example.com/product.jpg'],
+          inspirationImageUrls: ['https://example.com/inspo.jpg'],
+        }),
+        expect.anything()
       );
     });
   });
@@ -375,7 +365,9 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
       await generateImages(request);
 
-      expect(db.generationJobs.create).toHaveBeenCalledWith(
+      expect(enqueueImageGeneration).toHaveBeenCalledWith(
+        'test-client',
+        expect.anything(),
         expect.objectContaining({
           priority: 50, // Higher priority
         })
@@ -394,7 +386,9 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
       await generateImages(request);
 
-      expect(db.generationJobs.create).toHaveBeenCalledWith(
+      expect(enqueueImageGeneration).toHaveBeenCalledWith(
+        'test-client',
+        expect.anything(),
         expect.objectContaining({
           priority: 100, // Normal priority
         })
@@ -436,8 +430,8 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle database errors gracefully', async () => {
-      vi.mocked(db.generationJobs.create).mockRejectedValue(new Error('Database connection failed'));
+    it('should handle queue errors gracefully', async () => {
+      vi.mocked(enqueueImageGeneration).mockRejectedValue(new Error('Queue down'));
 
       const request = new NextRequest('http://localhost:3000/api/generate-images', {
         method: 'POST',
@@ -451,12 +445,12 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toContain('Database connection failed');
+      expect(data.error).toBe('Internal server error');
     });
   });
 
   describe('Client ID Handling', () => {
-    it('should use clientId from request body when provided', async () => {
+    it('should ignore clientId from request body', async () => {
       const request = new NextRequest('http://localhost:3000/api/generate-images', {
         method: 'POST',
         body: JSON.stringify({
@@ -468,10 +462,10 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
       await generateImages(request);
 
-      expect(db.generationJobs.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          clientId: 'custom-client',
-        })
+      expect(enqueueImageGeneration).toHaveBeenCalledWith(
+        'test-client',
+        expect.anything(),
+        expect.anything()
       );
     });
   });

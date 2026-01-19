@@ -16,7 +16,7 @@ const mockGemini = {
   analyzeInspirationImage: vi.fn(),
 };
 
-vi.mock('visualizer-services', () => ({
+vi.mock('visualizer-ai', () => ({
   getGeminiService: vi.fn(() => mockGemini),
 }));
 

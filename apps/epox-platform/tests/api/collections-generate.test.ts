@@ -6,6 +6,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST as generateCollection } from '@/app/api/collections/[id]/generate/route';
 
+vi.mock('visualizer-ai', () => ({
+  enqueueImageGeneration: vi.fn(),
+}));
+
 vi.mock('@/lib/services/db', () => ({
   db: {
     collectionSessions: {
@@ -23,9 +27,6 @@ vi.mock('@/lib/services/db', () => ({
     productImages: {
       list: vi.fn(),
     },
-    generationJobs: {
-      create: vi.fn(),
-    },
   },
 }));
 
@@ -34,10 +35,15 @@ vi.mock('@/lib/services/get-auth', () => ({
 }));
 
 import { db } from '@/lib/services/db';
+import { enqueueImageGeneration } from 'visualizer-ai';
 
 describe('Collection Generate API - POST /api/collections/[id]/generate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(enqueueImageGeneration).mockResolvedValue({
+      jobId: 'job-1',
+      expectedImageIds: [],
+    });
   });
 
   it('should return 404 when collection not found', async () => {
@@ -91,7 +97,6 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
     vi.mocked(db.productImages.list).mockResolvedValue([
       { id: 'img-1', r2KeyBase: 'clients/test-client/products/prod-1/img-1.jpg' },
     ] as any);
-    vi.mocked(db.generationJobs.create).mockResolvedValue({ id: 'job-1' } as any);
 
     const request = new NextRequest('http://localhost:3000/api/collections/coll-1/generate', {
       method: 'POST',
@@ -107,16 +112,19 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(db.generationJobs.create).toHaveBeenCalledWith(
+    expect(enqueueImageGeneration).toHaveBeenCalledWith(
+      'client-1',
+      expect.objectContaining({
+        sessionId: 'flow-1',
+        productIds: ['prod-1'],
+        settings: expect.objectContaining({
+          imageQuality: '4k',
+          numberOfVariants: 2,
+        }),
+      }),
       expect.objectContaining({
         flowId: 'flow-1',
-        payload: expect.objectContaining({
-          productIds: ['prod-1'],
-          settings: expect.objectContaining({
-            imageQuality: '4k',
-            numberOfVariants: 2,
-          }),
-        }),
+        priority: 100,
       })
     );
     expect(db.collectionSessions.update).toHaveBeenCalledWith('coll-1', { status: 'generating' });
@@ -138,7 +146,6 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
     vi.mocked(db.productImages.list).mockResolvedValue([
       { id: 'img-1', r2KeyBase: 'clients/test-client/products/prod-1/img-1.jpg' },
     ] as any);
-    vi.mocked(db.generationJobs.create).mockResolvedValue({ id: 'job-1' } as any);
 
     const request = new NextRequest('http://localhost:3000/api/collections/coll-1/generate', {
       method: 'POST',

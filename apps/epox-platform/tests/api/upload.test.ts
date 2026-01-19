@@ -30,7 +30,7 @@ const mockGemini = {
   analyzeProductSubject: vi.fn(),
 };
 
-vi.mock('visualizer-services', () => ({
+vi.mock('visualizer-ai', () => ({
   getGeminiService: vi.fn(() => mockGemini),
 }));
 

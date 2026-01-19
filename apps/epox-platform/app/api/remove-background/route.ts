@@ -3,7 +3,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getGeminiService } from 'visualizer-services';
+import { getGeminiService } from 'visualizer-ai';
 import { withSecurity, validateImageUrl } from '@/lib/security';
 
 interface RemoveBackgroundRequest {

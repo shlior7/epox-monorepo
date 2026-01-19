@@ -22,6 +22,7 @@ export {
   type QuotaLimitCreate,
   type QuotaLimitUpdate,
 } from './usage';
+export { AICostTrackingRepository, type CreateCostRecord, type CostSummary } from './ai-cost-tracking';
 export { GenerationJobRepository, type GenerationJob, type GenerationJobCreate, type GenerationJobUpdate } from './generation-jobs';
 export {
   StoreConnectionRepository,

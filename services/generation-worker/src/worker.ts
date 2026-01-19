@@ -23,6 +23,15 @@ import {
   generatedAssetProduct,
 } from 'visualizer-db/schema';
 import { storage, storagePaths } from 'visualizer-storage';
+import {
+  logger,
+  logJobClaimed,
+  logJobProgress,
+  logJobSuccess,
+  logJobFailed,
+  logWorkerStarted,
+  logWorkerStopped,
+} from './logger';
 
 // ============================================================================
 // CONFIG
@@ -72,14 +81,15 @@ export class GenerationWorker {
 
   async start(): Promise<void> {
     this.isRunning = true;
-    console.log(`🚀 Worker started: ${this.config.workerId}`);
-    console.log(`   Concurrency: ${this.config.concurrency}`);
-    console.log(`   Rate limit: ${this.config.maxJobsPerMinute} jobs/min`);
-
     const mode = this.config.enableListenNotify
       ? `LISTEN/NOTIFY with ${this.config.fallbackPollIntervalMs}ms fallback`
       : `Polling every ${this.config.fallbackPollIntervalMs}ms`;
-    console.log(`   Mode: ${mode}`);
+
+    logWorkerStarted(this.config.workerId, {
+      concurrency: this.config.concurrency,
+      maxJobsPerMinute: this.config.maxJobsPerMinute,
+      mode,
+    });
 
     // Start the LISTEN connection (if enabled)
     const listenerPromise = this.config.enableListenNotify ? this.startListener() : Promise.resolve();
@@ -93,7 +103,7 @@ export class GenerationWorker {
   }
 
   async stop(): Promise<void> {
-    console.log('🛑 Stopping worker...');
+    logger.info({ workerId: this.config.workerId }, 'Stopping worker...');
     this.isRunning = false;
 
     // Signal any waiting workers
@@ -102,7 +112,7 @@ export class GenerationWorker {
     }
 
     while (this.activeJobs > 0) {
-      console.log(`   Waiting for ${this.activeJobs} active jobs...`);
+      logger.info({ activeJobs: this.activeJobs }, 'Waiting for active jobs to complete...');
       await this.sleep(1000);
     }
 
@@ -112,7 +122,7 @@ export class GenerationWorker {
       this.listenerPool = null;
     }
 
-    console.log('✅ Worker stopped');
+    logWorkerStopped(this.config.workerId);
   }
 
   /**
@@ -121,7 +131,7 @@ export class GenerationWorker {
   private async startListener(): Promise<void> {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
-      console.warn('⚠️ DATABASE_URL not set, falling back to polling only');
+      logger.warn('DATABASE_URL not set, falling back to polling only');
       return;
     }
 
@@ -138,16 +148,16 @@ export class GenerationWorker {
       this.listenerPool = new Pool({ connectionString: databaseUrl, max: 1 });
 
       const client = await this.listenerPool.connect();
-      console.log('👂 LISTEN connection established');
+      logger.info('LISTEN connection established');
 
       // Subscribe to job notifications
       await client.query('LISTEN new_generation_job');
-      console.log('📡 Subscribed to new_generation_job channel');
+      logger.info('Subscribed to new_generation_job channel');
 
       // Handle notifications
       client.on('notification', (msg) => {
         if (msg.channel === 'new_generation_job') {
-          console.log(`📬 Notification: new job ${msg.payload}`);
+          logger.debug({ jobId: msg.payload }, 'Received job notification');
           // Signal waiting workers
           if (this.jobSignal) {
             this.jobSignal();
@@ -158,7 +168,7 @@ export class GenerationWorker {
 
       // Handle connection errors
       client.on('error', (err) => {
-        console.error('❌ Listener connection error:', err.message);
+        logger.error({ err: err.message }, 'Listener connection error');
         // Will be reconnected by the listener loop
       });
 
@@ -169,8 +179,7 @@ export class GenerationWorker {
 
       client.release();
     } catch (err) {
-      console.error('❌ Failed to start LISTEN:', err);
-      console.log('⚠️ Falling back to polling only');
+      logger.error({ err }, 'Failed to start LISTEN, falling back to polling only');
     }
   }
 
@@ -221,7 +230,7 @@ export class GenerationWorker {
       try {
         await this.processJob(job);
       } catch (err) {
-        console.error(`❌ Worker ${workerId} job ${job.id} failed:`, err);
+        logger.error({ workerId, jobId: job.id, err }, 'Worker job processing failed');
       } finally {
         this.activeJobs--;
       }
@@ -242,14 +251,14 @@ export class GenerationWorker {
     try {
       return await this.jobs.claimJob(this.config.workerId);
     } catch (err) {
-      console.error('❌ Failed to claim job:', err);
+      logger.error({ err }, 'Failed to claim job');
       return null;
     }
   }
 
   private async processJob(job: GenerationJob): Promise<void> {
     const startTime = Date.now();
-    console.log(`🎨 Processing job ${job.id} (attempt ${job.attempts}/${job.maxAttempts})`);
+    logJobClaimed(job.id, job.type, job.attempts, job.maxAttempts);
 
     try {
       let result: JobResult | null;
@@ -269,20 +278,22 @@ export class GenerationWorker {
       }
 
       if (!result) {
-        console.log(`⏳ Job ${job.id} (${job.type}) re-queued - awaiting completion`);
+        logger.debug({ jobId: job.id, jobType: job.type }, 'Job re-queued, awaiting completion');
         return;
       }
+
+      const durationMs = Date.now() - startTime;
 
       // Mark completed using repository
       await this.jobs.complete(job.id, {
         ...result,
-        duration: Date.now() - startTime,
+        duration: durationMs,
       });
 
-      console.log(`✅ Job ${job.id} completed in ${Date.now() - startTime}ms`);
+      logJobSuccess(job.id, durationMs, result);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      await this.handleJobError(job, errorMsg);
+      await this.handleJobError(job, errorMsg, error);
     }
   }
 
@@ -291,24 +302,19 @@ export class GenerationWorker {
     const savedImages: Array<{ url: string; id: string }> = [];
     const variants = payload.settings?.numberOfVariants ?? 1;
 
-    console.log(`📋 Job payload:`, {
+    // Debug log only (won't be sent to Better Stack in production)
+    logger.debug({
       jobId: job.id,
       clientId: job.clientId,
-      productIds: payload.productIds,
-      sessionId: payload.sessionId,
+      productCount: payload.productIds?.length ?? 0,
       variants,
-      aspectRatio: payload.settings?.aspectRatio,
-      productImageUrls: payload.productImageUrls?.length ?? 0,
-      inspirationImageUrls: payload.inspirationImageUrls?.length ?? 0,
-      prompt: `${payload.prompt.substring(0, 100)}...`,
-    });
+    }, 'Processing image generation');
 
     for (let i = 0; i < variants; i++) {
-      console.log(`🎨 Generating variant ${i + 1}/${variants}...`);
-
       // Update progress using repository
       const progress = Math.round(((i + 1) / variants) * 90);
       await this.jobs.updateProgress(job.id, progress);
+      logJobProgress(job.id, progress, { variant: i + 1, totalVariants: variants });
 
       // Generate image - pass product and inspiration images for reference
       const result = await this.gemini.generateImages({
@@ -320,20 +326,11 @@ export class GenerationWorker {
         inspirationImageUrls: payload.inspirationImageUrls,
       });
 
-      const images = result.images;
-      console.log(`✨ Gemini result:`, {
-        imagesCount: images.length,
-        hasUrl: !!images[0]?.url,
-        urlLength: images[0]?.url?.length ?? 0,
-      });
-
       if (result.images[0]?.url) {
-        console.log(`💾 Saving image to storage and database...`);
         const saved = await this.saveImage(job, result.images[0].url, payload);
         savedImages.push(saved);
-        console.log(`✅ Image saved: ${saved.id} -> ${saved.url}`);
       } else {
-        console.warn(`⚠️ No image URL in Gemini result for variant ${i + 1}`);
+        logger.warn({ jobId: job.id, variant: i + 1 }, 'No image URL in Gemini result');
       }
     }
 
@@ -341,7 +338,6 @@ export class GenerationWorker {
       throw new Error('No images generated');
     }
 
-    console.log(`🎉 Generation complete: ${savedImages.length} images saved`);
     return {
       imageUrls: savedImages.map((s) => s.url),
       imageIds: savedImages.map((s) => s.id),
@@ -377,7 +373,7 @@ export class GenerationWorker {
     }
 
     if (!payload.operationName) {
-      console.log(`🎬 Starting video generation for job ${job.id}...`);
+      logger.debug({ jobId: job.id }, 'Starting video generation');
 
       const operationName = await this.gemini.startVideoGeneration({
         prompt: payload.prompt,
@@ -400,7 +396,7 @@ export class GenerationWorker {
       return null;
     }
 
-    console.log(`🔄 Polling video operation for job ${job.id}...`);
+    logger.debug({ jobId: job.id }, 'Polling video operation');
 
     const result = await this.gemini.pollVideoGeneration({
       operationName: payload.operationName,
@@ -454,23 +450,12 @@ export class GenerationWorker {
     // Use storagePaths for consistent path generation
     const storagePath = storagePaths.generationAsset(clientId, flowId, assetId, ext);
 
-    console.log(`📤 Uploading to storage: ${storagePath}`);
-
     // Upload to R2 storage
     await storage.upload(storagePath, buffer, mimeType);
     const assetUrl = storage.getPublicUrl(storagePath);
-    console.log(`✅ Uploaded: ${assetUrl}`);
 
     // Create generatedAsset record in database
     const prompt = 'prompt' in payload ? payload.prompt : 'editPrompt' in payload ? payload.editPrompt : '';
-
-    console.log(`📝 Creating database record:`, {
-      assetId,
-      clientId,
-      flowId,
-      productIds,
-      jobId: job.id,
-    });
 
     // Build settings from payload for storage with the asset
     const generationPayload = payload as ImageGenerationPayload;
@@ -499,9 +484,8 @@ export class GenerationWorker {
         jobId: job.id,
         completedAt: new Date(),
       });
-      console.log(`✅ Database record created: ${assetId}`);
     } catch (dbError) {
-      console.error(`❌ Failed to create database record:`, dbError);
+      logger.error({ err: dbError, assetId, jobId: job.id }, 'Failed to create database record');
       throw dbError;
     }
 
@@ -515,14 +499,12 @@ export class GenerationWorker {
           isPrimary: idx === 0,
         }));
         await this.db.insert(generatedAssetProduct).values(productLinks);
-        console.log(`✅ Product links created: ${productIds.join(', ')}`);
       } catch (linkError) {
-        console.error(`❌ Failed to create product links:`, linkError);
+        logger.warn({ err: linkError, assetId, productIds }, 'Failed to create product links');
         // Don't fail the whole job if product links fail
       }
     }
 
-    console.log(`💾 Saved generated asset ${assetId} -> ${assetUrl}`);
     return { id: assetId, url: assetUrl };
   }
 
@@ -543,11 +525,8 @@ export class GenerationWorker {
 
     const storagePath = storagePaths.generationAsset(clientId, flowId, assetId, ext);
 
-    console.log(`📤 Uploading video to storage: ${storagePath}`);
-
     await storage.upload(storagePath, buffer, mimeType);
     const assetUrl = storage.getPublicUrl(storagePath);
-    console.log(`✅ Uploaded video: ${assetUrl}`);
 
     // Video assets don't use FlowGenerationSettings (which is for image generation)
     // Video metadata is stored in the prompt field
@@ -565,12 +544,8 @@ export class GenerationWorker {
         jobId: job.id,
         completedAt: new Date(),
       });
-      console.log(`✅ Database record created for video: ${assetId}`);
     } catch (dbError) {
-      console.error(
-        `❌ Failed to create database record for video asset ${assetId}, job ${job.id}, clientId ${clientId}, flowId ${flowId}:`,
-        dbError
-      );
+      logger.error({ err: dbError, assetId, jobId: job.id }, 'Failed to create video database record');
       throw dbError;
     }
 
@@ -583,14 +558,12 @@ export class GenerationWorker {
           isPrimary: idx === 0,
         }));
         await this.db.insert(generatedAssetProduct).values(productLinks);
-        console.log(`✅ Product links created for video asset ${assetId}`);
       } catch (productLinkError) {
         // Don't fail the whole job if product links fail (consistent with saveImage behavior)
-        console.error(`❌ Failed to create product links for video asset ${assetId}:`, productLinkError);
+        logger.warn({ err: productLinkError, assetId, productIds }, 'Failed to create video product links');
       }
     }
 
-    console.log(`💾 Saved generated video asset ${assetId} -> ${assetUrl}`);
     return { id: assetId, url: assetUrl };
   }
 
@@ -605,10 +578,16 @@ export class GenerationWorker {
     return { buffer: Buffer.from(base64, 'base64'), mimeType: 'image/png' };
   }
 
-  private async handleJobError(job: GenerationJob, errorMsg: string): Promise<void> {
-    console.error(`❌ Job ${job.id} error:`, errorMsg);
-
+  private async handleJobError(job: GenerationJob, errorMsg: string, error?: unknown): Promise<void> {
     const canRetry = job.attempts < job.maxAttempts;
+
+    logJobFailed(
+      job.id,
+      error instanceof Error ? error : errorMsg,
+      job.attempts,
+      job.maxAttempts,
+      canRetry
+    );
 
     if (canRetry) {
       const payload =
@@ -616,12 +595,9 @@ export class GenerationWorker {
 
       // Use repository for retry scheduling
       await this.jobs.scheduleRetry(job.id, errorMsg, job.attempts, payload);
-      const delaySeconds = Math.pow(job.attempts, 2) * 10;
-      console.log(`⏳ Job ${job.id} failed, scheduling retry in ${delaySeconds}s (attempt ${job.attempts}/${job.maxAttempts})`);
     } else {
       // Use repository for failure
       await this.jobs.fail(job.id, errorMsg);
-      console.log(`❌ Job ${job.id} failed permanently after ${job.attempts} attempts: ${errorMsg}`);
     }
   }
 

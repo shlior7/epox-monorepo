@@ -312,9 +312,44 @@ export class ProductAnalysisService {
     this.fallbackTextModel = AI_CONFIG.gemini.fallbackTextModel || 'gemini-2.0-flash-lite';
     this.cache = new LRUCache(CACHE_MAX_SIZE, CACHE_TTL_MS);
 
-    // Initialize client lazily to avoid errors when API key is not set
     if (AI_CONFIG.gemini.apiKey) {
       this.client = new GoogleGenAI({ apiKey: AI_CONFIG.gemini.apiKey });
+      return;
+    }
+
+    if (AI_CONFIG.gemini.useVertex) {
+      const vertexProject = AI_CONFIG.gemini.vertex?.project;
+      const vertexLocation = AI_CONFIG.gemini.vertex?.location || 'us-central1';
+
+      if (!vertexProject) {
+        console.warn('⚠️ Vertex AI enabled but GOOGLE_CLOUD_PROJECT is missing.');
+        return;
+      }
+
+      const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+      if (serviceAccountKey) {
+        try {
+          const credentials = JSON.parse(serviceAccountKey);
+          this.client = new GoogleGenAI({
+            vertexai: true,
+            project: vertexProject,
+            location: vertexLocation,
+            googleAuthOptions: {
+              credentials,
+            },
+          });
+          return;
+        } catch (error) {
+          console.error('❌ Failed to parse GOOGLE_SERVICE_ACCOUNT_KEY:', error);
+          return;
+        }
+      }
+
+      this.client = new GoogleGenAI({
+        vertexai: true,
+        project: vertexProject,
+        location: vertexLocation,
+      });
     }
   }
 
@@ -370,7 +405,7 @@ export class ProductAnalysisService {
 
     // Need AI analysis
     if (!this.client) {
-      console.warn('⚠️ Gemini API key not configured, using fallback analysis');
+      console.warn('⚠️ Gemini credentials not configured, using fallback analysis');
       const fallbackResult = this.buildFallbackAIResult(product);
       this.cache.set(cacheKey, fallbackResult);
       return fallbackResult;

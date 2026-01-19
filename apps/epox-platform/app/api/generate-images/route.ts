@@ -4,10 +4,12 @@
  */
 
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/services/db';
+import * as Sentry from '@sentry/nextjs';
+import { enqueueImageGeneration } from 'visualizer-ai';
 import { buildFullGenerationPrompt } from '@/lib/services/prompt-builder';
 import type { PromptTags } from '@/lib/types';
 import { withGenerationSecurity, validateUrls } from '@/lib/security';
+import { logJobStarted, logJobFailed, logger } from '@/lib/logger';
 
 // Flexible input that accepts strings or arrays
 interface FlexiblePromptTags {
@@ -113,13 +115,10 @@ export const POST = withGenerationSecurity(async (request, context) => {
     }
   }
 
-  console.log('🚀 Starting image generation job');
-  console.log('📋 Request:', {
-    clientId,
-    sessionId,
-    productCount: productIds.length,
-    promptTags,
-  });
+  logger.info(
+    { clientId, sessionId, productCount: productIds.length },
+    'Image generation request received'
+  );
 
   // Build the prompt - always include system requirements, add user prompt to custom tags
   const normalizedTags = normalizePromptTags(promptTags);
@@ -130,20 +129,13 @@ export const POST = withGenerationSecurity(async (request, context) => {
   }
 
   const prompt = buildFullGenerationPrompt('Product', normalizedTags);
-  console.log('📝 Generated prompt:', `${prompt.substring(0, 200)}...`);
-  if (body.prompt) {
-    console.log('📝 User custom prompt included:', body.prompt);
-  }
 
   const expectedImageCount = productIds.length * (settings?.variantsPerProduct ?? 4);
 
   // Create job in PostgreSQL queue
-  const job = await db.generationJobs.create({
+  const { jobId } = await enqueueImageGeneration(
     clientId,
-    type: 'image_generation',
-    priority: urgent ? 50 : 100, // Lower number = higher priority
-    flowId: sessionId, // sessionId is actually the generationFlowId from the studio
-    payload: {
+    {
       prompt,
       productIds,
       sessionId,
@@ -158,13 +150,22 @@ export const POST = withGenerationSecurity(async (request, context) => {
       inspirationImageUrls,
       isClientSession: false,
     },
+    {
+      priority: urgent ? 50 : 100,
+      flowId: sessionId,
+    }
+  );
+
+  logJobStarted(jobId, {
+    clientId,
+    sessionId,
+    productCount: productIds.length,
+    expectedImageCount,
   });
 
-  console.log('✅ Job created in PostgreSQL:', job.id);
-
   return NextResponse.json({
-    jobId: job.id,
-    jobIds: [job.id],
+    jobId,
+    jobIds: [jobId],
     status: 'queued',
     expectedImageCount,
     prompt: prompt.substring(0, 500),

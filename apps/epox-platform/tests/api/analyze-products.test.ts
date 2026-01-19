@@ -9,7 +9,7 @@ import { POST as analyzeProducts } from '@/app/api/analyze-products/route';
 let mockProductAnalysisService: { analyzeProductWithAI: ReturnType<typeof vi.fn> };
 let mockGemini: { analyzeScene: ReturnType<typeof vi.fn> };
 
-vi.mock('visualizer-services', () => ({
+vi.mock('visualizer-ai', () => ({
   getProductAnalysisService: vi.fn(() => mockProductAnalysisService),
   getGeminiService: vi.fn(() => mockGemini),
 }));

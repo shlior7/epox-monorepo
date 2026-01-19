@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getGeminiService } from 'visualizer-services';
+import { getGeminiService, RateLimitError } from 'visualizer-ai';
 import type { VisionAnalysisResult, InspirationImage } from 'visualizer-types';
 import { withSecurity, validateImageUrl } from '@/lib/security';
 

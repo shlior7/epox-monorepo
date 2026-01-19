@@ -1,7 +1,7 @@
 // ===== MAIN SERVICES EXPORTS =====
 
 // Services (classes for explicit instantiation)
-export { GeminiService } from './gemini';
+export { GeminiService } from 'visualizer-ai';
 export { VisualizationService, getVisualizationService } from './visualization';
 
 // Lazy singleton - only instantiates when methods are called
@@ -21,7 +21,7 @@ export type {
   // Gemini types
   GeminiGenerationRequest,
   GeminiGenerationResponse,
-} from './gemini';
+} from 'visualizer-ai';
 
 // Utilities and constants
 export * from './shared/utils';

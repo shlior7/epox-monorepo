@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { storage, storagePaths } from '@/lib/services/storage';
 import { db } from '@/lib/services/db';
-import { getGeminiService } from 'visualizer-services';
+import { getGeminiService } from 'visualizer-ai';
 import type { SubjectAnalysis, ProductAnalysis } from 'visualizer-types';
 
 // TODO: Replace with actual auth when implemented

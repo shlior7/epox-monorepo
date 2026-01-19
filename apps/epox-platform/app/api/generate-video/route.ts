@@ -5,8 +5,9 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { db } from '@/lib/services/db';
+import { enqueueVideoGeneration } from 'visualizer-ai';
 import { withGenerationSecurity, isValidUrl } from '@/lib/security';
+import { logJobStarted } from '@/lib/logger';
 
 // URL validation using centralized security module
 const validateImageUrlField = (val: string) => isValidUrl(val, { allowDataUrls: true });
@@ -83,12 +84,9 @@ export const POST = withGenerationSecurity(async (request, context) => {
     urgent,
   } = body;
 
-  const job = await db.generationJobs.create({
+  const { jobId } = await enqueueVideoGeneration(
     clientId,
-    type: 'video_generation',
-    priority: urgent ? 50 : 100,
-    flowId: sessionId,
-    payload: {
+    {
       prompt,
       sourceImageUrl,
       sessionId,
@@ -97,10 +95,16 @@ export const POST = withGenerationSecurity(async (request, context) => {
       inspirationNote,
       settings: settings ? { ...settings } : undefined,
     },
-  });
+    {
+      priority: urgent ? 50 : 100,
+      flowId: sessionId,
+    }
+  );
+
+  logJobStarted(jobId, { clientId, sessionId, productId, type: 'video' });
 
   return NextResponse.json({
-    jobId: job.id,
+    jobId,
     status: 'queued',
     message: 'Video generation queued',
     queueType: 'postgres',
