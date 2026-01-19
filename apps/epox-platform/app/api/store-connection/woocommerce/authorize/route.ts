@@ -16,7 +16,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const { storeUrl, returnUrl } = (await request.json()) as { storeUrl?: string; returnUrl?: string };
+    const { storeUrl, returnUrl } = (await request.json()) as {
+      storeUrl?: string;
+      returnUrl?: string;
+    };
     if (!storeUrl) {
       return NextResponse.json({ error: 'Store URL is required' }, { status: 400 });
     }
@@ -38,7 +41,9 @@ export async function POST(request: NextRequest) {
 }
 
 function getBaseUrl(request: NextRequest): string {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
   const host = request.headers.get('host');
   const protocol = request.headers.get('x-forwarded-proto') ?? 'https';
   return host ? `${protocol}://${host}` : 'http://localhost:3000';
