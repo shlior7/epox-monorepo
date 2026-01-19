@@ -141,3 +141,4 @@ To rotate the encryption key:
 3. Increment `STORE_CREDENTIALS_KEY_ID` (e.g., `v1` → `v2`)
 4. Re-encrypt existing credentials (migration required)
 
+

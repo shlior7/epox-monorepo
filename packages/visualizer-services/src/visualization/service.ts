@@ -1,5 +1,5 @@
-import type { GeminiService } from '../gemini';
-import { getGeminiService } from '../gemini';
+import type { GeminiService } from 'visualizer-ai';
+import { getGeminiService } from 'visualizer-ai';
 import { generateSessionId } from '../utils';
 import { buildCostOptimizedPrompt, generateCostOptimizedVariants } from './utils';
 import type { VisualizationRequest, GenerationSession, VariantPreview } from '../types';

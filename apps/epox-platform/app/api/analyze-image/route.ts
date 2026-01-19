@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getGeminiService } from 'visualizer-services';
+import { getGeminiService, RateLimitError } from 'visualizer-services';
 import { withSecurity, validateImageUrl } from '@/lib/security';
 
 interface AnalyzeImageRequest {
@@ -27,8 +27,27 @@ export const POST = withSecurity(async (request) => {
     );
   }
 
-  const geminiService = getGeminiService();
-  const result = await geminiService.analyzeComponents(body.imageDataUrl);
+  try {
+    const geminiService = getGeminiService();
+    const result = await geminiService.analyzeComponents(body.imageDataUrl);
 
-  return NextResponse.json({ success: true, ...result });
+    return NextResponse.json({ success: true, ...result });
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Service temporarily busy. Please try again in ${error.retryAfter} seconds.`,
+          retryAfter: error.retryAfter,
+        },
+        {
+          status: 503,
+          headers: {
+            'Retry-After': error.retryAfter.toString(),
+          },
+        }
+      );
+    }
+    throw error;
+  }
 });

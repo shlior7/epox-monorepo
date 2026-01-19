@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getGeminiService } from 'visualizer-services';
+import { getGeminiService, RateLimitError } from 'visualizer-services';
 import type { VisionAnalysisResult, InspirationImage } from 'visualizer-types';
 import { withSecurity, validateImageUrl } from '@/lib/security';
 
@@ -19,6 +19,7 @@ interface VisionScannerResponse {
   inspirationImage?: InspirationImage;
   analysis?: VisionAnalysisResult;
   error?: string;
+  retryAfter?: number;
 }
 
 /**
@@ -101,38 +102,57 @@ export const POST = withSecurity(async (request): Promise<NextResponse<VisionSca
     );
   }
 
-  const geminiService = getGeminiService();
-  const scannerOutput = await geminiService.analyzeInspirationImage(body.imageUrl);
+  try {
+    const geminiService = getGeminiService();
+    const scannerOutput = await geminiService.analyzeInspirationImage(body.imageUrl);
 
-  // Convert scanner output to VisionAnalysisResult format
-  const analysis: VisionAnalysisResult = {
-    json: {
-      styleSummary: scannerOutput.styleSummary,
-      detectedSceneType: scannerOutput.detectedSceneType,
-      heroObjectAccessories: scannerOutput.heroObjectAccessories,
-      sceneInventory: scannerOutput.sceneInventory,
-      lightingPhysics: scannerOutput.lightingPhysics,
-    },
-    promptText: generatePromptText({
-      styleSummary: scannerOutput.styleSummary,
-      detectedSceneType: scannerOutput.detectedSceneType,
-      heroObjectAccessories: scannerOutput.heroObjectAccessories,
-      sceneInventory: scannerOutput.sceneInventory,
-      lightingPhysics: scannerOutput.lightingPhysics,
-    }),
-  };
+    // Convert scanner output to VisionAnalysisResult format
+    const analysis: VisionAnalysisResult = {
+      json: {
+        styleSummary: scannerOutput.styleSummary,
+        detectedSceneType: scannerOutput.detectedSceneType,
+        heroObjectAccessories: scannerOutput.heroObjectAccessories,
+        sceneInventory: scannerOutput.sceneInventory,
+        lightingPhysics: scannerOutput.lightingPhysics,
+      },
+      promptText: generatePromptText({
+        styleSummary: scannerOutput.styleSummary,
+        detectedSceneType: scannerOutput.detectedSceneType,
+        heroObjectAccessories: scannerOutput.heroObjectAccessories,
+        sceneInventory: scannerOutput.sceneInventory,
+        lightingPhysics: scannerOutput.lightingPhysics,
+      }),
+    };
 
-  // Create the InspirationImage object
-  const inspirationImage: InspirationImage = {
-    url: body.imageUrl,
-    addedAt: new Date().toISOString(),
-    sourceType: body.sourceType ?? 'upload',
-    tags: [scannerOutput.detectedSceneType],
-  };
+    // Create the InspirationImage object
+    const inspirationImage: InspirationImage = {
+      url: body.imageUrl,
+      addedAt: new Date().toISOString(),
+      sourceType: body.sourceType ?? 'upload',
+      tags: [scannerOutput.detectedSceneType],
+    };
 
-  return NextResponse.json({
-    success: true,
-    inspirationImage,
-    analysis,
-  });
+    return NextResponse.json({
+      success: true,
+      inspirationImage,
+      analysis,
+    });
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Service temporarily busy. Please try again in ${error.retryAfter} seconds.`,
+          retryAfter: error.retryAfter,
+        },
+        {
+          status: 503,
+          headers: {
+            'Retry-After': error.retryAfter.toString(),
+          },
+        }
+      );
+    }
+    throw error;
+  }
 });

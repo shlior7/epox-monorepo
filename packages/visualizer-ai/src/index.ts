@@ -38,6 +38,8 @@ export type {
   AdjustmentHint,
   ProductAsset,
   ProductAnalysis,
+  VisionScannerOutput,
+  SubjectScannerOutput,
 } from './types';
 
 // Utils
@@ -57,3 +59,16 @@ export {
 
 // Gemini Service
 export { GeminiService, getGeminiService } from './gemini-service';
+
+// Rate Limiting
+export {
+  withRateLimit,
+  checkRateLimit,
+  resetRateLimiters,
+  RateLimitError,
+  getRateLimitInfo,
+  setModelRateLimit,
+  setCategoryRateLimit,
+  getAllRateLimits,
+} from './rate-limit';
+export type { RateLimitResult, RateLimitConfig } from './rate-limit';

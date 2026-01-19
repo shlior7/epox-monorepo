@@ -12,6 +12,8 @@ export type {
   FlowGenerationSettings,
   VideoPromptSettings,
   VideoGenerationSettings,
+  VideoType,
+  VideoQuality,
   PromptSettings,
   PromptTags,
   AIModelConfig,
@@ -43,6 +45,9 @@ export {
   // New presets for studio settings
   STYLE_PRESETS,
   LIGHTING_PRESETS,
+  // Video presets
+  VIDEO_TYPES,
+  VIDEO_QUALITY_OPTIONS,
   // Utility functions
   normalizeImageQuality,
 } from './settings';

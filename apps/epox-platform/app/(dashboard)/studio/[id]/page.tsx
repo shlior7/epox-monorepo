@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import type { GeneratedAsset } from '@/lib/api-client';
@@ -44,8 +45,10 @@ import type {
   StylePreset,
   SubjectAnalysis,
   VideoPromptSettings,
+  VideoType,
+  VideoQuality,
 } from 'visualizer-types';
-import { LIGHTING_PRESETS, STYLE_PRESETS } from 'visualizer-types';
+import { LIGHTING_PRESETS, STYLE_PRESETS, VIDEO_TYPES, VIDEO_QUALITY_OPTIONS } from 'visualizer-types';
 
 interface StudioPageProps {
   params: Promise<{ id: string }>;
@@ -165,8 +168,13 @@ export default function StudioPage({ params }: StudioPageProps) {
   // Video Settings
   const [videoPrompt, setVideoPrompt] = useState('');
   const [videoInspirationUrl, setVideoInspirationUrl] = useState<string | null>(null);
-  const [videoInspirationNote, setVideoInspirationNote] = useState('');
-  const [videoSettings, setVideoSettings] = useState<VideoPromptSettings>({});
+  const [videoSettings, setVideoSettings] = useState<VideoPromptSettings>({
+    videoType: 'Pan Over Product',
+    durationSeconds: 5,
+    quality: '1080p',
+    aspectRatio: '16:9',
+  });
+  const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false);
   const [videoPresetId, setVideoPresetId] = useState<string | null>(null);
   const [videoPresetName, setVideoPresetName] = useState('');
   const [videoPresets, setVideoPresets] = useState<VideoPreset[]>([]);
@@ -329,8 +337,13 @@ export default function StudioPage({ params }: StudioPageProps) {
       if (s.video) {
         setVideoPrompt(s.video.prompt ?? '');
         setVideoInspirationUrl(s.video.inspirationImageUrl ?? null);
-        setVideoInspirationNote(s.video.inspirationNote ?? '');
-        setVideoSettings(s.video.settings ?? {});
+        const settings = s.video.settings as any ?? {};
+        setVideoSettings({
+          videoType: (settings.videoType as VideoType) ?? 'Pan Over Product',
+          durationSeconds: settings.durationSeconds ?? 5,
+          quality: (settings.quality as VideoQuality) ?? '1080p',
+          aspectRatio: settings.aspectRatio ?? '16:9',
+        });
         setVideoPresetId(s.video.presetId ?? null);
       }
     }
@@ -468,7 +481,6 @@ export default function StudioPage({ params }: StudioPageProps) {
         video: {
           prompt: videoPrompt || undefined,
           inspirationImageUrl: videoInspirationUrl || undefined,
-          inspirationNote: videoInspirationNote || undefined,
           settings: videoSettings,
           presetId: videoPresetId,
         },
@@ -488,30 +500,11 @@ export default function StudioPage({ params }: StudioPageProps) {
     settings.variantsCount,
     videoPrompt,
     videoInspirationUrl,
-    videoInspirationNote,
     videoSettings,
     videoPresetId,
   ]);
 
-  // Auto-save video settings when they change
-  useEffect(() => {
-    if (activeTab !== 'video') return;
-    const timeoutId = setTimeout(() => {
-      if (flowData?.settings) {
-        saveSettings();
-      }
-    }, 600);
-    return () => clearTimeout(timeoutId);
-  }, [
-    activeTab,
-    videoPrompt,
-    videoInspirationUrl,
-    videoInspirationNote,
-    videoSettings,
-    videoPresetId,
-    flowData?.settings,
-    saveSettings,
-  ]);
+  // Settings are saved when clicking Generate (not on every keystroke)
 
   const persistVideoPresets = (presets: VideoPreset[]) => {
     setVideoPresets(presets);
@@ -563,21 +556,70 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   const buildVideoPrompt = (
     basePrompt: string,
-    settings: VideoPromptSettings,
-    inspirationNote: string
+    settings: VideoPromptSettings
   ) => {
     const lines = [basePrompt.trim()];
     if (settings.videoType) lines.push(`Video type: ${settings.videoType}`);
-    if (settings.cameraMotion) lines.push(`Camera motion: ${settings.cameraMotion}`);
-    if (settings.subjectAction) lines.push(`Subject action: ${settings.subjectAction}`);
-    if (settings.sceneAction) lines.push(`Scene action: ${settings.sceneAction}`);
     if (settings.durationSeconds) lines.push(`Duration: ${settings.durationSeconds}s`);
-    if (inspirationNote.trim()) lines.push(`Style reference: ${inspirationNote.trim()}`);
+    if (settings.quality) lines.push(`Quality: ${settings.quality}`);
+    if (settings.aspectRatio) lines.push(`Aspect ratio: ${settings.aspectRatio}`);
     return lines.filter(Boolean).join('\n');
   };
 
   const updateVideoSettings = (updates: Partial<VideoPromptSettings>) => {
     setVideoSettings((prev) => ({ ...prev, ...updates }));
+  };
+
+  const handleEnhancePrompt = async () => {
+    if (!selectedBaseImageUrl) {
+      toast.error('Please select a base image first');
+      return;
+    }
+
+    setIsEnhancingPrompt(true);
+    try {
+      const sourceImageUrl = videoInspirationUrl || selectedBaseImageUrl;
+
+      const response = await fetch('/api/enhance-video-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoType: videoSettings.videoType,
+          settings: videoSettings,
+          userPrompt: videoPrompt,
+          sourceImageUrl,
+        }),
+      });
+
+      const data = await response.json();
+
+      // Handle rate limiting (503 Service Unavailable)
+      if (response.status === 503 && data.retryAfter) {
+        toast.error(`Service busy. Retrying in ${data.retryAfter} seconds...`, { duration: data.retryAfter * 1000 });
+
+        // Automatically retry after the specified delay
+        await new Promise((resolve) => setTimeout(resolve, data.retryAfter * 1000));
+
+        // Recursive retry
+        return handleEnhancePrompt();
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to enhance prompt');
+      }
+
+      if (!data.success || !data.enhancedPrompt) {
+        throw new Error(data.error || 'Failed to enhance prompt');
+      }
+
+      setVideoPrompt(data.enhancedPrompt);
+      toast.success('Prompt enhanced successfully!');
+    } catch (error) {
+      console.error('Prompt enhancement error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to enhance prompt');
+    } finally {
+      setIsEnhancingPrompt(false);
+    }
   };
 
   const handlePreviewPrompt = async () => {
@@ -616,6 +658,9 @@ export default function StudioPage({ params }: StudioPageProps) {
     if (!products || products.length === 0) return;
 
     try {
+      // Save settings to DB first
+      await saveSettings();
+
       // First, generate the prompt via Art Director
       let prompt = '';
       if (subjectAnalysis && Object.keys(sceneTypeInspirations).length > 0) {
@@ -681,14 +726,16 @@ export default function StudioPage({ params }: StudioPageProps) {
     }
 
     try {
-      const prompt = buildVideoPrompt(videoPrompt, videoSettings, videoInspirationNote);
+      // Save settings to DB first
+      await saveSettings();
+
+      const prompt = buildVideoPrompt(videoPrompt, videoSettings);
       const result = await apiClient.generateVideo({
         sessionId: studioId,
         productId: currentProduct.id,
         sourceImageUrl: selectedBaseImageUrl,
         prompt,
         inspirationImageUrl: videoInspirationUrl || undefined,
-        inspirationNote: videoInspirationNote || undefined,
         settings: {
           durationSeconds: videoSettings.durationSeconds,
         },
@@ -1302,22 +1349,29 @@ export default function StudioPage({ params }: StudioPageProps) {
                           placeholder="Describe the video you want to generate..."
                           value={videoPrompt}
                           onChange={(e) => setVideoPrompt(e.target.value)}
-                          onBlur={saveSettings}
                           className="min-h-[80px] resize-none text-sm"
                         />
                       </div>
 
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Inspiration Note (optional)
-                        </label>
-                        <Input
-                          placeholder="e.g., warm studio lighting, soft camera move"
-                          value={videoInspirationNote}
-                          onChange={(e) => setVideoInspirationNote(e.target.value)}
-                          onBlur={saveSettings}
-                        />
-                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={handleEnhancePrompt}
+                        disabled={isEnhancingPrompt}
+                      >
+                        {isEnhancingPrompt ? (
+                          <>
+                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                            Enhancing...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="mr-2 h-3.5 w-3.5" />
+                            Enhance Prompt with AI
+                          </>
+                        )}
+                      </Button>
                     </div>
                   )}
                 </section>
@@ -1336,42 +1390,91 @@ export default function StudioPage({ params }: StudioPageProps) {
                   </button>
 
                   {videoExpandedSection === 'video-settings' && (
-                    <div className="space-y-3 px-4 pb-4">
-                      <Input
-                        placeholder="Video type (e.g., pan over product)"
-                        value={videoSettings.videoType || ''}
-                        onChange={(e) => updateVideoSettings({ videoType: e.target.value })}
-                        onBlur={saveSettings}
-                      />
-                      <Input
-                        placeholder="Camera motion"
-                        value={videoSettings.cameraMotion || ''}
-                        onChange={(e) => updateVideoSettings({ cameraMotion: e.target.value })}
-                        onBlur={saveSettings}
-                      />
-                      <Input
-                        placeholder="Subject action"
-                        value={videoSettings.subjectAction || ''}
-                        onChange={(e) => updateVideoSettings({ subjectAction: e.target.value })}
-                        onBlur={saveSettings}
-                      />
-                      <Input
-                        placeholder="Scene action / atmosphere"
-                        value={videoSettings.sceneAction || ''}
-                        onChange={(e) => updateVideoSettings({ sceneAction: e.target.value })}
-                        onBlur={saveSettings}
-                      />
-                      <Input
-                        type="number"
-                        min={1}
-                        placeholder="Duration (seconds)"
-                        value={videoSettings.durationSeconds ? String(videoSettings.durationSeconds) : ''}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          updateVideoSettings({ durationSeconds: value ? Number(value) : undefined });
-                        }}
-                        onBlur={saveSettings}
-                      />
+                    <div className="space-y-4 px-4 pb-4">
+                      {/* Video Type */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">Type</label>
+                        <Select
+                          value={videoSettings.videoType || 'Pan Over Product'}
+                          onValueChange={(value) => updateVideoSettings({ videoType: value as VideoType })}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {VIDEO_TYPES.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Duration */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Duration: {videoSettings.durationSeconds || 5}s
+                        </label>
+                        <div className="flex gap-2">
+                          {[3, 5, 10, 15].map((duration) => (
+                            <button
+                              key={duration}
+                              onClick={() => updateVideoSettings({ durationSeconds: duration })}
+                              className={cn(
+                                'flex-1 rounded-lg border px-3 py-2 text-center text-sm transition-colors',
+                                videoSettings.durationSeconds === duration
+                                  ? 'border-primary bg-primary/10 text-primary'
+                                  : 'border-border hover:border-primary/50'
+                              )}
+                            >
+                              {duration}s
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Quality */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">Quality</label>
+                        <div className="flex gap-2">
+                          {VIDEO_QUALITY_OPTIONS.map((quality) => (
+                            <button
+                              key={quality}
+                              onClick={() => updateVideoSettings({ quality })}
+                              className={cn(
+                                'flex-1 rounded-lg border px-3 py-2 text-center text-sm transition-colors',
+                                videoSettings.quality === quality
+                                  ? 'border-primary bg-primary/10 text-primary'
+                                  : 'border-border hover:border-primary/50'
+                              )}
+                            >
+                              {quality}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Aspect Ratio */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">Aspect Ratio</label>
+                        <div className="flex gap-2">
+                          {['16:9', '9:16', '1:1', '4:3'].map((ratio) => (
+                            <button
+                              key={ratio}
+                              onClick={() => updateVideoSettings({ aspectRatio: ratio })}
+                              className={cn(
+                                'flex-1 rounded-lg border px-3 py-2 text-center text-sm transition-colors',
+                                videoSettings.aspectRatio === ratio
+                                  ? 'border-primary bg-primary/10 text-primary'
+                                  : 'border-border hover:border-primary/50'
+                              )}
+                            >
+                              {ratio}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </section>

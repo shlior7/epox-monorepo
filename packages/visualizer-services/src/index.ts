@@ -36,17 +36,24 @@ export type { ProductAsset, VisualizationRequest, VariantPreview, GenerationSess
 // Utils
 export { fileToBase64, fileToGenerativePart, estimateTokenUsage, optimizePrompt, generateSessionId, parseSize } from './utils';
 
-// Gemini Service
-export { GeminiService, getGeminiService } from './gemini';
+// Gemini Service - Re-exported from visualizer-ai for backwards compatibility
+export {
+  GeminiService,
+  getGeminiService,
+} from 'visualizer-ai';
 export type {
   GeminiGenerationRequest,
   GeminiGenerationResponse,
+  GeminiVideoRequest,
+  GeminiVideoResponse,
   EditImageRequest,
   EditImageResponse,
   ComponentAnalysisResult,
   SceneAnalysisResult,
   AdjustmentHint,
-} from './gemini/types';
+  VisionScannerOutput,
+  SubjectScannerOutput,
+} from 'visualizer-ai';
 
 // Visualization Service
 export { VisualizationService, getVisualizationService, visualizationService } from './visualization';
@@ -160,7 +167,7 @@ export type {
 } from './user-settings';
 
 // Rate Limiting
-export { withRateLimit, checkRateLimit, resetRateLimiters } from './rate-limit';
+export { withRateLimit, checkRateLimit, resetRateLimiters, RateLimitError } from './rate-limit';
 export type { RateLimitResult } from './rate-limit';
 
 // API Key Management
