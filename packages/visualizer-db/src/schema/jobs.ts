@@ -12,7 +12,7 @@ import { generationFlow } from './sessions';
 // TYPES
 // ============================================================================
 
-export type JobType = 'image_generation' | 'image_edit';
+export type JobType = 'image_generation' | 'image_edit' | 'video_generation';
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
 export interface PromptTags {
@@ -59,9 +59,26 @@ export interface ImageEditPayload {
   referenceImages?: Array<{ url: string; componentName: string }>;
 }
 
+export interface VideoGenerationPayload {
+  sourceImageUrl: string;
+  prompt: string;
+  sessionId: string;
+  productIds?: string[];
+  inspirationImageUrl?: string;
+  inspirationNote?: string;
+  operationName?: string;
+  settings?: {
+    durationSeconds?: number;
+    fps?: number;
+    model?: string;
+  };
+}
+
 export interface JobResult {
-  imageUrls: string[];
-  imageIds: string[];
+  imageUrls?: string[];
+  imageIds?: string[];
+  videoUrls?: string[];
+  videoIds?: string[];
   duration?: number;
 }
 
@@ -84,7 +101,7 @@ export const generationJob = pgTable(
 
     // Job type and payload
     type: text('type').$type<JobType>().notNull(),
-    payload: jsonb('payload').$type<ImageGenerationPayload | ImageEditPayload>().notNull(),
+    payload: jsonb('payload').$type<ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload>().notNull(),
 
     // Status
     status: text('status').$type<JobStatus>().notNull().default('pending'),

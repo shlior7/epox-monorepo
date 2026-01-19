@@ -20,16 +20,16 @@ describe('AlertService', () => {
   describe('constructor', () => {
     it('should create service with channels config', () => {
       const service = new AlertService({
-        channels: [{ type: 'slack', url: 'https://hooks.slack.com/test', enabled: true }],
+        channels: [{ type: 'email', url: 'https://email-service.com/send', enabled: true }],
       });
       expect(service).toBeInstanceOf(AlertService);
     });
   });
 
   describe('sendAlert', () => {
-    it('should send alert to slack channel', async () => {
+    it('should send alert to email channel', async () => {
       const service = new AlertService({
-        channels: [{ type: 'slack', url: 'https://hooks.slack.com/test', enabled: true }],
+        channels: [{ type: 'email', url: 'https://email-service.com/send', enabled: true }],
       });
 
       const payload: AlertPayload = {
@@ -43,7 +43,7 @@ describe('AlertService', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://hooks.slack.com/test',
+        'https://email-service.com/send',
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -51,13 +51,14 @@ describe('AlertService', () => {
       );
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.text).toContain('job_failed');
-      expect(body.text).toContain('Job xyz123 failed');
+      expect(body.subject).toContain('job_failed');
+      expect(body.subject).toContain('Job xyz123 failed');
+      expect(body.body).toContain('Job xyz123 failed');
     });
 
-    it('should send alert to discord channel', async () => {
+    it('should send alert to webhook channel', async () => {
       const service = new AlertService({
-        channels: [{ type: 'discord', url: 'https://discord.com/api/webhooks/test', enabled: true }],
+        channels: [{ type: 'webhook', url: 'https://example.com/webhook', enabled: true }],
       });
 
       const payload: AlertPayload = {
@@ -71,11 +72,11 @@ describe('AlertService', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.content).toContain('queue_backlog');
-      expect(body.content).toContain('Queue has 50 pending jobs');
+      expect(body.type).toBe('queue_backlog');
+      expect(body.message).toContain('Queue has 50 pending jobs');
     });
 
-    it('should send alert to generic webhook', async () => {
+    it('should send alert with details to webhook', async () => {
       const service = new AlertService({
         channels: [{ type: 'webhook', url: 'https://example.com/webhook', enabled: true }],
       });
@@ -102,8 +103,7 @@ describe('AlertService', () => {
     it('should send to multiple channels', async () => {
       const service = new AlertService({
         channels: [
-          { type: 'slack', url: 'https://hooks.slack.com/test', enabled: true },
-          { type: 'discord', url: 'https://discord.com/api/webhooks/test', enabled: true },
+          { type: 'email', url: 'https://email-service.com/send', enabled: true },
           { type: 'webhook', url: 'https://example.com/webhook', enabled: true },
         ],
       });
@@ -117,14 +117,14 @@ describe('AlertService', () => {
 
       await service.sendAlert(payload);
 
-      expect(mockFetch).toHaveBeenCalledTimes(3);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
     it('should skip disabled channels', async () => {
       const service = new AlertService({
         channels: [
-          { type: 'slack', url: 'https://hooks.slack.com/test', enabled: false },
-          { type: 'discord', url: 'https://discord.com/api/webhooks/test', enabled: true },
+          { type: 'email', url: 'https://email-service.com/send', enabled: false },
+          { type: 'webhook', url: 'https://example.com/webhook', enabled: true },
         ],
       });
 
@@ -138,14 +138,14 @@ describe('AlertService', () => {
       await service.sendAlert(payload);
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch.mock.calls[0][0]).toBe('https://discord.com/api/webhooks/test');
+      expect(mockFetch.mock.calls[0][0]).toBe('https://example.com/webhook');
     });
 
     it('should skip channels without URL', async () => {
       const service = new AlertService({
         channels: [
-          { type: 'slack', url: undefined, enabled: true },
-          { type: 'discord', url: 'https://discord.com/api/webhooks/test', enabled: true },
+          { type: 'email', url: undefined, enabled: true },
+          { type: 'webhook', url: 'https://example.com/webhook', enabled: true },
         ],
       });
 
@@ -165,7 +165,7 @@ describe('AlertService', () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
 
       const service = new AlertService({
-        channels: [{ type: 'slack', url: 'https://hooks.slack.com/test', enabled: true }],
+        channels: [{ type: 'email', url: 'https://email-service.com/send', enabled: true }],
       });
 
       const payload: AlertPayload = {
@@ -179,9 +179,9 @@ describe('AlertService', () => {
       await expect(service.sendAlert(payload)).resolves.not.toThrow();
     });
 
-    it('should include details as attachments in Slack', async () => {
+    it('should include details in email body', async () => {
       const service = new AlertService({
-        channels: [{ type: 'slack', url: 'https://hooks.slack.com/test', enabled: true }],
+        channels: [{ type: 'email', url: 'https://email-service.com/send', enabled: true }],
       });
 
       const payload: AlertPayload = {
@@ -195,13 +195,47 @@ describe('AlertService', () => {
       await service.sendAlert(payload);
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.attachments).toBeDefined();
-      expect(body.attachments[0].fields).toHaveLength(3);
+      expect(body.body).toContain('jobId: job-123');
+      expect(body.body).toContain('error: Timeout');
+      expect(body.body).toContain('duration: 30000');
     });
 
-    it('should include details as embeds in Discord', async () => {
+    it('should format object and array details with JSON.stringify in email body', async () => {
       const service = new AlertService({
-        channels: [{ type: 'discord', url: 'https://discord.com/api/webhooks/test', enabled: true }],
+        channels: [{ type: 'email', url: 'https://email-service.com/send', enabled: true }],
+      });
+
+      const payload: AlertPayload = {
+        type: 'worker_down',
+        severity: 'critical',
+        message: 'Worker crashed',
+        details: {
+          workerId: 'worker-1',
+          config: { concurrency: 5, timeout: 30000 },
+          errors: ['Connection lost', 'Timeout'],
+          metadata: { instanceId: 'i-123', region: 'us-east-1' },
+        },
+        timestamp: new Date(),
+      };
+
+      await service.sendAlert(payload);
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      // Primitive values should be formatted as strings
+      expect(body.body).toContain('workerId: worker-1');
+      // Objects should be JSON.stringify'd
+      expect(body.body).toContain('"concurrency": 5');
+      expect(body.body).toContain('"timeout": 30000');
+      // Arrays should be JSON.stringify'd
+      expect(body.body).toContain('"Connection lost"');
+      expect(body.body).toContain('"Timeout"');
+      // Nested objects should be formatted
+      expect(body.body).toContain('"instanceId": "i-123"');
+    });
+
+    it('should include details in webhook payload', async () => {
+      const service = new AlertService({
+        channels: [{ type: 'webhook', url: 'https://example.com/webhook', enabled: true }],
       });
 
       const payload: AlertPayload = {
@@ -215,15 +249,16 @@ describe('AlertService', () => {
       await service.sendAlert(payload);
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.embeds).toBeDefined();
-      expect(body.embeds[0].fields).toHaveLength(2);
+      expect(body.details).toBeDefined();
+      expect(body.details.metric).toBe('high_latency');
+      expect(body.details.value).toBe(5000);
     });
   });
 
-  describe('Severity Formatting', () => {
-    it('should use correct emoji for critical severity', async () => {
+  describe('Email Formatting', () => {
+    it('should format email subject with critical severity', async () => {
       const service = new AlertService({
-        channels: [{ type: 'slack', url: 'https://hooks.slack.com/test', enabled: true }],
+        channels: [{ type: 'email', url: 'https://email-service.com/send', enabled: true }],
       });
 
       await service.sendAlert({
@@ -234,12 +269,14 @@ describe('AlertService', () => {
       });
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.text).toContain('🚨');
+      expect(body.subject).toContain('[CRITICAL]');
+      expect(body.subject).toContain('worker_down');
+      expect(body.subject).toContain('Critical alert');
     });
 
-    it('should use correct emoji for error severity', async () => {
+    it('should format email subject with error severity', async () => {
       const service = new AlertService({
-        channels: [{ type: 'slack', url: 'https://hooks.slack.com/test', enabled: true }],
+        channels: [{ type: 'email', url: 'https://email-service.com/send', enabled: true }],
       });
 
       await service.sendAlert({
@@ -250,12 +287,13 @@ describe('AlertService', () => {
       });
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.text).toContain('❌');
+      expect(body.subject).toContain('[ERROR]');
+      expect(body.subject).toContain('job_failed');
     });
 
-    it('should use correct emoji for warning severity', async () => {
+    it('should format email subject with warning severity', async () => {
       const service = new AlertService({
-        channels: [{ type: 'slack', url: 'https://hooks.slack.com/test', enabled: true }],
+        channels: [{ type: 'email', url: 'https://email-service.com/send', enabled: true }],
       });
 
       await service.sendAlert({
@@ -266,12 +304,12 @@ describe('AlertService', () => {
       });
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.text).toContain('⚠️');
+      expect(body.subject).toContain('[WARNING]');
     });
 
-    it('should use correct emoji for info severity', async () => {
+    it('should format email subject with info severity', async () => {
       const service = new AlertService({
-        channels: [{ type: 'slack', url: 'https://hooks.slack.com/test', enabled: true }],
+        channels: [{ type: 'email', url: 'https://email-service.com/send', enabled: true }],
       });
 
       await service.sendAlert({
@@ -282,7 +320,7 @@ describe('AlertService', () => {
       });
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.text).toContain('ℹ️');
+      expect(body.subject).toContain('[INFO]');
     });
   });
 
@@ -301,8 +339,7 @@ describe('AlertService', () => {
     });
 
     it('should return null when no webhook URLs are configured', () => {
-      vi.stubEnv('SLACK_WEBHOOK_URL', '');
-      vi.stubEnv('DISCORD_WEBHOOK_URL', '');
+      vi.stubEnv('EMAIL_WEBHOOK_URL', '');
       vi.stubEnv('ALERT_WEBHOOK_URL', '');
 
       // Force re-evaluation by clearing any cached instance

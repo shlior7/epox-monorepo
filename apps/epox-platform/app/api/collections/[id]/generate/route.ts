@@ -43,7 +43,7 @@ export async function POST(
     const mergedSettings: Partial<FlowGenerationSettings> = {
       inspirationImages: [],
       aspectRatio: '1:1',
-      imageQuality: '2K',
+      imageQuality: '2k',
       variantsCount: 1,
       ...collection.settings,
       ...body.settings,

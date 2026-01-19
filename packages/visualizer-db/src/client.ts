@@ -10,29 +10,36 @@ import * as schema from './schema/index';
 // Lazy initialization of the database client
 let _db: ReturnType<typeof createDrizzleClient> | null = null;
 let _pool: Pool | null = null;
+let _wsConfigured = false;
 
 /**
  * Configure WebSocket for Neon in Node.js environment
  * Uses 'ws' package for WebSocket support since Node.js doesn't have native WebSocket
- *
- * Top-level await ensures this completes before any exports are used.
  */
-const isNode = typeof process !== 'undefined' && process.versions?.node;
+function configureWebSocket() {
+  if (_wsConfigured) return;
+  _wsConfigured = true;
 
-if (isNode && !neonConfig.webSocketConstructor) {
-  try {
-    const ws = await import('ws');
-    neonConfig.webSocketConstructor = ws.default as unknown as typeof WebSocket;
-  } catch {
-    // ws not available, will use native WebSocket if available
-    const globalAny = globalThis as Record<string, unknown>;
-    if (globalAny.WebSocket) {
-      neonConfig.webSocketConstructor = globalAny.WebSocket as typeof WebSocket;
+  const isNode = typeof process !== 'undefined' && process.versions?.node;
+
+  if (isNode && !neonConfig.webSocketConstructor) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const ws = require('ws');
+      neonConfig.webSocketConstructor = ws.default || ws;
+    } catch {
+      // ws not available, will use native WebSocket if available
+      const globalAny = globalThis as Record<string, unknown>;
+      if (globalAny.WebSocket) {
+        neonConfig.webSocketConstructor = globalAny.WebSocket as typeof WebSocket;
+      }
     }
   }
 }
 
 function createPool() {
+  configureWebSocket();
+
   const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {

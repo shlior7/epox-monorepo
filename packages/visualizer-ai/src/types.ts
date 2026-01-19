@@ -43,6 +43,29 @@ export interface GeminiGenerationResponse {
   };
 }
 
+// ===== VIDEO GENERATION TYPES =====
+
+export interface GeminiVideoRequest {
+  prompt: string;
+  sourceImageUrl: string;
+  durationSeconds?: number;
+  fps?: number;
+  model?: string;
+}
+
+export interface GeminiVideoResponse {
+  id: string;
+  videoBuffer: Buffer;
+  mimeType: string;
+  metadata: {
+    model: string;
+    prompt: string;
+    generatedAt: string;
+    durationSeconds?: number;
+    fps?: number;
+  };
+}
+
 // ===== EDIT IMAGE TYPES =====
 
 /** Edit modes for image editing - helps guide the model */

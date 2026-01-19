@@ -10,6 +10,8 @@ import type {
   EditImageResponse,
   GeminiGenerationRequest,
   GeminiGenerationResponse,
+  GeminiVideoRequest,
+  GeminiVideoResponse,
   SceneAnalysisResult,
 } from './types';
 import {
@@ -680,6 +682,172 @@ export class GeminiService {
     console.log(`🖼️ Image size: ${imageSize ?? 'default'}`);
 
     return this.generateImagesWithGemini(request, primaryModel, aspectRatio, imageSize);
+  }
+
+  /**
+   * Generate a single video using Gemini video generation API.
+   */
+  async generateVideo(request: GeminiVideoRequest): Promise<GeminiVideoResponse> {
+    const operationName = await this.startVideoGeneration(request);
+    let result: GeminiVideoResponse | null = null;
+
+    // Prevent infinite polling with a timeout (10 minutes)
+    const maxTimeoutMs = 10 * 60 * 1000; // 10 minutes
+    const pollIntervalMs = 5000; // 5 seconds
+    const startTime = Date.now();
+
+    while (!result) {
+      const elapsedMs = Date.now() - startTime;
+      if (elapsedMs >= maxTimeoutMs) {
+        throw new Error(`Video generation timed out after ${Math.round(elapsedMs / 1000)}s (operation: ${operationName})`);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      result = await this.pollVideoGeneration({
+        operationName,
+        prompt: request.prompt,
+        model: request.model,
+        durationSeconds: request.durationSeconds,
+        fps: request.fps,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Start a video generation operation and return the operation name.
+   */
+  async startVideoGeneration(request: GeminiVideoRequest): Promise<string> {
+    const model = request.model ?? 'veo-3.1-generate-preview';
+    const image = await normalizeImageInput(request.sourceImageUrl);
+    const videoClient = this.vertexClient ?? this.client;
+    const resolvedModel = this.vertexClient ? normalizeVertexModelName(model) : model;
+
+    console.log(`🎬 GEMINI: Starting video generation with ${resolvedModel}...`);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const operation = await (videoClient.models as any).generateVideos({
+      model: resolvedModel,
+      prompt: request.prompt,
+      image: {
+        imageBytes: image.base64Data,
+        mimeType: image.mimeType,
+      },
+      config: {
+        numberOfVideos: 1,
+        ...(request.durationSeconds ? { durationSeconds: request.durationSeconds } : {}),
+        ...(request.fps ? { fps: request.fps } : {}),
+      },
+    });
+
+    const operationName = operation?.name;
+    if (!operationName) {
+      throw new Error('Video generation did not return an operation name.');
+    }
+
+    return operationName;
+  }
+
+  /**
+   * Poll a video generation operation and return the video when complete.
+   */
+  async pollVideoGeneration(request: {
+    operationName: string;
+    prompt: string;
+    model?: string;
+    durationSeconds?: number;
+    fps?: number;
+  }): Promise<GeminiVideoResponse | null> {
+    const videoClient = this.vertexClient ?? this.client;
+
+    const operation = {
+      name: request.operationName,
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updatedOperation = await (videoClient.operations as any).getVideosOperation({ operation });
+
+    if (!updatedOperation.done) {
+      return null;
+    }
+
+    if (updatedOperation.error) {
+      const errorObj = updatedOperation.error as Record<string, unknown>;
+      const messageValue = errorObj.message;
+      const message = typeof messageValue === 'string' ? messageValue : 'Video generation failed.';
+      throw new Error(message);
+    }
+
+    const downloadLink = updatedOperation.response?.generatedVideos?.[0]?.video?.uri;
+    if (!downloadLink) {
+      throw new Error('Video generation completed but no URI returned.');
+    }
+
+    const { buffer, mimeType } = await this.downloadGeneratedVideo(downloadLink);
+    const resolvedModel = request.model ?? 'veo-3.1-generate-preview';
+
+    return {
+      id: `gemini_video_${Date.now()}`,
+      videoBuffer: buffer,
+      mimeType,
+      metadata: {
+        model: resolvedModel,
+        prompt: request.prompt,
+        generatedAt: new Date().toISOString(),
+        durationSeconds: request.durationSeconds,
+        fps: request.fps,
+      },
+    };
+  }
+
+  private async downloadGeneratedVideo(downloadLink: string): Promise<{ buffer: Buffer; mimeType: string }> {
+    const apiKey = AI_CONFIG.gemini.apiKey;
+    const headers: HeadersInit = {};
+
+    // Use Authorization header instead of query parameter to avoid exposing API key
+    if (apiKey && !downloadLink.includes('key=')) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+
+    // Set up timeout (default 5 minutes for video downloads)
+    const timeoutMs = 5 * 60 * 1000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const videoResponse = await fetch(downloadLink, {
+        headers,
+        signal: controller.signal,
+      });
+
+      if (!videoResponse.ok) {
+        // Include HTTP details in error message
+        let errorDetails = `HTTP ${videoResponse.status} ${videoResponse.statusText}`;
+        try {
+          const errorText = await videoResponse.text();
+          if (errorText) {
+            errorDetails += `: ${errorText.substring(0, 200)}`;
+          }
+        } catch {
+          // Ignore error reading response body
+        }
+        throw new Error(`Failed to download generated video: ${errorDetails}`);
+      }
+
+      const arrayBuffer = await videoResponse.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const mimeType = videoResponse.headers.get('content-type') ?? 'video/mp4';
+
+      return { buffer, mimeType };
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`Video download timed out after ${timeoutMs / 1000}s`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   /**

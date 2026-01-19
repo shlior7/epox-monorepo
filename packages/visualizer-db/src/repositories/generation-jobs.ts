@@ -1,6 +1,6 @@
 import { and, desc, eq, lte, sql } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
-import { generationJob, type JobStatus, type JobType, type ImageGenerationPayload, type ImageEditPayload, type JobResult } from '../schema/jobs';
+import { generationJob, type JobStatus, type JobType, type ImageGenerationPayload, type ImageEditPayload, type VideoGenerationPayload, type JobResult } from '../schema/jobs';
 import { BaseRepository } from './base';
 
 // ============================================================================
@@ -12,7 +12,7 @@ export interface GenerationJob {
   clientId: string;
   flowId: string | null;
   type: JobType;
-  payload: ImageGenerationPayload | ImageEditPayload;
+  payload: ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload;
   status: JobStatus;
   progress: number;
   result: JobResult | null;
@@ -32,7 +32,7 @@ export interface GenerationJobCreate {
   clientId: string;
   flowId?: string;
   type: JobType;
-  payload: ImageGenerationPayload | ImageEditPayload;
+  payload: ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload;
   priority?: number;
   maxAttempts?: number;
 }
@@ -41,6 +41,7 @@ export interface GenerationJobUpdate {
   status?: JobStatus;
   progress?: number;
   result?: JobResult;
+  payload?: ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload;
   error?: string | null;
   scheduledFor?: Date;
   lockedBy?: string | null;
@@ -97,7 +98,10 @@ export class GenerationJobRepository extends BaseRepository<GenerationJob> {
         locked_by = ${workerId},
         locked_at = NOW(),
         started_at = NOW(),
-        attempts = attempts + 1
+        attempts = CASE
+          WHEN error IS NULL AND payload->>'operationName' IS NOT NULL THEN attempts
+          ELSE attempts + 1
+        END
       WHERE id = (
         SELECT id FROM generation_job
         WHERE status = 'pending'
@@ -156,17 +160,28 @@ export class GenerationJobRepository extends BaseRepository<GenerationJob> {
   /**
    * Schedule job for retry with exponential backoff
    */
-  async scheduleRetry(id: string, error: string, attempts: number): Promise<GenerationJob> {
+  async scheduleRetry(
+    id: string,
+    error: string,
+    attempts: number,
+    payload?: ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload
+  ): Promise<GenerationJob> {
     const delaySeconds = Math.pow(attempts, 2) * 10; // 10s, 40s, 90s, ...
     const scheduledFor = new Date(Date.now() + delaySeconds * 1000);
 
-    return this.updateStatus(id, {
+    const update: GenerationJobUpdate = {
       status: 'pending',
       error,
       scheduledFor,
       lockedBy: null,
       lockedAt: null,
-    });
+    };
+
+    if (payload) {
+      update.payload = payload;
+    }
+
+    return this.updateStatus(id, update);
   }
 
   /**
@@ -287,4 +302,3 @@ export class GenerationJobRepository extends BaseRepository<GenerationJob> {
     });
   }
 }
-

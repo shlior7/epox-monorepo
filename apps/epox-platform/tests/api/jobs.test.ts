@@ -59,6 +59,27 @@ describe('Jobs API - GET /api/jobs/[id]', () => {
     expect(data.imageIds).toEqual(['img-1']);
   });
 
+  it('should include videoIds for video jobs', async () => {
+    vi.mocked(db.generationJobs.getById).mockResolvedValue({
+      id: 'job-vid-1',
+      type: 'video_generation',
+      status: 'completed',
+      progress: 100,
+      result: { videoIds: ['vid-1'] },
+      error: null,
+      createdAt: new Date(),
+      startedAt: new Date(),
+      completedAt: new Date(),
+    } as any);
+
+    const request = new NextRequest('http://localhost:3000/api/jobs/job-vid-1');
+    const response = await getJob(request, { params: Promise.resolve({ id: 'job-vid-1' }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.videoIds).toEqual(['vid-1']);
+  });
+
   it('should handle errors', async () => {
     vi.mocked(db.generationJobs.getById).mockRejectedValueOnce(new Error('DB error'));
 

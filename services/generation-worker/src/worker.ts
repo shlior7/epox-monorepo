@@ -17,6 +17,7 @@ import { GenerationJobRepository, type GenerationJob } from 'visualizer-db/repos
 import {
   type ImageEditPayload,
   type ImageGenerationPayload,
+  type VideoGenerationPayload,
   type JobResult,
   generatedAsset,
   generatedAssetProduct,
@@ -42,6 +43,8 @@ const DEFAULT_CONFIG: WorkerConfig = {
   workerId: process.env.WORKER_ID ?? `worker_${process.pid}`,
   enableListenNotify: process.env.ENABLE_LISTEN_NOTIFY !== 'false', // Disable for Neon free tier
 };
+
+const VIDEO_POLL_INTERVAL_MS = 10000;
 
 // ============================================================================
 // WORKER
@@ -249,7 +252,7 @@ export class GenerationWorker {
     console.log(`🎨 Processing job ${job.id} (attempt ${job.attempts}/${job.maxAttempts})`);
 
     try {
-      let result: JobResult;
+      let result: JobResult | null;
 
       switch (job.type) {
         case 'image_generation':
@@ -258,8 +261,16 @@ export class GenerationWorker {
         case 'image_edit':
           result = await this.processImageEdit(job);
           break;
+        case 'video_generation':
+          result = await this.processVideoGeneration(job);
+          break;
         default:
           throw new Error(`Unknown job type: ${job.type}`);
+      }
+
+      if (!result) {
+        console.log(`⏳ Job ${job.id} (${job.type}) re-queued - awaiting completion`);
+        return;
       }
 
       // Mark completed using repository
@@ -358,16 +369,75 @@ export class GenerationWorker {
     };
   }
 
+  private async processVideoGeneration(job: GenerationJob): Promise<JobResult | null> {
+    const payload = job.payload as VideoGenerationPayload;
+
+    if (!payload.prompt || !payload.sourceImageUrl) {
+      throw new Error('Video generation requires prompt and source image.');
+    }
+
+    if (!payload.operationName) {
+      console.log(`🎬 Starting video generation for job ${job.id}...`);
+
+      const operationName = await this.gemini.startVideoGeneration({
+        prompt: payload.prompt,
+        sourceImageUrl: payload.sourceImageUrl,
+        durationSeconds: payload.settings?.durationSeconds,
+        fps: payload.settings?.fps,
+        model: payload.settings?.model,
+      });
+
+      await this.jobs.updateStatus(job.id, {
+        status: 'pending',
+        progress: Math.max(job.progress, 10),
+        payload: { ...payload, operationName },
+        scheduledFor: new Date(Date.now() + VIDEO_POLL_INTERVAL_MS),
+        lockedBy: null,
+        lockedAt: null,
+        error: null,
+      });
+
+      return null;
+    }
+
+    console.log(`🔄 Polling video operation for job ${job.id}...`);
+
+    const result = await this.gemini.pollVideoGeneration({
+      operationName: payload.operationName,
+      prompt: payload.prompt,
+      model: payload.settings?.model,
+      durationSeconds: payload.settings?.durationSeconds,
+      fps: payload.settings?.fps,
+    });
+
+    if (!result) {
+      const nextProgress = Math.min(95, Math.max(job.progress, 10) + 5);
+      await this.jobs.updateStatus(job.id, {
+        status: 'pending',
+        progress: nextProgress,
+        // Preserve the payload (including operationName) during polling
+        payload: job.payload,
+        scheduledFor: new Date(Date.now() + VIDEO_POLL_INTERVAL_MS),
+        lockedBy: null,
+        lockedAt: null,
+      });
+      return null;
+    }
+
+    const saved = await this.saveVideo(job, result.videoBuffer, result.mimeType, payload);
+
+    return {
+      videoUrls: [saved.url],
+      videoIds: [saved.id],
+    };
+  }
+
   private async saveImage(
     job: GenerationJob,
     base64Data: string,
     payload: ImageGenerationPayload | ImageEditPayload
   ): Promise<{ id: string; url: string }> {
-    // Validate clientId - use fallback if missing
-    const clientId = job.clientId ?? 'test-client';
-    if (!job.clientId) {
-      console.warn(`⚠️ Job ${job.id} missing clientId, using fallback: ${clientId}`);
-    }
+    const clientId = job.clientId;
 
     // Convert base64 to buffer
     const { buffer, mimeType } = this.base64ToBuffer(base64Data);
@@ -456,6 +526,74 @@ export class GenerationWorker {
     return { id: assetId, url: assetUrl };
   }
 
+  private async saveVideo(
+    job: GenerationJob,
+    buffer: Buffer,
+    mimeType: string,
+    payload: VideoGenerationPayload
+  ): Promise<{ id: string; url: string }> {
+    const clientId = job.clientId;
+
+    const ext = mimeType.includes('webm') ? 'webm' : 'mp4';
+    const assetId = `asset_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const sessionId = payload.sessionId;
+    const productIds = payload.productIds ?? [];
+    const flowId = job.flowId ?? sessionId;
+
+    const storagePath = storagePaths.generationAsset(clientId, flowId, assetId, ext);
+
+    console.log(`📤 Uploading video to storage: ${storagePath}`);
+
+    await storage.upload(storagePath, buffer, mimeType);
+    const assetUrl = storage.getPublicUrl(storagePath);
+    console.log(`✅ Uploaded video: ${assetUrl}`);
+
+    // Video assets don't use FlowGenerationSettings (which is for image generation)
+    // Video metadata is stored in the prompt field
+    try {
+      await this.db.insert(generatedAsset).values({
+        id: assetId,
+        clientId,
+        generationFlowId: flowId,
+        assetUrl,
+        assetType: 'video',
+        status: 'completed',
+        prompt: payload.prompt,
+        settings: undefined,
+        productIds,
+        jobId: job.id,
+        completedAt: new Date(),
+      });
+      console.log(`✅ Database record created for video: ${assetId}`);
+    } catch (dbError) {
+      console.error(
+        `❌ Failed to create database record for video asset ${assetId}, job ${job.id}, clientId ${clientId}, flowId ${flowId}:`,
+        dbError
+      );
+      throw dbError;
+    }
+
+    if (productIds.length > 0) {
+      try {
+        const productLinks = productIds.map((pid, idx) => ({
+          id: `${assetId}_${pid}`,
+          generatedAssetId: assetId,
+          productId: pid,
+          isPrimary: idx === 0,
+        }));
+        await this.db.insert(generatedAssetProduct).values(productLinks);
+        console.log(`✅ Product links created for video asset ${assetId}`);
+      } catch (productLinkError) {
+        // Don't fail the whole job if product links fail (consistent with saveImage behavior)
+        console.error(`❌ Failed to create product links for video asset ${assetId}:`, productLinkError);
+      }
+    }
+
+    console.log(`💾 Saved generated video asset ${assetId} -> ${assetUrl}`);
+    return { id: assetId, url: assetUrl };
+  }
+
   private base64ToBuffer(base64: string): { buffer: Buffer; mimeType: string } {
     if (base64.startsWith('data:')) {
       const matches = /^data:(.+);base64,(.+)$/.exec(base64);
@@ -473,8 +611,11 @@ export class GenerationWorker {
     const canRetry = job.attempts < job.maxAttempts;
 
     if (canRetry) {
+      const payload =
+        job.type === 'video_generation' ? { ...(job.payload as VideoGenerationPayload), operationName: undefined } : undefined;
+
       // Use repository for retry scheduling
-      await this.jobs.scheduleRetry(job.id, errorMsg, job.attempts);
+      await this.jobs.scheduleRetry(job.id, errorMsg, job.attempts, payload);
       const delaySeconds = Math.pow(job.attempts, 2) * 10;
       console.log(`⏳ Job ${job.id} failed, scheduling retry in ${delaySeconds}s (attempt ${job.attempts}/${job.maxAttempts})`);
     } else {

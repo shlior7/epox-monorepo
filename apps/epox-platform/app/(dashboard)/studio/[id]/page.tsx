@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,13 +27,14 @@ import {
   Sparkles,
   Trash2,
   Upload,
+  Video,
   Wand2,
   X,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { use, useEffect, useMemo, useRef, useState } from 'react';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type {
   FlowGenerationSettings,
@@ -40,7 +42,8 @@ import type {
   LightingPreset,
   SceneTypeInspirationMap,
   StylePreset,
-  SubjectAnalysis
+  SubjectAnalysis,
+  VideoPromptSettings,
 } from 'visualizer-types';
 import { LIGHTING_PRESETS, STYLE_PRESETS } from 'visualizer-types';
 
@@ -50,9 +53,9 @@ interface StudioPageProps {
 
 // Output quality options
 const QUALITY_OPTIONS = [
-  { value: '1K', label: '1K', description: 'Fast' },
-  { value: '2K', label: '2K', description: 'Balanced' },
-  { value: '4K', label: '4K', description: 'High Quality' },
+  { value: '1k', label: '1K', description: 'Fast' },
+  { value: '2k', label: '2K', description: 'Balanced' },
+  { value: '4k', label: '4K', description: 'High Quality' },
 ] as const;
 
 // Aspect ratio options
@@ -62,6 +65,16 @@ const ASPECT_OPTIONS = [
   { value: '9:16', label: '9:16', icon: '▯' },
   { value: '4:3', label: '4:3', icon: '▱' },
 ] as const;
+
+type StudioTab = 'images' | 'video';
+
+interface VideoPreset {
+  id: string;
+  name: string;
+  settings: VideoPromptSettings;
+}
+
+const VIDEO_PRESETS_STORAGE_KEY = 'epox_video_presets_v1';
 
 export default function StudioPage({ params }: StudioPageProps) {
   const { id: studioId } = use(params);
@@ -107,7 +120,25 @@ export default function StudioPage({ params }: StudioPageProps) {
     },
   });
 
+  const {
+    isGenerating: isGeneratingVideo,
+    progress: videoProgress,
+    status: videoStatus,
+    startGeneration: startVideoGeneration,
+    cancelGeneration: cancelVideoGeneration,
+  } = useGenerationPolling({
+    sessionId: `${studioId}-video`,
+    onComplete: () => {
+      queryClient.invalidateQueries({ queryKey: ['generated-images', studioId] });
+      toast.success('Video generation complete!');
+    },
+    onError: (error) => {
+      toast.error(error || 'Video generation failed');
+    },
+  });
+
   // ===== STATE =====
+  const [activeTab, setActiveTab] = useState<StudioTab>('images');
 
   // Section 1: Scene Style
   const [inspirationImages, setInspirationImages] = useState<InspirationImage[]>([]);
@@ -127,13 +158,24 @@ export default function StudioPage({ params }: StudioPageProps) {
   // Section 4: Output Settings
   const [settings, setSettings] = useState({
     aspectRatio: '1:1',
-    quality: '2K' as '1K' | '2K' | '4K',
+    quality: '2k' as '1k' | '2k' | '4k',
     variantsCount: 4,
   });
+
+  // Video Settings
+  const [videoPrompt, setVideoPrompt] = useState('');
+  const [videoInspirationUrl, setVideoInspirationUrl] = useState<string | null>(null);
+  const [videoInspirationNote, setVideoInspirationNote] = useState('');
+  const [videoSettings, setVideoSettings] = useState<VideoPromptSettings>({});
+  const [videoPresetId, setVideoPresetId] = useState<string | null>(null);
+  const [videoPresetName, setVideoPresetName] = useState('');
+  const [videoPresets, setVideoPresets] = useState<VideoPreset[]>([]);
+  const [videoExpandedSection, setVideoExpandedSection] = useState<string | null>('video-inputs');
 
   // Generated images
   const [newlyGeneratedImages, setNewlyGeneratedImages] = useState<GeneratedAsset[]>([]);
   const [selectedGeneratedImage, setSelectedGeneratedImage] = useState<GeneratedAsset | null>(null);
+  const [selectedGeneratedVideo, setSelectedGeneratedVideo] = useState<GeneratedAsset | null>(null);
 
   // UI state
   const [expandedSection, setExpandedSection] = useState<string | null>('scene-style');
@@ -197,6 +239,16 @@ export default function StudioPage({ params }: StudioPageProps) {
     return combined.filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i);
   }, [generatedImagesData?.images, newlyGeneratedImages]);
 
+  const imageAssets = useMemo(
+    () => allGeneratedAssets.filter((asset) => asset.assetType !== 'video'),
+    [allGeneratedAssets]
+  );
+
+  const videoAssets = useMemo(
+    () => allGeneratedAssets.filter((asset) => asset.assetType === 'video'),
+    [allGeneratedAssets]
+  );
+
   // Scene type groups from inspiration analysis
   const sceneTypeGroups = useMemo(() => {
     const groups: Record<string, number> = {};
@@ -223,6 +275,45 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   // ===== EFFECTS =====
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = localStorage.getItem(VIDEO_PRESETS_STORAGE_KEY);
+      if (stored) {
+        const parsed: unknown = JSON.parse(stored);
+        // Validate parsed data is an array
+        if (!Array.isArray(parsed)) {
+          console.warn('Invalid video presets format, resetting');
+          localStorage.removeItem(VIDEO_PRESETS_STORAGE_KEY);
+          return;
+        }
+        // Filter and validate each preset
+        const validPresets = parsed.filter((item): item is VideoPreset => {
+          if (typeof item !== 'object' || item === null) return false;
+          const preset = item as Record<string, unknown>;
+          return (
+            typeof preset.id === 'string' &&
+            typeof preset.name === 'string' &&
+            (preset.settings === undefined || typeof preset.settings === 'object')
+          );
+        });
+        setVideoPresets(validPresets);
+        // Update localStorage with sanitized data if any items were filtered out
+        if (validPresets.length !== parsed.length) {
+          localStorage.setItem(VIDEO_PRESETS_STORAGE_KEY, JSON.stringify(validPresets));
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load video presets:', error);
+      // Clear corrupted data
+      localStorage.removeItem(VIDEO_PRESETS_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    setExpandedSection(activeTab === 'images' ? 'scene-style' : 'video-inputs');
+  }, [activeTab]);
+
   // Initialize from flow settings
   useEffect(() => {
     if (flowData?.settings) {
@@ -233,8 +324,15 @@ export default function StudioPage({ params }: StudioPageProps) {
       if (s.lightingPreset) setLightingPreset(s.lightingPreset);
       if (s.userPrompt) setUserPrompt(s.userPrompt);
       if (s.aspectRatio) setSettings(prev => ({ ...prev, aspectRatio: s.aspectRatio }));
-      if (s.imageQuality) setSettings(prev => ({ ...prev, quality: s.imageQuality as '1K' | '2K' | '4K' }));
+      if (s.imageQuality) setSettings(prev => ({ ...prev, quality: s.imageQuality as '1k' | '2k' | '4k' }));
       if (s.variantsCount) setSettings(prev => ({ ...prev, variantsCount: s.variantsCount! }));
+      if (s.video) {
+        setVideoPrompt(s.video.prompt ?? '');
+        setVideoInspirationUrl(s.video.inspirationImageUrl ?? null);
+        setVideoInspirationNote(s.video.inspirationNote ?? '');
+        setVideoSettings(s.video.settings ?? {});
+        setVideoPresetId(s.video.presetId ?? null);
+      }
     }
   }, [flowData?.settings]);
 
@@ -249,13 +347,22 @@ export default function StudioPage({ params }: StudioPageProps) {
   }, [products, selectedBaseImageId]);
 
   // Auto-select newest generated image
-  const prevAssetCount = useRef(0);
+  const prevImageCount = useRef(0);
+  const prevVideoCount = useRef(0);
+
   useEffect(() => {
-    if (allGeneratedAssets.length > prevAssetCount.current && allGeneratedAssets.length > 0) {
-      setSelectedGeneratedImage(allGeneratedAssets[0]);
+    if (imageAssets.length > prevImageCount.current && imageAssets.length > 0) {
+      setSelectedGeneratedImage(imageAssets[0]);
     }
-    prevAssetCount.current = allGeneratedAssets.length;
-  }, [allGeneratedAssets]);
+    prevImageCount.current = imageAssets.length;
+  }, [imageAssets]);
+
+  useEffect(() => {
+    if (videoAssets.length > prevVideoCount.current && videoAssets.length > 0) {
+      setSelectedGeneratedVideo(videoAssets[0]);
+    }
+    prevVideoCount.current = videoAssets.length;
+  }, [videoAssets]);
 
   // ===== HANDLERS =====
 
@@ -326,6 +433,7 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   const removeInspirationImage = (url: string) => {
     setInspirationImages(prev => prev.filter(img => img.url !== url));
+    setVideoInspirationUrl((prev) => (prev === url ? null : prev));
 
     // Also remove from scene type groups
     setSceneTypeInspirations(prev => {
@@ -346,7 +454,7 @@ export default function StudioPage({ params }: StudioPageProps) {
     saveSettings();
   };
 
-  const saveSettings = async () => {
+  const saveSettings = useCallback(async () => {
     try {
       await apiClient.updateStudioSettings(studioId, {
         inspirationImages: inspirationImages as any,
@@ -357,10 +465,119 @@ export default function StudioPage({ params }: StudioPageProps) {
         aspectRatio: settings.aspectRatio,
         imageQuality: settings.quality,
         variantsCount: settings.variantsCount,
+        video: {
+          prompt: videoPrompt || undefined,
+          inspirationImageUrl: videoInspirationUrl || undefined,
+          inspirationNote: videoInspirationNote || undefined,
+          settings: videoSettings,
+          presetId: videoPresetId,
+        },
       });
     } catch (error) {
       console.error('Failed to save settings:', error);
     }
+  }, [
+    studioId,
+    inspirationImages,
+    sceneTypeInspirations,
+    stylePreset,
+    lightingPreset,
+    userPrompt,
+    settings.aspectRatio,
+    settings.quality,
+    settings.variantsCount,
+    videoPrompt,
+    videoInspirationUrl,
+    videoInspirationNote,
+    videoSettings,
+    videoPresetId,
+  ]);
+
+  // Auto-save video settings when they change
+  useEffect(() => {
+    if (activeTab !== 'video') return;
+    const timeoutId = setTimeout(() => {
+      if (flowData?.settings) {
+        saveSettings();
+      }
+    }, 600);
+    return () => clearTimeout(timeoutId);
+  }, [
+    activeTab,
+    videoPrompt,
+    videoInspirationUrl,
+    videoInspirationNote,
+    videoSettings,
+    videoPresetId,
+    flowData?.settings,
+    saveSettings,
+  ]);
+
+  const persistVideoPresets = (presets: VideoPreset[]) => {
+    setVideoPresets(presets);
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(VIDEO_PRESETS_STORAGE_KEY, JSON.stringify(presets));
+    } catch (error) {
+      console.warn('Failed to save video presets:', error);
+    }
+  };
+
+  const handleSaveVideoPreset = async () => {
+    const name = videoPresetName.trim();
+    if (!name) {
+      toast.error('Preset name is required');
+      return;
+    }
+    // Check for duplicate names (case-insensitive)
+    const isDuplicate = videoPresets.some(
+      (p) => p.name.toLowerCase() === name.toLowerCase()
+    );
+    if (isDuplicate) {
+      toast.error('A preset with this name already exists');
+      return;
+    }
+    const preset: VideoPreset = {
+      id: `preset_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      settings: { ...videoSettings },
+    };
+    const updated = [preset, ...videoPresets];
+    persistVideoPresets(updated);
+    setVideoPresetId(preset.id);
+    setVideoPresetName('');
+    try {
+      await saveSettings();
+    } catch (error) {
+      console.error('Failed to save settings after preset creation:', error);
+    }
+  };
+
+  const handleApplyVideoPreset = (presetIdToApply: string) => {
+    const preset = videoPresets.find((p) => p.id === presetIdToApply);
+    if (!preset) return;
+    setVideoSettings(preset.settings);
+    setVideoPresetId(preset.id);
+    saveSettings();
+  };
+
+  const buildVideoPrompt = (
+    basePrompt: string,
+    settings: VideoPromptSettings,
+    inspirationNote: string
+  ) => {
+    const lines = [basePrompt.trim()];
+    if (settings.videoType) lines.push(`Video type: ${settings.videoType}`);
+    if (settings.cameraMotion) lines.push(`Camera motion: ${settings.cameraMotion}`);
+    if (settings.subjectAction) lines.push(`Subject action: ${settings.subjectAction}`);
+    if (settings.sceneAction) lines.push(`Scene action: ${settings.sceneAction}`);
+    if (settings.durationSeconds) lines.push(`Duration: ${settings.durationSeconds}s`);
+    if (inspirationNote.trim()) lines.push(`Style reference: ${inspirationNote.trim()}`);
+    return lines.filter(Boolean).join('\n');
+  };
+
+  const updateVideoSettings = (updates: Partial<VideoPromptSettings>) => {
+    setVideoSettings((prev) => ({ ...prev, ...updates }));
   };
 
   const handlePreviewPrompt = async () => {
@@ -452,6 +669,59 @@ export default function StudioPage({ params }: StudioPageProps) {
     }
   };
 
+  const handleGenerateVideo = async () => {
+    if (!currentProduct) return;
+    if (!selectedBaseImageUrl) {
+      toast.error('Select a base image to generate video');
+      return;
+    }
+    if (!videoPrompt.trim()) {
+      toast.error('Enter a video prompt');
+      return;
+    }
+
+    try {
+      const prompt = buildVideoPrompt(videoPrompt, videoSettings, videoInspirationNote);
+      const result = await apiClient.generateVideo({
+        sessionId: studioId,
+        productId: currentProduct.id,
+        sourceImageUrl: selectedBaseImageUrl,
+        prompt,
+        inspirationImageUrl: videoInspirationUrl || undefined,
+        inspirationNote: videoInspirationNote || undefined,
+        settings: {
+          durationSeconds: videoSettings.durationSeconds,
+        },
+      });
+
+      // Handle different response statuses
+      switch (result.status) {
+        case 'queued':
+          if (result.jobId) {
+            startVideoGeneration(result.jobId);
+          } else {
+            // Queued without jobId is an error condition
+            console.error('Video queued but no job ID returned:', result);
+            toast.error('Video queued but no job ID returned — please retry');
+          }
+          break;
+        case 'completed':
+          toast.success('Video generation complete!');
+          await queryClient.invalidateQueries({ queryKey: ['generated-images', studioId] });
+          break;
+        case 'failed':
+          toast.error(result.error ?? result.message ?? 'Video generation failed');
+          break;
+        default:
+          // Handle any unexpected status
+          toast.info(`Video generation status: ${result.status ?? 'unknown'}`);
+      }
+    } catch (error) {
+      console.error('❌ Video generation error:', error);
+      toast.error(error instanceof Error ? error.message : 'Video generation failed');
+    }
+  };
+
   // ===== LOADING STATE =====
 
   if (isLoadingFlow || isLoadingProducts) {
@@ -536,415 +806,706 @@ export default function StudioPage({ params }: StudioPageProps) {
       <div className="flex min-h-0 flex-1">
         {/* Left Panel - Config (4 Sections) */}
         <aside className="flex w-80 shrink-0 flex-col border-r border-border bg-card/30">
-          <div className="flex-1 overflow-y-auto">
-            {/* Section 1: Scene Style */}
-            <section className="border-b border-border">
+          <div className="border-b border-border p-3">
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted/50 p-1 text-xs font-semibold">
               <button
-                onClick={() => setExpandedSection(expandedSection === 'scene-style' ? null : 'scene-style')}
-                className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
+                onClick={() => setActiveTab('images')}
+                className={cn(
+                  'rounded-md px-2 py-2 transition-colors',
+                  activeTab === 'images'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
               >
-                <div className="flex items-center gap-2">
-                  <Lightbulb className="h-4 w-4 text-amber-500" />
-                  <span className="font-semibold">Scene Style</span>
-                  {inspirationImages.length > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {inspirationImages.length} images
-                    </Badge>
-                  )}
-                </div>
-                <ChevronDown className={cn('h-4 w-4 transition-transform', expandedSection === 'scene-style' && 'rotate-180')} />
+                Images
               </button>
+              <button
+                onClick={() => setActiveTab('video')}
+                className={cn(
+                  'rounded-md px-2 py-2 transition-colors',
+                  activeTab === 'video'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Video
+              </button>
+            </div>
+          </div>
 
-              {expandedSection === 'scene-style' && (
-                <div className="space-y-4 px-4 pb-4">
-                  {/* Inspiration Images */}
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                      Inspiration Images
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {inspirationImages.map((img, idx) => (
-                        <div
-                          key={idx}
-                          className="group relative aspect-square h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border"
-                        >
-                          <Image src={img.url} alt={`Inspiration ${idx + 1}`} fill className="object-cover" unoptimized />
-                          <button
-                            onClick={() => removeInspirationImage(img.url)}
-                            className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                          {img.tags?.[0] && (
-                            <div className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-center text-[8px] text-white">
-                              {img.tags[0]}
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'images' ? (
+              <>
+                {/* Section 1: Scene Style */}
+                <section className="border-b border-border">
+                  <button
+                    onClick={() => setExpandedSection(expandedSection === 'scene-style' ? null : 'scene-style')}
+                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4 text-amber-500" />
+                      <span className="font-semibold">Scene Style</span>
+                      {inspirationImages.length > 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                          {inspirationImages.length} images
+                        </Badge>
+                      )}
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', expandedSection === 'scene-style' && 'rotate-180')} />
+                  </button>
+
+                  {expandedSection === 'scene-style' && (
+                    <div className="space-y-4 px-4 pb-4">
+                      {/* Inspiration Images */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Inspiration Images
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {inspirationImages.map((img, idx) => (
+                            <div
+                              key={idx}
+                              className="group relative aspect-square h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border"
+                            >
+                              <Image src={img.url} alt={`Inspiration ${idx + 1}`} fill className="object-cover" unoptimized />
+                              <button
+                                onClick={() => removeInspirationImage(img.url)}
+                                className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </button>
+                              {img.tags?.[0] && (
+                                <div className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-center text-[8px] text-white">
+                                  {img.tags[0]}
+                                </div>
+                              )}
                             </div>
-                          )}
+                          ))}
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isAnalyzingInspiration}
+                            className="flex aspect-square h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
+                          >
+                            {isAnalyzingInspiration ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Upload className="h-4 w-4" />
+                            )}
+                          </button>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={handleInspirationUpload}
+                          />
                         </div>
-                      ))}
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isAnalyzingInspiration}
-                        className="flex aspect-square h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
+                      </div>
+
+                      {/* Detected Scene Types */}
+                      {Object.keys(sceneTypeGroups).length > 0 && (
+                        <div>
+                          <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                            Detected Scene Types
+                          </label>
+                          <div className="flex flex-wrap gap-1">
+                            {Object.entries(sceneTypeGroups).map(([sceneType, count]) => (
+                              <Badge
+                                key={sceneType}
+                                variant={matchedSceneType === sceneType ? 'default' : 'outline'}
+                                className="text-xs"
+                              >
+                                {sceneType} ({count})
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Style Preset */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Style Preset
+                        </label>
+                        <select
+                          value={stylePreset}
+                          onChange={(e) => setStylePreset(e.target.value as StylePreset)}
+                          onBlur={saveSettings}
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                        >
+                          {STYLE_PRESETS.map((style) => (
+                            <option key={style} value={style}>{style}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Lighting Preset */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Lighting Preset
+                        </label>
+                        <select
+                          value={lightingPreset}
+                          onChange={(e) => setLightingPreset(e.target.value as LightingPreset)}
+                          onBlur={saveSettings}
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                        >
+                          {LIGHTING_PRESETS.map((lighting) => (
+                            <option key={lighting} value={lighting}>{lighting}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                {/* Section 2: Product Details */}
+                <section className="border-b border-border">
+                  <button
+                    onClick={() => setExpandedSection(expandedSection === 'product-details' ? null : 'product-details')}
+                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-blue-500" />
+                      <span className="font-semibold">Product Details</span>
+                      {subjectAnalysis && (
+                        <Badge variant="secondary" className="text-xs">
+                          Analyzed
+                        </Badge>
+                      )}
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', expandedSection === 'product-details' && 'rotate-180')} />
+                  </button>
+
+                  {expandedSection === 'product-details' && (
+                    <div className="space-y-4 px-4 pb-4">
+                      {/* Base Images */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Product Images
+                        </label>
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {currentProduct?.baseImages?.map((img: any) => (
+                            <button
+                              key={img.id}
+                              onClick={() => setSelectedBaseImageId(img.id)}
+                              className={cn(
+                                'relative aspect-square h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all',
+                                selectedBaseImageId === img.id
+                                  ? 'border-primary ring-2 ring-primary/30'
+                                  : 'border-border hover:border-primary/50'
+                              )}
+                            >
+                              <Image src={img.url} alt="Product" fill className="object-cover" unoptimized />
+                              {selectedBaseImageId === img.id && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
+                                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary shadow">
+                                    <Check className="h-3 w-3 text-primary-foreground" />
+                                  </div>
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Subject Analysis (read-only) */}
+                      {subjectAnalysis ? (
+                        <div className="rounded-lg bg-muted/50 p-3 text-sm">
+                          <div className="mb-2 flex items-center gap-2">
+                            <Wand2 className="h-3.5 w-3.5 text-primary" />
+                            <span className="font-medium">AI Analysis</span>
+                          </div>
+                          <div className="space-y-1 text-xs text-muted-foreground">
+                            <p><span className="font-medium">Subject:</span> {subjectAnalysis.subjectClassHyphenated}</p>
+                            <p><span className="font-medium">Scene Types:</span> {subjectAnalysis.nativeSceneTypes.join(', ')}</p>
+                            <p><span className="font-medium">Camera:</span> {subjectAnalysis.inputCameraAngle}</p>
+                            {matchedSceneType && (
+                              <p className="mt-2 text-green-600">
+                                <Check className="mr-1 inline h-3 w-3" />
+                                Matched: {matchedSceneType}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
+                          Product not yet analyzed. Upload an image to trigger analysis.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </section>
+
+                {/* Section 3: User Prompt */}
+                <section className="border-b border-border">
+                  <button
+                    onClick={() => setExpandedSection(expandedSection === 'user-prompt' ? null : 'user-prompt')}
+                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-purple-500" />
+                      <span className="font-semibold">Scene Prompt</span>
+                      {userPrompt && (
+                        <Badge variant="secondary" className="text-xs">
+                          Custom
+                        </Badge>
+                      )}
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', expandedSection === 'user-prompt' && 'rotate-180')} />
+                  </button>
+
+                  {expandedSection === 'user-prompt' && (
+                    <div className="space-y-4 px-4 pb-4">
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Additional Details (optional)
+                        </label>
+                        <Textarea
+                          placeholder="Add specific details for this generation... e.g., 'include a coffee cup on the table'"
+                          value={userPrompt}
+                          onChange={(e) => setUserPrompt(e.target.value)}
+                          onBlur={saveSettings}
+                          className="min-h-[80px] resize-none text-sm"
+                        />
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          Your additions will be appended to the AI-generated prompt
+                        </p>
+                      </div>
+
+                      {/* Preview Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePreviewPrompt}
+                        disabled={!subjectAnalysis || Object.keys(sceneTypeInspirations).length === 0}
+                        className="w-full"
                       >
-                        {isAnalyzingInspiration ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                        <Eye className="mr-2 h-3.5 w-3.5" />
+                        Preview Generated Prompt
+                      </Button>
+
+                      {/* Prompt Preview */}
+                      {generatedPromptPreview && (
+                        <div className="rounded-lg bg-muted/50 p-3">
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="text-xs font-medium">Generated Prompt</span>
+                            <button
+                              onClick={() => setGeneratedPromptPreview(null)}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                            {generatedPromptPreview.substring(0, 500)}...
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </section>
+
+                {/* Section 4: Output Settings */}
+                <section className="border-b border-border">
+                  <button
+                    onClick={() => setExpandedSection(expandedSection === 'output-settings' ? null : 'output-settings')}
+                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-green-500" />
+                      <span className="font-semibold">Output Settings</span>
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', expandedSection === 'output-settings' && 'rotate-180')} />
+                  </button>
+
+                  {expandedSection === 'output-settings' && (
+                    <div className="space-y-4 px-4 pb-4">
+                      {/* Quality */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Quality
+                        </label>
+                        <div className="flex gap-2">
+                          {QUALITY_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              onClick={() => {
+                                setSettings({ ...settings, quality: opt.value });
+                                saveSettings();
+                              }}
+                              className={cn(
+                                'flex flex-1 flex-col items-center rounded-lg border p-2 transition-colors',
+                                settings.quality === opt.value
+                                  ? 'border-primary bg-primary/10'
+                                  : 'border-border hover:border-primary/50'
+                              )}
+                            >
+                              <span className="text-sm font-semibold">{opt.label}</span>
+                              <span className="text-[10px] text-muted-foreground">{opt.description}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Aspect Ratio */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Aspect Ratio
+                        </label>
+                        <div className="flex gap-1.5">
+                          {ASPECT_OPTIONS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              onClick={() => {
+                                setSettings({ ...settings, aspectRatio: opt.value });
+                                saveSettings();
+                              }}
+                              className={cn(
+                                'flex flex-1 flex-col items-center rounded-lg border py-2 text-xs transition-colors',
+                                settings.aspectRatio === opt.value
+                                  ? 'border-primary bg-primary/10 text-primary'
+                                  : 'border-border hover:border-primary/50'
+                              )}
+                            >
+                              <span className="mb-0.5 text-base">{opt.icon}</span>
+                              <span>{opt.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Variants */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Variants: {settings.variantsCount}
+                        </label>
+                        <div className="flex gap-1">
+                          {[1, 2, 4, 6].map((n) => (
+                            <button
+                              key={n}
+                              onClick={() => {
+                                setSettings({ ...settings, variantsCount: n });
+                                saveSettings();
+                              }}
+                              className={cn(
+                                'flex-1 rounded-md border py-1 text-sm transition-colors',
+                                settings.variantsCount === n
+                                  ? 'border-primary bg-primary/10 font-medium text-primary'
+                                  : 'border-border hover:border-primary/50'
+                              )}
+                            >
+                              {n}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              </>
+            ) : (
+              <>
+                {/* Video Section: Inputs */}
+                <section className="border-b border-border">
+                  <button
+                    onClick={() => setVideoExpandedSection(videoExpandedSection === 'video-inputs' ? null : 'video-inputs')}
+                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Video className="h-4 w-4 text-blue-500" />
+                      <span className="font-semibold">Video Inputs</span>
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', videoExpandedSection === 'video-inputs' && 'rotate-180')} />
+                  </button>
+
+                  {videoExpandedSection === 'video-inputs' && (
+                    <div className="space-y-4 px-4 pb-4">
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Base Image
+                        </label>
+                        {selectedBaseImageUrl ? (
+                          <div className="relative aspect-square w-20 overflow-hidden rounded-lg border border-border">
+                            <Image src={selectedBaseImageUrl} alt="Base" fill className="object-cover" unoptimized />
+                          </div>
                         ) : (
-                          <Upload className="h-4 w-4" />
+                          <div className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+                            Select a base image in Product Details
+                          </div>
                         )}
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="hidden"
-                        onChange={handleInspirationUpload}
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Inspiration Image
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => {
+                              setVideoInspirationUrl(null);
+                              saveSettings();
+                            }}
+                            className={cn(
+                              'rounded-md border px-2 py-1 text-[10px] font-medium',
+                              videoInspirationUrl === null
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-border text-muted-foreground hover:border-primary/50'
+                            )}
+                          >
+                            None
+                          </button>
+                          {inspirationImages.map((img) => (
+                            <button
+                              key={img.url}
+                              onClick={() => {
+                                setVideoInspirationUrl(img.url);
+                                saveSettings();
+                              }}
+                              className={cn(
+                                'relative aspect-square h-12 w-12 overflow-hidden rounded-lg border-2 transition-all',
+                                videoInspirationUrl === img.url
+                                  ? 'border-primary ring-2 ring-primary/30'
+                                  : 'border-border hover:border-primary/50'
+                              )}
+                            >
+                              <Image src={img.url} alt="Inspiration" fill className="object-cover" unoptimized />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                {/* Video Section: Prompt */}
+                <section className="border-b border-border">
+                  <button
+                    onClick={() => setVideoExpandedSection(videoExpandedSection === 'video-prompt' ? null : 'video-prompt')}
+                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-purple-500" />
+                      <span className="font-semibold">Video Prompt</span>
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', videoExpandedSection === 'video-prompt' && 'rotate-180')} />
+                  </button>
+
+                  {videoExpandedSection === 'video-prompt' && (
+                    <div className="space-y-4 px-4 pb-4">
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Prompt
+                        </label>
+                        <Textarea
+                          placeholder="Describe the video you want to generate..."
+                          value={videoPrompt}
+                          onChange={(e) => setVideoPrompt(e.target.value)}
+                          onBlur={saveSettings}
+                          className="min-h-[80px] resize-none text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Inspiration Note (optional)
+                        </label>
+                        <Input
+                          placeholder="e.g., warm studio lighting, soft camera move"
+                          value={videoInspirationNote}
+                          onChange={(e) => setVideoInspirationNote(e.target.value)}
+                          onBlur={saveSettings}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                {/* Video Section: Settings */}
+                <section className="border-b border-border">
+                  <button
+                    onClick={() => setVideoExpandedSection(videoExpandedSection === 'video-settings' ? null : 'video-settings')}
+                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Wand2 className="h-4 w-4 text-emerald-500" />
+                      <span className="font-semibold">Video Settings</span>
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', videoExpandedSection === 'video-settings' && 'rotate-180')} />
+                  </button>
+
+                  {videoExpandedSection === 'video-settings' && (
+                    <div className="space-y-3 px-4 pb-4">
+                      <Input
+                        placeholder="Video type (e.g., pan over product)"
+                        value={videoSettings.videoType || ''}
+                        onChange={(e) => updateVideoSettings({ videoType: e.target.value })}
+                        onBlur={saveSettings}
+                      />
+                      <Input
+                        placeholder="Camera motion"
+                        value={videoSettings.cameraMotion || ''}
+                        onChange={(e) => updateVideoSettings({ cameraMotion: e.target.value })}
+                        onBlur={saveSettings}
+                      />
+                      <Input
+                        placeholder="Subject action"
+                        value={videoSettings.subjectAction || ''}
+                        onChange={(e) => updateVideoSettings({ subjectAction: e.target.value })}
+                        onBlur={saveSettings}
+                      />
+                      <Input
+                        placeholder="Scene action / atmosphere"
+                        value={videoSettings.sceneAction || ''}
+                        onChange={(e) => updateVideoSettings({ sceneAction: e.target.value })}
+                        onBlur={saveSettings}
+                      />
+                      <Input
+                        type="number"
+                        min={1}
+                        placeholder="Duration (seconds)"
+                        value={videoSettings.durationSeconds ? String(videoSettings.durationSeconds) : ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          updateVideoSettings({ durationSeconds: value ? Number(value) : undefined });
+                        }}
+                        onBlur={saveSettings}
                       />
                     </div>
-                  </div>
-
-                  {/* Detected Scene Types */}
-                  {Object.keys(sceneTypeGroups).length > 0 && (
-                    <div>
-                      <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                        Detected Scene Types
-                      </label>
-                      <div className="flex flex-wrap gap-1">
-                        {Object.entries(sceneTypeGroups).map(([sceneType, count]) => (
-                          <Badge
-                            key={sceneType}
-                            variant={matchedSceneType === sceneType ? 'default' : 'outline'}
-                            className="text-xs"
-                          >
-                            {sceneType} ({count})
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
                   )}
+                </section>
 
-                  {/* Style Preset */}
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                      Style Preset
-                    </label>
-                    <select
-                      value={stylePreset}
-                      onChange={(e) => {
-                        setStylePreset(e.target.value as StylePreset);
-                        saveSettings();
-                      }}
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      {STYLE_PRESETS.map((style) => (
-                        <option key={style} value={style}>{style}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Lighting Preset */}
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                      Lighting Preset
-                    </label>
-                    <select
-                      value={lightingPreset}
-                      onChange={(e) => {
-                        setLightingPreset(e.target.value as LightingPreset);
-                        saveSettings();
-                      }}
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      {LIGHTING_PRESETS.map((lighting) => (
-                        <option key={lighting} value={lighting}>{lighting}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              )}
-            </section>
-
-            {/* Section 2: Product Details */}
-            <section className="border-b border-border">
-              <button
-                onClick={() => setExpandedSection(expandedSection === 'product-details' ? null : 'product-details')}
-                className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
-              >
-                <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-blue-500" />
-                  <span className="font-semibold">Product Details</span>
-                  {subjectAnalysis && (
-                    <Badge variant="secondary" className="text-xs">
-                      Analyzed
-                    </Badge>
-                  )}
-                </div>
-                <ChevronDown className={cn('h-4 w-4 transition-transform', expandedSection === 'product-details' && 'rotate-180')} />
-              </button>
-
-              {expandedSection === 'product-details' && (
-                <div className="space-y-4 px-4 pb-4">
-                  {/* Base Images */}
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                      Product Images
-                    </label>
-                    <div className="flex gap-2 overflow-x-auto pb-1">
-                      {currentProduct?.baseImages?.map((img: any) => (
-                        <button
-                          key={img.id}
-                          onClick={() => setSelectedBaseImageId(img.id)}
-                          className={cn(
-                            'relative aspect-square h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all',
-                            selectedBaseImageId === img.id
-                              ? 'border-primary ring-2 ring-primary/30'
-                              : 'border-border hover:border-primary/50'
-                          )}
-                        >
-                          <Image src={img.url} alt="Product" fill className="object-cover" unoptimized />
-                          {selectedBaseImageId === img.id && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
-                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary shadow">
-                                <Check className="h-3 w-3 text-primary-foreground" />
-                              </div>
-                            </div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Subject Analysis (read-only) */}
-                  {subjectAnalysis ? (
-                    <div className="rounded-lg bg-muted/50 p-3 text-sm">
-                      <div className="mb-2 flex items-center gap-2">
-                        <Wand2 className="h-3.5 w-3.5 text-primary" />
-                        <span className="font-medium">AI Analysis</span>
-                      </div>
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <p><span className="font-medium">Subject:</span> {subjectAnalysis.subjectClassHyphenated}</p>
-                        <p><span className="font-medium">Scene Types:</span> {subjectAnalysis.nativeSceneTypes.join(', ')}</p>
-                        <p><span className="font-medium">Camera:</span> {subjectAnalysis.inputCameraAngle}</p>
-                        {matchedSceneType && (
-                          <p className="mt-2 text-green-600">
-                            <Check className="mr-1 inline h-3 w-3" />
-                            Matched: {matchedSceneType}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
-                      Product not yet analyzed. Upload an image to trigger analysis.
-                    </div>
-                  )}
-                </div>
-              )}
-            </section>
-
-            {/* Section 3: User Prompt */}
-            <section className="border-b border-border">
-              <button
-                onClick={() => setExpandedSection(expandedSection === 'user-prompt' ? null : 'user-prompt')}
-                className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
-              >
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-500" />
-                  <span className="font-semibold">Scene Prompt</span>
-                  {userPrompt && (
-                    <Badge variant="secondary" className="text-xs">
-                      Custom
-                    </Badge>
-                  )}
-                </div>
-                <ChevronDown className={cn('h-4 w-4 transition-transform', expandedSection === 'user-prompt' && 'rotate-180')} />
-              </button>
-
-              {expandedSection === 'user-prompt' && (
-                <div className="space-y-4 px-4 pb-4">
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                      Additional Details (optional)
-                    </label>
-                    <Textarea
-                      placeholder="Add specific details for this generation... e.g., 'include a coffee cup on the table'"
-                      value={userPrompt}
-                      onChange={(e) => setUserPrompt(e.target.value)}
-                      onBlur={saveSettings}
-                      className="min-h-[80px] resize-none text-sm"
-                    />
-                    <p className="mt-1 text-[10px] text-muted-foreground">
-                      Your additions will be appended to the AI-generated prompt
-                    </p>
-                  </div>
-
-                  {/* Preview Button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePreviewPrompt}
-                    disabled={!subjectAnalysis || Object.keys(sceneTypeInspirations).length === 0}
-                    className="w-full"
+                {/* Video Section: Presets */}
+                <section className="border-b border-border">
+                  <button
+                    onClick={() => setVideoExpandedSection(videoExpandedSection === 'video-presets' ? null : 'video-presets')}
+                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
                   >
-                    <Eye className="mr-2 h-3.5 w-3.5" />
-                    Preview Generated Prompt
-                  </Button>
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-orange-500" />
+                      <span className="font-semibold">Presets</span>
+                      {videoPresets.length > 0 && (
+                        <Badge variant="secondary" className="text-xs">
+                          {videoPresets.length}
+                        </Badge>
+                      )}
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', videoExpandedSection === 'video-presets' && 'rotate-180')} />
+                  </button>
 
-                  {/* Prompt Preview */}
-                  {generatedPromptPreview && (
-                    <div className="rounded-lg bg-muted/50 p-3">
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-xs font-medium">Generated Prompt</span>
-                        <button
-                          onClick={() => setGeneratedPromptPreview(null)}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
+                  {videoExpandedSection === 'video-presets' && (
+                    <div className="space-y-3 px-4 pb-4">
+                      <select
+                        value={videoPresetId ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setVideoPresetId(value || null);
+                          if (value) {
+                            handleApplyVideoPreset(value);
+                          }
+                        }}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Select preset</option>
+                        {videoPresets.map((preset) => (
+                          <option key={preset.id} value={preset.id}>
+                            {preset.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Preset name"
+                          value={videoPresetName}
+                          onChange={(e) => setVideoPresetName(e.target.value)}
+                        />
+                        <Button variant="outline" onClick={handleSaveVideoPreset}>
+                          Save
+                        </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground whitespace-pre-wrap">
-                        {generatedPromptPreview.substring(0, 500)}...
-                      </p>
                     </div>
                   )}
-                </div>
-              )}
-            </section>
-
-            {/* Section 4: Output Settings */}
-            <section className="border-b border-border">
-              <button
-                onClick={() => setExpandedSection(expandedSection === 'output-settings' ? null : 'output-settings')}
-                className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
-              >
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-green-500" />
-                  <span className="font-semibold">Output Settings</span>
-                </div>
-                <ChevronDown className={cn('h-4 w-4 transition-transform', expandedSection === 'output-settings' && 'rotate-180')} />
-              </button>
-
-              {expandedSection === 'output-settings' && (
-                <div className="space-y-4 px-4 pb-4">
-                  {/* Quality */}
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                      Quality
-                    </label>
-                    <div className="flex gap-2">
-                      {QUALITY_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => {
-                            setSettings({ ...settings, quality: opt.value });
-                            saveSettings();
-                          }}
-                          className={cn(
-                            'flex flex-1 flex-col items-center rounded-lg border p-2 transition-colors',
-                            settings.quality === opt.value
-                              ? 'border-primary bg-primary/10'
-                              : 'border-border hover:border-primary/50'
-                          )}
-                        >
-                          <span className="text-sm font-semibold">{opt.label}</span>
-                          <span className="text-[10px] text-muted-foreground">{opt.description}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Aspect Ratio */}
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                      Aspect Ratio
-                    </label>
-                    <div className="flex gap-1.5">
-                      {ASPECT_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => {
-                            setSettings({ ...settings, aspectRatio: opt.value });
-                            saveSettings();
-                          }}
-                          className={cn(
-                            'flex flex-1 flex-col items-center rounded-lg border py-2 text-xs transition-colors',
-                            settings.aspectRatio === opt.value
-                              ? 'border-primary bg-primary/10 text-primary'
-                              : 'border-border hover:border-primary/50'
-                          )}
-                        >
-                          <span className="mb-0.5 text-base">{opt.icon}</span>
-                          <span>{opt.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Variants */}
-                  <div>
-                    <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                      Variants: {settings.variantsCount}
-                    </label>
-                    <div className="flex gap-1">
-                      {[1, 2, 4, 6].map((n) => (
-                        <button
-                          key={n}
-                          onClick={() => {
-                            setSettings({ ...settings, variantsCount: n });
-                            saveSettings();
-                          }}
-                          className={cn(
-                            'flex-1 rounded-md border py-1 text-sm transition-colors',
-                            settings.variantsCount === n
-                              ? 'border-primary bg-primary/10 font-medium text-primary'
-                              : 'border-border hover:border-primary/50'
-                          )}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </section>
+                </section>
+              </>
+            )}
           </div>
 
           {/* Footer - Generate Button */}
           <div className="shrink-0 border-t border-border bg-card p-3">
-            <Button
-              variant="glow"
-              size="lg"
-              className="w-full"
-              onClick={handleGenerate}
-              disabled={isGenerating}
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {generationProgress > 0
-                    ? `Generating... ${Math.round(generationProgress)}%`
-                    : 'Starting...'}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate {settings.variantsCount} Images
-                </>
-              )}
-            </Button>
-            {isGenerating && (
+            {activeTab === 'images' ? (
               <>
-                <Progress value={generationProgress} className="mt-2 h-1.5" />
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={cancelGeneration}
-                  className="mt-2 w-full text-xs text-muted-foreground"
+                  variant="glow"
+                  size="lg"
+                  className="w-full"
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
                 >
-                  Cancel
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {generationProgress > 0
+                        ? `Generating... ${Math.round(generationProgress)}%`
+                        : 'Starting...'}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Generate {settings.variantsCount} Images
+                    </>
+                  )}
                 </Button>
+                {isGenerating && (
+                  <>
+                    <Progress value={generationProgress} className="mt-2 h-1.5" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelGeneration}
+                      className="mt-2 w-full text-xs text-muted-foreground"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="glow"
+                  size="lg"
+                  className="w-full"
+                  onClick={handleGenerateVideo}
+                  disabled={isGeneratingVideo}
+                >
+                  {isGeneratingVideo ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {videoProgress > 0
+                        ? `Generating... ${Math.round(videoProgress)}%`
+                        : 'Starting...'}
+                    </>
+                  ) : (
+                    <>
+                      <Video className="mr-2 h-4 w-4" />
+                      Generate Video
+                    </>
+                  )}
+                </Button>
+                {isGeneratingVideo && (
+                  <>
+                    <Progress value={videoProgress} className="mt-2 h-1.5" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelVideoGeneration}
+                      className="mt-2 w-full text-xs text-muted-foreground"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -954,64 +1515,101 @@ export default function StudioPage({ params }: StudioPageProps) {
         <main className="flex min-w-0 flex-1 flex-col bg-background/50">
           {/* Center - Main Preview */}
           <div className="flex flex-1 items-center justify-center p-6">
-            {isGenerating ? (
+            {activeTab === 'images' ? (
+              isGenerating ? (
+                <div className="flex flex-col items-center justify-center text-center">
+                  <div className="relative mb-6">
+                    <div className="h-24 w-24 animate-pulse rounded-full bg-primary/20" />
+                    <Loader2 className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 animate-spin text-primary" />
+                  </div>
+                  <h2 className="mb-2 text-xl font-semibold">
+                    {generationStatus === 'polling' ? 'Generating Images...' : 'Starting Generation...'}
+                  </h2>
+                  <p className="mb-4 text-muted-foreground">
+                    {generationProgress > 0
+                      ? 'AI is creating your visualizations.'
+                      : 'Preparing your generation request...'}
+                  </p>
+                  <div className="w-64">
+                    <Progress value={generationProgress} className="h-2" />
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {Math.round(generationProgress)}% complete
+                    </p>
+                  </div>
+                </div>
+              ) : selectedGeneratedImage ? (
+                <div className="relative max-h-full max-w-full overflow-hidden rounded-xl bg-black/10 shadow-2xl">
+                  <Image
+                    src={selectedGeneratedImage.url}
+                    alt="Generated"
+                    width={800}
+                    height={800}
+                    className="max-h-[70vh] w-auto object-contain"
+                    unoptimized
+                  />
+                  {/* Floating action bar */}
+                  <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-card/90 px-4 py-2 shadow-lg backdrop-blur-sm">
+                    <Button size="sm" variant="ghost" className="h-8 gap-1.5">
+                      <Download className="h-3.5 w-3.5" />
+                      Download
+                    </Button>
+                    <div className="h-4 w-px bg-border" />
+                    <Button size="sm" variant="ghost" className="h-8 gap-1.5">
+                      <Pin className="h-3.5 w-3.5" />
+                      Pin
+                    </Button>
+                    <div className="h-4 w-px bg-border" />
+                    <Button
+                      size="sm"
+                      variant={selectedGeneratedImage.approvalStatus === 'approved' ? 'default' : 'ghost'}
+                      className="h-8 gap-1.5"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      {selectedGeneratedImage.approvalStatus === 'approved' ? 'Approved' : 'Approve'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Sparkles}
+                  title="Ready to Generate"
+                  description="Add inspiration images, configure your settings, and click Generate to create stunning product visualizations."
+                />
+              )
+            ) : isGeneratingVideo ? (
               <div className="flex flex-col items-center justify-center text-center">
                 <div className="relative mb-6">
                   <div className="h-24 w-24 animate-pulse rounded-full bg-primary/20" />
                   <Loader2 className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 animate-spin text-primary" />
                 </div>
                 <h2 className="mb-2 text-xl font-semibold">
-                  {generationStatus === 'polling' ? 'Generating Images...' : 'Starting Generation...'}
+                  {videoStatus === 'polling' ? 'Generating Video...' : 'Starting Video Generation...'}
                 </h2>
                 <p className="mb-4 text-muted-foreground">
-                  {generationProgress > 0
-                    ? 'AI is creating your visualizations.'
-                    : 'Preparing your generation request...'}
+                  {videoProgress > 0
+                    ? 'AI is creating your video.'
+                    : 'Preparing your video request...'}
                 </p>
                 <div className="w-64">
-                  <Progress value={generationProgress} className="h-2" />
+                  <Progress value={videoProgress} className="h-2" />
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {Math.round(generationProgress)}% complete
+                    {Math.round(videoProgress)}% complete
                   </p>
                 </div>
               </div>
-            ) : selectedGeneratedImage ? (
+            ) : selectedGeneratedVideo ? (
               <div className="relative max-h-full max-w-full overflow-hidden rounded-xl bg-black/10 shadow-2xl">
-                <Image
-                  src={selectedGeneratedImage.url}
-                  alt="Generated"
-                  width={800}
-                  height={800}
+                <video
+                  src={selectedGeneratedVideo.url}
+                  controls
                   className="max-h-[70vh] w-auto object-contain"
-                  unoptimized
                 />
-                {/* Floating action bar */}
-                <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-card/90 px-4 py-2 shadow-lg backdrop-blur-sm">
-                  <Button size="sm" variant="ghost" className="h-8 gap-1.5">
-                    <Download className="h-3.5 w-3.5" />
-                    Download
-                  </Button>
-                  <div className="h-4 w-px bg-border" />
-                  <Button size="sm" variant="ghost" className="h-8 gap-1.5">
-                    <Pin className="h-3.5 w-3.5" />
-                    Pin
-                  </Button>
-                  <div className="h-4 w-px bg-border" />
-                  <Button
-                    size="sm"
-                    variant={selectedGeneratedImage.approvalStatus === 'approved' ? 'default' : 'ghost'}
-                    className="h-8 gap-1.5"
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    {selectedGeneratedImage.approvalStatus === 'approved' ? 'Approved' : 'Approve'}
-                  </Button>
-                </div>
               </div>
             ) : (
               <EmptyState
-                icon={Sparkles}
-                title="Ready to Generate"
-                description="Add inspiration images, configure your settings, and click Generate to create stunning product visualizations."
+                icon={Video}
+                title="Ready to Generate Video"
+                description="Pick a base image, add a motion prompt, and generate a video."
               />
             )}
           </div>
@@ -1021,35 +1619,51 @@ export default function StudioPage({ params }: StudioPageProps) {
             <div className="mb-3 flex items-center justify-between">
               <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <History className="h-4 w-4" />
-                Generation History
+                {activeTab === 'images' ? 'Generation History' : 'Video History'}
                 <Badge variant="muted" className="ml-1">
-                  {allGeneratedAssets.length}
+                  {activeTab === 'images' ? imageAssets.length : videoAssets.length}
                 </Badge>
               </h4>
             </div>
 
-            {allGeneratedAssets.length === 0 ? (
+            {(activeTab === 'images' ? imageAssets.length === 0 : videoAssets.length === 0) ? (
               <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-border">
-                <p className="text-sm text-muted-foreground">Generated images will appear here</p>
+                <p className="text-sm text-muted-foreground">
+                  {activeTab === 'images'
+                    ? 'Generated images will appear here'
+                    : 'Generated videos will appear here'}
+                </p>
               </div>
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-2">
-                {allGeneratedAssets.map((img) => (
-                  <div key={img.id} className="group/history relative shrink-0">
+                {(activeTab === 'images' ? imageAssets : videoAssets).map((asset) => (
+                  <div key={asset.id} className="group/history relative shrink-0">
                     <button
-                      onClick={() => setSelectedGeneratedImage(img)}
+                      onClick={() => {
+                        if (activeTab === 'images') {
+                          setSelectedGeneratedImage(asset);
+                        } else {
+                          setSelectedGeneratedVideo(asset);
+                        }
+                      }}
                       className={cn(
                         'relative aspect-square h-32 w-32 overflow-hidden rounded-xl border-2 transition-all',
-                        selectedGeneratedImage?.id === img.id
+                        (activeTab === 'images'
+                          ? selectedGeneratedImage?.id === asset.id
+                          : selectedGeneratedVideo?.id === asset.id)
                           ? 'border-primary ring-2 ring-primary/30'
                           : 'border-transparent hover:border-primary/50'
                       )}
                     >
-                      <Image src={img.url} alt="Generated" fill className="object-cover" unoptimized />
-                      {img.isPinned && (
+                      {activeTab === 'images' ? (
+                        <Image src={asset.url} alt="Generated" fill className="object-cover" unoptimized />
+                      ) : (
+                        <video src={asset.url} muted playsInline className="h-full w-full object-cover" />
+                      )}
+                      {asset.isPinned && (
                         <Pin className="absolute left-1.5 top-1.5 h-4 w-4 text-primary drop-shadow" />
                       )}
-                      {img.approvalStatus === 'approved' && (
+                      {asset.approvalStatus === 'approved' && (
                         <div className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 shadow">
                           <Check className="h-3 w-3 text-white" />
                         </div>
@@ -1059,13 +1673,16 @@ export default function StudioPage({ params }: StudioPageProps) {
                       onClick={async (e) => {
                         e.stopPropagation();
                         try {
-                          await apiClient.deleteGeneratedImage(img.id);
-                          setNewlyGeneratedImages((prev) => prev.filter((i) => i.id !== img.id));
+                          await apiClient.deleteGeneratedImage(asset.id);
+                          setNewlyGeneratedImages((prev) => prev.filter((i) => i.id !== asset.id));
                           queryClient.invalidateQueries({ queryKey: ['generated-images', studioId] });
-                          if (selectedGeneratedImage?.id === img.id) {
+                          if (activeTab === 'images' && selectedGeneratedImage?.id === asset.id) {
                             setSelectedGeneratedImage(null);
                           }
-                          toast.success('Image deleted');
+                          if (activeTab === 'video' && selectedGeneratedVideo?.id === asset.id) {
+                            setSelectedGeneratedVideo(null);
+                          }
+                          toast.success(activeTab === 'images' ? 'Image deleted' : 'Video deleted');
                         } catch (error) {
                           toast.error(error instanceof Error ? error.message : 'Failed to delete');
                         }

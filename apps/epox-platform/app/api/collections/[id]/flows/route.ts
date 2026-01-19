@@ -48,7 +48,9 @@ export async function GET(
         const productId = flow.productIds[0];
         const product = productId ? await db.products.getById(productId) : null;
         const images = productId ? await db.productImages.list(productId) : [];
-        const generatedAssets = assetsByFlowId.get(flow.id) || [];
+        const generatedAssets = (assetsByFlowId.get(flow.id) || []).filter(
+          (asset) => asset.assetType !== 'video'
+        );
 
         // Determine flow status based on generated assets
         let effectiveStatus = flow.status;
@@ -111,8 +113,8 @@ export async function POST(
     }
 
     // Get collection settings
-    const collectionSettings = collection.settings as FlowGenerationSettings | null;
-    const sceneTypeInspirations = collectionSettings?.sceneTypeInspirations as SceneTypeInspirationMap | undefined;
+    const collectionSettings = collection.settings;
+    const sceneTypeInspirations = collectionSettings?.sceneTypeInspirations;
 
     // Get existing flows for this collection
     const existingFlows = await db.generationFlows.listByCollectionSession(collectionId);
@@ -160,7 +162,7 @@ export async function POST(
         ...collectionSettings,
         inspirationImages: matchedInspiration,
         // Keep the scene type inspirations for reference
-        sceneTypeInspirations: sceneTypeInspirations,
+        sceneTypeInspirations,
       };
 
       // Create the flow
@@ -187,4 +189,3 @@ export async function POST(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

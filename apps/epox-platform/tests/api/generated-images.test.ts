@@ -4,7 +4,10 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET as getGeneratedImages, DELETE as deleteGeneratedImage } from '@/app/api/generated-images/route';
+import {
+  GET as getGeneratedImages,
+  DELETE as deleteGeneratedImage,
+} from '@/app/api/generated-images/route';
 
 vi.mock('@/lib/services/db', () => ({
   db: {
@@ -109,22 +112,21 @@ describe('Generated Images API - GET /api/generated-images', () => {
       {
         id: 'asset-1',
         assetUrl: 'https://cdn.example.com/a1.jpg',
+        assetType: 'image',
         productIds: ['prod-1'],
         status: 'completed',
         approvalStatus: 'pending',
         pinned: false,
         createdAt: new Date('2025-01-01T00:00:00Z'),
-        settings: { aspectRatio: '1:1', imageQuality: '2K' },
+        settings: { aspectRatio: '1:1', imageQuality: '2k' },
         chatSessionId: 'chat-1',
         generationFlowId: null,
       },
     ] as any);
-    vi.mocked(db.products.getNamesByIds).mockResolvedValue(
-      new Map([['prod-1', 'Chair']])
-    );
+    vi.mocked(db.products.getNamesByIds).mockResolvedValue(new Map([['prod-1', 'Chair']]));
 
     const request = new NextRequest(
-      'http://localhost:3000/api/generated-images?collectionId=coll-1&status=completed&approval=pending&sort=date&limit=5&page=1'
+      'http://localhost:3000/api/generated-images?flowId=flow-1&status=completed&approval=pending&sort=date&limit=5&page=1'
     );
     const response = await getGeneratedImages(request);
     const data = await response.json();
@@ -135,6 +137,33 @@ describe('Generated Images API - GET /api/generated-images', () => {
       id: 'asset-1',
       productName: 'Chair',
       approvalStatus: 'pending',
+      assetType: 'image',
+    });
+  });
+
+  it('should include assetType for flow assets', async () => {
+    vi.mocked(db.generatedAssets.listByGenerationFlow).mockResolvedValue([
+      {
+        id: 'asset-vid-1',
+        assetUrl: 'https://cdn.example.com/v1.mp4',
+        assetType: 'video',
+        productIds: ['prod-1'],
+        status: 'completed',
+        approvalStatus: 'approved',
+        pinned: false,
+        createdAt: new Date('2025-01-02T00:00:00Z'),
+      },
+    ] as any);
+    vi.mocked(db.products.getNamesByIds).mockResolvedValue(new Map([['prod-1', 'Chair']]));
+
+    const request = new NextRequest('http://localhost:3000/api/generated-images?flowId=flow-1');
+    const response = await getGeneratedImages(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.images[0]).toMatchObject({
+      id: 'asset-vid-1',
+      assetType: 'video',
     });
   });
 

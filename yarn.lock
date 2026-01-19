@@ -1975,18 +1975,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@google/genai@npm:^0.14.0":
-  version: 0.14.1
-  resolution: "@google/genai@npm:0.14.1"
-  dependencies:
-    google-auth-library: "npm:^9.14.2"
-    ws: "npm:^8.18.0"
-    zod: "npm:^3.22.4"
-    zod-to-json-schema: "npm:^3.22.4"
-  checksum: 10c0/f454a226e7000c830ee3679b9fd4f21a4b5929eaef78c43a9706ffaee2920485b66c212b146283919a8803df07ec77054ae3549ccadbfdc81f40c80862a8d2a5
-  languageName: node
-  linkType: hard
-
 "@google/genai@npm:^1.33.0":
   version: 1.34.0
   resolution: "@google/genai@npm:1.34.0"
@@ -4145,21 +4133,6 @@ __metadata:
   checksum: 10c0/2128a4e47418938ae515761475cda3e4ff67f85dfbdcd1f8dace72c5ea71d0f3f7359b1d74881e59ac4499e9d1956d38b0974d65dd677669c41731b41d9c737e
   languageName: node
   linkType: hard
-
-"@repo/ai-worker@workspace:services/ai-worker":
-  version: 0.0.0-use.local
-  resolution: "@repo/ai-worker@workspace:services/ai-worker"
-  dependencies:
-    "@types/express": "npm:^5.0.1"
-    "@types/node": "npm:^24.1.0"
-    express: "npm:^4.21.2"
-    scenergy-monitoring: "npm:1.0.0"
-    scenergy-queue: "npm:1.0.0"
-    tsx: "npm:^4.19.0"
-    typescript: "npm:^5.7.2"
-    visualizer-storage: "npm:1.0.0"
-  languageName: unknown
-  linkType: soft
 
 "@repo/design-system@npm:1.0.0, @repo/design-system@workspace:packages/design-system":
   version: 0.0.0-use.local
@@ -9633,19 +9606,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"gaxios@npm:^6.0.0, gaxios@npm:^6.1.1":
-  version: 6.7.1
-  resolution: "gaxios@npm:6.7.1"
-  dependencies:
-    extend: "npm:^3.0.2"
-    https-proxy-agent: "npm:^7.0.1"
-    is-stream: "npm:^2.0.0"
-    node-fetch: "npm:^2.6.9"
-    uuid: "npm:^9.0.1"
-  checksum: 10c0/53e92088470661c5bc493a1de29d05aff58b1f0009ec5e7903f730f892c3642a93e264e61904383741ccbab1ce6e519f12a985bba91e13527678b32ee6d7d3fd
-  languageName: node
-  linkType: hard
-
 "gaxios@npm:^7.0.0":
   version: 7.1.3
   resolution: "gaxios@npm:7.1.3"
@@ -9655,17 +9615,6 @@ __metadata:
     node-fetch: "npm:^3.3.2"
     rimraf: "npm:^5.0.1"
   checksum: 10c0/a4a1cdf9a392c0c22e9734a40dca5a77a2903f505b939a50f1e68e312458b1289b7993d2f72d011426e89657cae77a3aa9fc62fb140e8ba90a1faa31fdbde4d2
-  languageName: node
-  linkType: hard
-
-"gcp-metadata@npm:^6.1.0":
-  version: 6.1.1
-  resolution: "gcp-metadata@npm:6.1.1"
-  dependencies:
-    gaxios: "npm:^6.1.1"
-    google-logging-utils: "npm:^0.0.2"
-    json-bigint: "npm:^1.0.0"
-  checksum: 10c0/71f6ad4800aa622c246ceec3955014c0c78cdcfe025971f9558b9379f4019f5e65772763428ee8c3244fa81b8631977316eaa71a823493f82e5c44d7259ffac8
   languageName: node
   linkType: hard
 
@@ -9951,27 +9900,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"google-auth-library@npm:^9.14.2":
-  version: 9.15.1
-  resolution: "google-auth-library@npm:9.15.1"
-  dependencies:
-    base64-js: "npm:^1.3.0"
-    ecdsa-sig-formatter: "npm:^1.0.11"
-    gaxios: "npm:^6.1.1"
-    gcp-metadata: "npm:^6.1.0"
-    gtoken: "npm:^7.0.0"
-    jws: "npm:^4.0.0"
-  checksum: 10c0/6eef36d9a9cb7decd11e920ee892579261c6390104b3b24d3e0f3889096673189fe2ed0ee43fd563710e2560de98e63ad5aa4967b91e7f4e69074a422d5f7b65
-  languageName: node
-  linkType: hard
-
-"google-logging-utils@npm:^0.0.2":
-  version: 0.0.2
-  resolution: "google-logging-utils@npm:0.0.2"
-  checksum: 10c0/9a4bbd470dd101c77405e450fffca8592d1d7114f245a121288d04a957aca08c9dea2dd1a871effe71e41540d1bb0494731a0b0f6fea4358e77f06645e4268c1
-  languageName: node
-  linkType: hard
-
 "google-logging-utils@npm:^1.0.0":
   version: 1.1.3
   resolution: "google-logging-utils@npm:1.1.3"
@@ -9997,16 +9925,6 @@ __metadata:
   version: 1.4.0
   resolution: "graphemer@npm:1.4.0"
   checksum: 10c0/e951259d8cd2e0d196c72ec711add7115d42eb9a8146c8eeda5b8d3ac91e5dd816b9cd68920726d9fd4490368e7ed86e9c423f40db87e2d8dfafa00fa17c3a31
-  languageName: node
-  linkType: hard
-
-"gtoken@npm:^7.0.0":
-  version: 7.1.0
-  resolution: "gtoken@npm:7.1.0"
-  dependencies:
-    gaxios: "npm:^6.0.0"
-    jws: "npm:^4.0.0"
-  checksum: 10c0/0a3dcacb1a3c4578abe1ee01c7d0bf20bffe8ded3ee73fc58885d53c00f6eb43b4e1372ff179f0da3ed5cfebd5b7c6ab8ae2776f1787e90d943691b4fe57c716
   languageName: node
   linkType: hard
 
@@ -12783,20 +12701,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"node-fetch@npm:^2.6.9":
-  version: 2.7.0
-  resolution: "node-fetch@npm:2.7.0"
-  dependencies:
-    whatwg-url: "npm:^5.0.0"
-  peerDependencies:
-    encoding: ^0.1.0
-  peerDependenciesMeta:
-    encoding:
-      optional: true
-  checksum: 10c0/b55786b6028208e6fbe594ccccc213cab67a72899c9234eb59dba51062a299ea853210fcf526998eaa2867b0963ad72338824450905679ff0fa304b8c5093ae8
-  languageName: node
-  linkType: hard
-
 "node-fetch@npm:^3.3.2":
   version: 3.3.2
   resolution: "node-fetch@npm:3.3.2"
@@ -14729,7 +14633,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"scenergy-monitoring@npm:1.0.0, scenergy-monitoring@workspace:packages/scenergy-monitoring":
+"scenergy-monitoring@workspace:packages/scenergy-monitoring":
   version: 0.0.0-use.local
   resolution: "scenergy-monitoring@workspace:packages/scenergy-monitoring"
   dependencies:
@@ -14742,24 +14646,6 @@ __metadata:
     express: "npm:^4.21.2"
     ioredis: "npm:^5.4.2"
     typescript: "npm:^5.7.2"
-    vitest: "npm:^3.2.4"
-  languageName: unknown
-  linkType: soft
-
-"scenergy-queue@npm:1.0.0, scenergy-queue@workspace:packages/scenergy-queue":
-  version: 0.0.0-use.local
-  resolution: "scenergy-queue@workspace:packages/scenergy-queue"
-  dependencies:
-    "@types/node": "npm:^24.1.0"
-    "@vitest/coverage-v8": "npm:^3.2.4"
-    bullmq: "npm:^5.34.8"
-    ioredis: "npm:^5.4.2"
-    nanoid: "npm:^5.1.6"
-    typescript: "npm:^5.7.2"
-    visualizer-ai: "npm:1.0.0"
-    visualizer-db: "npm:1.0.0"
-    visualizer-storage: "npm:1.0.0"
-    visualizer-types: "npm:1.0.0"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
@@ -16067,13 +15953,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tr46@npm:~0.0.3":
-  version: 0.0.3
-  resolution: "tr46@npm:0.0.3"
-  checksum: 10c0/047cb209a6b60c742f05c9d3ace8fa510bff609995c129a37ace03476a9b12db4dbf975e74600830ef0796e18882b2381fb5fb1f6b4f96b832c374de3ab91a11
-  languageName: node
-  linkType: hard
-
 "trim-lines@npm:^3.0.0":
   version: 3.0.1
   resolution: "trim-lines@npm:3.0.1"
@@ -16773,15 +16652,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"uuid@npm:^9.0.1":
-  version: 9.0.1
-  resolution: "uuid@npm:9.0.1"
-  bin:
-    uuid: dist/bin/uuid
-  checksum: 10c0/1607dd32ac7fc22f2d8f77051e6a64845c9bce5cd3dd8aa0070c074ec73e666a1f63c7b4e0f4bf2bc8b9d59dc85a15e17807446d9d2b17c8485fbc2147b27f9b
-  languageName: node
-  linkType: hard
-
 "v8-compile-cache-lib@npm:^3.0.1":
   version: 3.0.1
   resolution: "v8-compile-cache-lib@npm:3.0.1"
@@ -16848,7 +16718,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "visualizer-ai@workspace:packages/visualizer-ai"
   dependencies:
-    "@google/genai": "npm:^0.14.0"
+    "@google/genai": "npm:^1.33.0"
     "@types/node": "npm:^24.1.0"
     typescript: "npm:^5.7.2"
   languageName: unknown
@@ -17093,13 +16963,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"webidl-conversions@npm:^3.0.0":
-  version: 3.0.1
-  resolution: "webidl-conversions@npm:3.0.1"
-  checksum: 10c0/5612d5f3e54760a797052eb4927f0ddc01383550f542ccd33d5238cfd65aeed392a45ad38364970d0a0f4fea32e1f4d231b3d8dac4a3bdd385e5cf802ae097db
-  languageName: node
-  linkType: hard
-
 "webidl-conversions@npm:^8.0.0":
   version: 8.0.0
   resolution: "webidl-conversions@npm:8.0.0"
@@ -17121,16 +16984,6 @@ __metadata:
     tr46: "npm:^6.0.0"
     webidl-conversions: "npm:^8.0.0"
   checksum: 10c0/40c49b47044787c87486aaaa5b504da122820661c45ae20ab466c62595ed03c64be7c10c1d180d028949a393cd455db14144966a68359cd37fe6417e3426d128
-  languageName: node
-  linkType: hard
-
-"whatwg-url@npm:^5.0.0":
-  version: 5.0.0
-  resolution: "whatwg-url@npm:5.0.0"
-  dependencies:
-    tr46: "npm:~0.0.3"
-    webidl-conversions: "npm:^3.0.0"
-  checksum: 10c0/1588bed84d10b72d5eec1d0faa0722ba1962f1821e7539c535558fb5398d223b0c50d8acab950b8c488b4ba69043fd833cc2697056b167d8ad46fac3995a55d5
   languageName: node
   linkType: hard
 
@@ -17430,15 +17283,6 @@ __metadata:
   version: 0.1.0
   resolution: "yocto-queue@npm:0.1.0"
   checksum: 10c0/dceb44c28578b31641e13695d200d34ec4ab3966a5729814d5445b194933c096b7ced71494ce53a0e8820685d1d010df8b2422e5bf2cdea7e469d97ffbea306f
-  languageName: node
-  linkType: hard
-
-"zod-to-json-schema@npm:^3.22.4":
-  version: 3.25.1
-  resolution: "zod-to-json-schema@npm:3.25.1"
-  peerDependencies:
-    zod: ^3.25 || ^4
-  checksum: 10c0/711b30e34d1f1211f1afe64bf457f0d799234199dc005cca720b236ea808804c03164039c232f5df33c46f462023874015a8a0b3aab1585eca14124c324db7e2
   languageName: node
   linkType: hard
 

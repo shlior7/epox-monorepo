@@ -3,31 +3,32 @@
  * Identifies visual elements and suggests adjustments
  */
 
-import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getGeminiService } from 'visualizer-services';
+import { withSecurity, validateImageUrl } from '@/lib/security';
 
 interface AnalyzeImageRequest {
   imageDataUrl: string;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body: AnalyzeImageRequest = await request.json();
+export const POST = withSecurity(async (request) => {
+  const body: AnalyzeImageRequest = await request.json();
 
-    if (!body.imageDataUrl) {
-      return NextResponse.json({ success: false, error: 'Missing imageDataUrl' }, { status: 400 });
-    }
+  if (!body.imageDataUrl) {
+    return NextResponse.json({ success: false, error: 'Missing imageDataUrl' }, { status: 400 });
+  }
 
-    const geminiService = getGeminiService();
-    const result = await geminiService.analyzeComponents(body.imageDataUrl);
-
-    return NextResponse.json({ success: true, ...result });
-  } catch (error) {
-    console.error('❌ Image analysis failed:', error);
+  // Validate data URL format
+  const urlValidation = validateImageUrl(body.imageDataUrl);
+  if (!urlValidation.valid) {
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed to analyze image' },
-      { status: 500 }
+      { success: false, error: urlValidation.error ?? 'Invalid image data URL' },
+      { status: 400 }
     );
   }
-}
+
+  const geminiService = getGeminiService();
+  const result = await geminiService.analyzeComponents(body.imageDataUrl);
+
+  return NextResponse.json({ success: true, ...result });
+});

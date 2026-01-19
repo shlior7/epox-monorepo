@@ -52,10 +52,14 @@ async function pushSchema(): Promise<void> {
       stdio: 'inherit',
     });
 
-    // Recreate pgTAP extension for pgTAP tests
-    execSync('docker exec visualizer-db-test psql -U test -d visualizer_test -c "CREATE EXTENSION IF NOT EXISTS pgtap"', {
-      stdio: 'pipe',
-    });
+    // Recreate pgTAP extension for pgTAP tests (optional - may not be available)
+    try {
+      execSync('docker exec visualizer-db-test psql -U test -d visualizer_test -c "CREATE EXTENSION IF NOT EXISTS pgtap"', {
+        stdio: 'pipe',
+      });
+    } catch {
+      console.log('Note: pgTAP extension not available (optional for pgTAP-based tests)');
+    }
   } catch (error) {
     console.error('Failed to push schema:', error);
     throw error;

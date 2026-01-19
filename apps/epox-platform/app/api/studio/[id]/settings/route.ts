@@ -9,12 +9,12 @@ import { db } from '@/lib/services/db';
 import { getClientId } from '@/lib/services/get-auth';
 import type {
   FlowGenerationSettings,
-  ImageQuality,
   InspirationImage,
   SceneTypeInspirationMap,
   StylePreset,
   LightingPreset,
 } from 'visualizer-types';
+import { normalizeImageQuality } from 'visualizer-types';
 
 interface UpdateSettingsRequest {
   // Scene Style (Section 1)
@@ -28,8 +28,21 @@ interface UpdateSettingsRequest {
 
   // Output Settings (Section 4)
   aspectRatio?: string;
-  imageQuality?: '1K' | '2K' | '4K';
+  imageQuality?: '1k' | '2k' | '4k';
   variantsCount?: number;
+  video?: {
+    prompt?: string;
+    inspirationImageUrl?: string;
+    inspirationNote?: string;
+    settings?: {
+      videoType?: string;
+      cameraMotion?: string;
+      subjectAction?: string;
+      sceneAction?: string;
+      durationSeconds?: number;
+    };
+    presetId?: string | null;
+  };
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -74,10 +87,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       settingsUpdate.aspectRatio = body.aspectRatio;
     }
     if (body.imageQuality !== undefined) {
-      settingsUpdate.imageQuality = body.imageQuality as ImageQuality;
+      const normalizedQuality = normalizeImageQuality(body.imageQuality);
+      if (!normalizedQuality) {
+        return NextResponse.json(
+          { error: `Invalid imageQuality: ${body.imageQuality}. Must be '1k', '2k', or '4k'` },
+          { status: 400 }
+        );
+      }
+      settingsUpdate.imageQuality = normalizedQuality;
     }
     if (body.variantsCount !== undefined) {
       settingsUpdate.variantsCount = body.variantsCount;
+    }
+    if (body.video !== undefined) {
+      settingsUpdate.video = body.video as FlowGenerationSettings['video'];
     }
 
     flow = await db.generationFlows.updateSettings(flowId, settingsUpdate);

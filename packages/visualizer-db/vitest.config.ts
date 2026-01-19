@@ -5,6 +5,9 @@ export default defineConfig({
     // Use threads for better isolation
     pool: 'threads',
 
+    // Don't fail if no test files found
+    passWithNoTests: true,
+
     // Global test setup
     globalSetup: './src/__tests__/global-setup.ts',
     setupFiles: ['./src/__tests__/setup.ts'],

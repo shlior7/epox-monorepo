@@ -335,6 +335,77 @@ describe('Collections API - PATCH /api/collections/[id]', () => {
     expect(data.status).toBe('generating');
   });
 
+  it('should update collection settings with video config', async () => {
+    const existingCollection = {
+      id: 'coll-1',
+      clientId: 'demo-client',
+      name: 'Test Collection',
+      productIds: ['prod-1'],
+      selectedBaseImages: {},
+      settings: {},
+      status: 'draft' as const,
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const updatedCollection = {
+      ...existingCollection,
+      settings: {
+        video: {
+          prompt: 'Slow orbit around the sofa',
+          inspirationImageUrl: 'https://example.com/inspo.jpg',
+          inspirationNote: 'Warm studio mood',
+          settings: {
+            videoType: 'orbit',
+            cameraMotion: 'orbit',
+            durationSeconds: 6,
+          },
+          presetId: 'preset-1',
+        },
+      },
+      updatedAt: new Date(),
+    };
+
+    vi.mocked(db.collectionSessions.getById).mockResolvedValue(existingCollection);
+    vi.mocked(db.collectionSessions.update).mockResolvedValue(updatedCollection);
+
+    const request = new NextRequest('http://localhost:3000/api/collections/coll-1', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        settings: {
+          video: {
+            prompt: 'Slow orbit around the sofa',
+            inspirationImageUrl: 'https://example.com/inspo.jpg',
+            inspirationNote: 'Warm studio mood',
+            settings: {
+              videoType: 'orbit',
+              cameraMotion: 'orbit',
+              durationSeconds: 6,
+            },
+            presetId: 'preset-1',
+          },
+        },
+      }),
+    });
+
+    const response = await updateCollection(request, { params: Promise.resolve({ id: 'coll-1' }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(db.collectionSessions.update).toHaveBeenCalledWith(
+      'coll-1',
+      expect.objectContaining({
+        settings: expect.objectContaining({
+          video: expect.objectContaining({
+            prompt: 'Slow orbit around the sofa',
+          }),
+        }),
+      })
+    );
+    expect(data.settings.video.prompt).toBe('Slow orbit around the sofa');
+  });
+
   it('should reject invalid status', async () => {
     vi.mocked(db.collectionSessions.getById).mockResolvedValue({
       id: 'coll-1',

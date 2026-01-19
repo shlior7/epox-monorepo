@@ -70,6 +70,7 @@ export interface CollectionSession {
   createdAt: Date;
   updatedAt: Date;
   status: string;
+  settings: unknown | null;
 }
 
 export interface FavoriteImage {

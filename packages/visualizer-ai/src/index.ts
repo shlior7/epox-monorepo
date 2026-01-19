@@ -28,6 +28,8 @@ export type {
   AIModelOverrides,
   GeminiGenerationRequest,
   GeminiGenerationResponse,
+  GeminiVideoRequest,
+  GeminiVideoResponse,
   EditImageRequest,
   EditImageResponse,
   ImageEditMode,
@@ -55,4 +57,3 @@ export {
 
 // Gemini Service
 export { GeminiService, getGeminiService } from './gemini-service';
-

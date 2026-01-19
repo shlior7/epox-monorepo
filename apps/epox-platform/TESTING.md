@@ -47,6 +47,7 @@ tests/
 │   ├── dashboard.test.ts             # Dashboard aggregation tests
 │   ├── explore-search.test.ts        # Unsplash search mapping tests
 │   ├── generate-images.test.ts       # Image generation flow tests
+│   ├── generate-video.test.ts        # Video generation flow tests
 │   ├── gemini-tools.test.ts          # Analyze/edit/remove/upscale/vision tests
 │   ├── generated-images.test.ts      # Generated assets list/delete tests
 │   ├── jobs.test.ts                  # Job status tests
@@ -138,6 +139,16 @@ tests/
 - ✅ Returns expected image count (products × variants)
 - ✅ Returns first job ID for backward compatibility
 - ✅ Returns truncated prompt in response
+- ✅ Handles queue service errors gracefully
+
+### Video Generation Flow Tests (`tests/api/generate-video.test.ts`)
+
+**POST /api/generate-video**
+- ✅ Validates required fields (sessionId, productId, sourceImageUrl, prompt)
+- ✅ Creates video generation job with settings + inspiration
+- ✅ Supports urgent priority
+- ✅ Trims prompt before enqueuing
+- ✅ Uses explicit clientId when provided
 - ✅ Handles queue service errors gracefully
 
 ### Additional API Coverage

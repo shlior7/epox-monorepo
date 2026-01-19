@@ -186,6 +186,8 @@ export class ProductRepository extends BaseRepository<Product> {
       case 'updated':
       case undefined:
         return orderFn(product.updatedAt);
+      default:
+        return orderFn(product.updatedAt);
     }
   }
 
