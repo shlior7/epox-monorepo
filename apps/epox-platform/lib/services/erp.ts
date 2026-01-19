@@ -17,4 +17,4 @@ export function getStoreService(): StoreService {
 }
 
 // Re-export for convenience
-export { type StoreService };
+export type { StoreService } from '@scenergy/erp-service';

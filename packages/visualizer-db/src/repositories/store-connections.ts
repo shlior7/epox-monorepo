@@ -147,10 +147,7 @@ export class StoreConnectionRepository extends BaseRepository<StoreConnectionRow
     const rows = await this.drizzle
       .select()
       .from(storeConnection)
-      .where(and(
-        eq(storeConnection.clientId, clientId),
-        eq(storeConnection.storeType, storeType)
-      ))
+      .where(and(eq(storeConnection.clientId, clientId), eq(storeConnection.storeType, storeType)))
       .orderBy(desc(storeConnection.updatedAt))
       .limit(1);
 
@@ -167,7 +164,7 @@ export class StoreConnectionRepository extends BaseRepository<StoreConnectionRow
       .where(eq(storeConnection.clientId, clientId))
       .orderBy(desc(storeConnection.updatedAt));
 
-    return rows.map(row => this.mapToEntity(row));
+    return rows.map((row) => this.mapToEntity(row));
   }
 
   /**
@@ -175,7 +172,9 @@ export class StoreConnectionRepository extends BaseRepository<StoreConnectionRow
    */
   async getInfoByClientId(clientId: string): Promise<StoreConnectionInfo | null> {
     const connection = await this.getByClientId(clientId);
-    if (!connection) return null;
+    if (!connection) {
+      return null;
+    }
     return this.toInfo(connection);
   }
 
@@ -184,16 +183,28 @@ export class StoreConnectionRepository extends BaseRepository<StoreConnectionRow
    */
   async update(id: string, data: StoreConnectionUpdate): Promise<StoreConnectionRow> {
     const now = new Date();
-    
+
     const updateData: Record<string, unknown> = { updatedAt: now };
-    
-    if (data.storeName !== undefined) updateData.storeName = data.storeName;
-    if (data.status !== undefined) updateData.status = data.status;
-    if (data.lastSyncAt !== undefined) updateData.lastSyncAt = data.lastSyncAt;
-    if (data.autoSyncEnabled !== undefined) updateData.autoSyncEnabled = data.autoSyncEnabled;
-    if (data.syncOnApproval !== undefined) updateData.syncOnApproval = data.syncOnApproval;
-    if (data.tokenExpiresAt !== undefined) updateData.tokenExpiresAt = data.tokenExpiresAt;
-    
+
+    if (data.storeName !== undefined) {
+      updateData.storeName = data.storeName;
+    }
+    if (data.status !== undefined) {
+      updateData.status = data.status;
+    }
+    if (data.lastSyncAt !== undefined) {
+      updateData.lastSyncAt = data.lastSyncAt;
+    }
+    if (data.autoSyncEnabled !== undefined) {
+      updateData.autoSyncEnabled = data.autoSyncEnabled;
+    }
+    if (data.syncOnApproval !== undefined) {
+      updateData.syncOnApproval = data.syncOnApproval;
+    }
+    if (data.tokenExpiresAt !== undefined) {
+      updateData.tokenExpiresAt = data.tokenExpiresAt;
+    }
+
     if (data.credentials) {
       updateData.credentialsCiphertext = data.credentials.ciphertext;
       updateData.credentialsIv = data.credentials.iv;
@@ -202,11 +213,11 @@ export class StoreConnectionRepository extends BaseRepository<StoreConnectionRow
       updateData.credentialsFingerprint = data.credentials.fingerprint ?? null;
     }
 
-    const [result] = await this.drizzle
-      .update(storeConnection)
-      .set(updateData)
-      .where(eq(storeConnection.id, id))
-      .returning();
+    const [result] = await this.drizzle.update(storeConnection).set(updateData).where(eq(storeConnection.id, id)).returning();
+
+    if (!result) {
+      throw new Error(`Store connection not found: ${id}`);
+    }
 
     return this.mapToEntity(result);
   }
@@ -217,9 +228,9 @@ export class StoreConnectionRepository extends BaseRepository<StoreConnectionRow
   async updateStatusByClientId(clientId: string, status: ConnectionStatus): Promise<void> {
     await this.drizzle
       .update(storeConnection)
-      .set({ 
-        status, 
-        updatedAt: new Date() 
+      .set({
+        status,
+        updatedAt: new Date(),
       })
       .where(eq(storeConnection.clientId, clientId));
   }
@@ -231,9 +242,9 @@ export class StoreConnectionRepository extends BaseRepository<StoreConnectionRow
     const now = new Date();
     await this.drizzle
       .update(storeConnection)
-      .set({ 
-        lastSyncAt: now, 
-        updatedAt: now 
+      .set({
+        lastSyncAt: now,
+        updatedAt: now,
       })
       .where(eq(storeConnection.clientId, clientId));
   }
@@ -242,9 +253,7 @@ export class StoreConnectionRepository extends BaseRepository<StoreConnectionRow
    * Delete all store connections for a client
    */
   async deleteByClientId(clientId: string): Promise<void> {
-    await this.drizzle
-      .delete(storeConnection)
-      .where(eq(storeConnection.clientId, clientId));
+    await this.drizzle.delete(storeConnection).where(eq(storeConnection.clientId, clientId));
   }
 
   /**
@@ -292,4 +301,3 @@ export class StoreConnectionRepository extends BaseRepository<StoreConnectionRow
     };
   }
 }
-

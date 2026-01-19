@@ -1,5 +1,7 @@
 /**
  * Shopify Provider
+ * Uses Shopify Admin API for OAuth and product data access.
+ * API Docs: https://shopify.dev/docs/admin-api
  */
 
 import {
@@ -13,6 +15,10 @@ import {
   type FetchOptions,
   type PaginatedResult,
 } from '../base';
+
+// Shopify API version - update quarterly as per Shopify versioning
+// See: https://shopify.dev/docs/api/versioning
+const SHOPIFY_API_VERSION = '2024-10';
 
 export interface ShopifyCredentials extends ProviderCredentials {
   accessToken: string;
@@ -79,7 +85,7 @@ export class ShopifyProvider extends BaseProvider {
 
   async testConnection(credentials: ProviderCredentials): Promise<boolean> {
     try {
-      const response = await this.fetch(credentials as ShopifyCredentials, '/admin/api/2024-01/shop.json');
+      const response = await this.fetch(credentials as ShopifyCredentials, `/admin/api/${SHOPIFY_API_VERSION}/shop.json`);
       return response.ok;
     } catch {
       return false;
@@ -88,7 +94,10 @@ export class ShopifyProvider extends BaseProvider {
 
   async getProducts(credentials: ProviderCredentials, options: FetchOptions = {}): Promise<PaginatedResult<ProviderProduct>> {
     const { limit = 10, page = 1 } = options;
-    const response = await this.fetch(credentials as ShopifyCredentials, `/admin/api/2024-01/products.json?limit=${limit}&status=active`);
+    const response = await this.fetch(
+      credentials as ShopifyCredentials,
+      `/admin/api/${SHOPIFY_API_VERSION}/products.json?limit=${limit}&status=active`
+    );
 
     if (!response.ok) {
       throw new Error(`Failed to fetch products: ${response.status}`);
@@ -107,7 +116,7 @@ export class ShopifyProvider extends BaseProvider {
 
   async getProduct(credentials: ProviderCredentials, productId: string | number): Promise<ProviderProduct | null> {
     try {
-      const response = await this.fetch(credentials as ShopifyCredentials, `/admin/api/2024-01/products/${productId}.json`);
+      const response = await this.fetch(credentials as ShopifyCredentials, `/admin/api/${SHOPIFY_API_VERSION}/products/${productId}.json`);
       if (!response.ok) {
         return null;
       }
@@ -119,7 +128,7 @@ export class ShopifyProvider extends BaseProvider {
   }
 
   async getCategories(credentials: ProviderCredentials): Promise<ProviderCategory[]> {
-    const response = await this.fetch(credentials as ShopifyCredentials, '/admin/api/2024-01/custom_collections.json');
+    const response = await this.fetch(credentials as ShopifyCredentials, `/admin/api/${SHOPIFY_API_VERSION}/custom_collections.json`);
     if (!response.ok) {
       throw new Error(`Failed to fetch collections: ${response.status}`);
     }

@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  WooCommerceProvider,
-  isWooCommerceCredentials,
-  type WooCommerceCredentials,
-  type WooCommerceCallbackPayload,
-} from './index';
+import { WooCommerceProvider, isWooCommerceCredentials, type WooCommerceCredentials, type WooCommerceCallbackPayload } from './index';
 import type { AuthParams, AuthState } from '../base';
 
 describe('WooCommerceProvider', () => {
@@ -61,8 +56,8 @@ describe('WooCommerceProvider', () => {
     });
 
     it('should use default return URL when not provided', () => {
-      const params = { ...baseParams, returnUrl: undefined };
-      const url = provider.buildAuthUrl(params, 'state-abc');
+      const { returnUrl: _unused, ...paramsWithoutReturnUrl } = baseParams;
+      const url = provider.buildAuthUrl(paramsWithoutReturnUrl, 'state-abc');
       const parsed = new URL(url);
       expect(parsed.searchParams.get('return_url')).toBe('https://app.com/complete');
     });
@@ -163,4 +158,3 @@ describe('isWooCommerceCredentials()', () => {
     expect(isWooCommerceCredentials({ baseUrl: 'url', consumerKey: 'ck' })).toBe(false);
   });
 });
-

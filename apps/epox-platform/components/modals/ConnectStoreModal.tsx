@@ -84,11 +84,12 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
 
     try {
       // Generic OAuth flow for all providers
+      const trimmedUrl = storeUrl.trim();
       const response = await fetch(`/api/store-connection/${selectedStore}/authorize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          storeUrl,
+          storeUrl: trimmedUrl,
           returnUrl: window.location.href,
         }),
       });
@@ -103,7 +104,7 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
       // Store info for callback handling
       sessionStorage.setItem(
         'pendingStoreConnection',
-        JSON.stringify({ storeType: selectedStore, storeUrl })
+        JSON.stringify({ storeType: selectedStore, storeUrl: trimmedUrl })
       );
 
       // Redirect to provider's authorization page
@@ -116,7 +117,7 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
   };
 
   const selectedStoreInfo = STORES.find((s) => s.type === selectedStore);
-  const canConnect = selectedStore && storeUrl.trim();
+  const canConnect: boolean = Boolean(selectedStore && storeUrl.trim());
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>

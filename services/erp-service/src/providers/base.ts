@@ -102,7 +102,10 @@ export abstract class BaseProvider {
 
   protected normalizeUrl(url: string): string {
     let normalized = url.replace(/\/+$/, '');
-    if (!normalized.startsWith('http')) {
+    // Upgrade http:// to https://
+    if (normalized.startsWith('http://')) {
+      normalized = normalized.replace('http://', 'https://');
+    } else if (!normalized.startsWith('https://')) {
       normalized = `https://${normalized}`;
     }
     return normalized;
