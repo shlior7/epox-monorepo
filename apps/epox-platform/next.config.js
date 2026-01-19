@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['visualizer-types', 'visualizer-db', 'visualizer-services'],
+  transpilePackages: ['visualizer-types', 'visualizer-db', 'visualizer-services', '@scenergy/erp-service'],
   output: 'standalone',
   images: {
     remotePatterns: [

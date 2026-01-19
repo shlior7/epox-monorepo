@@ -23,3 +23,13 @@ export {
   type QuotaLimitUpdate,
 } from './usage';
 export { GenerationJobRepository, type GenerationJob, type GenerationJobCreate, type GenerationJobUpdate } from './generation-jobs';
+export {
+  StoreConnectionRepository,
+  type StoreConnectionRow,
+  type StoreConnectionInfo,
+  type StoreConnectionCreate,
+  type StoreConnectionUpdate,
+  type EncryptedCredentials,
+  type StoreType,
+  type ConnectionStatus,
+} from './store-connections';

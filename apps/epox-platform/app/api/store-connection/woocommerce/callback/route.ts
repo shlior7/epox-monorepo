@@ -5,7 +5,7 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { getStoreService } from '@/lib/services/erp';
-import type { WooCommerceCallbackPayload } from 'erp-service';
+import type { WooCommerceCallbackPayload } from '@scenergy/erp-service';
 
 export async function POST(request: NextRequest) {
   try {

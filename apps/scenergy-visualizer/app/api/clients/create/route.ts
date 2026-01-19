@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { auth } from 'visualizer-auth';
 import { randomBytes } from 'crypto';
-import { db, getDb } from 'visualizer-db';
+import { db } from 'visualizer-db';
 import { createClientRecord, updateClientRecord } from '@/lib/services/db/storage-service';
 import type { Client, CreateClientPayload } from '@/lib/types/app-types';
 import { requireAdmin } from '@/lib/auth/admin-route';
+import { createStoreService } from '@scenergy/erp-service';
 
 const CLIENT_EMAIL_DOMAIN = 'clients.scenergy.local';
 
@@ -14,8 +15,7 @@ const buildClientLoginEmail = (clientId: string): string => `${clientId}@${CLIEN
 const generateClientPassword = (): string => randomBytes(12).toString('base64url');
 
 /**
- * API route to create a new client in S3
- * This keeps AWS credentials server-side only
+ * API route to create a new client
  * Commerce credentials are stored securely in Neon via erp-service
  */
 export const POST = requireAdmin(async (request: Request) => {
@@ -39,10 +39,7 @@ export const POST = requireAdmin(async (request: Request) => {
 
     const normalizedClientId = normalizeClientId(clientCandidate.id);
     if (!normalizedClientId || !isValidClientId(normalizedClientId)) {
-      return NextResponse.json(
-        { error: 'Client ID must be lowercase letters, numbers, and dashes only' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Client ID must be lowercase letters, numbers, and dashes only' }, { status: 400 });
     }
 
     const client: Client = {
@@ -59,10 +56,7 @@ export const POST = requireAdmin(async (request: Request) => {
       commerce?.provider === 'woocommerce' && isCommerceWithCredentials(commerce) ? commerce.credentials : undefined;
     if (commerce?.provider === 'woocommerce') {
       if (!commerce.baseUrl || !commerceCredentials?.consumerKey || !commerceCredentials.consumerSecret) {
-        return NextResponse.json(
-          { error: 'WooCommerce baseUrl, consumerKey, and consumerSecret are required' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'WooCommerce baseUrl, consumerKey, and consumerSecret are required' }, { status: 400 });
       }
     }
 
@@ -107,75 +101,18 @@ export const POST = requireAdmin(async (request: Request) => {
     console.log('🔧 API /api/clients - Creating client:', client.name);
     let updatedClient = client;
 
-    if (commerce?.provider === 'woocommerce') {
+    if (commerce?.provider === 'woocommerce' && commerceCredentials) {
       // Use ERP service to store credentials securely in Neon
-      const { createERPService } = await import('@scenergy/erp-service');
-      const erpService = createERPService(getDb());
+      const storeService = createStoreService(db);
 
       // Save credentials to vault using clientId
-      const saveResult = await erpService.saveCredentials(client.id, 'woocommerce', {
+      await storeService.saveCredentials(client.id, 'woocommerce', {
         baseUrl: commerce.baseUrl,
-        consumerKey: commerceCredentials!.consumerKey,
-        consumerSecret: commerceCredentials!.consumerSecret,
+        consumerKey: commerceCredentials.consumerKey,
+        consumerSecret: commerceCredentials.consumerSecret,
       });
 
-      if (saveResult.error) {
-        throw saveResult.error;
-      }
-
       console.log('✅ Stored WooCommerce credentials in Neon for client:', client.name);
-
-      // Also store in Supabase Clients table for quick lookup
-      const { db } = await import('@scenergy/supabase-service');
-
-      const { columns, error: schemaError } = await db.tables.getTableSchema('Clients');
-      if (schemaError) {
-        throw schemaError;
-      }
-
-      const columnNames = new Set(columns.map((column) => column.name));
-      const now = new Date().toISOString();
-      const baseValues: Record<string, unknown> = {
-        id: client.id,
-        clientId: client.id,
-        name: client.name,
-        description: client.description ?? null,
-        baseUrl: commerce.baseUrl,
-        url: commerce.baseUrl,
-        storeUrl: commerce.baseUrl,
-        provider: commerce.provider,
-        commerceProvider: commerce.provider,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      const record: Record<string, unknown> = {};
-      const fallbackForType = (type: string) => {
-        if (type.includes('json')) return {};
-        if (type.includes('bool')) return true;
-        if (type.includes('timestamp')) return now;
-        if (type.includes('uuid')) return client.id;
-        if (type.includes('int') || type.includes('numeric') || type.includes('float') || type.includes('double')) return 0;
-        return '';
-      };
-
-      for (const column of columns) {
-        if (column.name in baseValues) {
-          record[column.name] = baseValues[column.name];
-          continue;
-        }
-
-        if (!column.nullable && column.defaultValue == null) {
-          record[column.name] = fallbackForType(column.type);
-        }
-      }
-
-      const conflictKey = columnNames.has('id') ? 'id' : columnNames.has('clientId') ? 'clientId' : undefined;
-      const { error: upsertError } = await db.tables.upsertRecord('Clients', record, conflictKey);
-      if (upsertError) {
-        throw upsertError;
-      }
 
       updatedClient = {
         ...client,
