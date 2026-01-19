@@ -73,18 +73,41 @@ export const DEFAULT_PROMPT_TAGS: PromptTags = {
 
 // ===== VIDEO SETTINGS =====
 
+export type VideoType =
+  | 'Pan Over Product'
+  | 'Rotate Around Product'
+  | 'Zoom In on Product'
+  | 'Model Interaction (Female)'
+  | 'Model Interaction (Male)'
+  | 'Lifestyle Scene'
+  | 'Product in Use'
+  | 'Custom';
+
+export const VIDEO_TYPES: VideoType[] = [
+  'Pan Over Product',
+  'Rotate Around Product',
+  'Zoom In on Product',
+  'Model Interaction (Female)',
+  'Model Interaction (Male)',
+  'Lifestyle Scene',
+  'Product in Use',
+  'Custom',
+];
+
+export type VideoQuality = '720p' | '1080p' | '4k';
+
+export const VIDEO_QUALITY_OPTIONS: VideoQuality[] = ['720p', '1080p', '4k'];
+
 export interface VideoPromptSettings {
-  videoType?: string;
-  cameraMotion?: string;
-  subjectAction?: string;
-  sceneAction?: string;
+  videoType?: VideoType;
   durationSeconds?: number;
+  quality?: VideoQuality;
+  aspectRatio?: string;
 }
 
 export interface VideoGenerationSettings {
   prompt?: string;
   inspirationImageUrl?: string;
-  inspirationNote?: string;
   settings: VideoPromptSettings;
   presetId?: string | null;
 }

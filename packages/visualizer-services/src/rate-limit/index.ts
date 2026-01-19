@@ -82,6 +82,21 @@ export type RateLimitResult<T> =
   | { success: false; retryAfter: number; remaining: number };
 
 /**
+ * Error thrown when rate limit is exceeded
+ */
+export class RateLimitError extends Error {
+  constructor(
+    public readonly retryAfter: number,
+    public readonly remaining: number,
+    public readonly resetTime: number
+  ) {
+    super(`Rate limit exceeded. Retry after ${retryAfter} seconds.`);
+    this.name = 'RateLimitError';
+    Object.setPrototypeOf(this, RateLimitError.prototype);
+  }
+}
+
+/**
  * Wrap an AI service call with rate limiting.
  * Checks capacity BEFORE making the API call.
  *

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { createDefaultConfig } from './config';
 import { AI_MODELS, ERROR_MESSAGES } from './constants';
+import { checkRateLimit, RateLimitError } from './rate-limit';
 import { estimateTokenUsage } from './utils';
 import type {
   ProductAnalysis,
@@ -13,6 +14,8 @@ import type {
   GeminiVideoRequest,
   GeminiVideoResponse,
   SceneAnalysisResult,
+  VisionScannerOutput,
+  SubjectScannerOutput,
 } from './types';
 import {
   extractColors,
@@ -89,6 +92,62 @@ Your response must be a valid JSON object with these exact fields:
   "promptText": "A detailed 2-3 sentence description of the scene that can be used as generation instructions. Describe the space layout, architectural features, materials, textures, mood, and any distinctive elements. Be specific and evocative."
 }
 
+`;
+
+// ===== VISION SCANNER PROMPT (for inspiration image analysis) =====
+const VISION_SCANNER_PROMPT = `You are a Forensic Interior Architecture Scanner. Your goal is to analyze the input image and extract a structured inventory of visual elements for a generative 3D reconstruction pipeline.
+
+### CRITICAL INSTRUCTIONS
+1. **NO SUMMARIZATION:** Do not describe the "vibe." Break the scene down into atomic elements.
+2. **STRICT JSON OUTPUT:** You must output ONLY valid JSON. No markdown formatting, no conversational text.
+3. **UNIVERSAL SCANNING:** Detect every major surface, prop, and light source.
+4. **STYLING DETECTION:** Explicitly look for accessories placed ON the main furniture/subject in the reference (e.g., throw blankets, pillows, open books) and extract them separately.
+
+### OUTPUT SCHEMA (JSON)
+{
+  "styleSummary": "A concise, one-sentence visual hook describing the overall vibe (e.g., 'A serene, cream-white Japandi bedroom with soft organic curves.')",
+  "detectedSceneType": "The type of scene/room detected (e.g., 'Bedroom', 'Living-Room', 'Office', 'Kitchen', 'Garden', 'Studio'). Use hyphenated format for multi-word types.",
+  "heroObjectAccessories": {
+    "description": "If the reference image contains a main object (like a bed, sofa, or table) with decor ON it, describe it here. If none, return null.",
+    "identity": "String (e.g., 'Chunky Knit Throw Blanket', 'Ceramic Vase with dried flowers')",
+    "materialPhysics": "String (e.g., 'Cream wool with heavy drape', 'Matte white porcelain')",
+    "placement": "String (e.g., 'Draped casually over the bottom left corner', 'Centered on the table surface')"
+  },
+  "sceneInventory": [
+    {
+      "identity": "String (e.g., 'Back Wall', 'Curtain', 'Floor Lamp')",
+      "geometry": "String (e.g., 'Arched', 'Tall and columnar', 'Flat and expansive')",
+      "surfacePhysics": "String (e.g., 'Rough hewn limestone', 'Semi-transparent linen', 'Polished concrete')",
+      "colorGrading": "String (e.g., 'Warm terracotta', 'Desaturated sage green', 'Deep navy')",
+      "spatialContext": "String (e.g., 'Framing the view', 'Draping loosely over the window', 'Receding into shadow')"
+    }
+  ],
+  "lightingPhysics": {
+    "sourceDirection": "String (e.g., 'Hard sunlight from top-left')",
+    "shadowQuality": "String (e.g., 'Long, sharp, high-contrast shadows')",
+    "colorTemperature": "String (e.g., 'Golden hour warm', 'Cool overcast blue')"
+  }
+}
+`;
+
+// ===== SUBJECT SCANNER PROMPT (for product image analysis) =====
+const SUBJECT_SCANNER_PROMPT = `You are a Product Taxonomy and Computer Vision Analyst. Your goal is to analyze the input product image and output strict metadata to control a generative pipeline.
+
+### OUTPUT SCHEMA (JSON)
+{
+  "subjectClassHyphenated": "String (e.g., 'Dining-Chair', 'Serum-Bottle', 'Floor-Lamp', 'Coffee-Table'). Hyphenate multi-word names to treat them as a single token.",
+  "nativeSceneTypes": "Array of strings - ALL logical environments where this object could naturally function. Use hyphenated format. Examples: ['Living-Room', 'Office', 'Bedroom'] for a chair, ['Bathroom', 'Vanity-Counter'] for skincare, ['Kitchen', 'Dining-Room'] for cookware.",
+  "nativeSceneCategory": "Enum (Select ONE strictly: 'Indoor Room', 'Outdoor Nature', 'Urban/Street', 'Studio'). Based on where this product is typically used.",
+  "inputCameraAngle": "Enum (Select ONE strictly: 'Frontal', 'Angled', 'Top-Down', 'Low Angle'). Based on the product's perspective in the frame.",
+  "dominantColors": "Array of color names detected in the product (e.g., ['Walnut Brown', 'Brass Gold', 'Cream White'])",
+  "materialTags": "Array of material keywords (e.g., ['wood', 'metal', 'fabric', 'glass', 'leather', 'ceramic'])"
+}
+
+### IMPORTANT RULES
+1. For nativeSceneTypes, include ALL plausible scene types where this product could be placed. A dining chair could work in a dining room, office, or living room. A bed only works in a bedroom.
+2. Use hyphenated format for multi-word scene types: "Living-Room" not "Living Room"
+3. Be specific with subjectClassHyphenated - "Accent-Chair" is better than just "Chair"
+4. Detect the actual camera angle from the image perspective, not what would be ideal
 `;
 
 const SUPPORTED_ASPECT_RATIOS = new Set(['1:1', '3:4', '4:3', '9:16', '16:9']);
@@ -193,10 +252,23 @@ export class GeminiService {
   }
 
   /**
+   * Check rate limit before making an API call
+   * Throws RateLimitError if rate limit is exceeded
+   */
+  private async checkRate(key: string): Promise<void> {
+    const { allowed, remaining, reset } = await checkRateLimit(key);
+    if (!allowed) {
+      const retryAfter = Math.max(1, Math.ceil((reset - Date.now()) / 1000));
+      throw new RateLimitError(retryAfter, remaining, reset);
+    }
+  }
+
+  /**
    * Edit an image using Gemini's generateContent API.
    * Uses multimodal input to provide the base image and edit instructions.
    */
   async editImage(request: EditImageRequest): Promise<EditImageResponse> {
+    await this.checkRate('gemini-image-edit');
     const { baseImageDataUrl, prompt, referenceImages, modelOverrides } = request;
 
     console.log('🎨 Editing image with prompt:', `${prompt.substring(0, 100)}...`);
@@ -661,6 +733,8 @@ export class GeminiService {
    * Enforces Gemini 3 model for 2K/4K image quality
    */
   async generateImages(request: GeminiGenerationRequest): Promise<GeminiGenerationResponse> {
+    await this.checkRate('gemini-image-generate');
+
     const aspectRatio = normalizeAspectRatio(request.aspectRatio);
 
     // Use model override if provided, otherwise fall back to instance defaults
@@ -688,6 +762,8 @@ export class GeminiService {
    * Generate a single video using Gemini video generation API.
    */
   async generateVideo(request: GeminiVideoRequest): Promise<GeminiVideoResponse> {
+    await this.checkRate('gemini-video-generate');
+
     const operationName = await this.startVideoGeneration(request);
     let result: GeminiVideoResponse | null = null;
 
@@ -854,6 +930,8 @@ export class GeminiService {
    * Analyze scene image using Gemini vision capabilities
    */
   async analyzeScene(imageUrl: string): Promise<SceneAnalysisResult> {
+    await this.checkRate('gemini-vision-scene');
+
     console.log('🔍 Analyzing scene image:', `${imageUrl.substring(0, 100)}...`);
 
     const image = await normalizeImageInput(imageUrl);
@@ -923,6 +1001,8 @@ export class GeminiService {
    * Analyze image components using Gemini vision capabilities
    */
   async analyzeComponents(imageUrl: string): Promise<ComponentAnalysisResult> {
+    await this.checkRate('gemini-vision-components');
+
     console.log('🔍 Analyzing image components:', `${imageUrl.substring(0, 100)}...`);
 
     const image = await normalizeImageInput(imageUrl);
@@ -992,6 +1072,8 @@ export class GeminiService {
    * Analyze product asset using Gemini vision capabilities
    */
   async analyzeProduct(asset: ProductAsset): Promise<ProductAnalysis> {
+    await this.checkRate('gemini-vision-product');
+
     try {
       const analysisPrompt = `JSON analysis of this product image:
 {
@@ -1082,6 +1164,275 @@ export class GeminiService {
     } catch (error) {
       console.error('💸 Product analysis failed, using defaults to avoid additional costs:', error);
       return getDefaultAnalysisFromFileName(asset.file.name);
+    }
+  }
+
+  /**
+   * Vision Scanner: Analyze inspiration/reference image for scene reconstruction
+   * Extracts structured inventory of visual elements for prompt engineering
+   */
+  async analyzeInspirationImage(imageUrl: string): Promise<VisionScannerOutput> {
+    await this.checkRate('gemini-vision-inspiration');
+
+    console.log('🔍 Vision Scanner analyzing inspiration image:', `${imageUrl.substring(0, 100)}...`);
+
+    const image = await normalizeImageInput(imageUrl);
+    const imagePart = {
+      inlineData: {
+        data: image.base64Data,
+        mimeType: image.mimeType,
+      },
+    };
+
+    console.log('🚀 Sending inspiration image to Gemini for Vision Scanner analysis...');
+    let response = await this.client.models
+      .generateContent({
+        model: this.resolveTextModel(this.textModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: VISION_SCANNER_PROMPT }, imagePart],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      })
+      .catch(async (error: unknown) => {
+        if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel) {
+          console.warn(`⚠️ Vision Scanner failed on ${this.textModel}, retrying with ${this.fallbackTextModel}...`);
+          return this.client.models.generateContent({
+            model: this.resolveTextModel(this.fallbackTextModel),
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: VISION_SCANNER_PROMPT }, imagePart],
+              },
+            ],
+            config: {
+              responseMimeType: 'application/json',
+            },
+          });
+        }
+        throw error;
+      });
+
+    if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel && !response.text) {
+      console.warn(`⚠️ No text returned by ${this.textModel}, retrying with fallback ${this.fallbackTextModel}...`);
+      response = await this.client.models.generateContent({
+        model: this.resolveTextModel(this.fallbackTextModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: VISION_SCANNER_PROMPT }, imagePart],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+    }
+
+    const text = response.text ?? '';
+    console.log('📝 Vision Scanner response:', text.substring(0, 500));
+
+    return JSON.parse(text) as VisionScannerOutput;
+  }
+
+  /**
+   * Subject Scanner: Analyze product image for taxonomy and constraints
+   * Extracts product identity, compatible scene types, and camera angle
+   */
+  async analyzeProductSubject(imageUrl: string): Promise<SubjectScannerOutput> {
+    await this.checkRate('gemini-vision-subject');
+
+    console.log('🔍 Subject Scanner analyzing product image:', `${imageUrl.substring(0, 100)}...`);
+
+    const image = await normalizeImageInput(imageUrl);
+    const imagePart = {
+      inlineData: {
+        data: image.base64Data,
+        mimeType: image.mimeType,
+      },
+    };
+
+    console.log('🚀 Sending product image to Gemini for Subject Scanner analysis...');
+    let response = await this.client.models
+      .generateContent({
+        model: this.resolveTextModel(this.textModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: SUBJECT_SCANNER_PROMPT }, imagePart],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      })
+      .catch(async (error: unknown) => {
+        if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel) {
+          console.warn(`⚠️ Subject Scanner failed on ${this.textModel}, retrying with ${this.fallbackTextModel}...`);
+          return this.client.models.generateContent({
+            model: this.resolveTextModel(this.fallbackTextModel),
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: SUBJECT_SCANNER_PROMPT }, imagePart],
+              },
+            ],
+            config: {
+              responseMimeType: 'application/json',
+            },
+          });
+        }
+        throw error;
+      });
+
+    if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel && !response.text) {
+      console.warn(`⚠️ No text returned by ${this.textModel}, retrying with fallback ${this.fallbackTextModel}...`);
+      response = await this.client.models.generateContent({
+        model: this.resolveTextModel(this.fallbackTextModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: SUBJECT_SCANNER_PROMPT }, imagePart],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+    }
+
+    const text = response.text ?? '';
+    console.log('📝 Subject Scanner response:', text.substring(0, 500));
+
+    return JSON.parse(text) as SubjectScannerOutput;
+  }
+
+  /**
+   * Enhance Video Prompt: Analyze product image and create professional video prompt
+   * Uses Gemini 2.0 Flash Exp for fast, high-quality vision analysis
+   */
+  async enhanceVideoPrompt(
+    imageUrl: string,
+    videoType?: string,
+    settings?: { durationSeconds?: number; quality?: string; aspectRatio?: string },
+    userPrompt?: string
+  ): Promise<string> {
+    await this.checkRate('gemini-vision-enhance-prompt');
+
+    console.log('🎬 Enhancing video prompt for:', `${imageUrl.substring(0, 100)}...`);
+
+    const image = await normalizeImageInput(imageUrl);
+    const imagePart = {
+      inlineData: {
+        data: image.base64Data,
+        mimeType: image.mimeType,
+      },
+    };
+
+    // Build the enhancement prompt
+    const promptParts: string[] = [];
+
+    promptParts.push(
+      'You are a professional video director and cinematographer specializing in product videography. Analyze this product image and create a highly detailed, professional video prompt that will guide AI video generation.'
+    );
+
+    promptParts.push('\nYour prompt should:');
+    promptParts.push('- Be medium-length (3-5 sentences)');
+    promptParts.push('- Include specific camera movements and angles');
+    promptParts.push('- Describe lighting, atmosphere, and mood');
+    promptParts.push('- Maintain product focus while creating engaging motion');
+    promptParts.push('- Use professional cinematography terminology');
+    promptParts.push('- Be clear and actionable for AI video generation');
+
+    // Video type context
+    if (videoType) {
+      promptParts.push(`\n\nVideo Type: ${videoType}`);
+      promptParts.push(this.getVideoTypeGuidance(videoType));
+    }
+
+    // Settings
+    if (settings?.durationSeconds) {
+      promptParts.push(`Duration: ${settings.durationSeconds} seconds`);
+    }
+    if (settings?.aspectRatio) {
+      promptParts.push(`Aspect Ratio: ${settings.aspectRatio}`);
+    }
+    if (settings?.quality) {
+      promptParts.push(`Quality: ${settings.quality}`);
+    }
+
+    // User additions
+    if (userPrompt?.trim()) {
+      promptParts.push(`\nUser's Additional Requirements: ${userPrompt.trim()}`);
+    }
+
+    promptParts.push('\n\nAnalyze the product image and create a detailed video prompt that describes:');
+    promptParts.push('1. The product and its key features visible in the image');
+    promptParts.push('2. Camera movement and angles appropriate for the video type');
+    promptParts.push('3. Lighting and atmosphere');
+    promptParts.push('4. Any environmental context or props');
+    promptParts.push('5. Motion dynamics and pacing');
+    promptParts.push('\nReturn ONLY the video prompt text, nothing else.');
+
+    const enhancementPrompt = promptParts.join('\n');
+
+    console.log('🚀 Sending to Gemini 2.0 Flash Exp for video prompt enhancement...');
+
+    // Use gemini-2.0-flash-exp for fast, high-quality multimodal analysis
+    let response = await this.client.models
+      .generateContent({
+        model: 'gemini-2.0-flash-exp',
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: enhancementPrompt }, imagePart],
+          },
+        ],
+      })
+      .catch(async () => {
+        // Fallback to regular text model if flash-exp fails
+        console.warn('⚠️ Gemini 2.0 Flash Exp failed, retrying with fallback model...');
+        return this.client.models.generateContent({
+          model: this.resolveTextModel(this.textModel),
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: enhancementPrompt }, imagePart],
+            },
+          ],
+        });
+      });
+
+    const enhancedPrompt = response.text ?? '';
+    console.log('✨ Enhanced video prompt:', enhancedPrompt.substring(0, 200));
+
+    return enhancedPrompt;
+  }
+
+  private getVideoTypeGuidance(videoType: string): string {
+    switch (videoType) {
+      case 'Pan Over Product':
+        return 'Guidance: Smooth horizontal or vertical camera pan across the product, revealing details progressively.';
+      case 'Rotate Around Product':
+        return 'Guidance: Circular camera movement around the product, showing all angles in 360 degrees.';
+      case 'Zoom In on Product':
+        return 'Guidance: Gradual zoom from wide establishing shot to close-up details.';
+      case 'Model Interaction (Female)':
+        return 'Guidance: Female model interacting naturally with the product, showing use case and scale.';
+      case 'Model Interaction (Male)':
+        return 'Guidance: Male model interacting naturally with the product, showing use case and scale.';
+      case 'Lifestyle Scene':
+        return 'Guidance: Product in natural lifestyle context, showing real-world usage and atmosphere.';
+      case 'Product in Use':
+        return 'Guidance: Demonstrate the product being actively used, highlighting functionality.';
+      case 'Custom':
+        return 'Guidance: Create a custom video concept based on the product and user requirements.';
+      default:
+        return '';
     }
   }
 }

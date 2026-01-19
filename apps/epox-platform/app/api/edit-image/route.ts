@@ -4,14 +4,14 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getGeminiService } from 'visualizer-services';
+import { getGeminiService, RateLimitError } from 'visualizer-services';
 import type { EditImageRequest, EditImageResponse } from 'visualizer-services';
 import { withSecurity, validateImageUrl } from '@/lib/security';
 
 export const POST = withSecurity(
   async (
     request
-  ): Promise<NextResponse<EditImageResponse | { success: boolean; error: string }>> => {
+  ): Promise<NextResponse<EditImageResponse | { success: boolean; error: string; retryAfter?: number }>> => {
     const body: EditImageRequest = await request.json();
 
     if (!body.baseImageDataUrl) {
@@ -33,9 +33,28 @@ export const POST = withSecurity(
       );
     }
 
-    const geminiService = getGeminiService();
-    const result = await geminiService.editImage(body);
+    try {
+      const geminiService = getGeminiService();
+      const result = await geminiService.editImage(body);
 
-    return NextResponse.json({ success: true, ...result });
+      return NextResponse.json({ success: true, ...result });
+    } catch (error) {
+      if (error instanceof RateLimitError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Service temporarily busy. Please try again in ${error.retryAfter} seconds.`,
+            retryAfter: error.retryAfter,
+          },
+          {
+            status: 503,
+            headers: {
+              'Retry-After': error.retryAfter.toString(),
+            },
+          }
+        );
+      }
+      throw error;
+    }
   }
 );

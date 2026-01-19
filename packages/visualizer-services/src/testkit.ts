@@ -21,7 +21,7 @@ import type {
   GeminiGenerationResponse,
   SceneAnalysisResult,
   ComponentAnalysisResult,
-} from './gemini/types';
+} from 'visualizer-ai';
 import type { ProductAnalysisResult } from './product-analysis/types';
 
 // ============================================================================
