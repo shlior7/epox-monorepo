@@ -9,7 +9,7 @@
 
 import { initRedisRateLimiter, initSentry, initCostTracking } from 'visualizer-ai';
 import { redis } from './redis';
-import { getDb } from './db';
+import { db } from './db';
 
 let initialized = false;
 
@@ -58,7 +58,6 @@ export function initAIServices(): void {
 
   // Initialize cost tracking
   try {
-    const db = getDb();
     initCostTracking(db);
     console.log('✅ Cost tracking enabled');
   } catch (error) {

@@ -23,12 +23,7 @@ const GenerateVideoRequestSchema = z.object({
     .string()
     .min(1, 'prompt is required')
     .transform((s) => s.trim()),
-  inspirationImageUrl: z
-    .string()
-    .refine((val) => !val || validateImageUrlField(val), {
-      message: 'inspirationImageUrl must be a valid http/https URL or data URL',
-    })
-    .optional(),
+  inspirationImageUrl: z.string().optional(),
   inspirationNote: z.string().optional(),
   settings: z
     .object({
@@ -38,6 +33,14 @@ const GenerateVideoRequestSchema = z.object({
     })
     .optional(),
   urgent: z.boolean().optional(),
+}).superRefine((data, ctx) => {
+  if (data.inspirationImageUrl) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['inspirationImageUrl'],
+      message: 'Video generation accepts a single source image. Remove inspirationImageUrl.',
+    });
+  }
 });
 
 type GenerateVideoRequest = z.infer<typeof GenerateVideoRequestSchema>;
@@ -78,7 +81,6 @@ export const POST = withGenerationSecurity(async (request, context) => {
     productId,
     sourceImageUrl,
     prompt,
-    inspirationImageUrl,
     inspirationNote,
     settings,
     urgent,
@@ -91,7 +93,6 @@ export const POST = withGenerationSecurity(async (request, context) => {
       sourceImageUrl,
       sessionId,
       productIds: [productId],
-      inspirationImageUrl,
       inspirationNote,
       settings: settings ? { ...settings } : undefined,
     },

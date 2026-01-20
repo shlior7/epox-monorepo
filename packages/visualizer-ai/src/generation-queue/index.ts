@@ -16,8 +16,14 @@ import type {
   JobType,
 } from 'visualizer-db/schema';
 
-const db = getDb();
-const jobs = new GenerationJobRepository(db);
+let jobs: GenerationJobRepository | null = null;
+
+function getJobs(): GenerationJobRepository {
+  if (!jobs) {
+    jobs = new GenerationJobRepository(getDb());
+  }
+  return jobs;
+}
 
 export interface EnqueueImageResult {
   jobId: string;
@@ -33,9 +39,11 @@ export interface JobStatusResult {
   type: JobType;
   status: JobStatus;
   progress: number;
+  imageIds?: string[];
   result: JobResult | null;
   error: string | null;
   createdAt: Date;
+  updatedAt: Date;
   startedAt?: Date | null;
   completedAt?: Date | null;
 }
@@ -59,7 +67,7 @@ export async function enqueueImageGeneration(
   const numberOfVariants = payload.settings?.numberOfVariants ?? 1;
   const expectedImageIds = buildExpectedImageIds(numberOfVariants);
 
-  const job = await jobs.create({
+  const job = await getJobs().create({
     clientId,
     type: 'image_generation',
     payload,
@@ -78,7 +86,7 @@ export async function enqueueVideoGeneration(
   payload: VideoGenerationPayload,
   options?: { priority?: number; flowId?: string }
 ): Promise<EnqueueVideoResult> {
-  const job = await jobs.create({
+  const job = await getJobs().create({
     clientId,
     type: 'video_generation',
     payload,
@@ -97,7 +105,7 @@ export async function enqueueImageEdit(
   payload: ImageEditPayload,
   options?: { priority?: number; flowId?: string }
 ): Promise<EnqueueVideoResult> {
-  const job = await jobs.create({
+  const job = await getJobs().create({
     clientId,
     type: 'image_edit',
     payload,
@@ -112,7 +120,7 @@ export async function enqueueImageEdit(
  * Get job status by ID.
  */
 export async function getJobStatus(jobId: string): Promise<JobStatusResult | null> {
-  const job = await jobs.getById(jobId);
+  const job = await getJobs().getById(jobId);
   if (!job) {
     return null;
   }
@@ -122,9 +130,11 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResult | nul
     type: job.type,
     status: job.status,
     progress: job.progress,
+    imageIds: job.result?.imageIds,
     result: job.result,
     error: job.error,
     createdAt: job.createdAt,
+    updatedAt: job.completedAt ?? job.startedAt ?? job.createdAt,
     startedAt: job.startedAt,
     completedAt: job.completedAt,
   };
@@ -134,15 +144,17 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResult | nul
  * Get job statuses by flow ID.
  */
 export async function getJobsByFlow(flowId: string): Promise<JobStatusResult[]> {
-  const flowJobs = await jobs.listByFlow(flowId);
+  const flowJobs = await getJobs().listByFlow(flowId);
   return flowJobs.map((job) => ({
     id: job.id,
     type: job.type,
     status: job.status,
     progress: job.progress,
+    imageIds: job.result?.imageIds,
     result: job.result,
     error: job.error,
     createdAt: job.createdAt,
+    updatedAt: job.completedAt ?? job.startedAt ?? job.createdAt,
     startedAt: job.startedAt,
     completedAt: job.completedAt,
   }));

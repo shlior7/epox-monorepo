@@ -7,6 +7,7 @@
 
 import pino, { Logger } from 'pino';
 import * as Sentry from '@sentry/node';
+import type { JobResult } from 'visualizer-db/schema';
 
 const isDev = process.env.NODE_ENV !== 'production';
 const betterStackToken = process.env.BETTERSTACK_TOKEN;
@@ -79,7 +80,7 @@ export function logJobProgress(jobId: string, progress: number, details?: Record
   logger.debug({ jobId, progress, event: 'job_progress', ...details }, `Job progress: ${progress}%`);
 }
 
-export function logJobSuccess(jobId: string, durationMs: number, result: Record<string, unknown>) {
+export function logJobSuccess(jobId: string, durationMs: number, result: JobResult) {
   logger.info(
     { jobId, durationMs, event: 'job_success', ...result },
     `Job completed in ${durationMs}ms`

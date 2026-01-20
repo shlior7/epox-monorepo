@@ -180,7 +180,7 @@ describe('Video Generation API - POST /api/generate-video', () => {
     );
   });
 
-  it('should trim prompt and include inspiration data', async () => {
+  it('should trim prompt and include inspiration note', async () => {
     const request = new NextRequest('http://localhost:3000/api/generate-video', {
       method: 'POST',
       body: JSON.stringify({
@@ -188,7 +188,6 @@ describe('Video Generation API - POST /api/generate-video', () => {
         productId: 'prod-1',
         sourceImageUrl: 'https://example.com/base.png',
         prompt: '  Pan around the product  ',
-        inspirationImageUrl: 'https://example.com/inspo.jpg',
         inspirationNote: 'Warm, cinematic lighting',
         settings: {
           durationSeconds: 8,
@@ -205,7 +204,6 @@ describe('Video Generation API - POST /api/generate-video', () => {
       'test-client',
       expect.objectContaining({
         prompt: 'Pan around the product',
-        inspirationImageUrl: 'https://example.com/inspo.jpg',
         inspirationNote: 'Warm, cinematic lighting',
         settings: {
           durationSeconds: 8,
@@ -215,6 +213,26 @@ describe('Video Generation API - POST /api/generate-video', () => {
       }),
       expect.anything()
     );
+  });
+
+  it('should reject inspirationImageUrl to enforce single-image input', async () => {
+    const request = new NextRequest('http://localhost:3000/api/generate-video', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: 'flow-1',
+        productId: 'prod-1',
+        sourceImageUrl: 'https://example.com/base.png',
+        prompt: 'Pan around the product',
+        inspirationImageUrl: 'https://example.com/inspo.jpg',
+      }),
+    });
+
+    const response = await generateVideo(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe('Validation failed');
+    expect(data.details.join(' ')).toContain('inspirationImageUrl');
   });
 
   it('should handle job creation errors', async () => {

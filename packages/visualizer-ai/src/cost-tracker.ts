@@ -5,21 +5,20 @@
  * Automatically integrates with logger for request tracing.
  */
 
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import type { DatabaseFacade } from 'visualizer-db';
 import type { AIOperationType, CreateCostRecord } from 'visualizer-db/repositories';
-import { AICostTrackingRepository } from 'visualizer-db/repositories';
 import { createLogger, type Logger } from './logger';
 
 // Singleton cost tracker instance
 let costTrackerInstance: CostTracker | null = null;
-let dbInstance: PostgresJsDatabase | null = null;
+let dbInstance: DatabaseFacade | null = null;
 
 /**
  * Initialize cost tracking with database
  */
-export function initCostTracking(db: PostgresJsDatabase): void {
+export function initCostTracking(db: DatabaseFacade): void {
   dbInstance = db;
-  costTrackerInstance = new CostTracker(db);
+  costTrackerInstance = new CostTracker(db.aiCostTracking);
   console.log('✅ Cost tracking initialized');
 }
 
@@ -44,11 +43,7 @@ export function isCostTrackingInitialized(): boolean {
  * Cost tracking helper
  */
 export class CostTracker {
-  private repository: AICostTrackingRepository;
-
-  constructor(db: PostgresJsDatabase) {
-    this.repository = new AICostTrackingRepository(db);
-  }
+  constructor(private repository: DatabaseFacade['aiCostTracking']) {}
 
   /**
    * Track an AI operation cost

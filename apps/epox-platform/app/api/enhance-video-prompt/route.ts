@@ -5,14 +5,14 @@
  */
 
 import { NextResponse } from 'next/server';
-import type { VideoType, VideoPromptSettings } from 'visualizer-types';
+import type { VideoPromptSettings } from 'visualizer-types';
 import { withSecurity } from '@/lib/security';
 import { getGeminiService, RateLimitError } from 'visualizer-ai';
 
 // ===== REQUEST/RESPONSE TYPES =====
 
 interface EnhanceVideoPromptRequest {
-  videoType?: VideoType;
+  videoType?: VideoPromptSettings['videoType'];
   settings?: VideoPromptSettings;
   userPrompt?: string;
   sourceImageUrl: string;

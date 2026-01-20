@@ -40,6 +40,8 @@ interface UpdateSettingsRequest {
       subjectAction?: string;
       sceneAction?: string;
       durationSeconds?: number;
+      sound?: 'with_music' | 'no_sound' | 'automatic' | 'custom';
+      soundPrompt?: string;
     };
     presetId?: string | null;
   };

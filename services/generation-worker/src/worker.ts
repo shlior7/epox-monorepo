@@ -62,6 +62,7 @@ const VIDEO_POLL_INTERVAL_MS = 10000;
 export class GenerationWorker {
   private config: WorkerConfig;
   private isRunning = false;
+  private stopPromise: Promise<void> | null = null;
   private activeJobs = 0;
   private jobsThisMinute = 0;
   private minuteStart = Date.now();
@@ -103,26 +104,34 @@ export class GenerationWorker {
   }
 
   async stop(): Promise<void> {
-    logger.info({ workerId: this.config.workerId }, 'Stopping worker...');
-    this.isRunning = false;
-
-    // Signal any waiting workers
-    if (this.jobSignal) {
-      this.jobSignal();
+    if (this.stopPromise) {
+      return this.stopPromise;
     }
 
-    while (this.activeJobs > 0) {
-      logger.info({ activeJobs: this.activeJobs }, 'Waiting for active jobs to complete...');
-      await this.sleep(1000);
-    }
+    this.stopPromise = (async () => {
+      logger.info({ workerId: this.config.workerId }, 'Stopping worker...');
+      this.isRunning = false;
 
-    // Close listener connection
-    if (this.listenerPool) {
-      await this.listenerPool.end();
-      this.listenerPool = null;
-    }
+      // Signal any waiting workers
+      if (this.jobSignal) {
+        this.jobSignal();
+      }
 
-    logWorkerStopped(this.config.workerId);
+      while (this.activeJobs > 0) {
+        logger.info({ activeJobs: this.activeJobs }, 'Waiting for active jobs to complete...');
+        await this.sleep(1000);
+      }
+
+      // Close listener connection
+      if (this.listenerPool) {
+        await this.listenerPool.end();
+        this.listenerPool = null;
+      }
+
+      logWorkerStopped(this.config.workerId);
+    })();
+
+    return this.stopPromise;
   }
 
   /**

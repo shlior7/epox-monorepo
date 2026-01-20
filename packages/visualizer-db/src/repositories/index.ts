@@ -14,6 +14,7 @@ export { FavoriteImageRepository } from './favorite-images';
 export { UserRepository } from './users';
 export { InvitationRepository, type Invitation, type InvitationCreate, type InvitationStatus } from './invitations';
 export { UserSettingsRepository, type UserSettings, type UserSettingsUpdate } from './user-settings';
+export type { AIOperationType } from '../schema/usage';
 export {
   UsageRecordRepository,
   QuotaLimitRepository,

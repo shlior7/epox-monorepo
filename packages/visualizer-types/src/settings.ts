@@ -79,7 +79,12 @@ export interface VideoPromptSettings {
   subjectAction?: string;
   sceneAction?: string;
   durationSeconds?: number;
+  sound?: 'with_music' | 'no_sound' | 'automatic' | 'custom';
+  soundPrompt?: string;
 }
+
+export const VIDEO_TYPE_OPTIONS = ['product pan', 'orbit'] as const;
+export const CAMERA_MOTION_OPTIONS = ['dolly', 'orbit', 'pan', 'tilt', 'static'] as const;
 
 export interface VideoGenerationSettings {
   prompt?: string;

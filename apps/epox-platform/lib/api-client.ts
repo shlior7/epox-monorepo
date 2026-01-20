@@ -184,6 +184,8 @@ export interface Collection {
         subjectAction?: string;
         sceneAction?: string;
         durationSeconds?: number;
+        sound?: 'with_music' | 'no_sound' | 'automatic' | 'custom';
+        soundPrompt?: string;
       };
       presetId?: string | null;
     };
@@ -261,6 +263,8 @@ export interface UpdateCollectionPayload {
         subjectAction?: string;
         sceneAction?: string;
         durationSeconds?: number;
+        sound?: 'with_music' | 'no_sound' | 'automatic' | 'custom';
+        soundPrompt?: string;
       };
       presetId?: string | null;
     };
@@ -340,6 +344,8 @@ export interface UpdateStudioSettingsPayload {
       subjectAction?: string;
       sceneAction?: string;
       durationSeconds?: number;
+      sound?: 'with_music' | 'no_sound' | 'automatic' | 'custom';
+      soundPrompt?: string;
     };
     presetId?: string | null;
   };
@@ -433,7 +439,6 @@ export interface GenerateVideoPayload {
   productId: string;
   sourceImageUrl: string;
   prompt: string;
-  inspirationImageUrl?: string;
   inspirationNote?: string;
   settings?: {
     durationSeconds?: number;

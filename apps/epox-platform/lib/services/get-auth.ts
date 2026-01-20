@@ -65,8 +65,8 @@ export async function getServerAuthWithFallback(request: Request): Promise<Serve
     return authInfo;
   }
 
-  // Development fallback
-  if (process.env.NODE_ENV === 'development') {
+  // Development/test fallback
+  if (process.env.NODE_ENV !== 'production') {
     console.warn('⚠️ Using dev fallback auth - no session found');
     return {
       userId: 'dev-user',
@@ -120,4 +120,3 @@ async function getActiveOrganization(userId: string): Promise<{ id: string; name
     return null;
   }
 }
-

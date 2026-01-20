@@ -8,7 +8,7 @@
  * - Quota enforcement
  */
 
-import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import type { DrizzleClient } from '../client';
 import { aiCostTracking, type AIOperationType } from '../schema/usage';
 import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -42,7 +42,7 @@ export interface CostSummary {
 }
 
 export class AICostTrackingRepository {
-  constructor(private readonly db: PostgresJsDatabase) {}
+  constructor(private readonly db: DrizzleClient) {}
 
   /**
    * Record a new AI operation cost

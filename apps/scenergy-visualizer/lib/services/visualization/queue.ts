@@ -1,4 +1,4 @@
-import { VisualizationService } from './service';
+import { getVisualizationService, type VisualizationService } from './service';
 import type { VisualizationRequest, GenerationSession } from '../shared/types';
 import { redis } from '../redis/client';
 
@@ -130,11 +130,17 @@ declare global {
 
 const globalForQueue = globalThis as unknown as { __scenergy_visualization_queue?: VisualizationQueue };
 
-export const visualizationQueue =
-  globalForQueue.__scenergy_visualization_queue ?? new VisualizationQueue(new VisualizationService());
-
-if (!globalForQueue.__scenergy_visualization_queue) {
-  globalForQueue.__scenergy_visualization_queue = visualizationQueue;
+function getVisualizationQueue(): VisualizationQueue {
+  if (!globalForQueue.__scenergy_visualization_queue) {
+    globalForQueue.__scenergy_visualization_queue = new VisualizationQueue(getVisualizationService());
+  }
+  return globalForQueue.__scenergy_visualization_queue;
 }
+
+export const visualizationQueue = {
+  enqueue: (...args: Parameters<VisualizationQueue['enqueue']>) => getVisualizationQueue().enqueue(...args),
+  get: (...args: Parameters<VisualizationQueue['get']>) => getVisualizationQueue().get(...args),
+  list: (...args: Parameters<VisualizationQueue['list']>) => getVisualizationQueue().list(...args),
+};
 
 export type { VisualizationJob };

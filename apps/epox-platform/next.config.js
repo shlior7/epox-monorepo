@@ -7,6 +7,8 @@ const nextConfig = {
   experimental: {
     instrumentationHook: true,
   },
+  // Required to build with Turbopack when webpack config is present.
+  turbopack: {},
   images: {
     remotePatterns: [
       {

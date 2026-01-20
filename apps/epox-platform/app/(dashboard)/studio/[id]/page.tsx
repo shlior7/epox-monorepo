@@ -4,9 +4,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
+import {
+  MinimalAccordion,
+  MinimalAccordionItem,
+  MinimalAccordionTrigger,
+  MinimalAccordionContent,
+} from '@/components/ui/minimal-accordion';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
+import { SceneLoader } from '@/components/ui/scene-loader';
 import type { GeneratedAsset } from '@/lib/api-client';
 import { apiClient } from '@/lib/api-client';
 import { useGenerationPolling } from '@/lib/hooks/use-generation-polling';
@@ -16,11 +23,11 @@ import {
   ArrowLeft,
   Check,
   ChevronDown,
+  ChevronUp,
   Download,
   Eye,
   History,
   Image as ImageIcon,
-  Lightbulb,
   Loader2,
   Package,
   Pin,
@@ -33,7 +40,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type {
@@ -45,7 +52,7 @@ import type {
   SubjectAnalysis,
   VideoPromptSettings,
 } from 'visualizer-types';
-import { LIGHTING_PRESETS, STYLE_PRESETS } from 'visualizer-types';
+import { CAMERA_MOTION_OPTIONS, LIGHTING_PRESETS, STYLE_PRESETS, VIDEO_TYPE_OPTIONS } from 'visualizer-types';
 
 interface StudioPageProps {
   params: Promise<{ id: string }>;
@@ -66,6 +73,8 @@ const ASPECT_OPTIONS = [
   { value: '4:3', label: '4:3', icon: '▱' },
 ] as const;
 
+const VIDEO_DURATION_SECONDS = 5;
+
 type StudioTab = 'images' | 'video';
 
 interface VideoPreset {
@@ -79,11 +88,14 @@ const VIDEO_PRESETS_STORAGE_KEY = 'epox_video_presets_v1';
 export default function StudioPage({ params }: StudioPageProps) {
   const { id: studioId } = use(params);
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Get productId from URL params
+  // Get productId and tab from URL params
   const productIdFromUrl = searchParams.get('productId');
+  const tabFromUrl = searchParams.get('tab') as StudioTab | null;
 
   // Fetch the generation flow to get productIds
   const { data: flowData, isLoading: isLoadingFlow } = useQuery({
@@ -138,7 +150,18 @@ export default function StudioPage({ params }: StudioPageProps) {
   });
 
   // ===== STATE =====
-  const [activeTab, setActiveTab] = useState<StudioTab>('images');
+  // Tab from URL (defaults to 'images')
+  const activeTab: StudioTab = tabFromUrl === 'video' ? 'video' : 'images';
+
+  // Helper to change tab via URL
+  const handleSetActiveTab = useCallback(
+    (tab: StudioTab) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('tab', tab);
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [router, pathname, searchParams]
+  );
 
   // Section 1: Scene Style
   const [inspirationImages, setInspirationImages] = useState<InspirationImage[]>([]);
@@ -164,21 +187,23 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   // Video Settings
   const [videoPrompt, setVideoPrompt] = useState('');
-  const [videoInspirationUrl, setVideoInspirationUrl] = useState<string | null>(null);
-  const [videoInspirationNote, setVideoInspirationNote] = useState('');
   const [videoSettings, setVideoSettings] = useState<VideoPromptSettings>({});
   const [videoPresetId, setVideoPresetId] = useState<string | null>(null);
   const [videoPresetName, setVideoPresetName] = useState('');
   const [videoPresets, setVideoPresets] = useState<VideoPreset[]>([]);
   const [videoExpandedSection, setVideoExpandedSection] = useState<string | null>('video-inputs');
+  const [videoSource, setVideoSource] = useState<'base' | 'generated'>('base');
+  const [isEnhancingVideoPrompt, setIsEnhancingVideoPrompt] = useState(false);
 
   // Generated images
   const [newlyGeneratedImages, setNewlyGeneratedImages] = useState<GeneratedAsset[]>([]);
   const [selectedGeneratedImage, setSelectedGeneratedImage] = useState<GeneratedAsset | null>(null);
   const [selectedGeneratedVideo, setSelectedGeneratedVideo] = useState<GeneratedAsset | null>(null);
 
-  // UI state
-  const [expandedSection, setExpandedSection] = useState<string | null>('scene-style');
+  // UI state - multi-open accordions (support multiple open at once)
+  const [expandedSections, setExpandedSections] = useState<string[]>(['scene-style', 'output-settings']);
+  const [videoExpandedSections, setVideoExpandedSections] = useState<string[]>(['video-inputs', 'video-prompt']);
+  const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false);
 
   // ===== DATA FETCHING =====
 
@@ -210,7 +235,7 @@ export default function StudioPage({ params }: StudioPageProps) {
         sort: 'date',
       });
     },
-    refetchInterval: isGenerating ? 3000 : false,
+    refetchInterval: isGenerating || isGeneratingVideo ? 3000 : false,
   });
 
   // ===== COMPUTED VALUES =====
@@ -232,6 +257,13 @@ export default function StudioPage({ params }: StudioPageProps) {
     const selected = currentProduct.baseImages.find((img: any) => img.id === selectedBaseImageId);
     return selected?.url || currentProduct.baseImages[0]?.url || null;
   }, [currentProduct, selectedBaseImageId]);
+
+  const videoSourceUrl = useMemo(() => {
+    if (videoSource === 'generated') {
+      return selectedGeneratedImage?.url ?? null;
+    }
+    return selectedBaseImageUrl;
+  }, [videoSource, selectedGeneratedImage, selectedBaseImageUrl]);
 
   const allGeneratedAssets = useMemo(() => {
     const existing = generatedImagesData?.images || [];
@@ -310,9 +342,7 @@ export default function StudioPage({ params }: StudioPageProps) {
     }
   }, []);
 
-  useEffect(() => {
-    setExpandedSection(activeTab === 'images' ? 'scene-style' : 'video-inputs');
-  }, [activeTab]);
+  // No longer needed - multi-open accordions don't need tab-based reset
 
   // Initialize from flow settings
   useEffect(() => {
@@ -328,9 +358,12 @@ export default function StudioPage({ params }: StudioPageProps) {
       if (s.variantsCount) setSettings(prev => ({ ...prev, variantsCount: s.variantsCount! }));
       if (s.video) {
         setVideoPrompt(s.video.prompt ?? '');
-        setVideoInspirationUrl(s.video.inspirationImageUrl ?? null);
-        setVideoInspirationNote(s.video.inspirationNote ?? '');
-        setVideoSettings(s.video.settings ?? {});
+        setVideoSettings({
+          videoType: s.video.settings?.videoType,
+          cameraMotion: s.video.settings?.cameraMotion,
+          sound: s.video.settings?.sound,
+          soundPrompt: s.video.settings?.soundPrompt,
+        });
         setVideoPresetId(s.video.presetId ?? null);
       }
     }
@@ -349,6 +382,7 @@ export default function StudioPage({ params }: StudioPageProps) {
   // Auto-select newest generated image
   const prevImageCount = useRef(0);
   const prevVideoCount = useRef(0);
+  const prevLatestVideoId = useRef<string | null>(null);
 
   useEffect(() => {
     if (imageAssets.length > prevImageCount.current && imageAssets.length > 0) {
@@ -358,11 +392,27 @@ export default function StudioPage({ params }: StudioPageProps) {
   }, [imageAssets]);
 
   useEffect(() => {
-    if (videoAssets.length > prevVideoCount.current && videoAssets.length > 0) {
+    const latestVideoId = videoAssets[0]?.id ?? null;
+    const hasNewVideo =
+      (videoAssets.length > prevVideoCount.current && videoAssets.length > 0) ||
+      (latestVideoId && latestVideoId !== prevLatestVideoId.current);
+
+    if (hasNewVideo && videoAssets.length > 0) {
       setSelectedGeneratedVideo(videoAssets[0]);
+      if (isGeneratingVideo) {
+        cancelVideoGeneration();
+      }
     }
+
     prevVideoCount.current = videoAssets.length;
-  }, [videoAssets]);
+    prevLatestVideoId.current = latestVideoId;
+  }, [videoAssets, isGeneratingVideo, cancelVideoGeneration]);
+
+  useEffect(() => {
+    if (videoSource === 'generated' && !selectedGeneratedImage) {
+      setVideoSource('base');
+    }
+  }, [videoSource, selectedGeneratedImage]);
 
   // ===== HANDLERS =====
 
@@ -433,7 +483,6 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   const removeInspirationImage = (url: string) => {
     setInspirationImages(prev => prev.filter(img => img.url !== url));
-    setVideoInspirationUrl((prev) => (prev === url ? null : prev));
 
     // Also remove from scene type groups
     setSceneTypeInspirations(prev => {
@@ -456,6 +505,12 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   const saveSettings = useCallback(async () => {
     try {
+      const normalizedVideoSettings: VideoPromptSettings = {
+        videoType: videoSettings.videoType,
+        cameraMotion: videoSettings.cameraMotion,
+        sound: videoSettings.sound,
+        soundPrompt: videoSettings.soundPrompt,
+      };
       await apiClient.updateStudioSettings(studioId, {
         inspirationImages: inspirationImages as any,
         sceneTypeInspirations: sceneTypeInspirations as any,
@@ -467,9 +522,7 @@ export default function StudioPage({ params }: StudioPageProps) {
         variantsCount: settings.variantsCount,
         video: {
           prompt: videoPrompt || undefined,
-          inspirationImageUrl: videoInspirationUrl || undefined,
-          inspirationNote: videoInspirationNote || undefined,
-          settings: videoSettings,
+          settings: normalizedVideoSettings,
           presetId: videoPresetId,
         },
       });
@@ -487,8 +540,6 @@ export default function StudioPage({ params }: StudioPageProps) {
     settings.quality,
     settings.variantsCount,
     videoPrompt,
-    videoInspirationUrl,
-    videoInspirationNote,
     videoSettings,
     videoPresetId,
   ]);
@@ -505,8 +556,6 @@ export default function StudioPage({ params }: StudioPageProps) {
   }, [
     activeTab,
     videoPrompt,
-    videoInspirationUrl,
-    videoInspirationNote,
     videoSettings,
     videoPresetId,
     flowData?.settings,
@@ -563,21 +612,69 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   const buildVideoPrompt = (
     basePrompt: string,
-    settings: VideoPromptSettings,
-    inspirationNote: string
+    settings: VideoPromptSettings
   ) => {
     const lines = [basePrompt.trim()];
     if (settings.videoType) lines.push(`Video type: ${settings.videoType}`);
     if (settings.cameraMotion) lines.push(`Camera motion: ${settings.cameraMotion}`);
-    if (settings.subjectAction) lines.push(`Subject action: ${settings.subjectAction}`);
-    if (settings.sceneAction) lines.push(`Scene action: ${settings.sceneAction}`);
-    if (settings.durationSeconds) lines.push(`Duration: ${settings.durationSeconds}s`);
-    if (inspirationNote.trim()) lines.push(`Style reference: ${inspirationNote.trim()}`);
+    if (settings.sound) {
+      if (settings.sound === 'custom' && settings.soundPrompt?.trim()) {
+        lines.push(`Sound: ${settings.soundPrompt.trim()}`);
+      } else if (settings.sound === 'with_music') {
+        lines.push('Sound: with music');
+      } else if (settings.sound === 'no_sound') {
+        lines.push('Sound: no sound');
+      } else if (settings.sound === 'automatic') {
+        lines.push('Sound: automatic');
+      } else {
+        lines.push(`Sound: ${settings.sound}`);
+      }
+    }
     return lines.filter(Boolean).join('\n');
   };
 
   const updateVideoSettings = (updates: Partial<VideoPromptSettings>) => {
     setVideoSettings((prev) => ({ ...prev, ...updates }));
+  };
+
+  const handleEnhanceVideoPrompt = async () => {
+    if (!videoSourceUrl) {
+      toast.error('Select a source image to enhance the prompt');
+      return;
+    }
+
+    setIsEnhancingVideoPrompt(true);
+    try {
+      const response = await fetch('/api/enhance-video-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceImageUrl: videoSourceUrl,
+          videoType: videoSettings.videoType,
+          settings: {
+            videoType: videoSettings.videoType,
+            cameraMotion: videoSettings.cameraMotion,
+            sound: videoSettings.sound,
+            soundPrompt: videoSettings.soundPrompt,
+          },
+          userPrompt: videoPrompt,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || 'Failed to enhance prompt');
+      }
+
+      if (data.enhancedPrompt) {
+        setVideoPrompt(data.enhancedPrompt);
+        toast.success('Video prompt enhanced');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to enhance prompt');
+    } finally {
+      setIsEnhancingVideoPrompt(false);
+    }
   };
 
   const handlePreviewPrompt = async () => {
@@ -671,8 +768,12 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   const handleGenerateVideo = async () => {
     if (!currentProduct) return;
-    if (!selectedBaseImageUrl) {
-      toast.error('Select a base image to generate video');
+    if (!videoSourceUrl) {
+      toast.error(
+        videoSource === 'generated'
+          ? 'Select a generated image to generate video'
+          : 'Select a base image to generate video'
+      );
       return;
     }
     if (!videoPrompt.trim()) {
@@ -681,16 +782,14 @@ export default function StudioPage({ params }: StudioPageProps) {
     }
 
     try {
-      const prompt = buildVideoPrompt(videoPrompt, videoSettings, videoInspirationNote);
+      const prompt = buildVideoPrompt(videoPrompt, videoSettings);
       const result = await apiClient.generateVideo({
         sessionId: studioId,
         productId: currentProduct.id,
-        sourceImageUrl: selectedBaseImageUrl,
+        sourceImageUrl: videoSourceUrl,
         prompt,
-        inspirationImageUrl: videoInspirationUrl || undefined,
-        inspirationNote: videoInspirationNote || undefined,
         settings: {
-          durationSeconds: videoSettings.durationSeconds,
+          durationSeconds: VIDEO_DURATION_SECONDS,
         },
       });
 
@@ -802,14 +901,14 @@ export default function StudioPage({ params }: StudioPageProps) {
         </div>
       </header>
 
-      {/* Main Layout */}
-      <div className="flex min-h-0 flex-1">
+      {/* Main Layout - Responsive: stacked on small screens, side-by-side on larger */}
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Left Panel - Config (4 Sections) */}
-        <aside className="flex w-80 shrink-0 flex-col border-r border-border bg-card/30">
+        <aside className="flex w-full shrink-0 flex-col border-b border-border bg-card/30 lg:w-80 lg:border-b-0 lg:border-r">
           <div className="border-b border-border p-3">
             <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted/50 p-1 text-xs font-semibold">
               <button
-                onClick={() => setActiveTab('images')}
+                onClick={() => handleSetActiveTab('images')}
                 className={cn(
                   'rounded-md px-2 py-2 transition-colors',
                   activeTab === 'images'
@@ -820,7 +919,7 @@ export default function StudioPage({ params }: StudioPageProps) {
                 Images
               </button>
               <button
-                onClick={() => setActiveTab('video')}
+                onClick={() => handleSetActiveTab('video')}
                 className={cn(
                   'rounded-md px-2 py-2 transition-colors',
                   activeTab === 'video'
@@ -833,29 +932,28 @@ export default function StudioPage({ params }: StudioPageProps) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="max-h-[40vh] flex-1 overflow-y-auto px-3 py-2 lg:max-h-none">
             {activeTab === 'images' ? (
-              <>
+              <MinimalAccordion
+                value={expandedSections}
+                onValueChange={setExpandedSections}
+                defaultValue={['scene-style', 'output-settings']}
+              >
                 {/* Section 1: Scene Style */}
-                <section className="border-b border-border">
-                  <button
-                    onClick={() => setExpandedSection(expandedSection === 'scene-style' ? null : 'scene-style')}
-                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Lightbulb className="h-4 w-4 text-amber-500" />
-                      <span className="font-semibold">Scene Style</span>
-                      {inspirationImages.length > 0 && (
+                <MinimalAccordionItem value="scene-style">
+                  <MinimalAccordionTrigger
+                    suffix={
+                      inspirationImages.length > 0 ? (
                         <Badge variant="secondary" className="text-xs">
-                          {inspirationImages.length} images
+                          {inspirationImages.length}
                         </Badge>
-                      )}
-                    </div>
-                    <ChevronDown className={cn('h-4 w-4 transition-transform', expandedSection === 'scene-style' && 'rotate-180')} />
-                  </button>
-
-                  {expandedSection === 'scene-style' && (
-                    <div className="space-y-4 px-4 pb-4">
+                      ) : null
+                    }
+                  >
+                    Scene Style
+                  </MinimalAccordionTrigger>
+                  <MinimalAccordionContent>
+                    <div className="space-y-4">
                       {/* Inspiration Images */}
                       <div>
                         <label className="mb-2 block text-xs font-medium text-muted-foreground">
@@ -957,29 +1055,24 @@ export default function StudioPage({ params }: StudioPageProps) {
                         </select>
                       </div>
                     </div>
-                  )}
-                </section>
+                  </MinimalAccordionContent>
+                </MinimalAccordionItem>
 
                 {/* Section 2: Product Details */}
-                <section className="border-b border-border">
-                  <button
-                    onClick={() => setExpandedSection(expandedSection === 'product-details' ? null : 'product-details')}
-                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-blue-500" />
-                      <span className="font-semibold">Product Details</span>
-                      {subjectAnalysis && (
+                <MinimalAccordionItem value="product-details">
+                  <MinimalAccordionTrigger
+                    suffix={
+                      subjectAnalysis ? (
                         <Badge variant="secondary" className="text-xs">
                           Analyzed
                         </Badge>
-                      )}
-                    </div>
-                    <ChevronDown className={cn('h-4 w-4 transition-transform', expandedSection === 'product-details' && 'rotate-180')} />
-                  </button>
-
-                  {expandedSection === 'product-details' && (
-                    <div className="space-y-4 px-4 pb-4">
+                      ) : null
+                    }
+                  >
+                    Product Details
+                  </MinimalAccordionTrigger>
+                  <MinimalAccordionContent>
+                    <div className="space-y-4">
                       {/* Base Images */}
                       <div>
                         <label className="mb-2 block text-xs font-medium text-muted-foreground">
@@ -1035,29 +1128,24 @@ export default function StudioPage({ params }: StudioPageProps) {
                         </div>
                       )}
                     </div>
-                  )}
-                </section>
+                  </MinimalAccordionContent>
+                </MinimalAccordionItem>
 
                 {/* Section 3: User Prompt */}
-                <section className="border-b border-border">
-                  <button
-                    onClick={() => setExpandedSection(expandedSection === 'user-prompt' ? null : 'user-prompt')}
-                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-purple-500" />
-                      <span className="font-semibold">Scene Prompt</span>
-                      {userPrompt && (
+                <MinimalAccordionItem value="user-prompt">
+                  <MinimalAccordionTrigger
+                    suffix={
+                      userPrompt ? (
                         <Badge variant="secondary" className="text-xs">
                           Custom
                         </Badge>
-                      )}
-                    </div>
-                    <ChevronDown className={cn('h-4 w-4 transition-transform', expandedSection === 'user-prompt' && 'rotate-180')} />
-                  </button>
-
-                  {expandedSection === 'user-prompt' && (
-                    <div className="space-y-4 px-4 pb-4">
+                      ) : null
+                    }
+                  >
+                    Scene Prompt
+                  </MinimalAccordionTrigger>
+                  <MinimalAccordionContent>
+                    <div className="space-y-4">
                       <div>
                         <label className="mb-2 block text-xs font-medium text-muted-foreground">
                           Additional Details (optional)
@@ -1104,24 +1192,14 @@ export default function StudioPage({ params }: StudioPageProps) {
                         </div>
                       )}
                     </div>
-                  )}
-                </section>
+                  </MinimalAccordionContent>
+                </MinimalAccordionItem>
 
                 {/* Section 4: Output Settings */}
-                <section className="border-b border-border">
-                  <button
-                    onClick={() => setExpandedSection(expandedSection === 'output-settings' ? null : 'output-settings')}
-                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <ImageIcon className="h-4 w-4 text-green-500" />
-                      <span className="font-semibold">Output Settings</span>
-                    </div>
-                    <ChevronDown className={cn('h-4 w-4 transition-transform', expandedSection === 'output-settings' && 'rotate-180')} />
-                  </button>
-
-                  {expandedSection === 'output-settings' && (
-                    <div className="space-y-4 px-4 pb-4">
+                <MinimalAccordionItem value="output-settings">
+                  <MinimalAccordionTrigger>Output Settings</MinimalAccordionTrigger>
+                  <MinimalAccordionContent>
+                    <div className="space-y-4">
                       {/* Quality */}
                       <div>
                         <label className="mb-2 block text-xs font-medium text-muted-foreground">
@@ -1202,98 +1280,81 @@ export default function StudioPage({ params }: StudioPageProps) {
                         </div>
                       </div>
                     </div>
-                  )}
-                </section>
-              </>
+                  </MinimalAccordionContent>
+                </MinimalAccordionItem>
+              </MinimalAccordion>
             ) : (
-              <>
+              <MinimalAccordion
+                value={videoExpandedSections}
+                onValueChange={setVideoExpandedSections}
+                defaultValue={['video-inputs', 'video-prompt']}
+              >
                 {/* Video Section: Inputs */}
-                <section className="border-b border-border">
-                  <button
-                    onClick={() => setVideoExpandedSection(videoExpandedSection === 'video-inputs' ? null : 'video-inputs')}
-                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Video className="h-4 w-4 text-blue-500" />
-                      <span className="font-semibold">Video Inputs</span>
-                    </div>
-                    <ChevronDown className={cn('h-4 w-4 transition-transform', videoExpandedSection === 'video-inputs' && 'rotate-180')} />
-                  </button>
-
-                  {videoExpandedSection === 'video-inputs' && (
-                    <div className="space-y-4 px-4 pb-4">
+                <MinimalAccordionItem value="video-inputs">
+                  <MinimalAccordionTrigger>Video Inputs</MinimalAccordionTrigger>
+                  <MinimalAccordionContent>
+                    <div className="space-y-4">
                       <div>
                         <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Base Image
+                          Source Image
                         </label>
-                        {selectedBaseImageUrl ? (
-                          <div className="relative aspect-square w-20 overflow-hidden rounded-lg border border-border">
-                            <Image src={selectedBaseImageUrl} alt="Base" fill className="object-cover" unoptimized />
-                          </div>
-                        ) : (
-                          <div className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
-                            Select a base image in Product Details
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Inspiration Image
-                        </label>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                           <button
-                            onClick={() => {
-                              setVideoInspirationUrl(null);
-                              saveSettings();
-                            }}
+                            onClick={() => setVideoSource('base')}
                             className={cn(
-                              'rounded-md border px-2 py-1 text-[10px] font-medium',
-                              videoInspirationUrl === null
-                                ? 'border-primary bg-primary/10 text-primary'
-                                : 'border-border text-muted-foreground hover:border-primary/50'
+                              'rounded-lg border-2 p-2 text-left transition-all',
+                              videoSource === 'base'
+                                ? 'border-primary ring-2 ring-primary/30'
+                                : 'border-border hover:border-primary/50'
                             )}
                           >
-                            None
+                            {selectedBaseImageUrl ? (
+                              <div className="relative aspect-square w-full overflow-hidden rounded-md">
+                                <Image src={selectedBaseImageUrl} alt="Base" fill className="object-cover" unoptimized />
+                              </div>
+                            ) : (
+                              <div className="flex aspect-square w-full items-center justify-center rounded-md border border-dashed border-border text-[10px] text-muted-foreground">
+                                Select base image
+                              </div>
+                            )}
+                            <span className="mt-1 block text-[10px] font-medium">Base</span>
                           </button>
-                          {inspirationImages.map((img) => (
-                            <button
-                              key={img.url}
-                              onClick={() => {
-                                setVideoInspirationUrl(img.url);
-                                saveSettings();
-                              }}
-                              className={cn(
-                                'relative aspect-square h-12 w-12 overflow-hidden rounded-lg border-2 transition-all',
-                                videoInspirationUrl === img.url
-                                  ? 'border-primary ring-2 ring-primary/30'
-                                  : 'border-border hover:border-primary/50'
-                              )}
-                            >
-                              <Image src={img.url} alt="Inspiration" fill className="object-cover" unoptimized />
-                            </button>
-                          ))}
+                          <button
+                            onClick={() => setVideoSource('generated')}
+                            disabled={!selectedGeneratedImage}
+                            className={cn(
+                              'rounded-lg border-2 p-2 text-left transition-all',
+                              videoSource === 'generated'
+                                ? 'border-primary ring-2 ring-primary/30'
+                                : 'border-border hover:border-primary/50',
+                              !selectedGeneratedImage && 'cursor-not-allowed opacity-50'
+                            )}
+                          >
+                            {selectedGeneratedImage ? (
+                              <div className="relative aspect-square w-full overflow-hidden rounded-md">
+                                <Image src={selectedGeneratedImage.url} alt="Generated" fill className="object-cover" unoptimized />
+                              </div>
+                            ) : (
+                              <div className="flex aspect-square w-full items-center justify-center rounded-md border border-dashed border-border text-[10px] text-muted-foreground">
+                                Generate an image first
+                              </div>
+                            )}
+                            <span className="mt-1 block text-[10px] font-medium">Generated</span>
+                          </button>
                         </div>
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          Choose one image to drive the video.
+                        </p>
                       </div>
                     </div>
-                  )}
-                </section>
+                  </MinimalAccordionContent>
+                </MinimalAccordionItem>
 
                 {/* Video Section: Prompt */}
-                <section className="border-b border-border">
-                  <button
-                    onClick={() => setVideoExpandedSection(videoExpandedSection === 'video-prompt' ? null : 'video-prompt')}
-                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-purple-500" />
-                      <span className="font-semibold">Video Prompt</span>
-                    </div>
-                    <ChevronDown className={cn('h-4 w-4 transition-transform', videoExpandedSection === 'video-prompt' && 'rotate-180')} />
-                  </button>
-
-                  {videoExpandedSection === 'video-prompt' && (
-                    <div className="space-y-4 px-4 pb-4">
+                <MinimalAccordionItem value="video-prompt">
+                  <MinimalAccordionTrigger>Video Prompt</MinimalAccordionTrigger>
+                  <MinimalAccordionContent>
+                    <div className="space-y-4">
                       <div>
                         <label className="mb-2 block text-xs font-medium text-muted-foreground">
                           Prompt
@@ -1306,96 +1367,100 @@ export default function StudioPage({ params }: StudioPageProps) {
                           className="min-h-[80px] resize-none text-sm"
                         />
                       </div>
-
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Inspiration Note (optional)
-                        </label>
-                        <Input
-                          placeholder="e.g., warm studio lighting, soft camera move"
-                          value={videoInspirationNote}
-                          onChange={(e) => setVideoInspirationNote(e.target.value)}
-                          onBlur={saveSettings}
-                        />
-                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleEnhanceVideoPrompt}
+                        disabled={isEnhancingVideoPrompt || !videoSourceUrl}
+                        className="w-full"
+                      >
+                        {isEnhancingVideoPrompt ? (
+                          <>
+                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                            Enhancing...
+                          </>
+                        ) : (
+                          <>
+                            <Wand2 className="mr-2 h-3.5 w-3.5" />
+                            Enhance Prompt
+                          </>
+                        )}
+                      </Button>
                     </div>
-                  )}
-                </section>
+                  </MinimalAccordionContent>
+                </MinimalAccordionItem>
 
                 {/* Video Section: Settings */}
-                <section className="border-b border-border">
-                  <button
-                    onClick={() => setVideoExpandedSection(videoExpandedSection === 'video-settings' ? null : 'video-settings')}
-                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Wand2 className="h-4 w-4 text-emerald-500" />
-                      <span className="font-semibold">Video Settings</span>
+                <MinimalAccordionItem value="video-settings">
+                  <MinimalAccordionTrigger>Video Settings</MinimalAccordionTrigger>
+                  <MinimalAccordionContent>
+                    <div className="space-y-3">
+                      <select
+                        value={videoSettings.videoType ?? ''}
+                        onChange={(e) => updateVideoSettings({ videoType: e.target.value || undefined })}
+                        onBlur={saveSettings}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Video type</option>
+                        {VIDEO_TYPE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={videoSettings.cameraMotion ?? ''}
+                        onChange={(e) => updateVideoSettings({ cameraMotion: e.target.value || undefined })}
+                        onBlur={saveSettings}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Camera motion</option>
+                        {CAMERA_MOTION_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={videoSettings.sound ?? 'automatic'}
+                        onChange={(e) =>
+                          updateVideoSettings({ sound: e.target.value as VideoPromptSettings['sound'] })
+                        }
+                        onBlur={saveSettings}
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="automatic">Automatic sound</option>
+                        <option value="with_music">With music</option>
+                        <option value="no_sound">No sound</option>
+                        <option value="custom">Custom sound prompt</option>
+                      </select>
+                      {videoSettings.sound === 'custom' && (
+                        <Input
+                          placeholder="Sound prompt (e.g., ambient cafe noise, soft synth)"
+                          value={videoSettings.soundPrompt || ''}
+                          onChange={(e) => updateVideoSettings({ soundPrompt: e.target.value })}
+                          onBlur={saveSettings}
+                        />
+                      )}
                     </div>
-                    <ChevronDown className={cn('h-4 w-4 transition-transform', videoExpandedSection === 'video-settings' && 'rotate-180')} />
-                  </button>
-
-                  {videoExpandedSection === 'video-settings' && (
-                    <div className="space-y-3 px-4 pb-4">
-                      <Input
-                        placeholder="Video type (e.g., pan over product)"
-                        value={videoSettings.videoType || ''}
-                        onChange={(e) => updateVideoSettings({ videoType: e.target.value })}
-                        onBlur={saveSettings}
-                      />
-                      <Input
-                        placeholder="Camera motion"
-                        value={videoSettings.cameraMotion || ''}
-                        onChange={(e) => updateVideoSettings({ cameraMotion: e.target.value })}
-                        onBlur={saveSettings}
-                      />
-                      <Input
-                        placeholder="Subject action"
-                        value={videoSettings.subjectAction || ''}
-                        onChange={(e) => updateVideoSettings({ subjectAction: e.target.value })}
-                        onBlur={saveSettings}
-                      />
-                      <Input
-                        placeholder="Scene action / atmosphere"
-                        value={videoSettings.sceneAction || ''}
-                        onChange={(e) => updateVideoSettings({ sceneAction: e.target.value })}
-                        onBlur={saveSettings}
-                      />
-                      <Input
-                        type="number"
-                        min={1}
-                        placeholder="Duration (seconds)"
-                        value={videoSettings.durationSeconds ? String(videoSettings.durationSeconds) : ''}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          updateVideoSettings({ durationSeconds: value ? Number(value) : undefined });
-                        }}
-                        onBlur={saveSettings}
-                      />
-                    </div>
-                  )}
-                </section>
+                  </MinimalAccordionContent>
+                </MinimalAccordionItem>
 
                 {/* Video Section: Presets */}
-                <section className="border-b border-border">
-                  <button
-                    onClick={() => setVideoExpandedSection(videoExpandedSection === 'video-presets' ? null : 'video-presets')}
-                    className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-orange-500" />
-                      <span className="font-semibold">Presets</span>
-                      {videoPresets.length > 0 && (
+                <MinimalAccordionItem value="video-presets">
+                  <MinimalAccordionTrigger
+                    suffix={
+                      videoPresets.length > 0 ? (
                         <Badge variant="secondary" className="text-xs">
                           {videoPresets.length}
                         </Badge>
-                      )}
-                    </div>
-                    <ChevronDown className={cn('h-4 w-4 transition-transform', videoExpandedSection === 'video-presets' && 'rotate-180')} />
-                  </button>
-
-                  {videoExpandedSection === 'video-presets' && (
-                    <div className="space-y-3 px-4 pb-4">
+                      ) : null
+                    }
+                  >
+                    Presets
+                  </MinimalAccordionTrigger>
+                  <MinimalAccordionContent>
+                    <div className="space-y-3">
                       <select
                         value={videoPresetId ?? ''}
                         onChange={(e) => {
@@ -1425,9 +1490,9 @@ export default function StudioPage({ params }: StudioPageProps) {
                         </Button>
                       </div>
                     </div>
-                  )}
-                </section>
-              </>
+                  </MinimalAccordionContent>
+                </MinimalAccordionItem>
+              </MinimalAccordion>
             )}
           </div>
 
@@ -1517,26 +1582,12 @@ export default function StudioPage({ params }: StudioPageProps) {
           <div className="flex flex-1 items-center justify-center p-6">
             {activeTab === 'images' ? (
               isGenerating ? (
-                <div className="flex flex-col items-center justify-center text-center">
-                  <div className="relative mb-6">
-                    <div className="h-24 w-24 animate-pulse rounded-full bg-primary/20" />
-                    <Loader2 className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 animate-spin text-primary" />
-                  </div>
-                  <h2 className="mb-2 text-xl font-semibold">
-                    {generationStatus === 'polling' ? 'Generating Images...' : 'Starting Generation...'}
-                  </h2>
-                  <p className="mb-4 text-muted-foreground">
-                    {generationProgress > 0
-                      ? 'AI is creating your visualizations.'
-                      : 'Preparing your generation request...'}
-                  </p>
-                  <div className="w-64">
-                    <Progress value={generationProgress} className="h-2" />
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {Math.round(generationProgress)}% complete
-                    </p>
-                  </div>
-                </div>
+                <SceneLoader
+                  progress={generationProgress}
+                  status={generationStatus === 'polling' ? 'Building Your Scene' : 'Starting Generation'}
+                  label={generationProgress > 0 ? 'AI is creating your visualizations' : 'Preparing your generation request...'}
+                  type="image"
+                />
               ) : selectedGeneratedImage ? (
                 <div className="relative max-h-full max-w-full overflow-hidden rounded-xl bg-black/10 shadow-2xl">
                   <Image
@@ -1577,26 +1628,12 @@ export default function StudioPage({ params }: StudioPageProps) {
                 />
               )
             ) : isGeneratingVideo ? (
-              <div className="flex flex-col items-center justify-center text-center">
-                <div className="relative mb-6">
-                  <div className="h-24 w-24 animate-pulse rounded-full bg-primary/20" />
-                  <Loader2 className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 animate-spin text-primary" />
-                </div>
-                <h2 className="mb-2 text-xl font-semibold">
-                  {videoStatus === 'polling' ? 'Generating Video...' : 'Starting Video Generation...'}
-                </h2>
-                <p className="mb-4 text-muted-foreground">
-                  {videoProgress > 0
-                    ? 'AI is creating your video.'
-                    : 'Preparing your video request...'}
-                </p>
-                <div className="w-64">
-                  <Progress value={videoProgress} className="h-2" />
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {Math.round(videoProgress)}% complete
-                  </p>
-                </div>
-              </div>
+              <SceneLoader
+                progress={videoProgress}
+                status={videoStatus === 'polling' ? 'Creating Your Video' : 'Starting Video Generation'}
+                label={videoProgress > 0 ? 'AI is animating your scene' : 'Preparing your video request...'}
+                type="video"
+              />
             ) : selectedGeneratedVideo ? (
               <div className="relative max-h-full max-w-full overflow-hidden rounded-xl bg-black/10 shadow-2xl">
                 <video
@@ -1614,9 +1651,15 @@ export default function StudioPage({ params }: StudioPageProps) {
             )}
           </div>
 
-          {/* Bottom - History Gallery */}
-          <div className="shrink-0 border-t border-border bg-card/50 p-4">
-            <div className="mb-3 flex items-center justify-between">
+          {/* Bottom - History Gallery (Collapsible) */}
+          <div className={cn(
+            'shrink-0 border-t border-border bg-card/50 transition-all duration-200',
+            isHistoryCollapsed ? 'py-2 px-4' : 'p-4'
+          )}>
+            <button
+              onClick={() => setIsHistoryCollapsed(!isHistoryCollapsed)}
+              className="flex w-full items-center justify-between"
+            >
               <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <History className="h-4 w-4" />
                 {activeTab === 'images' ? 'Generation History' : 'Video History'}
@@ -1624,18 +1667,25 @@ export default function StudioPage({ params }: StudioPageProps) {
                   {activeTab === 'images' ? imageAssets.length : videoAssets.length}
                 </Badge>
               </h4>
-            </div>
+              {isHistoryCollapsed ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
 
-            {(activeTab === 'images' ? imageAssets.length === 0 : videoAssets.length === 0) ? (
-              <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-border">
-                <p className="text-sm text-muted-foreground">
-                  {activeTab === 'images'
-                    ? 'Generated images will appear here'
-                    : 'Generated videos will appear here'}
-                </p>
-              </div>
-            ) : (
-              <div className="flex gap-3 overflow-x-auto pb-2">
+            {!isHistoryCollapsed && (
+              <>
+                {(activeTab === 'images' ? imageAssets.length === 0 : videoAssets.length === 0) ? (
+                  <div className="mt-3 flex h-24 items-center justify-center rounded-lg border border-dashed border-border">
+                    <p className="text-sm text-muted-foreground">
+                      {activeTab === 'images'
+                        ? 'Generated images will appear here'
+                        : 'Generated videos will appear here'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
                 {(activeTab === 'images' ? imageAssets : videoAssets).map((asset) => (
                   <div key={asset.id} className="group/history relative shrink-0">
                     <button
@@ -1693,7 +1743,9 @@ export default function StudioPage({ params }: StudioPageProps) {
                     </button>
                   </div>
                 ))}
-              </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </main>
