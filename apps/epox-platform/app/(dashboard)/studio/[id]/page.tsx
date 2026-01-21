@@ -14,6 +14,9 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { SceneLoader } from '@/components/ui/scene-loader';
+import { InspirationImageModal } from '@/components/studio/InspirationImageModal';
+import { AssetCard } from '@/components/studio/AssetCard';
+import { ThumbnailNav } from '@/components/studio/ThumbnailNav';
 import type { GeneratedAsset } from '@/lib/api-client';
 import { apiClient } from '@/lib/api-client';
 import { useGenerationPolling } from '@/lib/hooks/use-generation-polling';
@@ -22,17 +25,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Check,
-  ChevronDown,
-  ChevronUp,
-  Download,
   Eye,
-  History,
-  Image as ImageIcon,
+  Grid3X3,
+  LayoutList,
   Loader2,
   Package,
-  Pin,
   Sparkles,
-  Trash2,
   Upload,
   Video,
   Wand2,
@@ -46,13 +44,14 @@ import { toast } from 'sonner';
 import type {
   FlowGenerationSettings,
   InspirationImage,
+  InspirationSourceType,
   LightingPreset,
   SceneTypeInspirationMap,
   StylePreset,
   SubjectAnalysis,
   VideoPromptSettings,
 } from 'visualizer-types';
-import { CAMERA_MOTION_OPTIONS, LIGHTING_PRESETS, STYLE_PRESETS, VIDEO_TYPE_OPTIONS } from 'visualizer-types';
+import { CAMERA_MOTION_OPTIONS, LIGHTING_PRESETS, STYLE_PRESETS, VIDEO_TYPE_OPTIONS, VIDEO_ASPECT_RATIO_OPTIONS, VIDEO_RESOLUTION_OPTIONS } from 'visualizer-types';
 
 interface StudioPageProps {
   params: Promise<{ id: string }>;
@@ -73,9 +72,8 @@ const ASPECT_OPTIONS = [
   { value: '4:3', label: '4:3', icon: '▱' },
 ] as const;
 
-const VIDEO_DURATION_SECONDS = 5;
-
 type StudioTab = 'images' | 'video';
+type ViewMode = 'list' | 'grid';
 
 interface VideoPreset {
   id: string;
@@ -91,7 +89,6 @@ export default function StudioPage({ params }: StudioPageProps) {
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get productId and tab from URL params
   const productIdFromUrl = searchParams.get('productId');
@@ -114,20 +111,35 @@ export default function StudioPage({ params }: StudioPageProps) {
     return [];
   }, [flowData?.productIds, productIdFromUrl]);
 
+  const manualImageCompletionRef = useRef(false);
+  const [imageGenerationTracker, setImageGenerationTracker] = useState<{
+    expectedCount: number;
+    baselineIds: string[];
+  } | null>(null);
+
   // Generation state with robust polling
   const {
     isGenerating,
     progress: generationProgress,
     status: generationStatus,
+    error: generationError,
+    retryCount: generationRetryCount,
     startGeneration,
     cancelGeneration,
   } = useGenerationPolling({
     sessionId: studioId,
     onComplete: () => {
+      if (manualImageCompletionRef.current) {
+        manualImageCompletionRef.current = false;
+        return;
+      }
+      setImageGenerationTracker(null);
       queryClient.invalidateQueries({ queryKey: ['generated-images', studioId] });
       toast.success('Generation complete!');
     },
     onError: (error) => {
+      manualImageCompletionRef.current = false;
+      setImageGenerationTracker(null);
       toast.error(error || 'Generation failed');
     },
   });
@@ -136,6 +148,8 @@ export default function StudioPage({ params }: StudioPageProps) {
     isGenerating: isGeneratingVideo,
     progress: videoProgress,
     status: videoStatus,
+    error: videoError,
+    retryCount: videoRetryCount,
     startGeneration: startVideoGeneration,
     cancelGeneration: cancelVideoGeneration,
   } = useGenerationPolling({
@@ -150,6 +164,10 @@ export default function StudioPage({ params }: StudioPageProps) {
   });
 
   // ===== STATE =====
+  // View mode and refs
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const mainViewRef = useRef<HTMLDivElement>(null);
+
   // Tab from URL (defaults to 'images')
   const activeTab: StudioTab = tabFromUrl === 'video' ? 'video' : 'images';
 
@@ -169,6 +187,7 @@ export default function StudioPage({ params }: StudioPageProps) {
   const [stylePreset, setStylePreset] = useState<StylePreset>('Modern Minimalist');
   const [lightingPreset, setLightingPreset] = useState<LightingPreset>('Studio Soft Light');
   const [isAnalyzingInspiration, setIsAnalyzingInspiration] = useState(false);
+  const [isInspirationModalOpen, setIsInspirationModalOpen] = useState(false);
 
   // Section 2: Product Details (read-only from product analysis)
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -203,7 +222,7 @@ export default function StudioPage({ params }: StudioPageProps) {
   // UI state - multi-open accordions (support multiple open at once)
   const [expandedSections, setExpandedSections] = useState<string[]>(['scene-style', 'output-settings']);
   const [videoExpandedSections, setVideoExpandedSections] = useState<string[]>(['video-inputs', 'video-prompt']);
-  const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false);
+  const [showAllProductHistory, setShowAllProductHistory] = useState(false);
 
   // ===== DATA FETCHING =====
 
@@ -227,8 +246,20 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   // Fetch generated images for THIS flow only
   const { data: generatedImagesData } = useQuery({
-    queryKey: ['generated-images', studioId],
+    queryKey: [
+      'generated-images',
+      studioId,
+      showAllProductHistory ? 'products' : 'flow',
+      productIds.join(','),
+    ],
     queryFn: async () => {
+      if (showAllProductHistory && productIds.length > 0) {
+        return apiClient.listGeneratedImages({
+          productIds,
+          limit: 50,
+          sort: 'date',
+        });
+      }
       return apiClient.listGeneratedImages({
         flowId: studioId,
         limit: 50,
@@ -281,6 +312,26 @@ export default function StudioPage({ params }: StudioPageProps) {
     [allGeneratedAssets]
   );
 
+  const newGeneratedImageCount = useMemo(() => {
+    if (!imageGenerationTracker) return 0;
+    const baselineIds = new Set(imageGenerationTracker.baselineIds);
+    let count = 0;
+    for (const asset of imageAssets) {
+      if (!baselineIds.has(asset.id)) {
+        count += 1;
+      }
+    }
+    return count;
+  }, [imageAssets, imageGenerationTracker]);
+
+  const effectiveImageProgress = useMemo(() => {
+    if (!isGenerating || !imageGenerationTracker) return generationProgress;
+    const expectedCount = imageGenerationTracker.expectedCount;
+    if (!expectedCount || expectedCount <= 0) return generationProgress;
+    const progressFromAssets = Math.min(95, (newGeneratedImageCount / expectedCount) * 100);
+    return Math.max(generationProgress, progressFromAssets);
+  }, [generationProgress, imageGenerationTracker, isGenerating, newGeneratedImageCount]);
+
   // Scene type groups from inspiration analysis
   const sceneTypeGroups = useMemo(() => {
     const groups: Record<string, number> = {};
@@ -304,6 +355,18 @@ export default function StudioPage({ params }: StudioPageProps) {
     // Return first available if no match
     return Object.keys(sceneTypeInspirations)[0] || null;
   }, [subjectAnalysis, sceneTypeInspirations]);
+
+  // Current tab assets
+  const currentAssets = activeTab === 'images' ? imageAssets : videoAssets;
+
+  // Configuration object for asset cards
+  const assetConfiguration = useMemo(() => ({
+    sceneType: matchedSceneType ?? undefined,
+    stylePreset,
+    lightingPreset,
+    aspectRatio: settings.aspectRatio,
+    quality: settings.quality,
+  }), [matchedSceneType, stylePreset, lightingPreset, settings.aspectRatio, settings.quality]);
 
   // ===== EFFECTS =====
 
@@ -361,6 +424,8 @@ export default function StudioPage({ params }: StudioPageProps) {
         setVideoSettings({
           videoType: s.video.settings?.videoType,
           cameraMotion: s.video.settings?.cameraMotion,
+          aspectRatio: s.video.settings?.aspectRatio,
+          resolution: s.video.settings?.resolution,
           sound: s.video.settings?.sound,
           soundPrompt: s.video.settings?.soundPrompt,
         });
@@ -392,6 +457,26 @@ export default function StudioPage({ params }: StudioPageProps) {
   }, [imageAssets]);
 
   useEffect(() => {
+    if (!isGenerating || !imageGenerationTracker) return;
+    const expectedCount = imageGenerationTracker.expectedCount;
+    if (!expectedCount || expectedCount <= 0) return;
+    if (newGeneratedImageCount < expectedCount) return;
+
+    manualImageCompletionRef.current = true;
+    setImageGenerationTracker(null);
+    cancelGeneration();
+    queryClient.invalidateQueries({ queryKey: ['generated-images', studioId] });
+    toast.success('Generation complete!');
+  }, [
+    cancelGeneration,
+    imageGenerationTracker,
+    isGenerating,
+    newGeneratedImageCount,
+    queryClient,
+    studioId,
+  ]);
+
+  useEffect(() => {
     const latestVideoId = videoAssets[0]?.id ?? null;
     const hasNewVideo =
       (videoAssets.length > prevVideoCount.current && videoAssets.length > 0) ||
@@ -416,98 +501,13 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   // ===== HANDLERS =====
 
-  const handleInspirationUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    setIsAnalyzingInspiration(true);
-
-    for (const file of Array.from(files)) {
-      try {
-        // Upload file
-        const uploadResult = await apiClient.uploadFile(file, 'inspiration');
-
-        // Analyze with Vision Scanner
-        const analysisResponse = await fetch('/api/vision-scanner', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            imageUrl: uploadResult.url,
-            sourceType: 'upload',
-          }),
-        });
-
-        if (!analysisResponse.ok) {
-          throw new Error('Vision Scanner analysis failed');
-        }
-
-        const { inspirationImage, analysis } = await analysisResponse.json();
-
-        // Add to inspiration images
-        setInspirationImages(prev => [...prev, inspirationImage]);
-
-        // Group by detected scene type
-        const detectedSceneType = analysis.json.detectedSceneType;
-        setSceneTypeInspirations(prev => {
-          const existing = prev[detectedSceneType];
-          if (existing) {
-            return {
-              ...prev,
-              [detectedSceneType]: {
-                inspirationImages: [...existing.inspirationImages, inspirationImage],
-                mergedAnalysis: analysis, // For now, use latest analysis
-              },
-            };
-          }
-          return {
-            ...prev,
-            [detectedSceneType]: {
-              inspirationImages: [inspirationImage],
-              mergedAnalysis: analysis,
-            },
-          };
-        });
-
-        toast.success(`Analyzed: ${detectedSceneType} scene detected`);
-      } catch (err) {
-        console.error('Inspiration upload failed:', err);
-        toast.error('Failed to analyze inspiration image');
-      }
-    }
-
-    setIsAnalyzingInspiration(false);
-
-    // Save settings
-    saveSettings();
-  };
-
-  const removeInspirationImage = (url: string) => {
-    setInspirationImages(prev => prev.filter(img => img.url !== url));
-
-    // Also remove from scene type groups
-    setSceneTypeInspirations(prev => {
-      const updated = { ...prev };
-      for (const [sceneType, data] of Object.entries(updated)) {
-        updated[sceneType] = {
-          ...data,
-          inspirationImages: data.inspirationImages.filter(img => img.url !== url),
-        };
-        // Remove empty groups
-        if (updated[sceneType].inspirationImages.length === 0) {
-          delete updated[sceneType];
-        }
-      }
-      return updated;
-    });
-
-    saveSettings();
-  };
-
   const saveSettings = useCallback(async () => {
     try {
       const normalizedVideoSettings: VideoPromptSettings = {
         videoType: videoSettings.videoType,
         cameraMotion: videoSettings.cameraMotion,
+        aspectRatio: videoSettings.aspectRatio,
+        resolution: videoSettings.resolution,
         sound: videoSettings.sound,
         soundPrompt: videoSettings.soundPrompt,
       };
@@ -543,6 +543,102 @@ export default function StudioPage({ params }: StudioPageProps) {
     videoSettings,
     videoPresetId,
   ]);
+
+  const analyzeAndAddInspiration = useCallback(
+    async (imageUrl: string, sourceType: InspirationSourceType) => {
+      const analysisResponse = await fetch('/api/vision-scanner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl,
+          sourceType,
+        }),
+      });
+
+      if (!analysisResponse.ok) {
+        throw new Error('Vision Scanner analysis failed');
+      }
+
+      const { inspirationImage, analysis } = await analysisResponse.json();
+      const detectedSceneType = analysis?.json?.detectedSceneType || 'General';
+
+      setInspirationImages((prev) => {
+        if (prev.some((img) => img.url === inspirationImage.url)) {
+          return prev;
+        }
+        return [...prev, inspirationImage];
+      });
+
+      setSceneTypeInspirations((prev) => {
+        const existing = prev[detectedSceneType];
+        const nextImages = existing
+          ? [...existing.inspirationImages, inspirationImage]
+          : [inspirationImage];
+        const uniqueImages = nextImages.filter(
+          (img, idx) => nextImages.findIndex((item) => item.url === img.url) === idx
+        );
+
+        return {
+          ...prev,
+          [detectedSceneType]: {
+            inspirationImages: uniqueImages,
+            mergedAnalysis: analysis,
+          },
+        };
+      });
+
+      return detectedSceneType;
+    },
+    []
+  );
+
+  const addInspirationFromUrls = useCallback(
+    async (items: Array<{ url: string; sourceType: InspirationSourceType }>) => {
+      if (items.length === 0) return;
+      setIsAnalyzingInspiration(true);
+
+      try {
+        for (const item of items) {
+          try {
+            const detectedSceneType = await analyzeAndAddInspiration(
+              item.url,
+              item.sourceType
+            );
+            toast.success(`Analyzed: ${detectedSceneType} scene detected`);
+          } catch (err) {
+            console.error('Inspiration analysis failed:', err);
+            toast.error('Failed to analyze inspiration image');
+          }
+        }
+        saveSettings();
+      } finally {
+        setIsAnalyzingInspiration(false);
+      }
+    },
+    [analyzeAndAddInspiration, saveSettings]
+  );
+
+  const removeInspirationImage = (url: string) => {
+    setInspirationImages(prev => prev.filter(img => img.url !== url));
+
+    // Also remove from scene type groups
+    setSceneTypeInspirations(prev => {
+      const updated = { ...prev };
+      for (const [sceneType, data] of Object.entries(updated)) {
+        updated[sceneType] = {
+          ...data,
+          inspirationImages: data.inspirationImages.filter(img => img.url !== url),
+        };
+        // Remove empty groups
+        if (updated[sceneType].inspirationImages.length === 0) {
+          delete updated[sceneType];
+        }
+      }
+      return updated;
+    });
+
+    saveSettings();
+  };
 
   // Auto-save video settings when they change
   useEffect(() => {
@@ -617,6 +713,8 @@ export default function StudioPage({ params }: StudioPageProps) {
     const lines = [basePrompt.trim()];
     if (settings.videoType) lines.push(`Video type: ${settings.videoType}`);
     if (settings.cameraMotion) lines.push(`Camera motion: ${settings.cameraMotion}`);
+    if (settings.aspectRatio) lines.push(`Aspect ratio: ${settings.aspectRatio}`);
+    if (settings.resolution) lines.push(`Resolution: ${settings.resolution}`);
     if (settings.sound) {
       if (settings.sound === 'custom' && settings.soundPrompt?.trim()) {
         lines.push(`Sound: ${settings.soundPrompt.trim()}`);
@@ -654,6 +752,8 @@ export default function StudioPage({ params }: StudioPageProps) {
           settings: {
             videoType: videoSettings.videoType,
             cameraMotion: videoSettings.cameraMotion,
+            aspectRatio: videoSettings.aspectRatio,
+            resolution: videoSettings.resolution,
             sound: videoSettings.sound,
             soundPrompt: videoSettings.soundPrompt,
           },
@@ -713,6 +813,7 @@ export default function StudioPage({ params }: StudioPageProps) {
     if (!products || products.length === 0) return;
 
     try {
+      manualImageCompletionRef.current = false;
       // First, generate the prompt via Art Director
       let prompt = '';
       if (subjectAnalysis && Object.keys(sceneTypeInspirations).length > 0) {
@@ -755,6 +856,11 @@ export default function StudioPage({ params }: StudioPageProps) {
       console.log('🚀 Generation started:', result);
 
       if (result.status === 'queued' && result.jobId) {
+        setImageGenerationTracker({
+          expectedCount:
+            result.expectedImageCount ?? products.length * settings.variantsCount,
+          baselineIds: imageAssets.map((asset) => asset.id),
+        });
         startGeneration(result.jobId);
       } else {
         await queryClient.invalidateQueries({ queryKey: ['generated-images', studioId] });
@@ -789,7 +895,8 @@ export default function StudioPage({ params }: StudioPageProps) {
         sourceImageUrl: videoSourceUrl,
         prompt,
         settings: {
-          durationSeconds: VIDEO_DURATION_SECONDS,
+          aspectRatio: videoSettings.aspectRatio ?? '16:9',
+          resolution: videoSettings.resolution ?? '720p',
         },
       });
 
@@ -818,6 +925,61 @@ export default function StudioPage({ params }: StudioPageProps) {
     } catch (error) {
       console.error('❌ Video generation error:', error);
       toast.error(error instanceof Error ? error.message : 'Video generation failed');
+    }
+  };
+
+  // Scroll to asset when thumbnail clicked
+  const handleThumbnailClick = useCallback((assetId: string) => {
+    const element = document.getElementById(`asset-${assetId}`);
+    if (element && mainViewRef.current) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
+
+  // Asset action handlers
+  const handlePinAsset = async (asset: GeneratedAsset) => {
+    try {
+      await apiClient.togglePinImage(asset.id);
+      queryClient.invalidateQueries({ queryKey: ['generated-images', studioId] });
+      toast.success(asset.isPinned ? 'Unpinned' : 'Pinned');
+    } catch (error) {
+      toast.error('Failed to toggle pin');
+    }
+  };
+
+  const handleApproveAsset = async (asset: GeneratedAsset) => {
+    try {
+      await apiClient.updateImageApproval(asset.id, 'approved');
+      queryClient.invalidateQueries({ queryKey: ['generated-images', studioId] });
+      toast.success('Approved');
+    } catch (error) {
+      toast.error('Failed to approve');
+    }
+  };
+
+  const handleDownloadAsset = (asset: GeneratedAsset) => {
+    const link = document.createElement('a');
+    link.href = asset.url;
+    link.download = `${currentProduct?.name || 'generated'}-${asset.id}.${asset.assetType === 'video' ? 'mp4' : 'png'}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDeleteAsset = async (asset: GeneratedAsset) => {
+    try {
+      await apiClient.deleteGeneratedImage(asset.id);
+      setNewlyGeneratedImages((prev) => prev.filter((i) => i.id !== asset.id));
+      queryClient.invalidateQueries({ queryKey: ['generated-images', studioId] });
+      if (activeTab === 'images' && selectedGeneratedImage?.id === asset.id) {
+        setSelectedGeneratedImage(null);
+      }
+      if (activeTab === 'video' && selectedGeneratedVideo?.id === asset.id) {
+        setSelectedGeneratedVideo(null);
+      }
+      toast.success('Deleted');
+    } catch (error) {
+      toast.error('Failed to delete');
     }
   };
 
@@ -899,6 +1061,30 @@ export default function StudioPage({ params }: StudioPageProps) {
             </div>
           </div>
         </div>
+
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-lg border border-border p-1">
+            <Button
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setViewMode('list')}
+              title="List view"
+            >
+              <LayoutList className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setViewMode('grid')}
+              title="Grid view"
+            >
+              <Grid3X3 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </header>
 
       {/* Main Layout - Responsive: stacked on small screens, side-by-side on larger */}
@@ -963,14 +1149,14 @@ export default function StudioPage({ params }: StudioPageProps) {
                           {inspirationImages.map((img, idx) => (
                             <div
                               key={idx}
-                              className="group relative aspect-square h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border"
+                              className="group relative aspect-square h-30 w-30 shrink-0 overflow-hidden rounded-lg border border-border"
                             >
                               <Image src={img.url} alt={`Inspiration ${idx + 1}`} fill className="object-cover" unoptimized />
                               <button
                                 onClick={() => removeInspirationImage(img.url)}
-                                className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                                className="absolute right-0.5 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
                               >
-                                <X className="h-2.5 w-2.5" />
+                                <X className="h-3 w-3" />
                               </button>
                               {img.tags?.[0] && (
                                 <div className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-center text-[8px] text-white">
@@ -980,24 +1166,16 @@ export default function StudioPage({ params }: StudioPageProps) {
                             </div>
                           ))}
                           <button
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={() => setIsInspirationModalOpen(true)}
                             disabled={isAnalyzingInspiration}
-                            className="flex aspect-square h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
+                            className="flex aspect-square h-30 w-30 items-center justify-center rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
                           >
                             {isAnalyzingInspiration ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-6 w-6 animate-spin" />
                             ) : (
-                              <Upload className="h-4 w-4" />
+                              <Upload className="h-6 w-6" />
                             )}
                           </button>
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className="hidden"
-                            onChange={handleInspirationUpload}
-                          />
                         </div>
                       </div>
 
@@ -1421,6 +1599,36 @@ export default function StudioPage({ params }: StudioPageProps) {
                           </option>
                         ))}
                       </select>
+                      <div className="grid grid-cols-2 gap-2">
+                        <select
+                          value={videoSettings.aspectRatio ?? '16:9'}
+                          onChange={(e) =>
+                            updateVideoSettings({ aspectRatio: e.target.value as VideoPromptSettings['aspectRatio'] })
+                          }
+                          onBlur={saveSettings}
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                        >
+                          {VIDEO_ASPECT_RATIO_OPTIONS.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={videoSettings.resolution ?? '720p'}
+                          onChange={(e) =>
+                            updateVideoSettings({ resolution: e.target.value as VideoPromptSettings['resolution'] })
+                          }
+                          onBlur={saveSettings}
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                        >
+                          {VIDEO_RESOLUTION_OPTIONS.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       <select
                         value={videoSettings.sound ?? 'automatic'}
                         onChange={(e) =>
@@ -1510,8 +1718,8 @@ export default function StudioPage({ params }: StudioPageProps) {
                   {isGenerating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {generationProgress > 0
-                        ? `Generating... ${Math.round(generationProgress)}%`
+                      {effectiveImageProgress > 0
+                        ? `Generating... ${Math.round(effectiveImageProgress)}%`
                         : 'Starting...'}
                     </>
                   ) : (
@@ -1523,11 +1731,15 @@ export default function StudioPage({ params }: StudioPageProps) {
                 </Button>
                 {isGenerating && (
                   <>
-                    <Progress value={generationProgress} className="mt-2 h-1.5" />
+                    <Progress value={effectiveImageProgress} className="mt-2 h-1.5" />
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={cancelGeneration}
+                      onClick={() => {
+                        manualImageCompletionRef.current = false;
+                        setImageGenerationTracker(null);
+                        cancelGeneration();
+                      }}
                       className="mt-2 w-full text-xs text-muted-foreground"
                     >
                       Cancel
@@ -1577,179 +1789,179 @@ export default function StudioPage({ params }: StudioPageProps) {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex min-w-0 flex-1 flex-col bg-background/50">
-          {/* Center - Main Preview */}
-          <div className="flex flex-1 items-center justify-center p-6">
-            {activeTab === 'images' ? (
-              isGenerating ? (
+        <main className="flex min-w-0 flex-1 bg-background/50">
+          {/* Scrollable Main View */}
+          <div
+            ref={mainViewRef}
+            className={cn(
+              'flex-1 overflow-y-auto',
+              viewMode === 'grid' ? 'p-4' : 'p-4 md:p-6'
+            )}
+          >
+            {/* Generating State */}
+            {(isGenerating || isGeneratingVideo) && (
+              <div className="mb-6 flex items-center justify-center rounded-xl border border-border bg-card p-8">
                 <SceneLoader
-                  progress={generationProgress}
-                  status={generationStatus === 'polling' ? 'Building Your Scene' : 'Starting Generation'}
-                  label={generationProgress > 0 ? 'AI is creating your visualizations' : 'Preparing your generation request...'}
-                  type="image"
-                />
-              ) : selectedGeneratedImage ? (
-                <div className="relative max-h-full max-w-full overflow-hidden rounded-xl bg-black/10 shadow-2xl">
-                  <Image
-                    src={selectedGeneratedImage.url}
-                    alt="Generated"
-                    width={800}
-                    height={800}
-                    className="max-h-[70vh] w-auto object-contain"
-                    unoptimized
-                  />
-                  {/* Floating action bar */}
-                  <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-card/90 px-4 py-2 shadow-lg backdrop-blur-sm">
-                    <Button size="sm" variant="ghost" className="h-8 gap-1.5">
-                      <Download className="h-3.5 w-3.5" />
-                      Download
-                    </Button>
-                    <div className="h-4 w-px bg-border" />
-                    <Button size="sm" variant="ghost" className="h-8 gap-1.5">
-                      <Pin className="h-3.5 w-3.5" />
-                      Pin
-                    </Button>
-                    <div className="h-4 w-px bg-border" />
-                    <Button
-                      size="sm"
-                      variant={selectedGeneratedImage.approvalStatus === 'approved' ? 'default' : 'ghost'}
-                      className="h-8 gap-1.5"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      {selectedGeneratedImage.approvalStatus === 'approved' ? 'Approved' : 'Approve'}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <EmptyState
-                  icon={Sparkles}
-                  title="Ready to Generate"
-                  description="Add inspiration images, configure your settings, and click Generate to create stunning product visualizations."
-                />
-              )
-            ) : isGeneratingVideo ? (
-              <SceneLoader
-                progress={videoProgress}
-                status={videoStatus === 'polling' ? 'Creating Your Video' : 'Starting Video Generation'}
-                label={videoProgress > 0 ? 'AI is animating your scene' : 'Preparing your video request...'}
-                type="video"
-              />
-            ) : selectedGeneratedVideo ? (
-              <div className="relative max-h-full max-w-full overflow-hidden rounded-xl bg-black/10 shadow-2xl">
-                <video
-                  src={selectedGeneratedVideo.url}
-                  controls
-                  className="max-h-[70vh] w-auto object-contain"
+                  progress={activeTab === 'images' ? effectiveImageProgress : videoProgress}
+                  status={
+                    (activeTab === 'images' ? generationStatus : videoStatus) === 'retrying'
+                      ? `Retrying... (Attempt ${(activeTab === 'images' ? generationRetryCount : videoRetryCount) + 1}/3)`
+                      : (activeTab === 'images' ? generationStatus : videoStatus) === 'polling'
+                        ? activeTab === 'images' ? 'Building Your Scene' : 'Creating Your Video'
+                        : 'Starting Generation'
+                  }
+                  label={
+                    (activeTab === 'images' ? generationStatus : videoStatus) === 'retrying'
+                      ? (activeTab === 'images' ? generationError : videoError) || 'Encountered an issue, retrying...'
+                      : (activeTab === 'images' ? effectiveImageProgress : videoProgress) > 0
+                        ? activeTab === 'images' ? 'AI is creating your visualizations' : 'AI is animating your scene'
+                        : 'Preparing your request...'
+                  }
+                  type={activeTab === 'images' ? 'image' : 'video'}
                 />
               </div>
-            ) : (
-              <EmptyState
-                icon={Video}
-                title="Ready to Generate Video"
-                description="Pick a base image, add a motion prompt, and generate a video."
-              />
             )}
-          </div>
 
-          {/* Bottom - History Gallery (Collapsible) */}
-          <div className={cn(
-            'shrink-0 border-t border-border bg-card/50 transition-all duration-200',
-            isHistoryCollapsed ? 'py-2 px-4' : 'p-4'
-          )}>
-            <button
-              onClick={() => setIsHistoryCollapsed(!isHistoryCollapsed)}
-              className="flex w-full items-center justify-between"
-            >
-              <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <History className="h-4 w-4" />
-                {activeTab === 'images' ? 'Generation History' : 'Video History'}
-                <Badge variant="muted" className="ml-1">
-                  {activeTab === 'images' ? imageAssets.length : videoAssets.length}
-                </Badge>
-              </h4>
-              {isHistoryCollapsed ? (
-                <ChevronUp className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              )}
-            </button>
+            {/* Error State */}
+            {((activeTab === 'images' && generationStatus === 'failed' && generationError) ||
+              (activeTab === 'video' && videoStatus === 'failed' && videoError)) && (
+              <div className="mb-6 flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-8 text-center">
+                <div className="rounded-full bg-destructive/10 p-4">
+                  <X className="h-8 w-8 text-destructive" />
+                </div>
+                <div>
+                  <h3 className="mb-2 text-lg font-semibold text-foreground">
+                    {activeTab === 'images' ? 'Generation Failed' : 'Video Generation Failed'}
+                  </h3>
+                  <p className="mb-4 max-w-md text-sm text-muted-foreground">
+                    {activeTab === 'images' ? generationError : videoError}
+                  </p>
+                </div>
+                <Button
+                  onClick={activeTab === 'images' ? handleGenerate : handleGenerateVideo}
+                  variant="default"
+                >
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  Try Again
+                </Button>
+              </div>
+            )}
 
-            {!isHistoryCollapsed && (
-              <>
-                {(activeTab === 'images' ? imageAssets.length === 0 : videoAssets.length === 0) ? (
-                  <div className="mt-3 flex h-24 items-center justify-center rounded-lg border border-dashed border-border">
-                    <p className="text-sm text-muted-foreground">
-                      {activeTab === 'images'
-                        ? 'Generated images will appear here'
-                        : 'Generated videos will appear here'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
-                {(activeTab === 'images' ? imageAssets : videoAssets).map((asset) => (
-                  <div key={asset.id} className="group/history relative shrink-0">
-                    <button
-                      onClick={() => {
-                        if (activeTab === 'images') {
-                          setSelectedGeneratedImage(asset);
-                        } else {
-                          setSelectedGeneratedVideo(asset);
-                        }
-                      }}
-                      className={cn(
-                        'relative aspect-square h-32 w-32 overflow-hidden rounded-xl border-2 transition-all',
-                        (activeTab === 'images'
-                          ? selectedGeneratedImage?.id === asset.id
-                          : selectedGeneratedVideo?.id === asset.id)
-                          ? 'border-primary ring-2 ring-primary/30'
-                          : 'border-transparent hover:border-primary/50'
-                      )}
-                    >
-                      {activeTab === 'images' ? (
-                        <Image src={asset.url} alt="Generated" fill className="object-cover" unoptimized />
-                      ) : (
-                        <video src={asset.url} muted playsInline className="h-full w-full object-cover" />
-                      )}
-                      {asset.isPinned && (
-                        <Pin className="absolute left-1.5 top-1.5 h-4 w-4 text-primary drop-shadow" />
-                      )}
-                      {asset.approvalStatus === 'approved' && (
-                        <div className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 shadow">
-                          <Check className="h-3 w-3 text-white" />
-                        </div>
-                      )}
-                    </button>
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          await apiClient.deleteGeneratedImage(asset.id);
-                          setNewlyGeneratedImages((prev) => prev.filter((i) => i.id !== asset.id));
-                          queryClient.invalidateQueries({ queryKey: ['generated-images', studioId] });
-                          if (activeTab === 'images' && selectedGeneratedImage?.id === asset.id) {
-                            setSelectedGeneratedImage(null);
-                          }
-                          if (activeTab === 'video' && selectedGeneratedVideo?.id === asset.id) {
-                            setSelectedGeneratedVideo(null);
-                          }
-                          toast.success(activeTab === 'images' ? 'Image deleted' : 'Video deleted');
-                        } catch (error) {
-                          toast.error(error instanceof Error ? error.message : 'Failed to delete');
-                        }
-                      }}
-                      className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 shadow-sm transition-opacity group-hover/history:opacity-100"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+            {/* Assets Display */}
+            {currentAssets.length === 0 && !isGenerating && !isGeneratingVideo ? (
+              <div className="flex h-full items-center justify-center">
+                <EmptyState
+                  icon={activeTab === 'images' ? Sparkles : Video}
+                  title={activeTab === 'images' ? 'Ready to Generate' : 'Ready to Generate Video'}
+                  description={
+                    activeTab === 'images'
+                      ? 'Add inspiration images, configure your settings, and click Generate to create stunning product visualizations.'
+                      : 'Pick a base image, add a motion prompt, and generate a video.'
+                  }
+                />
+              </div>
+            ) : viewMode === 'list' ? (
+              // List View - Scrollable Asset Cards
+              <div className="mx-auto max-w-4xl space-y-6">
+                {currentAssets.map((asset) => (
+                  <div key={asset.id} id={`asset-${asset.id}`}>
+                    <AssetCard
+                      asset={asset}
+                      baseImage={selectedBaseImageUrl ? { url: selectedBaseImageUrl, name: currentProduct?.name } : undefined}
+                      inspirationImages={inspirationImages}
+                      configuration={assetConfiguration}
+                      isPinned={asset.isPinned}
+                      isApproved={asset.approvalStatus === 'approved'}
+                      isRejected={asset.approvalStatus === 'rejected'}
+                      onPin={() => handlePinAsset(asset)}
+                      onApprove={() => handleApproveAsset(asset)}
+                      onDownload={() => handleDownloadAsset(asset)}
+                      onDelete={() => handleDeleteAsset(asset)}
+                    />
                   </div>
                 ))}
+              </div>
+            ) : (
+              // Grid View
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                {currentAssets.map((asset) => (
+                  <div
+                    key={asset.id}
+                    id={`asset-${asset.id}`}
+                    className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg border border-border bg-card transition-all hover:ring-2 hover:ring-primary/50"
+                    onClick={() => {
+                      if (activeTab === 'images') {
+                        setSelectedGeneratedImage(asset);
+                      } else {
+                        setSelectedGeneratedVideo(asset);
+                      }
+                      setViewMode('list');
+                      setTimeout(() => handleThumbnailClick(asset.id), 100);
+                    }}
+                  >
+                    {asset.assetType === 'video' ? (
+                      <video
+                        src={asset.url}
+                        className="h-full w-full object-cover"
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      <Image
+                        src={asset.url}
+                        alt="Generated"
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    )}
+
+                    {/* Hover overlay with quick actions */}
+                    <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="flex w-full items-center justify-between p-2">
+                        <div className="flex gap-1">
+                          {asset.isPinned && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Pinned
+                            </Badge>
+                          )}
+                          {asset.approvalStatus === 'approved' && (
+                            <Badge variant="success" className="text-[10px]">
+                              Approved
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </>
+                ))}
+              </div>
             )}
           </div>
+
+          {/* Right Thumbnail Nav */}
+          {currentAssets.length > 0 && viewMode === 'list' && (
+            <div className="hidden border-l border-border bg-card/30 lg:block">
+              <ThumbnailNav
+                items={currentAssets.map((asset) => ({
+                  id: asset.id,
+                  thumbnailUrl: asset.url,
+                  isVideo: asset.assetType === 'video',
+                }))}
+                onItemClick={handleThumbnailClick}
+              />
+            </div>
+          )}
         </main>
       </div>
+
+      <InspirationImageModal
+        isOpen={isInspirationModalOpen}
+        onClose={() => setIsInspirationModalOpen(false)}
+        onSubmit={addInspirationFromUrls}
+        existingImages={inspirationImages}
+        isProcessing={isAnalyzingInspiration}
+      />
     </div>
   );
 }

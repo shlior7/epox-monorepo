@@ -42,6 +42,8 @@ export interface JobStatusResult {
   imageIds?: string[];
   result: JobResult | null;
   error: string | null;
+  attempts: number;
+  maxAttempts: number;
   createdAt: Date;
   updatedAt: Date;
   startedAt?: Date | null;
@@ -133,6 +135,8 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResult | nul
     imageIds: job.result?.imageIds,
     result: job.result,
     error: job.error,
+    attempts: job.attempts,
+    maxAttempts: job.maxAttempts,
     createdAt: job.createdAt,
     updatedAt: job.completedAt ?? job.startedAt ?? job.createdAt,
     startedAt: job.startedAt,
@@ -153,6 +157,8 @@ export async function getJobsByFlow(flowId: string): Promise<JobStatusResult[]> 
     imageIds: job.result?.imageIds,
     result: job.result,
     error: job.error,
+    attempts: job.attempts,
+    maxAttempts: job.maxAttempts,
     createdAt: job.createdAt,
     updatedAt: job.completedAt ?? job.startedAt ?? job.createdAt,
     startedAt: job.startedAt,

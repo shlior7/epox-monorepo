@@ -6,6 +6,10 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
+import { storage } from 'visualizer-storage';
+
+// TODO: Replace with actual auth when implemented
+const PLACEHOLDER_CLIENT_ID = 'test-client';
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -18,10 +22,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
     }
 
-    // For now, return product count as total images (each product gets 1 image by default)
-    // Generated count will be updated when we actually generate assets
-    const totalImages = collection.productIds.length;
-    const generatedCount = 0; // Will be populated when generation is implemented
+    const flows = await db.generationFlows.listByCollectionSession(id);
+    const flowIds = flows.map((flow) => flow.id);
+
+    const [totalImages, generatedCount] = await Promise.all([
+      db.generatedAssets.countByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds),
+      db.generatedAssets.countByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds, 'completed'),
+    ]);
 
     // Migrate old selectedBaseImages format to new settings.inspirationImages if needed
     let settings = collection.settings;
@@ -165,17 +172,67 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const body = await request.json().catch(() => ({}));
+    const assetPolicy = body?.assetPolicy;
+    const validPolicies = ['delete_all', 'keep_pinned_approved'] as const;
+
+    if (assetPolicy !== undefined && !validPolicies.includes(assetPolicy)) {
+      return NextResponse.json(
+        { error: 'assetPolicy must be one of: delete_all, keep_pinned_approved' },
+        { status: 400 }
+      );
+    }
+
+    const effectivePolicy = (assetPolicy ?? 'keep_pinned_approved') as (typeof validPolicies)[number];
 
     // Fetch collection first to verify existence
     const collection = await db.collectionSessions.getById(id);
 
     if (!collection) {
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+    }
+
+    const flows = await db.generationFlows.listByCollectionSession(id);
+    const flowIds = flows.map((flow) => flow.id);
+
+    if (flowIds.length > 0) {
+      const assets = await db.generatedAssets.listByGenerationFlowIds(flowIds);
+      const activeAssets = assets.filter((asset) => !asset.deletedAt);
+
+      if (effectivePolicy === 'delete_all') {
+        for (const asset of activeAssets) {
+          if (!asset.assetUrl) continue;
+          try {
+            const url = new URL(asset.assetUrl);
+            const key = url.pathname.replace(/^\//, '');
+            await storage.delete(key);
+          } catch (storageError) {
+            console.warn(`⚠️ Failed to delete from storage:`, storageError);
+          }
+        }
+        await db.generatedAssets.deleteByGenerationFlowIds(flowIds);
+      } else {
+        const assetsToDelete = activeAssets.filter(
+          (asset) => !asset.pinned && asset.approvalStatus !== 'approved'
+        );
+
+        for (const asset of assetsToDelete) {
+          await db.generatedAssets.hardDelete(asset.id);
+          if (!asset.assetUrl) continue;
+          try {
+            const url = new URL(asset.assetUrl);
+            const key = url.pathname.replace(/^\//, '');
+            await storage.delete(key);
+          } catch (storageError) {
+            console.warn(`⚠️ Failed to delete from storage:`, storageError);
+          }
+        }
+      }
     }
 
     // Delete collection

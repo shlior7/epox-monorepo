@@ -39,6 +39,8 @@ export async function GET(
       progress: job.progress,
       result: job.result,
       error: job.error,
+      attempts: job.attempts,
+      maxAttempts: job.maxAttempts,
       imageIds: job.result?.imageIds ?? [],
       imageUrls: job.result?.imageUrls ?? [],
       videoIds: job.result?.videoIds ?? [],

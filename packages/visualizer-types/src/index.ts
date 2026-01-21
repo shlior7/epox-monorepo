@@ -12,6 +12,8 @@ export type {
   FlowGenerationSettings,
   VideoPromptSettings,
   VideoGenerationSettings,
+  VideoResolution,
+  VideoAspectRatio,
   PromptSettings,
   PromptTags,
   AIModelConfig,
@@ -42,6 +44,8 @@ export {
   PROMPT_TAG_OPTIONS,
   VIDEO_TYPE_OPTIONS,
   CAMERA_MOTION_OPTIONS,
+  VIDEO_ASPECT_RATIO_OPTIONS,
+  VIDEO_RESOLUTION_OPTIONS,
   // New presets for studio settings
   STYLE_PRESETS,
   LIGHTING_PRESETS,

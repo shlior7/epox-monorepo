@@ -37,9 +37,8 @@ interface UpdateSettingsRequest {
     settings?: {
       videoType?: string;
       cameraMotion?: string;
-      subjectAction?: string;
-      sceneAction?: string;
-      durationSeconds?: number;
+      aspectRatio?: '16:9' | '9:16';
+      resolution?: '720p' | '1080p';
       sound?: 'with_music' | 'no_sound' | 'automatic' | 'custom';
       soundPrompt?: string;
     };

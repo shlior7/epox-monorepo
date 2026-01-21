@@ -15,7 +15,6 @@ import {
   PanelRightClose,
   Loader2,
   Play,
-  Upload,
   X,
   ChevronDown,
   Image as ImageIcon,
@@ -39,6 +38,7 @@ import {
   MinimalAccordionContent,
 } from '@/components/ui/minimal-accordion';
 import { SceneLoader } from '@/components/ui/scene-loader';
+import { InspirationImageModal } from '@/components/studio/InspirationImageModal';
 import {
   Select,
   SelectContent,
@@ -47,6 +47,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { GenerationFlowCard } from '@/components/studio/GenerationFlowCard';
+import { ProductAssetCard } from '@/components/studio/ProductAssetCard';
+import { ProductThumbnailNav } from '@/components/studio/ThumbnailNav';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
 import { toast } from '@/components/ui/toast';
@@ -54,6 +56,7 @@ import type { AssetStatus, ApprovalStatus } from '@/lib/types';
 import type {
   FlowGenerationSettings,
   InspirationImage,
+  InspirationSourceType,
   SceneTypeInspirationMap,
   StylePreset,
   LightingPreset,
@@ -79,8 +82,6 @@ const ASPECT_OPTIONS = [
   { value: '4:3', label: '4:3', icon: '▱' },
 ] as const;
 
-const VIDEO_DURATION_SECONDS = 5;
-
 type StudioTab = 'images' | 'video';
 
 interface VideoPreset {
@@ -103,7 +104,6 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   const { id } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>('matrix');
@@ -114,6 +114,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   const [activeTab, setActiveTab] = useState<StudioTab>('images');
   const [videoExpandedSections, setVideoExpandedSections] = useState<string[]>(['video-inputs', 'video-prompt']);
 
+  // List view state
+  const mainListRef = useRef<HTMLDivElement>(null);
+
   // Settings state (mirrors single product studio)
   const [inspirationImages, setInspirationImages] = useState<InspirationImage[]>([]);
   const [sceneTypeInspirations, setSceneTypeInspirations] = useState<SceneTypeInspirationMap>({});
@@ -121,6 +124,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   const [lightingPreset, setLightingPreset] = useState<LightingPreset>('Studio Soft Light');
   const [userPrompt, setUserPrompt] = useState('');
   const [isAnalyzingInspiration, setIsAnalyzingInspiration] = useState(false);
+  const [isInspirationModalOpen, setIsInspirationModalOpen] = useState(false);
   const [outputSettings, setOutputSettings] = useState({
     aspectRatio: '1:1',
     quality: '2k' as '1k' | '2k' | '4k',
@@ -196,6 +200,8 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
         setVideoSettings({
           videoType: s.video.settings?.videoType,
           cameraMotion: s.video.settings?.cameraMotion,
+          aspectRatio: s.video.settings?.aspectRatio,
+          resolution: s.video.settings?.resolution,
           sound: s.video.settings?.sound,
           soundPrompt: s.video.settings?.soundPrompt,
         });
@@ -223,18 +229,6 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   const collectionProducts = useMemo(() => {
     return productsData?.products.filter((p) => collection?.productIds?.includes(p.id)) || [];
   }, [productsData?.products, collection?.productIds]);
-
-  // Derive scene types from products
-  const derivedSceneTypes = useMemo(() => {
-    const sceneTypeCounts: Record<string, number> = {};
-    for (const product of collectionProducts) {
-      const sceneTypes = product.sceneTypes || [];
-      for (const sceneType of sceneTypes) {
-        sceneTypeCounts[sceneType] = (sceneTypeCounts[sceneType] || 0) + 1;
-      }
-    }
-    return sceneTypeCounts;
-  }, [collectionProducts]);
 
   // Scene type groups from inspiration analysis
   const sceneTypeGroups = useMemo(() => {
@@ -433,6 +427,8 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       const normalizedVideoSettings: VideoPromptSettings = {
         videoType: videoSettings.videoType,
         cameraMotion: videoSettings.cameraMotion,
+        aspectRatio: videoSettings.aspectRatio,
+        resolution: videoSettings.resolution,
         sound: videoSettings.sound,
         soundPrompt: videoSettings.soundPrompt,
       };
@@ -531,6 +527,8 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     const lines = [basePrompt.trim()];
     if (settings.videoType) lines.push(`Video type: ${settings.videoType}`);
     if (settings.cameraMotion) lines.push(`Camera motion: ${settings.cameraMotion}`);
+    if (settings.aspectRatio) lines.push(`Aspect ratio: ${settings.aspectRatio}`);
+    if (settings.resolution) lines.push(`Resolution: ${settings.resolution}`);
     if (settings.sound) {
       if (settings.sound === 'custom' && settings.soundPrompt?.trim()) {
         lines.push(`Sound: ${settings.soundPrompt.trim()}`);
@@ -568,6 +566,8 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
           settings: {
             videoType: videoSettings.videoType,
             cameraMotion: videoSettings.cameraMotion,
+            aspectRatio: videoSettings.aspectRatio,
+            resolution: videoSettings.resolution,
             sound: videoSettings.sound,
             soundPrompt: videoSettings.soundPrompt,
           },
@@ -696,7 +696,8 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
             sourceImageUrl: baseImage.url,
             prompt,
             settings: {
-              durationSeconds: VIDEO_DURATION_SECONDS,
+              aspectRatio: videoSettings.aspectRatio ?? '16:9',
+              resolution: videoSettings.resolution ?? '720p',
             },
           });
 
@@ -756,77 +757,78 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     },
   });
 
-  // Handle inspiration image upload
-  const handleInspirationUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+  const analyzeAndAddInspiration = useCallback(
+    async (imageUrl: string, sourceType: InspirationSourceType) => {
+      const analysisResponse = await fetch('/api/vision-scanner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl,
+          sourceType,
+        }),
+      });
 
-    setIsAnalyzingInspiration(true);
+      if (!analysisResponse.ok) {
+        throw new Error('Vision Scanner analysis failed');
+      }
 
-    try {
-      for (const file of Array.from(files)) {
-        // Upload the file
-        const uploadResult = await apiClient.uploadFile(file, 'inspiration', { collectionId: id });
+      const { inspirationImage, analysis } = await analysisResponse.json();
+      const detectedSceneType = analysis?.json?.detectedSceneType || 'General';
 
-        // Create inspiration image entry
-        const newImage: InspirationImage = {
-          url: uploadResult.url,
-          thumbnailUrl: uploadResult.url,
-          tags: [],
-          addedAt: new Date().toISOString(),
-          sourceType: 'upload',
-        };
-
-        // Add to state immediately
-        setInspirationImages((prev) => [...prev, newImage]);
-
-        // Analyze with Vision Scanner
-        try {
-          const analysisResponse = await fetch('/api/vision-scanner', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageUrl: uploadResult.url }),
-          });
-
-          if (analysisResponse.ok) {
-            const analysisData = await analysisResponse.json();
-            if (analysisData.success && analysisData.analysis) {
-              const analysis: VisionAnalysisResult = analysisData.analysis;
-              const detectedSceneType = analysis.json?.detectedSceneType || 'General';
-
-              // Update scene type inspirations
-              setSceneTypeInspirations((prev) => {
-                const existing = prev[detectedSceneType] || {
-                  inspirationImages: [],
-                  mergedAnalysis: analysis,
-                };
-                return {
-                  ...prev,
-                  [detectedSceneType]: {
-                    inspirationImages: [...existing.inspirationImages, newImage],
-                    mergedAnalysis: analysis, // Use latest analysis (could merge in future)
-                  },
-                };
-              });
-
-              toast.success(`Analyzed: ${detectedSceneType} scene detected`);
-            }
-          }
-        } catch (analysisError) {
-          console.error('Vision analysis failed:', analysisError);
-          // Still keep the image even if analysis fails
+      setInspirationImages((prev) => {
+        if (prev.some((img) => img.url === inspirationImage.url)) {
+          return prev;
         }
+        return [...prev, inspirationImage];
+      });
+
+      setSceneTypeInspirations((prev) => {
+        const existing = prev[detectedSceneType];
+        const nextImages = existing
+          ? [...existing.inspirationImages, inspirationImage]
+          : [inspirationImage];
+        const uniqueImages = nextImages.filter(
+          (img, idx) => nextImages.findIndex((item) => item.url === img.url) === idx
+        );
+
+        return {
+          ...prev,
+          [detectedSceneType]: {
+            inspirationImages: uniqueImages,
+            mergedAnalysis: analysis as VisionAnalysisResult,
+          },
+        };
+      });
+
+      return detectedSceneType;
+    },
+    []
+  );
+
+  const addInspirationFromUrls = useCallback(
+    async (items: Array<{ url: string; sourceType: InspirationSourceType }>) => {
+      if (items.length === 0) return;
+      setIsAnalyzingInspiration(true);
+
+      try {
+        for (const item of items) {
+          try {
+            const detectedSceneType = await analyzeAndAddInspiration(
+              item.url,
+              item.sourceType
+            );
+            toast.success(`Analyzed: ${detectedSceneType} scene detected`);
+          } catch (err) {
+            console.error('Inspiration analysis failed:', err);
+            toast.error('Failed to analyze inspiration image');
+          }
+        }
+      } finally {
+        setIsAnalyzingInspiration(false);
       }
-    } catch (error) {
-      console.error('Upload failed:', error);
-      toast.error('Failed to upload inspiration image');
-    } finally {
-      setIsAnalyzingInspiration(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
+    },
+    [analyzeAndAddInspiration]
+  );
 
   // Remove inspiration image
   const handleRemoveInspiration = (index: number) => {
@@ -886,6 +888,41 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete revision');
     }
+  };
+
+  // Scroll to product in list view
+  const handleProductThumbnailClick = useCallback((productId: string) => {
+    const element = document.getElementById(`product-${productId}`);
+    if (element && mainListRef.current) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
+
+  // Asset action handlers for list view
+  const handlePinAsset = async (flowId: string) => {
+    try {
+      // For now, we'll just show a toast since pinning is per-revision
+      toast.info('Use the individual studio to pin specific revisions');
+    } catch (error) {
+      toast.error('Failed to toggle pin');
+    }
+  };
+
+  const handleApproveAsset = async (flowId: string) => {
+    try {
+      toast.info('Use the individual studio to approve specific revisions');
+    } catch (error) {
+      toast.error('Failed to approve');
+    }
+  };
+
+  const handleDownloadAsset = (revision: { imageUrl: string }, productName: string) => {
+    const link = document.createElement('a');
+    link.href = revision.imageUrl;
+    link.download = `${productName}-generated.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const isLoading = isLoadingCollection || isLoadingProducts || isLoadingFlows;
@@ -970,18 +1007,18 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
           </div>
         </div>
 
-          {/* Progress Bar */}
-          {isGenerating && (
-            <div className="mt-4">
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <span className="text-muted-foreground">
+        {/* Progress Bar */}
+        {isGenerating && (
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-muted-foreground">
                   Generating {generatingProductIds.length}{' '}
                   {activeGenerationType === 'video' ? 'video' : 'image'}
                   {generatingProductIds.length !== 1 ? 's' : ''}...
-                  </span>
-                </div>
+                </span>
+              </div>
               <span className="font-medium">
                 {(() => {
                   const progressValues = Array.from(flowJobs.values()).map((j) => j.progress);
@@ -1082,7 +1119,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                             ))}
                             {inspirationImages.length < 5 && (
                               <button
-                                onClick={() => fileInputRef.current?.click()}
+                                onClick={() => setIsInspirationModalOpen(true)}
                                 disabled={isAnalyzingInspiration}
                                 className="flex aspect-square h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 disabled:opacity-50"
                               >
@@ -1094,14 +1131,6 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                               </button>
                             )}
                           </div>
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className="hidden"
-                            onChange={handleInspirationUpload}
-                          />
                         </div>
 
                         {/* Detected Scene Types */}
@@ -1453,55 +1482,131 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
             </div>
           </div>
 
-          {/* Flow Cards Grid */}
-          <div className="flex-1 overflow-y-auto p-8">
-            {filteredFlows.length > 0 ? (
-              <div
-                className={cn(
-                  'grid gap-4',
-                  viewMode === 'matrix'
-                    ? showConfigPanel
-                      ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3'
-                      : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-                    : 'grid-cols-1'
-                )}
-              >
-                {filteredFlows.map((flow, index) => (
-                  <GenerationFlowCard
-                    key={flow.id}
-                    flowId={flow.id}
-                    collectionId={id}
-                    product={flow.product}
-                    baseImages={flow.baseImages}
-                    selectedBaseImageId={flow.selectedBaseImageId}
-                    revisions={flow.revisions}
-                    status={flow.status}
-                    approvalStatus={flow.approvalStatus}
-                    isPinned={flow.isPinned}
-                    sceneType={flow.sceneType}
-                    onChangeBaseImage={(imageId) => {
-                      setSelectedBaseImages((prev) => ({ ...prev, [flow.product.id]: imageId }));
-                    }}
-                    onDeleteRevision={handleDeleteRevision}
-                    onClick={() => handleProductClick(flow.product.id, flow.realFlowId)}
-                    className={cn('animate-fade-in cursor-pointer opacity-0', `stagger-${Math.min(index + 1, 6)}`)}
-                  />
-                ))}
+          {/* Flow Cards Grid / List */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Scrollable Main View */}
+            <div
+              ref={mainListRef}
+              className={cn(
+                'flex-1 overflow-y-auto p-8',
+                viewMode === 'list' && 'p-4 md:p-6'
+              )}
+            >
+              {filteredFlows.length > 0 ? (
+                viewMode === 'matrix' ? (
+                  // Grid View - GenerationFlowCard
+                  <div
+                    className={cn(
+                      'grid gap-4',
+                      showConfigPanel
+                        ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3'
+                        : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                    )}
+                  >
+                    {filteredFlows.map((flow, index) => (
+                      <GenerationFlowCard
+                        key={flow.id}
+                        flowId={flow.id}
+                        collectionId={id}
+                        product={flow.product}
+                        baseImages={flow.baseImages}
+                        selectedBaseImageId={flow.selectedBaseImageId}
+                        revisions={flow.revisions}
+                        status={flow.status}
+                        approvalStatus={flow.approvalStatus}
+                        isPinned={flow.isPinned}
+                        sceneType={flow.sceneType}
+                        onChangeBaseImage={(imageId) => {
+                          setSelectedBaseImages((prev) => ({ ...prev, [flow.product.id]: imageId }));
+                        }}
+                        onDeleteRevision={handleDeleteRevision}
+                        onClick={() => handleProductClick(flow.product.id, flow.realFlowId)}
+                        className={cn('animate-fade-in cursor-pointer opacity-0', `stagger-${Math.min(index + 1, 6)}`)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  // List View - ProductAssetCard with gallery navigation
+                  <div className="mx-auto max-w-4xl space-y-6">
+                    {filteredFlows.map((flow) => (
+                      <div key={flow.id} id={`product-${flow.product.id}`}>
+                        <ProductAssetCard
+                          product={{
+                            id: flow.product.id,
+                            name: flow.product.name,
+                            sku: flow.product.sku,
+                            thumbnailUrl: flow.baseImages[0]?.url,
+                          }}
+                          revisions={flow.revisions.map((r) => ({
+                            id: r.id,
+                            imageUrl: r.imageUrl,
+                            timestamp: r.timestamp,
+                            type: r.type,
+                            isVideo: false,
+                          }))}
+                          configuration={{
+                            sceneType: flow.sceneType,
+                            stylePreset,
+                            lightingPreset,
+                            aspectRatio: outputSettings.aspectRatio,
+                            quality: outputSettings.quality,
+                          }}
+                          isPinned={flow.isPinned}
+                          isApproved={flow.approvalStatus === 'approved'}
+                          onPin={() => handlePinAsset(flow.id)}
+                          onApprove={() => handleApproveAsset(flow.id)}
+                          onDownload={() => {
+                            const latestRevision = flow.revisions[0];
+                            if (latestRevision) {
+                              handleDownloadAsset(latestRevision, flow.product.name);
+                            }
+                          }}
+                          onDelete={(revisionId) => handleDeleteRevision(revisionId)}
+                          onGenerate={() => handleProductClick(flow.product.id, flow.realFlowId)}
+                          onOpenStudio={() => handleProductClick(flow.product.id, flow.realFlowId)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <EmptyState
+                  icon={Sparkles}
+                  title="No products in collection"
+                  description="Add products to start generating images."
+                  action={{
+                    label: 'Add Products',
+                    onClick: () => { },
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Right Product Thumbnail Nav (List View Only) */}
+            {viewMode === 'list' && filteredFlows.length > 0 && (
+              <div className="hidden border-l border-border bg-card/30 lg:block">
+                <ProductThumbnailNav
+                  items={filteredFlows.map((flow) => ({
+                    id: flow.product.id,
+                    thumbnailUrl: flow.baseImages[0]?.url,
+                    name: flow.product.name,
+                    generatedCount: flow.revisions.length,
+                  }))}
+                  onItemClick={handleProductThumbnailClick}
+                />
               </div>
-            ) : (
-              <EmptyState
-                icon={Sparkles}
-                title="No products in collection"
-                description="Add products to start generating images."
-                action={{
-                  label: 'Add Products',
-                  onClick: () => {},
-                }}
-              />
             )}
           </div>
         </main>
       </div>
+
+      <InspirationImageModal
+        isOpen={isInspirationModalOpen}
+        onClose={() => setIsInspirationModalOpen(false)}
+        onSubmit={addInspirationFromUrls}
+        existingImages={inspirationImages}
+        isProcessing={isAnalyzingInspiration}
+      />
     </div>
   );
 }

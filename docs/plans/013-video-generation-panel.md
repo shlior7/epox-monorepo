@@ -79,8 +79,6 @@ Users can save the current video settings as a named preset and re-apply later.
 export interface VideoPromptSettings {
   videoType?: string;
   cameraMotion?: string;
-  subjectAction?: string;
-  sceneAction?: string;
   durationSeconds?: number;
 }
 
@@ -121,8 +119,6 @@ function buildVideoPrompt(
   const lines = [basePrompt.trim()];
   if (settings.videoType) lines.push(`Video type: ${settings.videoType}`);
   if (settings.cameraMotion) lines.push(`Camera motion: ${settings.cameraMotion}`);
-  if (settings.subjectAction) lines.push(`Subject action: ${settings.subjectAction}`);
-  if (settings.sceneAction) lines.push(`Scene action: ${settings.sceneAction}`);
   if (settings.durationSeconds) lines.push(`Duration: ${settings.durationSeconds}s`);
   if (inspirationNote) lines.push(`Style reference: ${inspirationNote}`);
   return lines.filter(Boolean).join('\n');

@@ -4,9 +4,6 @@ const { withSentryConfig } = require('@sentry/nextjs');
 const nextConfig = {
   transpilePackages: ['visualizer-types', 'visualizer-db', 'visualizer-ai', '@scenergy/erp-service'],
   output: 'standalone',
-  experimental: {
-    instrumentationHook: true,
-  },
   // Required to build with Turbopack when webpack config is present.
   turbopack: {},
   images: {

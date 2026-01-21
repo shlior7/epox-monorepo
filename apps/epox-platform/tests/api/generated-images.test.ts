@@ -15,6 +15,7 @@ vi.mock('@/lib/services/db', () => ({
       listByGenerationFlow: vi.fn(),
       countWithFilters: vi.fn(),
       listWithFilters: vi.fn(),
+      getDistinctSceneTypes: vi.fn(),
       getById: vi.fn(),
       hardDelete: vi.fn(),
     },
@@ -36,6 +37,7 @@ import { storage } from 'visualizer-storage';
 describe('Generated Images API - GET /api/generated-images', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(db.generatedAssets.getDistinctSceneTypes).mockResolvedValue([]);
   });
 
   it('should validate pagination parameters', async () => {
@@ -126,7 +128,7 @@ describe('Generated Images API - GET /api/generated-images', () => {
     vi.mocked(db.products.getNamesByIds).mockResolvedValue(new Map([['prod-1', 'Chair']]));
 
     const request = new NextRequest(
-      'http://localhost:3000/api/generated-images?flowId=flow-1&status=completed&approval=pending&sort=date&limit=5&page=1'
+      'http://localhost:3000/api/generated-images?status=completed&approval=pending&sort=date&limit=5&page=1'
     );
     const response = await getGeneratedImages(request);
     const data = await response.json();
@@ -138,6 +140,42 @@ describe('Generated Images API - GET /api/generated-images', () => {
       productName: 'Chair',
       approvalStatus: 'pending',
       assetType: 'image',
+    });
+  });
+
+  it('should filter by productIds', async () => {
+    vi.mocked(db.generatedAssets.countWithFilters).mockResolvedValue(2);
+    vi.mocked(db.generatedAssets.listWithFilters).mockResolvedValue([
+      {
+        id: 'asset-1',
+        assetUrl: 'https://cdn.example.com/a1.jpg',
+        assetType: 'image',
+        productIds: ['prod-1'],
+        status: 'completed',
+        approvalStatus: 'pending',
+        pinned: false,
+        createdAt: new Date('2025-01-01T00:00:00Z'),
+        settings: { aspectRatio: '1:1', imageQuality: '2k' },
+        chatSessionId: 'chat-1',
+        generationFlowId: null,
+      },
+    ] as any);
+    vi.mocked(db.products.getNamesByIds).mockResolvedValue(new Map([['prod-1', 'Chair']]));
+
+    const request = new NextRequest(
+      'http://localhost:3000/api/generated-images?productIds=prod-1,prod-2&sort=date&limit=5&page=1'
+    );
+    const response = await getGeneratedImages(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(db.generatedAssets.listWithFilters).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ productIds: ['prod-1', 'prod-2'] })
+    );
+    expect(data.images[0]).toMatchObject({
+      id: 'asset-1',
+      productName: 'Chair',
     });
   });
 

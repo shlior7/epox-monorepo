@@ -27,8 +27,8 @@ const GenerateVideoRequestSchema = z.object({
   inspirationNote: z.string().optional(),
   settings: z
     .object({
-      durationSeconds: z.number().positive().optional(),
-      fps: z.number().positive().optional(),
+      aspectRatio: z.enum(['16:9', '9:16']).optional(),
+      resolution: z.enum(['720p', '1080p']).optional(),
       model: z.string().optional(),
     })
     .optional(),

@@ -47,21 +47,59 @@ export async function GET(request: NextRequest) {
 
     const totalPages = Math.ceil(total / limit);
 
+    const collectionIds = collections.map((collection) => collection.id);
+    const flows = await db.generationFlows.listByCollectionSessionIds(collectionIds);
+    const flowIdsByCollection = new Map<string, string[]>();
+
+    for (const flow of flows) {
+      const collectionId = flow.collectionSessionId;
+      if (!collectionId) continue;
+      const existing = flowIdsByCollection.get(collectionId) ?? [];
+      existing.push(flow.id);
+      flowIdsByCollection.set(collectionId, existing);
+    }
+
+    const assetStatsByCollection = new Map<
+      string,
+      { totalImages: number; generatedCount: number; thumbnailUrl: string }
+    >();
+
+    await Promise.all(
+      collectionIds.map(async (collectionId) => {
+        const flowIds = flowIdsByCollection.get(collectionId) ?? [];
+        const [totalImages, generatedCount, firstAsset] = await Promise.all([
+          db.generatedAssets.countByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds),
+          db.generatedAssets.countByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds, 'completed'),
+          db.generatedAssets.getFirstByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds, 'completed'),
+        ]);
+
+        assetStatsByCollection.set(collectionId, {
+          totalImages,
+          generatedCount,
+          thumbnailUrl: firstAsset?.assetUrl ?? '',
+        });
+      })
+    );
+
     // Map collections to frontend format
-    // TODO: Add actual asset counting when generation is implemented
     const mappedCollections = collections.map((c) => {
       const productIds = c.productIds as string[];
+      const assetStats = assetStatsByCollection.get(c.id) ?? {
+        totalImages: 0,
+        generatedCount: 0,
+        thumbnailUrl: '',
+      };
       return {
         id: c.id,
         name: c.name,
         status: c.status,
         productCount: productIds.length,
         productIds,
-        generatedCount: 0, // Will be populated when generation is implemented
-        totalImages: productIds.length, // Each product gets 1 image by default
+        generatedCount: assetStats.generatedCount,
+        totalImages: assetStats.totalImages,
         createdAt: c.createdAt.toISOString(),
         updatedAt: c.updatedAt.toISOString(),
-        thumbnailUrl: '', // Will be populated when assets are generated
+        thumbnailUrl: assetStats.thumbnailUrl,
       };
     });
 

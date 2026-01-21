@@ -18,7 +18,11 @@ export async function GET(request: NextRequest) {
 
     // Parse query parameters with defaults
     const flowId = searchParams.get('flowId') ?? undefined;
-    const productId = searchParams.get('productId') ?? undefined;
+    const productIdsParam = searchParams.get('productIds') ?? undefined;
+    const parsedProductIds = productIdsParam
+      ? productIdsParam.split(',').map((id) => id.trim()).filter(Boolean)
+      : [];
+    const productId = parsedProductIds.length === 0 ? searchParams.get('productId') ?? undefined : undefined;
     const pinnedFilter = searchParams.get('pinned') ?? undefined;
     const statusFilter = searchParams.get('status') ?? undefined;
     const approvalFilter = searchParams.get('approval') ?? undefined;
@@ -48,6 +52,12 @@ export async function GET(request: NextRequest) {
       if (pinnedFilter !== undefined) {
         const isPinned = pinnedFilter === 'true';
         filteredAssets = filteredAssets.filter((a) => a.pinned === isPinned);
+      }
+      if (parsedProductIds.length > 0 || productId) {
+        const productFilterIds = parsedProductIds.length > 0 ? parsedProductIds : [productId!];
+        filteredAssets = filteredAssets.filter((asset) =>
+          asset.productIds?.some((id) => productFilterIds.includes(id))
+        );
       }
 
       // Sort
@@ -106,6 +116,7 @@ export async function GET(request: NextRequest) {
     const filterOptions = {
       flowId,
       productId,
+      productIds: parsedProductIds.length > 0 ? parsedProductIds : undefined,
       pinned: pinnedFilter === 'true' ? true : pinnedFilter === 'false' ? false : undefined,
       status: statusFilter as AssetStatus | undefined,
       approvalStatus: approvalFilter as ApprovalStatus | undefined,
@@ -123,6 +134,7 @@ export async function GET(request: NextRequest) {
       db.generatedAssets.getDistinctSceneTypes(PLACEHOLDER_CLIENT_ID, {
         flowId: filterOptions.flowId,
         productId: filterOptions.productId,
+        productIds: filterOptions.productIds,
         status: filterOptions.status,
       }),
     ]);

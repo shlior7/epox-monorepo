@@ -153,8 +153,36 @@ Rules:
 - Return plain text only (no JSON, no quotes).
 - Keep it to 2-3 sentences, max 60 words.
 - Align strictly with the image contents; do not invent new objects.
-- Incorporate settings if provided (video type, camera motion, subject action, scene action, duration).
+- Incorporate settings if provided (video type, camera motion, aspect ratio, resolution, sound).
+- Follow best practices: single continuous shot, clear subject action, smooth physically plausible motion, consistent lighting/scale, avoid impossible actions or physics-defying effects.
 `;
+
+const VIDEO_SYSTEM_PROMPT_PREFIX = 'SYSTEM GUIDELINES:';
+
+const VIDEO_GENERATION_SYSTEM_GUIDELINES = `Create a high-end commercial product video that showcases the product.
+- Preserve product identity (shape, materials, colors, branding) from the source image.
+- Keep background, lighting, and shadows consistent; avoid flicker.
+- Use a single continuous shot with smooth, physically plausible motion.
+- Keep the product in frame and in focus; avoid occlusion.
+- Do not add or remove objects or change the environment unless explicitly requested.
+- Follow any provided settings and sound instructions exactly.`;
+
+const buildVideoGenerationPrompt = (
+  prompt: string,
+  settings: { aspectRatio?: GeminiVideoRequest['aspectRatio']; resolution?: GeminiVideoRequest['resolution'] }
+): string => {
+  const trimmedPrompt = prompt.trim();
+  if (trimmedPrompt.startsWith(VIDEO_SYSTEM_PROMPT_PREFIX)) {
+    return trimmedPrompt;
+  }
+
+  const settingsLines: string[] = [];
+  if (settings.aspectRatio) settingsLines.push(`Aspect ratio: ${settings.aspectRatio}`);
+  if (settings.resolution) settingsLines.push(`Resolution: ${settings.resolution}`);
+  const settingsBlock = settingsLines.length > 0 ? `Settings:\n${settingsLines.join('\n')}\n` : '';
+
+  return `${VIDEO_SYSTEM_PROMPT_PREFIX}\n${VIDEO_GENERATION_SYSTEM_GUIDELINES}\n\n${settingsBlock}User prompt:\n${trimmedPrompt}`;
+};
 
 const SUPPORTED_ASPECT_RATIOS = new Set(['1:1', '3:4', '4:3', '9:16', '16:9']);
 
@@ -811,8 +839,8 @@ export class GeminiService {
         operationName,
         prompt: request.prompt,
         model: request.model,
-        durationSeconds: request.durationSeconds,
-        fps: request.fps,
+        aspectRatio: request.aspectRatio,
+        resolution: request.resolution,
       });
 
       // Increase interval for next poll (capped at max)
@@ -836,20 +864,29 @@ export class GeminiService {
     const videoClient = this.vertexClient ?? this.client;
     const resolvedModel = this.vertexClient ? normalizeVertexModelName(model) : model;
 
+    // Map resolution to Gemini's personGeneration format (if applicable)
+    // Veo uses aspectRatio directly
+    const aspectRatio = request.aspectRatio ?? '16:9';
+
+    const prompt = buildVideoGenerationPrompt(request.prompt, {
+      aspectRatio: request.aspectRatio,
+      resolution: request.resolution,
+    });
+
     console.log(`🎬 GEMINI: Starting video generation with ${resolvedModel}...`);
+    console.log(`🎬 GEMINI: aspectRatio=${aspectRatio}, resolution=${request.resolution}`);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const operation = await (videoClient.models as any).generateVideos({
       model: resolvedModel,
-      prompt: request.prompt,
+      prompt,
       image: {
         imageBytes: image.base64Data,
         mimeType: image.mimeType,
       },
       config: {
         numberOfVideos: 1,
-        ...(request.durationSeconds ? { durationSeconds: request.durationSeconds } : {}),
-        ...(request.fps ? { fps: request.fps } : {}),
+        aspectRatio,
       },
     });
 
@@ -868,8 +905,8 @@ export class GeminiService {
     operationName: string;
     prompt: string;
     model?: string;
-    durationSeconds?: number;
-    fps?: number;
+    aspectRatio?: '16:9' | '9:16';
+    resolution?: '720p' | '1080p';
   }): Promise<GeminiVideoResponse | null> {
     const videoClient = this.vertexClient ?? this.client;
 
@@ -895,6 +932,10 @@ export class GeminiService {
       throw new Error('Video generation completed but no URI returned.');
     }
 
+    const resolvedPrompt = buildVideoGenerationPrompt(request.prompt, {
+      aspectRatio: request.aspectRatio,
+      resolution: request.resolution,
+    });
     const { buffer, mimeType } = await this.downloadGeneratedVideo(downloadLink);
     const resolvedModel = request.model ?? 'veo-3.1-generate-preview';
 
@@ -904,10 +945,10 @@ export class GeminiService {
       mimeType,
       metadata: {
         model: resolvedModel,
-        prompt: request.prompt,
+        prompt: resolvedPrompt,
         generatedAt: new Date().toISOString(),
-        durationSeconds: request.durationSeconds,
-        fps: request.fps,
+        aspectRatio: request.aspectRatio,
+        resolution: request.resolution,
       },
     };
   }
@@ -972,9 +1013,8 @@ export class GeminiService {
     settings?: {
       videoType?: string;
       cameraMotion?: string;
-      subjectAction?: string;
-      sceneAction?: string;
-      durationSeconds?: number;
+      aspectRatio?: '16:9' | '9:16';
+      resolution?: '720p' | '1080p';
       sound?: 'with_music' | 'no_sound' | 'automatic' | 'custom';
       soundPrompt?: string;
     },
@@ -1002,14 +1042,11 @@ export class GeminiService {
     if (settings?.cameraMotion) {
       lines.push(`Camera motion: ${settings.cameraMotion}`);
     }
-    if (settings?.subjectAction) {
-      lines.push(`Subject action: ${settings.subjectAction}`);
+    if (settings?.aspectRatio) {
+      lines.push(`Aspect ratio: ${settings.aspectRatio}`);
     }
-    if (settings?.sceneAction) {
-      lines.push(`Scene action: ${settings.sceneAction}`);
-    }
-    if (settings?.durationSeconds) {
-      lines.push(`Duration: ${settings.durationSeconds}s`);
+    if (settings?.resolution) {
+      lines.push(`Resolution: ${settings.resolution}`);
     }
     if (settings?.sound) {
       if (settings.sound === 'custom' && settings.soundPrompt?.trim()) {

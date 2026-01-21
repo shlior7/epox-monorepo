@@ -24,13 +24,30 @@ vi.mock('@/lib/services/db', () => ({
       listWithFilters: vi.fn(),
       countWithFilters: vi.fn(),
     },
+    generationFlows: {
+      create: vi.fn(),
+      listByCollectionSessionIds: vi.fn(),
+      listByCollectionSession: vi.fn(),
+    },
     generatedAssets: {
       list: vi.fn(),
+      countByGenerationFlowIds: vi.fn(),
+      getFirstByGenerationFlowIds: vi.fn(),
+      listByGenerationFlowIds: vi.fn(),
+      deleteByGenerationFlowIds: vi.fn(),
+      hardDelete: vi.fn(),
     },
   },
 }));
 
+vi.mock('visualizer-storage', () => ({
+  storage: {
+    delete: vi.fn(),
+  },
+}));
+
 import { db } from '@/lib/services/db';
+import { storage } from 'visualizer-storage';
 
 describe('Collections API - GET /api/collections', () => {
   beforeEach(() => {
@@ -38,6 +55,9 @@ describe('Collections API - GET /api/collections', () => {
     // Setup default mocks for list endpoint
     vi.mocked(db.collectionSessions.countWithFilters).mockResolvedValue(0);
     vi.mocked(db.collectionSessions.listWithFilters).mockResolvedValue([]);
+    vi.mocked(db.generationFlows.listByCollectionSessionIds).mockResolvedValue([]);
+    vi.mocked(db.generatedAssets.countByGenerationFlowIds).mockResolvedValue(0);
+    vi.mocked(db.generatedAssets.getFirstByGenerationFlowIds).mockResolvedValue(null);
   });
 
   it('should return empty list when no collections exist', async () => {
@@ -103,6 +123,16 @@ describe('Collections API - GET /api/collections', () => {
 describe('Collections API - POST /api/collections', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(db.generationFlows.create).mockResolvedValue({
+      id: 'flow-1',
+      collectionSessionId: 'coll-1',
+      productIds: ['prod-1'],
+      status: 'draft',
+      settings: {},
+      selectedBaseImages: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any);
   });
 
   it('should create a new collection with valid data', async () => {
@@ -221,6 +251,8 @@ describe('Collections API - POST /api/collections', () => {
 describe('Collections API - GET /api/collections/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(db.generationFlows.listByCollectionSession).mockResolvedValue([]);
+    vi.mocked(db.generatedAssets.countByGenerationFlowIds).mockResolvedValue(0);
   });
 
   it('should return collection with stats', async () => {
@@ -464,10 +496,33 @@ describe('Collections API - DELETE /api/collections/[id]', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+    vi.mocked(db.generationFlows.listByCollectionSession).mockResolvedValue([
+      {
+        id: 'flow-1',
+        collectionSessionId: 'coll-1',
+        productIds: ['prod-1'],
+        status: 'completed',
+        settings: {},
+        selectedBaseImages: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any,
+    ]);
+    vi.mocked(db.generatedAssets.listByGenerationFlowIds).mockResolvedValue([
+      {
+        id: 'asset-1',
+        assetUrl: 'https://cdn.example.com/path/to/file.png',
+        pinned: false,
+        approvalStatus: 'pending',
+        deletedAt: null,
+      } as any,
+    ]);
     vi.mocked(db.collectionSessions.delete).mockResolvedValue();
+    vi.mocked(db.generatedAssets.deleteByGenerationFlowIds).mockResolvedValue();
 
     const request = new NextRequest('http://localhost:3000/api/collections/coll-1', {
       method: 'DELETE',
+      body: JSON.stringify({ assetPolicy: 'delete_all' }),
     });
 
     const response = await deleteCollection(request, { params: Promise.resolve({ id: 'coll-1' }) });
@@ -476,6 +531,73 @@ describe('Collections API - DELETE /api/collections/[id]', () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.id).toBe('coll-1');
+    expect(db.generatedAssets.deleteByGenerationFlowIds).toHaveBeenCalledWith(['flow-1']);
+    expect(storage.delete).toHaveBeenCalledWith('path/to/file.png');
+  });
+
+  it('should keep pinned and approved assets when policy is keep_pinned_approved', async () => {
+    vi.mocked(db.collectionSessions.getById).mockResolvedValue({
+      id: 'coll-1',
+      clientId: 'demo-client',
+      name: 'Test',
+      productIds: ['prod-1'],
+      selectedBaseImages: {},
+      status: 'draft' as const,
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    vi.mocked(db.generationFlows.listByCollectionSession).mockResolvedValue([
+      {
+        id: 'flow-1',
+        collectionSessionId: 'coll-1',
+        productIds: ['prod-1'],
+        status: 'completed',
+        settings: {},
+        selectedBaseImages: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any,
+    ]);
+    vi.mocked(db.generatedAssets.listByGenerationFlowIds).mockResolvedValue([
+      {
+        id: 'asset-keep-pinned',
+        assetUrl: 'https://cdn.example.com/keep-pinned.png',
+        pinned: true,
+        approvalStatus: 'pending',
+        deletedAt: null,
+      } as any,
+      {
+        id: 'asset-keep-approved',
+        assetUrl: 'https://cdn.example.com/keep-approved.png',
+        pinned: false,
+        approvalStatus: 'approved',
+        deletedAt: null,
+      } as any,
+      {
+        id: 'asset-delete',
+        assetUrl: 'https://cdn.example.com/delete.png',
+        pinned: false,
+        approvalStatus: 'pending',
+        deletedAt: null,
+      } as any,
+    ]);
+    vi.mocked(db.collectionSessions.delete).mockResolvedValue();
+    vi.mocked(db.generatedAssets.hardDelete).mockResolvedValue();
+
+    const request = new NextRequest('http://localhost:3000/api/collections/coll-1', {
+      method: 'DELETE',
+      body: JSON.stringify({ assetPolicy: 'keep_pinned_approved' }),
+    });
+
+    const response = await deleteCollection(request, { params: Promise.resolve({ id: 'coll-1' }) });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(db.generatedAssets.hardDelete).toHaveBeenCalledWith('asset-delete');
+    expect(db.generatedAssets.hardDelete).toHaveBeenCalledTimes(1);
+    expect(storage.delete).toHaveBeenCalledWith('delete.png');
   });
 
   it('should return 404 for non-existent collection', async () => {

@@ -181,9 +181,8 @@ export interface Collection {
       settings?: {
         videoType?: string;
         cameraMotion?: string;
-        subjectAction?: string;
-        sceneAction?: string;
-        durationSeconds?: number;
+        aspectRatio?: '16:9' | '9:16';
+        resolution?: '720p' | '1080p';
         sound?: 'with_music' | 'no_sound' | 'automatic' | 'custom';
         soundPrompt?: string;
       };
@@ -260,9 +259,8 @@ export interface UpdateCollectionPayload {
       settings?: {
         videoType?: string;
         cameraMotion?: string;
-        subjectAction?: string;
-        sceneAction?: string;
-        durationSeconds?: number;
+        aspectRatio?: '16:9' | '9:16';
+        resolution?: '720p' | '1080p';
         sound?: 'with_music' | 'no_sound' | 'automatic' | 'custom';
         soundPrompt?: string;
       };
@@ -341,9 +339,8 @@ export interface UpdateStudioSettingsPayload {
     settings?: {
       videoType?: string;
       cameraMotion?: string;
-      subjectAction?: string;
-      sceneAction?: string;
-      durationSeconds?: number;
+      aspectRatio?: '16:9' | '9:16';
+      resolution?: '720p' | '1080p';
       sound?: 'with_music' | 'no_sound' | 'automatic' | 'custom';
       soundPrompt?: string;
     };
@@ -398,6 +395,7 @@ export interface GeneratedImagesParams {
   /** Filter by generation flow ID */
   flowId?: string;
   productId?: string;
+  productIds?: string[];
   pinned?: boolean;
   status?: 'pending' | 'generating' | 'completed' | 'error';
   approval?: 'pending' | 'approved' | 'rejected';
@@ -441,8 +439,8 @@ export interface GenerateVideoPayload {
   prompt: string;
   inspirationNote?: string;
   settings?: {
-    durationSeconds?: number;
-    fps?: number;
+    aspectRatio?: '16:9' | '9:16';
+    resolution?: '720p' | '1080p';
     model?: string;
   };
   urgent?: boolean;
@@ -462,6 +460,8 @@ export interface JobStatus {
   progress?: number;
   result?: unknown;
   error?: string;
+  attempts?: number;
+  maxAttempts?: number;
   videoIds?: string[];
 }
 
@@ -699,9 +699,15 @@ class ApiClient {
     });
   }
 
-  async deleteCollection(collectionId: string): Promise<{ success: boolean; id: string }> {
+  async deleteCollection(
+    collectionId: string,
+    options?: { assetPolicy?: 'delete_all' | 'keep_pinned_approved' }
+  ): Promise<{ success: boolean; id: string }> {
+    const body = options?.assetPolicy ? JSON.stringify({ assetPolicy: options.assetPolicy }) : undefined;
     return this.request<{ success: boolean; id: string }>(`/api/collections/${collectionId}`, {
       method: 'DELETE',
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body,
     });
   }
 
@@ -812,7 +818,7 @@ class ApiClient {
   }
 
   async getJobStatus(jobId: string): Promise<JobStatus> {
-    return this.request<JobStatus>(`/api/jobs/${jobId}`);
+    return this.request<JobStatus>(`/api/jobs/${jobId}`, { cache: 'no-store' });
   }
 
   // ===== Generated Images / Assets =====
@@ -823,6 +829,9 @@ class ApiClient {
     }
     if (params?.productId) {
       searchParams.set('productId', params.productId);
+    }
+    if (params?.productIds && params.productIds.length > 0) {
+      searchParams.set('productIds', params.productIds.join(','));
     }
     if (params?.pinned !== undefined) {
       searchParams.set('pinned', String(params.pinned));
@@ -866,6 +875,23 @@ class ApiClient {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
+    });
+  }
+
+  async togglePinImage(id: string): Promise<{ success: boolean; isPinned: boolean }> {
+    return this.request<{ success: boolean; isPinned: boolean }>(`/api/generated-images/${id}/pin`, {
+      method: 'POST',
+    });
+  }
+
+  async updateImageApproval(
+    id: string,
+    status: 'pending' | 'approved' | 'rejected'
+  ): Promise<{ success: boolean; approvalStatus: string }> {
+    return this.request<{ success: boolean; approvalStatus: string }>(`/api/generated-images/${id}/approval`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
     });
   }
 

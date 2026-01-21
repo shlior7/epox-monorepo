@@ -28,24 +28,34 @@ export async function GET(_request: NextRequest) {
 
     // Get 3 most recent collections
     const recentCollectionsData = await db.collectionSessions.listRecent(PLACEHOLDER_CLIENT_ID, 3);
+    const recentCollectionIds = recentCollectionsData.map((collection) => collection.id);
+
+    const recentFlows = await db.generationFlows.listByCollectionSessionIds(recentCollectionIds);
+    const flowIdsByCollection = new Map<string, string[]>();
+
+    for (const flow of recentFlows) {
+      const collectionId = flow.collectionSessionId;
+      if (!collectionId) continue;
+      const existing = flowIdsByCollection.get(collectionId) ?? [];
+      existing.push(flow.id);
+      flowIdsByCollection.set(collectionId, existing);
+    }
 
     // For each collection, count its assets (in parallel)
     const recentCollections = await Promise.all(
       recentCollectionsData.map(async (c) => {
-        const collectionProductIds = c.productIds as string[];
-
-        // Count all assets where productIds overlap with collection's productIds
+        const flowIds = flowIdsByCollection.get(c.id) ?? [];
         const [totalCount, completedCount, firstAsset] = await Promise.all([
-          db.generatedAssets.countByProductIds(PLACEHOLDER_CLIENT_ID, collectionProductIds),
-          db.generatedAssets.countByProductIds(PLACEHOLDER_CLIENT_ID, collectionProductIds, 'completed'),
-          db.generatedAssets.getFirstByProductIds(PLACEHOLDER_CLIENT_ID, collectionProductIds, 'completed'),
+          db.generatedAssets.countByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds),
+          db.generatedAssets.countByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds, 'completed'),
+          db.generatedAssets.getFirstByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds, 'completed'),
         ]);
 
         return {
           id: c.id,
           name: c.name,
           status: c.status,
-          productCount: collectionProductIds.length,
+          productCount: c.productIds.length,
           generatedCount: completedCount,
           totalImages: totalCount,
           updatedAt: c.updatedAt.toISOString(),

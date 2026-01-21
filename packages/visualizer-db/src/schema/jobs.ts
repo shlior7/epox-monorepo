@@ -68,8 +68,8 @@ export interface VideoGenerationPayload {
   inspirationNote?: string;
   operationName?: string;
   settings?: {
-    durationSeconds?: number;
-    fps?: number;
+    aspectRatio?: '16:9' | '9:16';
+    resolution?: '720p' | '1080p';
     model?: string;
   };
 }

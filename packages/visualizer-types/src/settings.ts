@@ -73,15 +73,20 @@ export const DEFAULT_PROMPT_TAGS: PromptTags = {
 
 // ===== VIDEO SETTINGS =====
 
+export type VideoResolution = '720p' | '1080p';
+export type VideoAspectRatio = '16:9' | '9:16';
+
 export interface VideoPromptSettings {
   videoType?: string;
   cameraMotion?: string;
-  subjectAction?: string;
-  sceneAction?: string;
-  durationSeconds?: number;
+  aspectRatio?: VideoAspectRatio;
+  resolution?: VideoResolution;
   sound?: 'with_music' | 'no_sound' | 'automatic' | 'custom';
   soundPrompt?: string;
 }
+
+export const VIDEO_RESOLUTION_OPTIONS: VideoResolution[] = ['720p', '1080p'];
+export const VIDEO_ASPECT_RATIO_OPTIONS: VideoAspectRatio[] = ['16:9', '9:16'];
 
 export const VIDEO_TYPE_OPTIONS = ['product pan', 'orbit'] as const;
 export const CAMERA_MOTION_OPTIONS = ['dolly', 'orbit', 'pan', 'tilt', 'static'] as const;

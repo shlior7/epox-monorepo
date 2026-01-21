@@ -382,13 +382,19 @@ export class GenerationWorker {
     }
 
     if (!payload.operationName) {
-      logger.debug({ jobId: job.id }, 'Starting video generation');
+      logger.info({
+        jobId: job.id,
+        settings: payload.settings,
+        aspectRatio: payload.settings?.aspectRatio,
+        resolution: payload.settings?.resolution,
+        model: payload.settings?.model,
+      }, 'Starting video generation with settings');
 
       const operationName = await this.gemini.startVideoGeneration({
         prompt: payload.prompt,
         sourceImageUrl: payload.sourceImageUrl,
-        durationSeconds: payload.settings?.durationSeconds,
-        fps: payload.settings?.fps,
+        aspectRatio: payload.settings?.aspectRatio,
+        resolution: payload.settings?.resolution,
         model: payload.settings?.model,
       });
 
@@ -411,8 +417,8 @@ export class GenerationWorker {
       operationName: payload.operationName,
       prompt: payload.prompt,
       model: payload.settings?.model,
-      durationSeconds: payload.settings?.durationSeconds,
-      fps: payload.settings?.fps,
+      aspectRatio: payload.settings?.aspectRatio,
+      resolution: payload.settings?.resolution,
     });
 
     if (!result) {

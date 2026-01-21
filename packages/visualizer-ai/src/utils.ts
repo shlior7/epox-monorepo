@@ -203,7 +203,23 @@ export const normalizeImageInput = async (input: string): Promise<{ mimeType: st
 
   const imageBuffer = await response.arrayBuffer();
   const base64Data = Buffer.from(imageBuffer).toString('base64');
-  const mimeType = response.headers.get('content-type') || 'image/jpeg';
+  let mimeType = response.headers.get('content-type') || 'image/jpeg';
+
+  // Handle invalid MIME types that Gemini doesn't accept
+  if (!mimeType || mimeType === 'application/octet-stream' || mimeType === 'application/xml') {
+    // Try to infer from URL path
+    const pathname = url.pathname.toLowerCase();
+    const extension = pathname.split('.').pop();
+    const mimeTypes: Record<string, string> = {
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      gif: 'image/gif',
+      webp: 'image/webp',
+    };
+    mimeType = mimeTypes[extension || ''] || 'image/jpeg';
+    console.warn(`⚠️ normalizeImageInput: Corrected MIME type from '${response.headers.get('content-type')}' to '${mimeType}' for URL '${input.substring(0, 100)}...'`);
+  }
 
   return { mimeType, base64Data };
 };
