@@ -37,7 +37,7 @@ import {
   Sparkles,
   Star,
   Trash2,
-  Upload
+  Upload,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -73,7 +73,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
   // Create studio session mutation
   const createStudioMutation = useMutation({
-    mutationFn: (mode: 'generate' | 'edit' ) =>
+    mutationFn: (mode: 'generate' | 'edit') =>
       apiClient.createGenerationFlow({
         clientId,
         productId: productId,

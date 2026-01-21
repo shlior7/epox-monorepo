@@ -7,15 +7,18 @@
 **File:** `/app/[clientId]/settings/page.tsx`
 
 #### 1. Added "Create Scene" Action
+
 - New `handleCreateScene()` function that generates a unique scene ID
 - Creates scene with ID format: `scene-{timestamp}`
 - Navigates to new scene immediately
 - Disabled state while creating
 
 #### 2. Replaced Scene Studio Button with Scenes Accordion
+
 **Old:** Single "Open Scene Studio" button that navigated to default studio
 
 **New:** Full "Scenes" accordion section with:
+
 - **Header**: Shows count of scenes `Scenes (X)`
 - **Action Menu**: "Create Scene" button in header
 - **Scene List**: All client scene studios displayed as cards
@@ -28,6 +31,7 @@
     - "Delete" (with confirmation dialog)
 
 **Empty State**:
+
 - Message: "No scenes yet. Create your first scene to get started."
 
 ---
@@ -37,9 +41,11 @@
 **File:** `/app/[clientId]/scene-studio/[studioId]/page.tsx`
 
 #### 1. Left Panel Redesigned
+
 **Old:** Product catalog with draggable product cards
 
 **New:** Scene navigation list
+
 - **Header**: "Scenes" instead of "Catalog"
 - **Content**: List of all client scenes
   - Each scene shows:
@@ -52,6 +58,7 @@
   - **Empty state**: "No Scenes" with hint to create in client settings
 
 #### 2. Products Now Managed in Client Settings
+
 - Removed product drag-and-drop from workspace
 - Products visible and manageable in Products accordion on client settings page
 - Products added to slots through:
@@ -65,6 +72,7 @@
 **File:** `/app/[clientId]/scene-studio/[studioId]/page.module.scss`
 
 #### Added Styles:
+
 - `.productCardActive` - Active scene highlighting
 - `.sceneIconLarge` - Larger icon for scene thumbnails
 - `.productMeta` - Smaller metadata text under scene name
@@ -81,6 +89,7 @@
 ### 1. Creating & Managing Scenes
 
 #### From Client Settings:
+
 1. Navigate to client settings page
 2. Scroll to "Scenes" accordion
 3. Click action menu → "Create Scene"
@@ -89,6 +98,7 @@
 6. Scene appears in scenes list (both settings and studio)
 
 #### Deleting Scenes:
+
 1. In client settings, find scene in list
 2. Click scene actions menu → "Delete"
 3. Confirmation dialog appears
@@ -97,10 +107,12 @@
 ### 2. Navigating Between Scenes
 
 #### From Client Settings:
+
 1. Click any scene card in the Scenes accordion
 2. Navigate to that scene's studio
 
 #### From Scene Studio:
+
 1. Left panel shows all scenes
 2. Current scene highlighted with indigo border and pulsing dot
 3. Click any other scene to switch
@@ -109,15 +121,18 @@
 ### 3. Working with Products
 
 #### View Products:
+
 1. Go to client settings
 2. Products accordion shows all products
 3. View product images, metadata, favorites
 
 #### Add Products to Scene (Current):
+
 - Products must be added programmatically (via DataContext methods)
 - TODO: Add product picker UI in properties panel or workspace
 
 #### Add Products to Scene (Future):
+
 - Product picker modal in workspace
 - Drag-and-drop from dedicated product selector
 - Multi-select from client's product library
@@ -127,6 +142,7 @@
 ## Data Flow
 
 ### Scene Creation
+
 ```typescript
 // Client Settings
 handleCreateScene()
@@ -136,6 +152,7 @@ handleCreateScene()
 ```
 
 ### Scene Navigation
+
 ```typescript
 // From Scene List
 onClick scene card
@@ -146,6 +163,7 @@ onClick scene card
 ```
 
 ### Scene Display
+
 ```typescript
 // Left Panel
 allScenes = client.sceneStudios || []
@@ -158,20 +176,24 @@ activeIndicator shown when: scene.id === studioId
 ## Architecture Benefits
 
 ### ✅ Clear Separation of Concerns
+
 - **Client Settings**: Manage clients, products, scenes (meta-level)
 - **Scene Studio**: Work within a specific scene (execution-level)
 
 ### ✅ Scene-Centric Workflow
+
 - Each scene is a complete workspace
 - Scenes retain all state (slots, products, revisions)
 - Easy to switch between campaigns/projects
 
 ### ✅ Products as Resources
+
 - Products live at client level
 - Can be used across multiple scenes
 - Managed centrally in one place
 
 ### ✅ Intuitive Navigation
+
 - Left panel always shows "where am I?" context
 - Click to navigate between scenes
 - Active scene clearly indicated
@@ -181,13 +203,16 @@ activeIndicator shown when: scene.id === studioId
 ## TODO: Next Steps
 
 ### 1. Implement Product Selection in Studio
+
 **Options:**
+
 - **A. Product Picker Modal**: Button in workspace opens modal with product list
 - **B. Properties Panel**: Dropdown to select products for selected slots
 - **C. Separate Tab**: Toggle between "Scenes" and "Products" in left panel
 - **D. Inline Search**: Search/filter products in workspace header
 
 **Recommended: Option A (Product Picker Modal)**
+
 ```typescript
 // Add button in workspace header
 <button onClick={() => setShowProductPicker(true)}>
@@ -200,6 +225,7 @@ activeIndicator shown when: scene.id === studioId
 ```
 
 ### 2. DataContext Integration
+
 ```typescript
 // Implement scene CRUD
 addSceneStudio(clientId: string, name: string): Promise<SceneStudio>
@@ -213,12 +239,15 @@ if (!client.sceneStudios || client.sceneStudios.length === 0) {
 ```
 
 ### 3. Scene Naming
+
 Currently scenes created with timestamp IDs. Add:
+
 - Name input in creation flow
 - Rename capability in scene list
 - Default names: "Scene 1", "Scene 2", etc.
 
 ### 4. Scene Templates
+
 - Save scene configuration as template
 - Apply template to new scene
 - Share templates across clients
@@ -230,17 +259,20 @@ Currently scenes created with timestamp IDs. Add:
 ### For Users Coming from Previous Version
 
 **Before:**
+
 - Click "Open Scene Studio" → Goes to single workspace
 - Products in left panel
 - One implicit scene per client
 
 **After:**
+
 - Click "Create Scene" → Creates new named scene
 - Scenes in left panel (navigate between them)
 - Products managed in client settings
 - Multiple scenes per client
 
 **Workflow Change:**
+
 1. **Old**: Open studio → See products → Drag products → Generate
 2. **New**: Create scene → Open scene → Add products (via picker) → Generate
 
@@ -249,6 +281,7 @@ Currently scenes created with timestamp IDs. Add:
 ## File Summary
 
 ### Modified Files:
+
 1. `/app/[clientId]/settings/page.tsx`
    - Added `handleCreateScene()`
    - Added Scenes accordion section
@@ -267,6 +300,7 @@ Currently scenes created with timestamp IDs. Add:
    - Added pulsing indicator animation
 
 ### New Behavior:
+
 - ✅ Scenes list in client settings
 - ✅ Create scene action
 - ✅ Scene navigation in studio
@@ -281,6 +315,7 @@ Currently scenes created with timestamp IDs. Add:
 ## Visual Changes
 
 ### Client Settings Page
+
 ```
 ┌─────────────────────────────────────┐
 │  Client Name: [Input] [Save]       │
@@ -302,6 +337,7 @@ Currently scenes created with timestamp IDs. Add:
 ```
 
 ### Scene Studio Page
+
 ```
 ┌─────────┬───────────────────────┬─────────┐
 │ SCENES  │      WORKSPACE        │  PROPS  │

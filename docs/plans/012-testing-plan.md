@@ -13,21 +13,21 @@ Comprehensive testing strategy covering unit, integration, and E2E tests for all
 
 ### Testing Stack
 
-| Tool | Purpose |
-|------|---------|
-| **Vitest** | Unit and integration test runner |
-| **@testing-library/react** | React component testing |
-| **Playwright** | E2E browser testing |
+| Tool                          | Purpose                           |
+| ----------------------------- | --------------------------------- |
+| **Vitest**                    | Unit and integration test runner  |
+| **@testing-library/react**    | React component testing           |
+| **Playwright**                | E2E browser testing               |
 | **MSW (Mock Service Worker)** | API mocking for integration tests |
-| **Testcontainers** | Database integration tests |
+| **Testcontainers**            | Database integration tests        |
 
 ### Test Categories
 
-| Type | Scope | Speed | Coverage Target |
-|------|-------|-------|-----------------|
-| **Unit** | Single function/component | <50ms each | 80%+ |
-| **Integration** | API routes, DB queries, service interactions | <500ms each | 70%+ |
-| **E2E** | Full user flows | <30s each | Critical paths |
+| Type            | Scope                                        | Speed       | Coverage Target |
+| --------------- | -------------------------------------------- | ----------- | --------------- |
+| **Unit**        | Single function/component                    | <50ms each  | 80%+            |
+| **Integration** | API routes, DB queries, service interactions | <500ms each | 70%+            |
+| **E2E**         | Full user flows                              | <30s each   | Critical paths  |
 
 ---
 
@@ -1775,38 +1775,41 @@ jobs:
 
 ## Coverage Targets
 
-| Area | Unit | Integration | E2E |
-|------|------|-------------|-----|
-| **Auth** | 90% | 85% | Critical paths |
-| **Products** | 85% | 80% | CRUD + Import |
-| **Collections** | 85% | 80% | Full wizard |
-| **Generation** | 80% | 75% | Start + Progress |
-| **Assets** | 85% | 80% | Review flow |
-| **Store Sync** | 80% | 75% | Connect + Sync |
-| **Credits** | 90% | 85% | Purchase + Block |
-| **Edit Suite** | 75% | 70% | Each tool |
-| **Presets** | 80% | 75% | Save + Apply |
-| **Notifications** | 75% | 70% | Bell + Dropdown |
-| **Analytics** | 70% | 65% | Dashboard |
-| **Onboarding** | 70% | N/A | Full tour |
+| Area              | Unit | Integration | E2E              |
+| ----------------- | ---- | ----------- | ---------------- |
+| **Auth**          | 90%  | 85%         | Critical paths   |
+| **Products**      | 85%  | 80%         | CRUD + Import    |
+| **Collections**   | 85%  | 80%         | Full wizard      |
+| **Generation**    | 80%  | 75%         | Start + Progress |
+| **Assets**        | 85%  | 80%         | Review flow      |
+| **Store Sync**    | 80%  | 75%         | Connect + Sync   |
+| **Credits**       | 90%  | 85%         | Purchase + Block |
+| **Edit Suite**    | 75%  | 70%         | Each tool        |
+| **Presets**       | 80%  | 75%         | Save + Apply     |
+| **Notifications** | 75%  | 70%         | Bell + Dropdown  |
+| **Analytics**     | 70%  | 65%         | Dashboard        |
+| **Onboarding**    | 70%  | N/A         | Full tour        |
 
 ---
 
 ## Implementation Priority
 
 ### Phase 1: Foundation
+
 1. Set up Playwright for E2E
 2. Create test utilities and fixtures
 3. Auth tests (unit + integration + E2E)
 4. Products CRUD tests
 
 ### Phase 2: Core Features
+
 5. Collections tests
 6. Generation flow tests
 7. Assets review tests
 8. Credits tests
 
 ### Phase 3: Extended Features
+
 9. Store connection tests
 10. Edit suite tests
 11. Presets tests

@@ -70,5 +70,3 @@ export interface WeeklyUsageSummaryPayload {
   topProducts: Array<{ name: string; count: number }>;
   dashboardUrl: string;
 }
-
-

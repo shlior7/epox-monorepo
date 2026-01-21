@@ -34,10 +34,7 @@ export async function PUT(request: Request) {
 
     if (provider === 'woocommerce') {
       if (!credentials.baseUrl || !credentials.consumerKey || !credentials.consumerSecret) {
-        return NextResponse.json(
-          { success: false, error: 'Missing required WooCommerce credentials' },
-          { status: 400 }
-        );
+        return NextResponse.json({ success: false, error: 'Missing required WooCommerce credentials' }, { status: 400 });
       }
     }
 

@@ -63,23 +63,14 @@ export class InvitationRepository extends BaseRepository<Invitation> {
     const rows = await this.drizzle
       .select()
       .from(invitation)
-      .where(
-        and(
-          eq(invitation.email, email),
-          eq(invitation.status, 'pending'),
-          gt(invitation.expiresAt, now)
-        )
-      )
+      .where(and(eq(invitation.email, email), eq(invitation.status, 'pending'), gt(invitation.expiresAt, now)))
       .limit(1);
 
     return rows[0] ? this.mapToEntity(rows[0]) : null;
   }
 
   async listByClient(clientId: string): Promise<Invitation[]> {
-    const rows = await this.drizzle
-      .select()
-      .from(invitation)
-      .where(eq(invitation.clientId, clientId));
+    const rows = await this.drizzle.select().from(invitation).where(eq(invitation.clientId, clientId));
 
     return rows.map((row) => this.mapToEntity(row));
   }
@@ -89,23 +80,13 @@ export class InvitationRepository extends BaseRepository<Invitation> {
     const rows = await this.drizzle
       .select()
       .from(invitation)
-      .where(
-        and(
-          eq(invitation.clientId, clientId),
-          eq(invitation.status, 'pending'),
-          gt(invitation.expiresAt, now)
-        )
-      );
+      .where(and(eq(invitation.clientId, clientId), eq(invitation.status, 'pending'), gt(invitation.expiresAt, now)));
 
     return rows.map((row) => this.mapToEntity(row));
   }
 
   async accept(id: string): Promise<Invitation> {
-    const [updated] = await this.drizzle
-      .update(invitation)
-      .set({ status: 'accepted' })
-      .where(eq(invitation.id, id))
-      .returning();
+    const [updated] = await this.drizzle.update(invitation).set({ status: 'accepted' }).where(eq(invitation.id, id)).returning();
 
     if (!updated) {
       throw new NotFoundError('invitation', id);
@@ -115,11 +96,7 @@ export class InvitationRepository extends BaseRepository<Invitation> {
   }
 
   async revoke(id: string): Promise<Invitation> {
-    const [updated] = await this.drizzle
-      .update(invitation)
-      .set({ status: 'revoked' })
-      .where(eq(invitation.id, id))
-      .returning();
+    const [updated] = await this.drizzle.update(invitation).set({ status: 'revoked' }).where(eq(invitation.id, id)).returning();
 
     if (!updated) {
       throw new NotFoundError('invitation', id);
@@ -133,16 +110,9 @@ export class InvitationRepository extends BaseRepository<Invitation> {
     const result = await this.drizzle
       .update(invitation)
       .set({ status: 'expired' })
-      .where(
-        and(
-          eq(invitation.status, 'pending'),
-          lt(invitation.expiresAt, now)
-        )
-      )
+      .where(and(eq(invitation.status, 'pending'), lt(invitation.expiresAt, now)))
       .returning();
 
     return result.length;
   }
 }
-
-

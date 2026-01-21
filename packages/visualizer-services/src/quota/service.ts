@@ -3,12 +3,7 @@
  * Manages usage quotas and limits for clients
  */
 
-import type {
-  PlanType,
-  PlanLimits,
-  QuotaStatus,
-  QuotaCheckResult,
-} from './types';
+import type { PlanType, PlanLimits, QuotaStatus, QuotaCheckResult } from './types';
 import { PLAN_LIMITS } from './types';
 
 export interface QuotaServiceDependencies {
@@ -96,7 +91,9 @@ export class QuotaService {
 
     return {
       allowed,
-      reason: allowed ? undefined : `Monthly limit of ${status.usage.generationsLimit} generations reached. Resets on ${status.resetDate.toLocaleDateString()}.`,
+      reason: allowed
+        ? undefined
+        : `Monthly limit of ${status.usage.generationsLimit} generations reached. Resets on ${status.resetDate.toLocaleDateString()}.`,
       currentUsage: status.usage.generationsUsed,
       limit: status.usage.generationsLimit,
       remaining,
@@ -147,5 +144,3 @@ export class QuotaService {
 export function createQuotaService(deps: QuotaServiceDependencies): QuotaService {
   return new QuotaService(deps);
 }
-
-

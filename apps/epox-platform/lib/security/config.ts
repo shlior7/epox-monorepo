@@ -61,6 +61,9 @@ export const ALLOWED_DOMAINS: readonly string[] = [
   // Google Cloud Storage
   'storage.googleapis.com',
 
+  // Unsplash images
+  'images.unsplash.com',
+
   // Add other trusted domains as needed
 ];
 

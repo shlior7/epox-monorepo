@@ -20,22 +20,11 @@ declare module 'glfx' {
     noise(amount: number): GlfxCanvas;
     vignette(size: number, amount: number): GlfxCanvas;
     lensBlur(radius: number, brightness: number, angle: number): GlfxCanvas;
-    tiltShift(
-      startX: number,
-      startY: number,
-      endX: number,
-      endY: number,
-      blurRadius: number,
-      gradientRadius: number
-    ): GlfxCanvas;
+    tiltShift(startX: number, startY: number, endX: number, endY: number, blurRadius: number, gradientRadius: number): GlfxCanvas;
     zoomBlur(centerX: number, centerY: number, strength: number): GlfxCanvas;
 
     // Curve filters
-    curves(
-      red: [number, number][],
-      green?: [number, number][],
-      blue?: [number, number][]
-    ): GlfxCanvas;
+    curves(red: [number, number][], green?: [number, number][], blue?: [number, number][]): GlfxCanvas;
 
     // Fun filters
     dotScreen(centerX: number, centerY: number, angle: number, size: number): GlfxCanvas;
@@ -44,12 +33,7 @@ declare module 'glfx' {
     ink(strength: number): GlfxCanvas;
 
     // Warp filters
-    bulgePinch(
-      centerX: number,
-      centerY: number,
-      radius: number,
-      strength: number
-    ): GlfxCanvas;
+    bulgePinch(centerX: number, centerY: number, radius: number, strength: number): GlfxCanvas;
     matrixWarp(matrix: number[], inverse?: boolean, useTextureSpace?: boolean): GlfxCanvas;
     perspective(
       before: [number, number, number, number, number, number, number, number],

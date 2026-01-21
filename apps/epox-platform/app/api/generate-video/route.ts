@@ -5,39 +5,45 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { db } from '@/lib/services/db';
+import { enqueueVideoGeneration } from 'visualizer-ai';
 import { withGenerationSecurity, isValidUrl } from '@/lib/security';
+import { logJobStarted } from '@/lib/logger';
 
 // URL validation using centralized security module
 const validateImageUrlField = (val: string) => isValidUrl(val, { allowDataUrls: true });
 
 // Zod schema for request validation
-const GenerateVideoRequestSchema = z.object({
-  sessionId: z.string().min(1, 'sessionId is required'),
-  productId: z.string().min(1, 'productId is required'),
-  sourceImageUrl: z.string().min(1, 'sourceImageUrl is required').refine(validateImageUrlField, {
-    message: 'sourceImageUrl must be a valid http/https URL or data URL',
-  }),
-  prompt: z
-    .string()
-    .min(1, 'prompt is required')
-    .transform((s) => s.trim()),
-  inspirationImageUrl: z
-    .string()
-    .refine((val) => !val || validateImageUrlField(val), {
-      message: 'inspirationImageUrl must be a valid http/https URL or data URL',
-    })
-    .optional(),
-  inspirationNote: z.string().optional(),
-  settings: z
-    .object({
-      durationSeconds: z.number().positive().optional(),
-      fps: z.number().positive().optional(),
-      model: z.string().optional(),
-    })
-    .optional(),
-  urgent: z.boolean().optional(),
-});
+const GenerateVideoRequestSchema = z
+  .object({
+    sessionId: z.string().min(1, 'sessionId is required'),
+    productId: z.string().min(1, 'productId is required'),
+    sourceImageUrl: z.string().min(1, 'sourceImageUrl is required').refine(validateImageUrlField, {
+      message: 'sourceImageUrl must be a valid http/https URL or data URL',
+    }),
+    prompt: z
+      .string()
+      .min(1, 'prompt is required')
+      .transform((s) => s.trim()),
+    inspirationImageUrl: z.string().optional(),
+    inspirationNote: z.string().optional(),
+    settings: z
+      .object({
+        aspectRatio: z.enum(['16:9', '9:16']).optional(),
+        resolution: z.enum(['720p', '1080p']).optional(),
+        model: z.string().optional(),
+      })
+      .optional(),
+    urgent: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.inspirationImageUrl) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['inspirationImageUrl'],
+        message: 'Video generation accepts a single source image. Remove inspirationImageUrl.',
+      });
+    }
+  });
 
 type GenerateVideoRequest = z.infer<typeof GenerateVideoRequestSchema>;
 
@@ -51,7 +57,10 @@ type GenerateVideoRequest = z.infer<typeof GenerateVideoRequestSchema>;
  */
 export const POST = withGenerationSecurity(async (request, context) => {
   // clientId is guaranteed non-null by withGenerationSecurity (requireAuth: true)
-  const clientId = context.clientId!;
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   // Parse JSON with explicit error handling
   let rawBody: unknown;
@@ -72,35 +81,28 @@ export const POST = withGenerationSecurity(async (request, context) => {
   }
 
   const body: GenerateVideoRequest = parseResult.data;
-  const {
-    sessionId,
-    productId,
-    sourceImageUrl,
-    prompt,
-    inspirationImageUrl,
-    inspirationNote,
-    settings,
-    urgent,
-  } = body;
+  const { sessionId, productId, sourceImageUrl, prompt, inspirationNote, settings, urgent } = body;
 
-  const job = await db.generationJobs.create({
+  const { jobId } = await enqueueVideoGeneration(
     clientId,
-    type: 'video_generation',
-    priority: urgent ? 50 : 100,
-    flowId: sessionId,
-    payload: {
+    {
       prompt,
       sourceImageUrl,
       sessionId,
       productIds: [productId],
-      inspirationImageUrl,
       inspirationNote,
       settings: settings ? { ...settings } : undefined,
     },
-  });
+    {
+      priority: urgent ? 50 : 100,
+      flowId: sessionId,
+    }
+  );
+
+  logJobStarted(jobId, { clientId, sessionId, productId, type: 'video' });
 
   return NextResponse.json({
-    jobId: job.id,
+    jobId,
     status: 'queued',
     message: 'Video generation queued',
     queueType: 'postgres',

@@ -27,7 +27,10 @@
   background: var(--color-background);
   color: var(--color-text-primary);
   overflow: hidden;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 // ===== HEADER =====
@@ -455,7 +458,8 @@
   &Selected {
     border-color: var(--color-primary);
     background: var(--color-surface);
-    box-shadow: 0 20px 25px -5px rgba(vars.color('indigo', 600), 0.1),
+    box-shadow:
+      0 20px 25px -5px rgba(vars.color('indigo', 600), 0.1),
       0 8px 10px -6px rgba(vars.color('indigo', 600), 0.1);
   }
 }
@@ -703,7 +707,8 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgba(vars.color('indigo', 600), 0.1),
+  box-shadow:
+    0 10px 15px -3px rgba(vars.color('indigo', 600), 0.1),
     0 4px 6px -4px rgba(vars.color('indigo', 600), 0.1);
   border: none;
   cursor: pointer;
@@ -1181,7 +1186,8 @@
 
   &:hover {
     border-color: var(--color-primary);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    box-shadow:
+      0 20px 25px -5px rgba(0, 0, 0, 0.1),
       0 8px 10px -6px rgba(0, 0, 0, 0.1);
   }
 
@@ -1356,7 +1362,6 @@
 }
 
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;

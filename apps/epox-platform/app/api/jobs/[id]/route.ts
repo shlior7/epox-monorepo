@@ -7,12 +7,17 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/services/db';
+import * as Sentry from '@sentry/nextjs';
+import { getJobStatus } from 'visualizer-ai';
+import { withSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
+import { logger } from '@/lib/logger';
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const GET = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
 
@@ -21,10 +26,22 @@ export async function GET(
     }
 
     // Get job from PostgreSQL
-    const job = await db.generationJobs.getById(id);
+    const job = await getJobStatus(id);
 
     if (!job) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: job.clientId,
+        resourceType: 'job',
+        resourceId: id,
+      })
+    ) {
+      return forbiddenResponse();
     }
 
     // Map status to expected format (processing -> active for backwards compat)
@@ -37,6 +54,8 @@ export async function GET(
       progress: job.progress,
       result: job.result,
       error: job.error,
+      attempts: job.attempts,
+      maxAttempts: job.maxAttempts,
       imageIds: job.result?.imageIds ?? [],
       imageUrls: job.result?.imageUrls ?? [],
       videoIds: job.result?.videoIds ?? [],
@@ -46,7 +65,8 @@ export async function GET(
       completedAt: job.completedAt,
     });
   } catch (error) {
-    console.error('Failed to get job status:', error);
+    const eventId = Sentry.captureException(error);
+    logger.error({ err: error, sentryEventId: eventId }, 'Failed to get job status');
     return NextResponse.json({ error: 'Failed to get job status' }, { status: 500 });
   }
-}
+});

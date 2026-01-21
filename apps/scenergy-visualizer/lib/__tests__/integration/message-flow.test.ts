@@ -8,11 +8,7 @@ import { syncManager } from '../../state/sync-manager';
 import { transactionManager } from '../../state/transaction-manager';
 import { suppressConsole, restoreConsole, waitFor } from '../setup';
 import type { Client } from '@/lib/types/app-types';
-import {
-  createTestHierarchy,
-  createTestMessage,
-  createTestImageGenerationMessage,
-} from '../fixtures/test-data';
+import { createTestHierarchy, createTestMessage, createTestImageGenerationMessage } from '../fixtures/test-data';
 
 let apiModule: typeof import('@/lib/api-client');
 let storedClient: Client | null = null;
@@ -47,14 +43,14 @@ describe('Integration: Message Flow', () => {
     syncManager.clearHistory();
     transactionManager.clearHistory();
     storedClient = null;
-    
+
     apiModule = await import('@/lib/api-client');
     vi.mocked(apiModule.apiClient.updateSession)
       .mockReset()
       .mockImplementation(async (clientId, productId, session) => {
         persistSession(clientId, productId, session);
       });
-    
+
     suppressConsole();
   });
 
@@ -77,15 +73,9 @@ describe('Integration: Message Flow', () => {
       let currentClient = client;
 
       // Step 2: Add message to session
-      await syncManager.addMessageToSession(
-        currentClient,
-        product.id,
-        session.id,
-        userMessage,
-        (updated) => {
-          currentClient = updated;
-        }
-      );
+      await syncManager.addMessageToSession(currentClient, product.id, session.id, userMessage, (updated) => {
+        currentClient = updated;
+      });
 
       // Step 3: Verify local state updated
       const updatedSession = currentClient.products[0].sessions[0];
@@ -116,15 +106,9 @@ describe('Integration: Message Flow', () => {
         parts: [{ type: 'text', content: 'Studio shot of modern chair' }],
       });
 
-      await syncManager.addMessageToSession(
-        currentClient,
-        product.id,
-        session.id,
-        userPrompt,
-        (updated) => {
-          currentClient = updated;
-        }
-      );
+      await syncManager.addMessageToSession(currentClient, product.id, session.id, userPrompt, (updated) => {
+        currentClient = updated;
+      });
 
       // Step 2: System creates assistant message with pending status
       const assistantMessage = createTestImageGenerationMessage({
@@ -139,15 +123,9 @@ describe('Integration: Message Flow', () => {
         ],
       });
 
-      await syncManager.addMessageToSession(
-        currentClient,
-        product.id,
-        session.id,
-        assistantMessage,
-        (updated) => {
-          currentClient = updated;
-        }
-      );
+      await syncManager.addMessageToSession(currentClient, product.id, session.id, assistantMessage, (updated) => {
+        currentClient = updated;
+      });
 
       // Step 3: Simulate polling updates (progress)
       await syncManager.updateMessageInSession(
@@ -225,15 +203,9 @@ describe('Integration: Message Flow', () => {
 
       // Execute sequentially to ensure state updates properly
       for (const msg of messages) {
-        await syncManager.addMessageToSession(
-          currentClient,
-          product.id,
-          session.id,
-          msg,
-          (updated) => {
-            currentClient = updated;
-          }
-        );
+        await syncManager.addMessageToSession(currentClient, product.id, session.id, msg, (updated) => {
+          currentClient = updated;
+        });
       }
 
       // All messages should be present
@@ -260,17 +232,10 @@ describe('Integration: Message Flow', () => {
         { parts: [{ type: 'text' as const, content: 'Update 3' }] },
       ];
 
-      const operations = updates.map(update =>
-        syncManager.updateMessageInSession(
-          currentClient,
-          product.id,
-          session.id,
-          message.id,
-          update,
-          (updated) => {
-            currentClient = updated;
-          }
-        )
+      const operations = updates.map((update) =>
+        syncManager.updateMessageInSession(currentClient, product.id, session.id, message.id, update, (updated) => {
+          currentClient = updated;
+        })
       );
 
       await Promise.all(operations);
@@ -302,15 +267,9 @@ describe('Integration: Message Flow', () => {
       let currentClient = client;
 
       // Should succeed after retries
-      await syncManager.addMessageToSession(
-        currentClient,
-        product.id,
-        session.id,
-        newMessage,
-        (updated) => {
-          currentClient = updated;
-        }
-      );
+      await syncManager.addMessageToSession(currentClient, product.id, session.id, newMessage, (updated) => {
+        currentClient = updated;
+      });
 
       expect(attemptCount).toBe(3);
       expect(apiModule.apiClient.updateSession).toHaveBeenCalledTimes(3);
@@ -328,15 +287,9 @@ describe('Integration: Message Flow', () => {
       let currentClient = client;
 
       try {
-        await syncManager.addMessageToSession(
-          currentClient,
-          product.id,
-          session.id,
-          newMessage,
-          (updated) => {
-            currentClient = updated;
-          }
-        );
+        await syncManager.addMessageToSession(currentClient, product.id, session.id, newMessage, (updated) => {
+          currentClient = updated;
+        });
       } catch (error) {
         // Expected to fail
       }
@@ -344,7 +297,7 @@ describe('Integration: Message Flow', () => {
       // Verify error state
       const syncState = syncManager.getSyncState(client.id, product.id, session.id);
       expect(syncState.status).toBe('error');
-      
+
       await waitFor(150);
     });
   });
@@ -358,27 +311,15 @@ describe('Integration: Message Flow', () => {
 
       // Step 1: Add initial message (user prompt)
       const userMessage = createTestMessage({ role: 'user' });
-      await syncManager.addMessageToSession(
-        currentClient,
-        product.id,
-        session.id,
-        userMessage,
-        (updated) => {
-          currentClient = updated;
-        }
-      );
+      await syncManager.addMessageToSession(currentClient, product.id, session.id, userMessage, (updated) => {
+        currentClient = updated;
+      });
 
       // Step 2: Add assistant message immediately
       const assistantMessage = createTestImageGenerationMessage();
-      await syncManager.addMessageToSession(
-        currentClient,
-        product.id,
-        session.id,
-        assistantMessage,
-        (updated) => {
-          currentClient = updated;
-        }
-      );
+      await syncManager.addMessageToSession(currentClient, product.id, session.id, assistantMessage, (updated) => {
+        currentClient = updated;
+      });
 
       // Step 3: Immediately start updating (simulating polling)
       // This used to fail with "session not found"
@@ -417,15 +358,9 @@ describe('Integration: Message Flow', () => {
       const assistantMessage = createTestImageGenerationMessage();
       let currentClient = client;
 
-      await syncManager.addMessageToSession(
-        currentClient,
-        product.id,
-        session.id,
-        assistantMessage,
-        (updated) => {
-          currentClient = updated;
-        }
-      );
+      await syncManager.addMessageToSession(currentClient, product.id, session.id, assistantMessage, (updated) => {
+        currentClient = updated;
+      });
 
       // Simulate rapid polling updates (every 100ms for 1 second)
       const progressUpdates = Array.from({ length: 10 }, (_, i) => ({
@@ -438,16 +373,9 @@ describe('Integration: Message Flow', () => {
       }));
 
       for (const update of progressUpdates) {
-        await syncManager.updateMessageInSession(
-          currentClient,
-          product.id,
-          session.id,
-          assistantMessage.id,
-          update,
-          (updated) => {
-            currentClient = updated;
-          }
-        );
+        await syncManager.updateMessageInSession(currentClient, product.id, session.id, assistantMessage.id, update, (updated) => {
+          currentClient = updated;
+        });
       }
 
       // Final progress should be 90 (last update)
@@ -479,15 +407,9 @@ describe('Integration: Message Flow', () => {
           ],
         });
 
-        await syncManager.addMessageToSession(
-          currentClient,
-          product.id,
-          session.id,
-          message,
-          (updated) => {
-            currentClient = updated;
-          }
-        );
+        await syncManager.addMessageToSession(currentClient, product.id, session.id, message, (updated) => {
+          currentClient = updated;
+        });
       }
 
       // All messages should be present

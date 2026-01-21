@@ -1,6 +1,14 @@
 import { and, desc, eq, lte, sql } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
-import { generationJob, type JobStatus, type JobType, type ImageGenerationPayload, type ImageEditPayload, type VideoGenerationPayload, type JobResult } from '../schema/jobs';
+import {
+  generationJob,
+  type JobStatus,
+  type JobType,
+  type ImageGenerationPayload,
+  type ImageEditPayload,
+  type VideoGenerationPayload,
+  type JobResult,
+} from '../schema/jobs';
 import { BaseRepository } from './base';
 
 // ============================================================================
@@ -59,6 +67,32 @@ export class GenerationJobRepository extends BaseRepository<GenerationJob> {
     super(drizzle, generationJob);
   }
 
+  private mapClaimedRow(row: Record<string, unknown>): GenerationJob {
+    if ('clientId' in row) {
+      return row as unknown as GenerationJob;
+    }
+
+    return {
+      id: row.id as string,
+      clientId: row.client_id as string,
+      flowId: row.flow_id as string | null,
+      type: row.type as JobType,
+      payload: row.payload as ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload,
+      status: row.status as JobStatus,
+      progress: row.progress as number,
+      result: row.result as JobResult | null,
+      error: row.error as string | null,
+      attempts: row.attempts as number,
+      maxAttempts: row.max_attempts as number,
+      scheduledFor: row.scheduled_for as Date,
+      lockedBy: row.locked_by as string | null,
+      lockedAt: row.locked_at as Date | null,
+      priority: row.priority as number,
+      createdAt: row.created_at as Date,
+      startedAt: row.started_at as Date | null,
+      completedAt: row.completed_at as Date | null,
+    };
+  }
 
   /**
    * Create a new job
@@ -113,19 +147,15 @@ export class GenerationJobRepository extends BaseRepository<GenerationJob> {
       RETURNING *
     `);
 
-    const rows = result.rows as unknown as GenerationJob[];
-    return rows[0] ?? null;
+    const rows = result.rows as Array<Record<string, unknown>>;
+    return rows[0] ? this.mapClaimedRow(rows[0]) : null;
   }
 
   /**
    * Update job status and progress
    */
   async updateStatus(id: string, data: GenerationJobUpdate): Promise<GenerationJob> {
-    const [updated] = await this.drizzle
-      .update(generationJob)
-      .set(data)
-      .where(eq(generationJob.id, id))
-      .returning();
+    const [updated] = await this.drizzle.update(generationJob).set(data).where(eq(generationJob.id, id)).returning();
 
     return this.mapToEntity(updated);
   }
@@ -279,12 +309,7 @@ export class GenerationJobRepository extends BaseRepository<GenerationJob> {
 
     const result = await this.drizzle
       .delete(generationJob)
-      .where(
-        and(
-          sql`${generationJob.status} IN ('completed', 'failed')`,
-          lte(generationJob.completedAt, cutoff)
-        )
-      )
+      .where(and(sql`${generationJob.status} IN ('completed', 'failed')`, lte(generationJob.completedAt, cutoff)))
       .returning({ id: generationJob.id });
 
     return result.length;

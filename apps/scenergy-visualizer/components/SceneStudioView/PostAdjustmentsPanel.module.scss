@@ -156,7 +156,9 @@
     border: 2px solid semantic-color('primary');
     border-radius: 50%;
     cursor: grab;
-    transition: transform 0.15s, box-shadow 0.15s;
+    transition:
+      transform 0.15s,
+      box-shadow 0.15s;
     box-shadow: 0 2px 4px semantic-color('overlay-soft');
 
     &:hover {
@@ -177,7 +179,9 @@
     border: 2px solid semantic-color('primary');
     border-radius: 50%;
     cursor: grab;
-    transition: transform 0.15s, box-shadow 0.15s;
+    transition:
+      transform 0.15s,
+      box-shadow 0.15s;
     box-shadow: 0 2px 4px semantic-color('overlay-soft');
 
     &:hover {

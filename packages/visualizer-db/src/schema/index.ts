@@ -66,12 +66,12 @@ export { userSettings, userSettingsRelations, DEFAULT_NOTIFICATION_SETTINGS, DEF
 export type { NotificationSettings, DefaultGenerationSettings } from './user-settings';
 
 // Usage/Quota tables
-export { usageRecord, quotaLimit, usageRecordRelations, quotaLimitRelations } from './usage';
-export type { PlanType } from './usage';
+export { usageRecord, quotaLimit, aiCostTracking, usageRecordRelations, quotaLimitRelations, aiCostTrackingRelations } from './usage';
+export type { PlanType, AIOperationType } from './usage';
 
 // Generation Jobs (PostgreSQL queue)
 export { generationJob, generationJobRelations } from './jobs';
-export type { JobType, JobStatus, ImageGenerationPayload, ImageEditPayload, VideoGenerationPayload, JobResult } from './jobs';
+export type { JobType, JobStatus, PromptTags, ImageGenerationPayload, ImageEditPayload, VideoGenerationPayload, JobResult } from './jobs';
 
 // Re-export types from visualizer-types for convenience
 export type {

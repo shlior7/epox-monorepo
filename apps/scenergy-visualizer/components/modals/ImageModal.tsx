@@ -6,7 +6,7 @@ import { colors } from '@/lib/styles/common-styles';
 import { ImageProps } from 'next/image';
 import { SafeNextImage } from '../common/SafeImage';
 import { Portal, Z_INDEX } from '../common/Portal';
-import { parseSize } from '../../lib/services';
+import { parseSize } from 'visualizer-ai/client';
 import { buildTestId } from '@/lib/utils/test-ids';
 
 interface ImageInfo {

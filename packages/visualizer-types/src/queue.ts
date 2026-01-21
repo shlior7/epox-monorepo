@@ -10,12 +10,7 @@ import type { FlowGenerationSettings, ImageQuality } from './settings';
 // ============================================================================
 
 /** Types of AI jobs that can be queued */
-export type AIJobType =
-  | 'image_generation'
-  | 'image_edit'
-  | 'video_generation'
-  | 'upscale'
-  | 'background_removal';
+export type AIJobType = 'image_generation' | 'image_edit' | 'video_generation' | 'upscale' | 'background_removal';
 
 /** Job status states */
 export type JobStatus = 'pending' | 'active' | 'completed' | 'failed' | 'delayed';
@@ -233,4 +228,3 @@ export interface WorkerConfig {
   /** Rate limit in requests per minute (matches Gemini RPM limits) */
   maxJobsPerMinute?: number;
 }
-

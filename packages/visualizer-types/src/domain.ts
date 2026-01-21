@@ -54,7 +54,7 @@ export interface ProductAnalysis {
   materials: string[];
   colors: { primary: string; accent?: string[] };
   style: string[];
-  sceneTypes: string[];              // Renamed from suggestedsceneTypes
+  sceneTypes: string[]; // Renamed from suggestedsceneTypes
   scaleHints: { width: string; height: string };
   promptKeywords: string[];
   version: string;

@@ -3,6 +3,7 @@
 ## Overview
 
 Scene Studios are persistent workspaces (like sessions) that retain all their state:
+
 - Output slots with products and configurations
 - Generated images and revision history
 - User-uploaded custom scenes
@@ -11,40 +12,43 @@ Scene Studios are persistent workspaces (like sessions) that retain all their st
 ## Data Structure
 
 ### SceneStudio
+
 ```typescript
 interface SceneStudio {
-  id: string;                      // Unique identifier
-  name: string;                    // Display name
-  clientId: string;                // Parent client reference
+  id: string; // Unique identifier
+  name: string; // Display name
+  clientId: string; // Parent client reference
   outputSlots: OutputSlotConfig[]; // All generation rows
-  userScenes?: Scene[];            // Custom uploaded scenes
-  createdAt: string;               // ISO timestamp
-  updatedAt: string;               // ISO timestamp
+  userScenes?: Scene[]; // Custom uploaded scenes
+  createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp
 }
 ```
 
 ### OutputSlotConfig (Rows)
+
 ```typescript
 interface OutputSlotConfig {
-  id: string;                          // Slot identifier
-  productIds: string[];                // Products in this slot
-  status: SlotStatus;                  // EMPTY | GENERATING | COMPLETED | ERROR
-  outputImage?: string;                // Currently displayed image
-  history: GeneratedSceneImage[];      // All generated variations
-  settings: SceneGenerationSettings;   // Full configuration
+  id: string; // Slot identifier
+  productIds: string[]; // Products in this slot
+  status: SlotStatus; // EMPTY | GENERATING | COMPLETED | ERROR
+  outputImage?: string; // Currently displayed image
+  history: GeneratedSceneImage[]; // All generated variations
+  settings: SceneGenerationSettings; // Full configuration
 }
 ```
 
 ### GeneratedSceneImage (Revisions)
+
 ```typescript
 interface GeneratedSceneImage {
   id: string;
-  url: string;                         // S3 URL or base64
-  timestamp: number;                   // When generated
-  productIds: string[];                // Products used
-  productNames: string[];              // Product names
-  settings: SceneGenerationSettings;   // Settings snapshot
-  debugPrompt?: string;                // Prompt used
+  url: string; // S3 URL or base64
+  timestamp: number; // When generated
+  productIds: string[]; // Products used
+  productNames: string[]; // Product names
+  settings: SceneGenerationSettings; // Settings snapshot
+  debugPrompt?: string; // Prompt used
 }
 ```
 
@@ -55,6 +59,7 @@ interface GeneratedSceneImage {
 ```
 
 ### Examples:
+
 ```
 /acme-corp/scene-studio/default
 /acme-corp/scene-studio/summer-campaign-2024
@@ -64,13 +69,16 @@ interface GeneratedSceneImage {
 ## Persistence Flow
 
 ### 1. Initial Load
+
 1. User navigates to `/[clientId]/scene-studio/[studioId]`
 2. Page loads studio from `client.sceneStudios.find(s => s.id === studioId)`
 3. If studio exists → loads `outputSlots` into state
 4. If studio doesn't exist → creates new empty studio (handled by DataContext)
 
 ### 2. State Changes
+
 When user makes changes (adds product, changes settings, generates image):
+
 ```typescript
 // Local state updates immediately
 setRows(prev => /* updated rows */);
@@ -80,15 +88,17 @@ await updateSceneStudio(clientId, studioId, { outputSlots: rows });
 ```
 
 ### 3. Generation
+
 When user clicks "Execute":
+
 ```typescript
 // 1. Update status to GENERATING
-setRows(prev => prev.map(r => r.id === rowId ? { ...r, status: SlotStatus.GENERATING } : r));
+setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, status: SlotStatus.GENERATING } : r)));
 
 // 2. Call generation API
 const { imageUrl, promptUsed } = await fetch(`/api/clients/${clientId}/scene-studio/${studioId}/generate`, {
   method: 'POST',
-  body: JSON.stringify({ slotId: rowId, products, settings })
+  body: JSON.stringify({ slotId: rowId, products, settings }),
 });
 
 // 3. Create history item
@@ -97,18 +107,24 @@ const newHistoryItem: GeneratedSceneImage = {
   url: imageUrl,
   timestamp: Date.now(),
   productIds: row.productIds,
-  productNames: products.map(p => p.name),
+  productNames: products.map((p) => p.name),
   settings: { ...row.settings },
-  debugPrompt: promptUsed
+  debugPrompt: promptUsed,
 };
 
 // 4. Update row with new image
-setRows(prev => prev.map(r => r.id === rowId ? {
-  ...r,
-  status: SlotStatus.COMPLETED,
-  outputImage: imageUrl,
-  history: [newHistoryItem, ...r.history]
-} : r));
+setRows((prev) =>
+  prev.map((r) =>
+    r.id === rowId
+      ? {
+          ...r,
+          status: SlotStatus.COMPLETED,
+          outputImage: imageUrl,
+          history: [newHistoryItem, ...r.history],
+        }
+      : r
+  )
+);
 
 // 5. Persist to backend
 await updateSceneStudio(clientId, studioId, { outputSlots: rows });
@@ -117,6 +133,7 @@ await updateSceneStudio(clientId, studioId, { outputSlots: rows });
 ## Storage
 
 ### S3 Structure
+
 ```
 clients/
 └── [clientId]/
@@ -136,6 +153,7 @@ clients/
 ```
 
 ### client.json (Updated)
+
 ```json
 {
   "id": "acme-corp",
@@ -255,7 +273,7 @@ useEffect(() => {
   if (studio && debouncedRows.length > 0) {
     updateSceneStudio(clientId, studioId, {
       outputSlots: debouncedRows,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     });
   }
 }, [debouncedRows, clientId, studioId, studio]);
@@ -265,7 +283,7 @@ useEffect(() => {
 
 ```typescript
 const handleGenerateRow = async (rowId: string) => {
-  const row = rows.find(r => r.id === rowId);
+  const row = rows.find((r) => r.id === rowId);
   if (!row || row.productIds.length === 0) return;
 
   try {
@@ -273,18 +291,22 @@ const handleGenerateRow = async (rowId: string) => {
     const newImage = await generateSceneImage(clientId, studioId, rowId);
 
     // Update local state
-    setRows(prev => prev.map(r => r.id === rowId ? {
-      ...r,
-      status: SlotStatus.COMPLETED,
-      outputImage: newImage.url,
-      history: [newImage, ...r.history]
-    } : r));
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === rowId
+          ? {
+              ...r,
+              status: SlotStatus.COMPLETED,
+              outputImage: newImage.url,
+              history: [newImage, ...r.history],
+            }
+          : r
+      )
+    );
 
     // DataContext handles persistence
   } catch (err) {
-    setRows(prev => prev.map(r =>
-      r.id === rowId ? { ...r, status: SlotStatus.ERROR } : r
-    ));
+    setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, status: SlotStatus.ERROR } : r)));
   }
 };
 ```
@@ -292,20 +314,24 @@ const handleGenerateRow = async (rowId: string) => {
 ## Migration Strategy
 
 ### Phase 1: Local State Only (Current)
+
 - ✅ UI works with local state
 - ❌ State lost on refresh
 
 ### Phase 2: Load from DataContext
+
 - ✅ Load existing studio on mount
 - ✅ Create default studio if missing
 - ❌ No auto-save
 
 ### Phase 3: Save to DataContext
+
 - ✅ Debounced auto-save on changes
 - ✅ Save after generation
 - ✅ Full persistence
 
 ### Phase 4: Optimistic Updates
+
 - ✅ Instant UI updates
 - ✅ Background sync to S3
 - ✅ Conflict resolution
@@ -322,6 +348,7 @@ const handleGenerateRow = async (rowId: string) => {
 ## Example User Flows
 
 ### Flow 1: First-Time User
+
 1. User clicks "Open Scene Studio" in client settings
 2. Navigates to `/acme-corp/scene-studio/default`
 3. No studio exists → auto-creates "Main Studio"
@@ -331,6 +358,7 @@ const handleGenerateRow = async (rowId: string) => {
 7. Returns later → all work is still there
 
 ### Flow 2: Campaign Management
+
 1. User creates "Summer 2024" studio
 2. Adds 5 products, configures as beachy/coastal theme
 3. Generates 20 variations across 5 slots
@@ -340,6 +368,7 @@ const handleGenerateRow = async (rowId: string) => {
 7. Both studios persist independently
 
 ### Flow 3: Revision History
+
 1. User generates image with "Modern" style
 2. Not satisfied → changes to "Industrial"
 3. Generates again

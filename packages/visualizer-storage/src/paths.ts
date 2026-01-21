@@ -17,11 +17,9 @@ export const storagePaths = {
   inspirationImage: (clientId: string, sessionId: string, imageId: string, extension = 'jpg') =>
     `${CLIENT_PREFIX}/${clientId}/sessions/${sessionId}/inspirations/${imageId}.${extension.replace(/^\./, '')}`,
   // User profile photos
-  userPhoto: (userId: string, extension = 'jpg') =>
-    `users/${userId}/photo.${extension.replace(/^\./, '')}`,
+  userPhoto: (userId: string, extension = 'jpg') => `users/${userId}/photo.${extension.replace(/^\./, '')}`,
   // Bulk download ZIPs
-  downloadZip: (clientId: string, jobId: string) =>
-    `${CLIENT_PREFIX}/${clientId}/downloads/${jobId}.zip`,
+  downloadZip: (clientId: string, jobId: string) => `${CLIENT_PREFIX}/${clientId}/downloads/${jobId}.zip`,
 } as const;
 
 export type StoragePaths = typeof storagePaths;

@@ -52,9 +52,7 @@ export class AlertService {
    * Send an alert to configured channels
    */
   async sendAlert(payload: AlertPayload): Promise<void> {
-    const promises = this.config.channels
-      .filter((ch) => ch.enabled && ch.url)
-      .map((ch) => this.sendToChannel(ch, payload));
+    const promises = this.config.channels.filter((ch) => ch.enabled && ch.url).map((ch) => this.sendToChannel(ch, payload));
 
     await Promise.allSettled(promises);
   }
@@ -62,10 +60,7 @@ export class AlertService {
   /**
    * Send alert to a specific channel
    */
-  private async sendToChannel(
-    channel: AlertChannelConfig,
-    payload: AlertPayload
-  ): Promise<void> {
+  private async sendToChannel(channel: AlertChannelConfig, payload: AlertPayload): Promise<void> {
     if (!channel.url) return;
 
     try {
@@ -84,10 +79,7 @@ export class AlertService {
   /**
    * Format payload for different channel types
    */
-  private formatPayload(
-    type: AlertChannel,
-    payload: AlertPayload
-  ): Record<string, unknown> {
+  private formatPayload(type: AlertChannel, payload: AlertPayload): Record<string, unknown> {
     switch (type) {
       case 'email':
         return {
@@ -120,16 +112,13 @@ export class AlertService {
     if (payload.details) {
       body += '\nDetails:\n';
       for (const [key, value] of Object.entries(payload.details)) {
-        const formattedValue = typeof value === 'object' && value !== null
-          ? JSON.stringify(value, null, 2)
-          : String(value);
+        const formattedValue = typeof value === 'object' && value !== null ? JSON.stringify(value, null, 2) : String(value);
         body += `  ${key}: ${formattedValue}\n`;
       }
     }
 
     return body;
   }
-
 }
 
 // Singleton
@@ -168,4 +157,3 @@ export function getAlertService(): AlertService | null {
 
   return _alertService;
 }
-

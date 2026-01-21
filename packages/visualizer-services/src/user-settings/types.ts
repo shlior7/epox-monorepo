@@ -25,5 +25,3 @@ export interface UserSettingsData {
 }
 
 export type { NotificationPreferences };
-
-

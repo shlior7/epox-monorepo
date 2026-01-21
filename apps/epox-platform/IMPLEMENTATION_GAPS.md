@@ -18,6 +18,7 @@ The **epox-platform** app is a beautifully designed Next.js application with **9
 ### 1. Authentication & Authorization ❌
 
 #### Current State (epox-platform)
+
 ```typescript
 // apps/epox-platform/app/(auth)/login/page.tsx:21
 const handleSubmit = async (e: React.FormEvent) => {
@@ -29,6 +30,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 ```
 
 #### Required Implementation (from scenergy-visualizer)
+
 ```typescript
 // Pattern 1: Admin Routes
 import { requireAdmin } from '@/lib/auth/admin-route';
@@ -52,22 +54,26 @@ export const GET = withAuth(async (_request, { session }) => {
 ```
 
 #### Files to Create
+
 1. **`apps/epox-platform/lib/auth/admin-route.ts`** - Admin HOF wrapper
 2. **`apps/epox-platform/lib/auth/access.ts`** - getUserRole, ensureAdmin, ensureClientAccess
 3. **`apps/epox-platform/middleware.ts`** - Route protection
 
 #### API Routes to Update
+
 - ✅ `/api/auth/[...nextauth]/route.ts` - Exists but not integrated
 - ❌ `/api/auth/me/route.ts` - CREATE: Get current user
 - ❌ `/api/auth/signup/route.ts` - CREATE: User registration
 - ❌ `/api/auth/login/route.ts` - CREATE: User login
 
 #### Pages to Update
+
 - `app/(auth)/login/page.tsx` - Connect to `/api/auth/login`
 - `app/(auth)/signup/page.tsx` - Connect to `/api/auth/signup`
 - All dashboard pages - Add session checks
 
 **Dependencies:**
+
 - `visualizer-auth` package (already in package.json ✅)
 - Cookie handling for sessions
 - Password hashing (bcrypt/argon2)
@@ -77,6 +83,7 @@ export const GET = withAuth(async (_request, { session }) => {
 ### 2. Database Integration ❌
 
 #### Current State
+
 **All routes return hardcoded arrays:**
 
 ```typescript
@@ -97,6 +104,7 @@ export async function GET(request: Request) {
 ```
 
 #### Required Implementation (from scenergy-visualizer)
+
 ```typescript
 import { db } from 'visualizer-db';
 
@@ -138,6 +146,7 @@ export const POST = withAuth(async (request, { session }) => {
 Based on epox-platform mock data structure:
 
 **Tables to Create/Use:**
+
 1. **users** - User accounts
 2. **products** - Product catalog (name, category, sku, price, images)
 3. **collections** - Product collections (name, description, productIds)
@@ -146,29 +155,32 @@ Based on epox-platform mock data structure:
 6. **user_settings** - User preferences
 
 **Repository Methods Needed:**
+
 ```typescript
-db.products.list({ userId, page, limit, search, category })
-db.products.getById(id, userId)
-db.products.create({ userId, ...data })
-db.products.update(id, userId, data)
-db.products.delete(id, userId)
+db.products.list({ userId, page, limit, search, category });
+db.products.getById(id, userId);
+db.products.create({ userId, ...data });
+db.products.update(id, userId, data);
+db.products.delete(id, userId);
 
-db.collections.list({ userId, page, limit, search })
-db.collections.getById(id, userId)
-db.collections.create({ userId, ...data })
-db.collections.update(id, userId, data)
-db.collections.delete(id, userId)
+db.collections.list({ userId, page, limit, search });
+db.collections.getById(id, userId);
+db.collections.create({ userId, ...data });
+db.collections.update(id, userId, data);
+db.collections.delete(id, userId);
 
-db.generatedImages.list({ userId, productId, status, page, limit })
-db.generatedImages.create({ userId, productId, ...data })
-db.generatedImages.updateStatus(id, status)
+db.generatedImages.list({ userId, productId, status, page, limit });
+db.generatedImages.create({ userId, productId, ...data });
+db.generatedImages.updateStatus(id, status);
 
-db.studioSessions.create({ userId, collectionId, settings })
-db.studioSessions.getById(id, userId)
+db.studioSessions.create({ userId, collectionId, settings });
+db.studioSessions.getById(id, userId);
 ```
 
 #### Files to Update
+
 **API Routes (11 files):**
+
 1. `app/api/dashboard/route.ts` - Replace hardcoded stats with DB queries
 2. `app/api/products/route.ts` - GET/POST with db.products
 3. `app/api/products/[id]/route.ts` - GET/PUT/DELETE with db.products
@@ -182,6 +194,7 @@ db.studioSessions.getById(id, userId)
 11. `app/api/upload/route.ts` - Store file metadata in db
 
 **Dependencies:**
+
 - `visualizer-db` package (already in package.json ✅)
 - Database migration scripts
 - Seed data for development
@@ -191,6 +204,7 @@ db.studioSessions.getById(id, userId)
 ### 3. File Storage (S3/R2) ❌
 
 #### Current State
+
 ```typescript
 // apps/epox-platform/app/api/upload/route.ts:29
 const mockUrl = `https://images.unsplash.com/photo-${Date.now()}?w=800`;
@@ -200,6 +214,7 @@ return NextResponse.json({ url: mockUrl }); // ❌ FILE NOT STORED
 #### Required Implementation (from scenergy-visualizer)
 
 **Service Layer:**
+
 ```typescript
 // apps/epox-platform/lib/services/storage/media-service.ts - CREATE THIS FILE
 import {
@@ -222,6 +237,7 @@ export {
 ```
 
 **API Route Update:**
+
 ```typescript
 // apps/epox-platform/app/api/upload/route.ts
 import { uploadFile, MediaPaths } from '@/lib/services/storage/media-service';
@@ -261,24 +277,27 @@ export const POST = withAuth(async (request, { session }) => {
 ```
 
 **Storage Paths Pattern:**
+
 ```typescript
-MediaPaths.getProductImagePath(userId, productId)
-  // → users/{userId}/products/{productId}/image.jpg
+MediaPaths.getProductImagePath(userId, productId);
+// → users/{userId}/products/{productId}/image.jpg
 
-MediaPaths.getGeneratedImagePath(userId, sessionId, imageId)
-  // → users/{userId}/sessions/{sessionId}/generated/{imageId}.png
+MediaPaths.getGeneratedImagePath(userId, sessionId, imageId);
+// → users/{userId}/sessions/{sessionId}/generated/{imageId}.png
 
-MediaPaths.getCollectionImagePath(userId, collectionId)
-  // → users/{userId}/collections/{collectionId}/cover.jpg
+MediaPaths.getCollectionImagePath(userId, collectionId);
+// → users/{userId}/collections/{collectionId}/cover.jpg
 ```
 
 #### Files to Create/Update
+
 1. **CREATE:** `apps/epox-platform/lib/services/storage/media-service.ts`
 2. **UPDATE:** `app/api/upload/route.ts` - Real R2 uploads
 3. **UPDATE:** `app/api/products/route.ts` - Handle image URLs from storage
 4. **UPDATE:** `app/api/generate-images/route.ts` - Store generated images to R2
 
 **Environment Variables Needed:**
+
 ```env
 R2_ACCOUNT_ID=your_cloudflare_account_id
 R2_ACCESS_KEY_ID=your_access_key
@@ -288,6 +307,7 @@ R2_PUBLIC_URL=https://your-bucket.r2.dev
 ```
 
 **Dependencies:**
+
 - `visualizer-storage` package (already in package.json ✅)
 - Cloudflare R2 or AWS S3 bucket setup
 
@@ -296,6 +316,7 @@ R2_PUBLIC_URL=https://your-bucket.r2.dev
 ### 4. Image Generation Queue ❌
 
 #### Current State
+
 ```typescript
 // apps/epox-platform/app/api/generate-images/route.ts:56-61
 // In production, this would:
@@ -312,6 +333,7 @@ return NextResponse.json({ jobId, status: 'queued' });
 #### Required Implementation (from scenergy-visualizer)
 
 **Queue Service:**
+
 ```typescript
 // apps/epox-platform/lib/services/image-generation/queue.ts - CREATE THIS FILE
 import { db } from 'visualizer-db';
@@ -411,6 +433,7 @@ export async function getJobStatus(jobId: string, userId: string) {
 ```
 
 **API Route Update:**
+
 ```typescript
 // apps/epox-platform/app/api/generate-images/route.ts
 import { enqueueGeneration } from '@/lib/services/image-generation/queue';
@@ -440,11 +463,13 @@ export const GET = withAuth(async (request, { session, params }) => {
 ```
 
 #### Files to Create/Update
+
 1. **CREATE:** `apps/epox-platform/lib/services/image-generation/queue.ts`
 2. **UPDATE:** `app/api/generate-images/route.ts` - Use queue service
 3. **CREATE:** `app/api/generate-images/[jobId]/route.ts` - Job status endpoint
 
 **Database Tables Needed:**
+
 ```typescript
 // generation_jobs table
 {
@@ -464,6 +489,7 @@ export const GET = withAuth(async (request, { session, params }) => {
 ```
 
 **Dependencies:**
+
 - `visualizer-services` package (Gemini integration)
 - Optional: Redis + BullMQ for production queue
 
@@ -472,7 +498,9 @@ export const GET = withAuth(async (request, { session, params }) => {
 ### 5. AI Services Integration ❌
 
 #### Current State
+
 **Multiple AI endpoints are stubs:**
+
 - `app/api/analyze-products/route.ts` - Incomplete
 - `app/api/analyze-image/route.ts` - Stub
 - `app/api/edit-image/route.ts` - Placeholder
@@ -482,6 +510,7 @@ export const GET = withAuth(async (request, { session, params }) => {
 #### Required Implementation (from scenergy-visualizer)
 
 **Gemini Service Layer:**
+
 ```typescript
 // apps/epox-platform/lib/services/gemini/index.ts - CREATE THIS FILE
 import { getGeminiService as getVisualizerGemini } from 'visualizer-services';
@@ -491,10 +520,15 @@ export function getGeminiService() {
 }
 
 // Re-export types
-export type { GeminiService, ImageGenerationRequest, ImageAnalysisRequest } from 'visualizer-services';
+export type {
+  GeminiService,
+  ImageGenerationRequest,
+  ImageAnalysisRequest,
+} from 'visualizer-services';
 ```
 
 **Implementation Example:**
+
 ```typescript
 // apps/epox-platform/app/api/analyze-products/route.ts
 import { getGeminiService } from '@/lib/services/gemini';
@@ -543,6 +577,7 @@ export const POST = withAuth(async (request, { session }) => {
 ```
 
 **Image Editing:**
+
 ```typescript
 // apps/epox-platform/app/api/edit-image/route.ts
 import { getGeminiService } from '@/lib/services/gemini';
@@ -572,6 +607,7 @@ export const POST = withAuth(async (request, { session }) => {
 ```
 
 #### Files to Create/Update
+
 1. **CREATE:** `apps/epox-platform/lib/services/gemini/index.ts`
 2. **UPDATE:** `app/api/analyze-products/route.ts` - Full implementation
 3. **UPDATE:** `app/api/analyze-image/route.ts` - Full implementation
@@ -580,11 +616,13 @@ export const POST = withAuth(async (request, { session }) => {
 6. **UPDATE:** `app/api/upscale-image/route.ts` - Full implementation
 
 **Environment Variables Needed:**
+
 ```env
 GEMINI_API_KEY=your_google_ai_api_key
 ```
 
 **Dependencies:**
+
 - `visualizer-services` package (already in package.json ✅)
 - Google AI Studio API key
 
@@ -593,6 +631,7 @@ GEMINI_API_KEY=your_google_ai_api_key
 ### 6. Unsplash Integration ❌
 
 #### Current State
+
 ```typescript
 // apps/epox-platform/app/api/unsplash/search/route.ts:70-74
 // In production, you would call the Unsplash API:
@@ -602,10 +641,13 @@ GEMINI_API_KEY=your_google_ai_api_key
 // );
 // For now, return mock data with some filtering
 
-const MOCK_IMAGES = [ /* 8 hardcoded images */ ];
+const MOCK_IMAGES = [
+  /* 8 hardcoded images */
+];
 ```
 
 #### Required Implementation
+
 ```typescript
 // apps/epox-platform/app/api/unsplash/search/route.ts
 export async function GET(request: Request) {
@@ -646,23 +688,23 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('❌ Unsplash search failed:', error);
-    return NextResponse.json(
-      { error: 'Failed to search images' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to search images' }, { status: 500 });
   }
 }
 ```
 
 #### Files to Update
+
 1. `app/api/unsplash/search/route.ts` - Replace mock with real API
 
 **Environment Variables Needed:**
+
 ```env
 UNSPLASH_ACCESS_KEY=your_unsplash_access_key
 ```
 
 **Dependencies:**
+
 - Unsplash Developer account
 - Rate limits: 50 requests/hour (demo), 5000 requests/hour (production)
 
@@ -672,39 +714,25 @@ UNSPLASH_ACCESS_KEY=your_unsplash_access_key
 
 ### Files to CREATE (7 new files)
 
-| File Path | Purpose |
-|-----------|---------|
-| `lib/auth/admin-route.ts` | Admin authentication HOF |
-| `lib/auth/access.ts` | getUserRole, ensureAdmin, ensureClientAccess |
-| `lib/services/storage/media-service.ts` | Storage service wrapper |
-| `lib/services/gemini/index.ts` | Gemini AI service wrapper |
-| `lib/services/image-generation/queue.ts` | Image generation queue |
-| `app/api/auth/me/route.ts` | Current user endpoint |
-| `app/api/generate-images/[jobId]/route.ts` | Job status endpoint |
+| File Path                                  | Purpose                                      |
+| ------------------------------------------ | -------------------------------------------- |
+| `lib/auth/admin-route.ts`                  | Admin authentication HOF                     |
+| `lib/auth/access.ts`                       | getUserRole, ensureAdmin, ensureClientAccess |
+| `lib/services/storage/media-service.ts`    | Storage service wrapper                      |
+| `lib/services/gemini/index.ts`             | Gemini AI service wrapper                    |
+| `lib/services/image-generation/queue.ts`   | Image generation queue                       |
+| `app/api/auth/me/route.ts`                 | Current user endpoint                        |
+| `app/api/generate-images/[jobId]/route.ts` | Job status endpoint                          |
 
 ### Files to UPDATE (18 existing files)
 
 **Auth (3 files):**
+
 1. `app/(auth)/login/page.tsx` - Real login API call
 2. `app/(auth)/signup/page.tsx` - Real signup API call
 3. `middleware.ts` - Route protection (if exists, else create)
 
-**API Routes (15 files):**
-4. `app/api/dashboard/route.ts` - DB queries for stats
-5. `app/api/products/route.ts` - db.products CRUD
-6. `app/api/products/[id]/route.ts` - db.products CRUD
-7. `app/api/collections/route.ts` - db.collections CRUD
-8. `app/api/collections/[id]/route.ts` - db.collections CRUD
-9. `app/api/generated-images/route.ts` - db.generatedImages queries
-10. `app/api/studio/route.ts` - db.studioSessions CRUD
-11. `app/api/generate-images/route.ts` - Queue integration
-12. `app/api/analyze-products/route.ts` - Gemini integration
-13. `app/api/analyze-image/route.ts` - Gemini integration
-14. `app/api/edit-image/route.ts` - Gemini integration
-15. `app/api/remove-background/route.ts` - AI integration
-16. `app/api/upscale-image/route.ts` - AI integration
-17. `app/api/upload/route.ts` - Real storage
-18. `app/api/unsplash/search/route.ts` - Real API
+**API Routes (15 files):** 4. `app/api/dashboard/route.ts` - DB queries for stats 5. `app/api/products/route.ts` - db.products CRUD 6. `app/api/products/[id]/route.ts` - db.products CRUD 7. `app/api/collections/route.ts` - db.collections CRUD 8. `app/api/collections/[id]/route.ts` - db.collections CRUD 9. `app/api/generated-images/route.ts` - db.generatedImages queries 10. `app/api/studio/route.ts` - db.studioSessions CRUD 11. `app/api/generate-images/route.ts` - Queue integration 12. `app/api/analyze-products/route.ts` - Gemini integration 13. `app/api/analyze-image/route.ts` - Gemini integration 14. `app/api/edit-image/route.ts` - Gemini integration 15. `app/api/remove-background/route.ts` - AI integration 16. `app/api/upscale-image/route.ts` - AI integration 17. `app/api/upload/route.ts` - Real storage 18. `app/api/unsplash/search/route.ts` - Real API
 
 ---
 
@@ -728,6 +756,7 @@ UNSPLASH_ACCESS_KEY=your_unsplash_access_key
    - id, userId, key, url, filename, size, mimeType, type, createdAt
 
 **New repository methods:**
+
 ```typescript
 // visualizer-db package needs:
 db.products.*
@@ -773,6 +802,7 @@ REDIS_URL=redis://localhost:6379
 ## Implementation Phases
 
 ### Phase 1: Foundation (Critical) - Week 1
+
 1. ✅ Setup environment variables
 2. ✅ Create database tables/migrations
 3. ✅ Implement auth system (login/signup)
@@ -783,6 +813,7 @@ REDIS_URL=redis://localhost:6379
 **Deliverable:** Users can sign up, log in, create/view products and collections
 
 ### Phase 2: Storage & Generation - Week 2
+
 1. ✅ Integrate R2/S3 storage
 2. ✅ Implement file upload endpoint
 3. ✅ Create image generation queue
@@ -792,6 +823,7 @@ REDIS_URL=redis://localhost:6379
 **Deliverable:** Users can upload files and generate images (async)
 
 ### Phase 3: AI Features - Week 3
+
 1. ✅ Product analysis endpoint
 2. ✅ Image analysis endpoint
 3. ✅ Image editing features
@@ -801,6 +833,7 @@ REDIS_URL=redis://localhost:6379
 **Deliverable:** All AI features functional
 
 ### Phase 4: Polish & Optimization - Week 4
+
 1. ✅ Error handling improvements
 2. ✅ Loading states for async operations
 3. ✅ WebSocket for real-time updates (optional)
@@ -832,14 +865,17 @@ REDIS_URL=redis://localhost:6379
 ## Reference Files (from scenergy-visualizer)
 
 **Auth patterns:**
+
 - `/Users/liorsht/MyThings/MyProjects/epox-monorepo/apps/scenergy-visualizer/lib/auth/admin-route.ts`
 - `/Users/liorsht/MyThings/MyProjects/epox-monorepo/apps/scenergy-visualizer/lib/auth/access.ts`
 
 **Storage patterns:**
+
 - `/Users/liorsht/MyThings/MyProjects/epox-monorepo/apps/scenergy-visualizer/lib/services/r2/media-service.ts`
 - `/Users/liorsht/MyThings/MyProjects/epox-monorepo/apps/scenergy-visualizer/lib/services/s3/storage-service.ts`
 
 **API route examples:**
+
 - `/Users/liorsht/MyThings/MyProjects/epox-monorepo/apps/scenergy-visualizer/app/api/clients/route.ts` (CRUD)
 - `/Users/liorsht/MyThings/MyProjects/epox-monorepo/apps/scenergy-visualizer/app/api/generate-images/route.ts` (Queue)
 - `/Users/liorsht/MyThings/MyProjects/epox-monorepo/apps/scenergy-visualizer/app/api/analyze-scene/route.ts` (AI)

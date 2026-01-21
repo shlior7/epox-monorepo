@@ -3,18 +3,9 @@
 import React, { useCallback, useRef, useEffect, useState } from 'react';
 import { Sun, Palette, Sparkles, RotateCcw } from 'lucide-react';
 import clsx from 'clsx';
-import type {
-  PostAdjustments,
-  LightAdjustments,
-  ColorAdjustments,
-  EffectsAdjustments,
-} from '@/lib/types/app-types';
+import type { PostAdjustments, LightAdjustments, ColorAdjustments, EffectsAdjustments } from '@/lib/types/app-types';
 import { DEFAULT_POST_ADJUSTMENTS } from '@/lib/types/app-types';
-import {
-  calculateLuminosityAdjustment,
-  contrastToFactor,
-  exposureToMultiplier,
-} from '@/lib/services/image-processing/adjustment-math';
+import { calculateLuminosityAdjustment, contrastToFactor, exposureToMultiplier } from '@/lib/services/image-processing/adjustment-math';
 import styles from './PostAdjustmentsPanel.module.scss';
 
 interface PostAdjustmentsPanelProps {
@@ -136,9 +127,7 @@ export function generateFilterString(adjustments: PostAdjustments): string {
 export function hasAdjustments(adjustments: PostAdjustments): boolean {
   const { light, color, effects } = adjustments;
   return (
-    Object.values(light).some((v) => v !== 0) ||
-    Object.values(color).some((v) => v !== 0) ||
-    Object.values(effects).some((v) => v !== 0)
+    Object.values(light).some((v) => v !== 0) || Object.values(color).some((v) => v !== 0) || Object.values(effects).some((v) => v !== 0)
   );
 }
 
@@ -233,11 +222,7 @@ export function PostAdjustmentsPanel({
     [adjustments, onChange]
   );
 
-  const renderSlider = (
-    config: SliderConfig,
-    value: number,
-    onChangeValue: (value: number) => void
-  ) => {
+  const renderSlider = (config: SliderConfig, value: number, onChangeValue: (value: number) => void) => {
     const isZero = value === 0;
     const percentage = ((value - config.min) / (config.max - config.min)) * 100;
 
@@ -245,9 +230,7 @@ export function PostAdjustmentsPanel({
       <div key={config.key} className={styles.sliderRow}>
         <div className={styles.sliderHeader}>
           <label className={styles.sliderLabel}>{config.label}</label>
-          <span className={clsx(styles.sliderValue, { [styles.active]: !isZero })}>
-            {value > 0 ? `+${value}` : value}
-          </span>
+          <span className={clsx(styles.sliderValue, { [styles.active]: !isZero })}>{value > 0 ? `+${value}` : value}</span>
         </div>
         <div className={styles.sliderContainer}>
           <input
@@ -318,10 +301,8 @@ export function PostAdjustmentsPanel({
         {activeCategory === 'light' && (
           <>
             {LIGHT_SLIDERS.map((config) =>
-              renderSlider(
-                config,
-                adjustments.light[config.key as keyof LightAdjustments],
-                (value) => handleLightChange(config.key as keyof LightAdjustments, value)
+              renderSlider(config, adjustments.light[config.key as keyof LightAdjustments], (value) =>
+                handleLightChange(config.key as keyof LightAdjustments, value)
               )
             )}
           </>
@@ -330,10 +311,8 @@ export function PostAdjustmentsPanel({
         {activeCategory === 'color' && (
           <>
             {COLOR_SLIDERS.map((config) =>
-              renderSlider(
-                config,
-                adjustments.color[config.key as keyof ColorAdjustments],
-                (value) => handleColorChange(config.key as keyof ColorAdjustments, value)
+              renderSlider(config, adjustments.color[config.key as keyof ColorAdjustments], (value) =>
+                handleColorChange(config.key as keyof ColorAdjustments, value)
               )
             )}
           </>
@@ -342,10 +321,8 @@ export function PostAdjustmentsPanel({
         {activeCategory === 'effects' && (
           <>
             {EFFECTS_SLIDERS.map((config) =>
-              renderSlider(
-                config,
-                adjustments.effects[config.key as keyof EffectsAdjustments],
-                (value) => handleEffectsChange(config.key as keyof EffectsAdjustments, value)
+              renderSlider(config, adjustments.effects[config.key as keyof EffectsAdjustments], (value) =>
+                handleEffectsChange(config.key as keyof EffectsAdjustments, value)
               )
             )}
           </>
@@ -353,11 +330,7 @@ export function PostAdjustmentsPanel({
 
         {/* Reset Category Button */}
         {categoryHasChanges(activeCategory) && (
-          <button
-            type="button"
-            className={styles.resetCategoryButton}
-            onClick={() => handleResetCategory(activeCategory)}
-          >
+          <button type="button" className={styles.resetCategoryButton} onClick={() => handleResetCategory(activeCategory)}>
             <RotateCcw style={{ width: 14, height: 14 }} />
             <span>Reset {activeCategory}</span>
           </button>
@@ -381,11 +354,7 @@ export function PostAdjustmentsPanel({
             </button>
           )}
           {onApply && hasAdjustments(adjustments) && (
-            <button
-              type="button"
-              className={styles.applyButton}
-              onClick={() => onApply(adjustments)}
-            >
+            <button type="button" className={styles.applyButton} onClick={() => onApply(adjustments)}>
               Apply Adjustments
             </button>
           )}

@@ -32,12 +32,7 @@ const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
 
     return (
       <RadioGroupContext.Provider value={{ value: currentValue, onValueChange: handleValueChange }}>
-        <div
-          ref={ref}
-          role="radiogroup"
-          className={cn('grid gap-2', className)}
-          {...props}
-        >
+        <div ref={ref} role="radiogroup" className={cn('grid gap-2', className)} {...props}>
           {children}
         </div>
       </RadioGroupContext.Provider>

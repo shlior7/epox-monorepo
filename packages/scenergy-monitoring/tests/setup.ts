@@ -19,4 +19,3 @@ export const TEST_CONFIG = {
     url: process.env.TEST_REDIS_URL ?? 'redis://localhost:6399',
   },
 };
-

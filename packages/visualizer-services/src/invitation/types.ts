@@ -38,5 +38,3 @@ export interface InvitationDetails {
   expiresAt: Date;
   isValid: boolean;
 }
-
-

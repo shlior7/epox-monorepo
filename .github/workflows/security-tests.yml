@@ -1,0 +1,114 @@
+name: Security Regression Tests
+
+on:
+  pull_request:
+    branches: [main, develop, ai-and-monitoring]
+    paths:
+      - 'apps/epox-platform/app/api/**'
+      - 'apps/epox-platform/lib/security/**'
+      - 'apps/epox-platform/lib/services/get-auth.ts'
+      - 'apps/epox-platform/tests/security/**'
+      - 'packages/visualizer-auth/**'
+  push:
+    branches: [main]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  security-tests:
+    name: Run Security Regression Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/epox-platform
+
+      - name: Run Security Tests
+        run: npm test tests/security -- --reporter=verbose --run
+        working-directory: apps/epox-platform
+        env:
+          NODE_ENV: test
+
+      - name: Check Production Environment Guards
+        run: |
+          echo "Verifying production environment guards..."
+          if grep -r "getServerAuthWithFallback" apps/epox-platform/lib/services/get-auth.ts | grep -q "NODE_ENV"; then
+            echo "✅ Production guard found in getServerAuthWithFallback"
+          else
+            echo "❌ Missing NODE_ENV check in getServerAuthWithFallback"
+            exit 1
+          fi
+
+      - name: Verify No Hardcoded Credentials
+        run: |
+          echo "Scanning for hardcoded credentials..."
+          # Check for common credential patterns (excluding test files)
+          if grep -r -i --exclude-dir={node_modules,dist,.next} --exclude="*.test.ts" \
+            -E "(password|api_key|secret|token)\s*=\s*['\"][^'\"]{10,}" apps/epox-platform/; then
+            echo "⚠️ Potential hardcoded credentials found"
+            echo "Please review the matches above"
+            # Don't fail CI, just warn
+          else
+            echo "✅ No obvious hardcoded credentials found"
+          fi
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-test-results
+          path: apps/epox-platform/test-results/
+          retention-days: 30
+
+      - name: Security Test Summary
+        if: always()
+        run: |
+          echo "## Security Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All security regression tests completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Tests Covered:" >> $GITHUB_STEP_SUMMARY
+          echo "- Authentication requirements on 7 critical endpoints" >> $GITHUB_STEP_SUMMARY
+          echo "- Ownership verification on mutations" >> $GITHUB_STEP_SUMMARY
+          echo "- Error message sanitization" >> $GITHUB_STEP_SUMMARY
+          echo "- Production environment guards" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "For details, see [Security Audit Report](../SECURITY_AUDIT_2026-01-21.md)" >> $GITHUB_STEP_SUMMARY
+
+  deployment-gate:
+    name: Security Deployment Gate
+    needs: security-tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ready-for-production')
+
+    steps:
+      - name: Production Deployment Checklist
+        run: |
+          echo "## 🔒 Production Security Checklist" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Before merging this PR to production:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [x] Security regression tests passed" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] NODE_ENV=production set in production environment" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Database credentials rotated if needed" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Rate limiting configured" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Error monitoring enabled (Sentry)" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Security audit reviewed by team" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ Manual verification required for items above" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify security team
+        if: success()
+        run: |
+          echo "✅ Security tests passed for production-ready PR"
+          echo "Security team should review: ${{ github.event.pull_request.html_url }}"

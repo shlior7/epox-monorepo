@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getGeminiService } from 'visualizer-services';
+import { getGeminiService, RateLimitError } from 'visualizer-ai';
 import { withSecurity, validateImageUrl } from '@/lib/security';
 
 interface AnalyzeImageRequest {
@@ -12,23 +12,33 @@ interface AnalyzeImageRequest {
 }
 
 export const POST = withSecurity(async (request) => {
-  const body: AnalyzeImageRequest = await request.json();
+  try {
+    const body: AnalyzeImageRequest = await request.json();
 
-  if (!body.imageDataUrl) {
-    return NextResponse.json({ success: false, error: 'Missing imageDataUrl' }, { status: 400 });
+    if (!body.imageDataUrl) {
+      return NextResponse.json({ success: false, error: 'Missing imageDataUrl' }, { status: 400 });
+    }
+
+    // Validate data URL format
+    const urlValidation = validateImageUrl(body.imageDataUrl);
+    if (!urlValidation.valid) {
+      return NextResponse.json(
+        { success: false, error: urlValidation.error ?? 'Invalid image data URL' },
+        { status: 400 }
+      );
+    }
+
+    const geminiService = getGeminiService();
+    const result = await geminiService.analyzeComponents(body.imageDataUrl);
+
+    return NextResponse.json({ success: true, ...result });
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json(
+        { success: false, error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429 }
+      );
+    }
+    throw error;
   }
-
-  // Validate data URL format
-  const urlValidation = validateImageUrl(body.imageDataUrl);
-  if (!urlValidation.valid) {
-    return NextResponse.json(
-      { success: false, error: urlValidation.error ?? 'Invalid image data URL' },
-      { status: 400 }
-    );
-  }
-
-  const geminiService = getGeminiService();
-  const result = await geminiService.analyzeComponents(body.imageDataUrl);
-
-  return NextResponse.json({ success: true, ...result });
 });

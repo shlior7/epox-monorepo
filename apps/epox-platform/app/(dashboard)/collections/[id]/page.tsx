@@ -15,10 +15,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/spinner';
 import { apiClient } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
@@ -34,7 +36,7 @@ import {
   Package,
   Play,
   Sparkles,
-  Trash2
+  Trash2,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -53,6 +55,9 @@ export default function CollectionDetailPage({ params }: CollectionDetailPagePro
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [activeTab, setActiveTab] = useState('products');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteAssetPolicy, setDeleteAssetPolicy] = useState<'delete_all' | 'keep_pinned_approved'>(
+    'keep_pinned_approved'
+  );
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState('');
 
@@ -92,7 +97,7 @@ export default function CollectionDetailPage({ params }: CollectionDetailPagePro
 
   // Delete collection mutation
   const deleteCollectionMutation = useMutation({
-    mutationFn: () => apiClient.deleteCollection(collectionId),
+    mutationFn: () => apiClient.deleteCollection(collectionId, { assetPolicy: deleteAssetPolicy }),
     onSuccess: () => {
       toast.success('Collection deleted');
       router.push('/collections');
@@ -215,7 +220,12 @@ export default function CollectionDetailPage({ params }: CollectionDetailPagePro
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setDeleteAssetPolicy('keep_pinned_approved');
+                    setIsDeleteDialogOpen(true);
+                  }}
+                >
                   <Trash2 className="mr-2 h-4 w-4 text-destructive" />
                   Delete Collection
                 </DropdownMenuItem>
@@ -269,7 +279,11 @@ export default function CollectionDetailPage({ params }: CollectionDetailPagePro
                 <CardTitle className="text-base">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button className="w-full justify-start" variant="outline" onClick={handleOpenStudio}>
+                <Button
+                  className="w-full justify-start"
+                  variant="outline"
+                  onClick={handleOpenStudio}
+                >
                   <Sparkles className="mr-2 h-4 w-4" />
                   Open Generation Studio
                 </Button>
@@ -369,7 +383,9 @@ export default function CollectionDetailPage({ params }: CollectionDetailPagePro
                               <p className="truncate font-medium">{product.name}</p>
                               <p className="text-sm text-muted-foreground">{product.category}</p>
                             </div>
-                            <Badge variant="secondary">{(product.sceneTypes ?? product.sceneTypes)?.[0] || 'General'}</Badge>
+                            <Badge variant="secondary">
+                              {(product.sceneTypes ?? product.sceneTypes)?.[0] || 'General'}
+                            </Badge>
                           </div>
                         </Link>
                       );
@@ -388,9 +404,42 @@ export default function CollectionDetailPage({ params }: CollectionDetailPagePro
           <DialogHeader>
             <DialogTitle>Delete Collection</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{collection.name}"? This action cannot be undone.
+              Choose what to do with assets created by "{collection.name}". This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
+          <RadioGroup
+            value={deleteAssetPolicy}
+            onValueChange={(value) =>
+              setDeleteAssetPolicy(value as 'delete_all' | 'keep_pinned_approved')
+            }
+            className="space-y-3"
+          >
+            <div className="flex items-start gap-3 rounded-lg border border-border p-3">
+              <RadioGroupItem id="delete-collection-assets" value="delete_all" className="mt-0.5" />
+              <div className="space-y-1">
+                <Label htmlFor="delete-collection-assets">
+                  Remove all assets in this collection
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Deletes every generated asset owned by this collection.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border border-border p-3">
+              <RadioGroupItem
+                id="keep-collection-assets"
+                value="keep_pinned_approved"
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="keep-collection-assets">Keep pinned and approved assets</Label>
+                <p className="text-xs text-muted-foreground">
+                  Only deletes assets that are not pinned and not approved.
+                </p>
+              </div>
+            </div>
+          </RadioGroup>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancel

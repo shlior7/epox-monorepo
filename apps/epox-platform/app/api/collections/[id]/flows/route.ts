@@ -7,13 +7,14 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
-import { getClientId } from '@/lib/services/get-auth';
+import { withSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
 import type { FlowGenerationSettings, SceneTypeInspirationMap } from 'visualizer-types';
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const GET = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id: collectionId } = await params;
 
@@ -23,14 +24,25 @@ export async function GET(
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
     }
 
+    // Verify ownership
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: collection.clientId,
+        resourceType: 'collection',
+        resourceId: collectionId,
+      })
+    ) {
+      return forbiddenResponse();
+    }
+
     // Fetch generation flows for this collection
     const flows = await db.generationFlows.listByCollectionSession(collectionId);
 
     // Get all flow IDs to batch fetch generated assets
     const flowIds = flows.map((f) => f.id);
-    const allGeneratedAssets = flowIds.length > 0 
-      ? await db.generatedAssets.listByGenerationFlowIds(flowIds)
-      : [];
+    const allGeneratedAssets =
+      flowIds.length > 0 ? await db.generatedAssets.listByGenerationFlowIds(flowIds) : [];
 
     // Group assets by flow ID
     const assetsByFlowId = new Map<string, typeof allGeneratedAssets>();
@@ -95,21 +107,33 @@ export async function GET(
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const POST = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id: collectionId } = await params;
-    const clientId = await getClientId(request);
     const body = await request.json().catch(() => ({}));
 
     // Fetch collection
     const collection = await db.collectionSessions.getById(collectionId);
     if (!collection) {
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: collection.clientId,
+        resourceType: 'collection',
+        resourceId: collectionId,
+      })
+    ) {
+      return forbiddenResponse();
     }
 
     // Get collection settings
@@ -173,7 +197,9 @@ export async function POST(
         settings: flowSettings,
       });
 
-      console.log(`✅ Created flow ${flow.id} for product ${productId} (scene: ${matchedSceneType || 'default'})`);
+      console.log(
+        `✅ Created flow ${flow.id} for product ${productId} (scene: ${matchedSceneType || 'default'})`
+      );
       newFlows.push({ flowId: flow.id, productId });
     }
 
@@ -188,4 +214,4 @@ export async function POST(
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

@@ -28,11 +28,7 @@ export function ThemeToggle({ className, size = 'md' }: ThemeToggleProps) {
   // Don't render anything until mounted to prevent hydration mismatch
   if (!mounted) {
     return (
-      <button
-        className={`${styles.toggle} ${styles[size]} ${className || ''}`}
-        aria-label="Toggle theme"
-        disabled
-      >
+      <button className={`${styles.toggle} ${styles[size]} ${className || ''}`} aria-label="Toggle theme" disabled>
         <span className={styles.iconPlaceholder} style={{ width: iconSize, height: iconSize }} />
       </button>
     );
@@ -48,14 +44,8 @@ export function ThemeToggle({ className, size = 'md' }: ThemeToggleProps) {
       title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
     >
       <span className={styles.iconWrapper}>
-        <Sun
-          size={iconSize}
-          className={`${styles.icon} ${styles.sunIcon} ${!isDark ? styles.active : ''}`}
-        />
-        <Moon
-          size={iconSize}
-          className={`${styles.icon} ${styles.moonIcon} ${isDark ? styles.active : ''}`}
-        />
+        <Sun size={iconSize} className={`${styles.icon} ${styles.sunIcon} ${!isDark ? styles.active : ''}`} />
+        <Moon size={iconSize} className={`${styles.icon} ${styles.moonIcon} ${isDark ? styles.active : ''}`} />
       </span>
     </button>
   );

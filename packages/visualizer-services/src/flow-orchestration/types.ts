@@ -4,7 +4,7 @@
 
 import type { FlowGenerationSettings, PromptTags } from 'visualizer-types';
 import type { InspirationImage } from '../inspiration/types';
-import type { BatchAnalysisResult } from '../product-analysis/types';
+import type { BatchAnalysisResult } from 'visualizer-ai';
 
 export interface CreateFlowRequest {
   clientId: string;
@@ -43,5 +43,3 @@ export interface PromptBuilderContext {
   promptTags?: PromptTags;
   customPrompt?: string;
 }
-
-

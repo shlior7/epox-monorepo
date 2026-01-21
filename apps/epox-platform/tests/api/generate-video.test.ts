@@ -7,34 +7,22 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { POST as generateVideo } from '@/app/api/generate-video/route';
 import { NextRequest } from 'next/server';
 
-vi.mock('@/lib/services/db', () => ({
-  db: {
-    generationJobs: {
-      create: vi.fn(),
-    },
-  },
+vi.mock('visualizer-ai', () => ({
+  enqueueVideoGeneration: vi.fn(),
 }));
 
 vi.mock('@/lib/services/get-auth', () => ({
   getClientId: vi.fn(() => Promise.resolve('test-client')),
 }));
 
-import { db } from '@/lib/services/db';
-import { getClientId } from '@/lib/services/get-auth';
+import { enqueueVideoGeneration } from 'visualizer-ai';
 
 describe('Video Generation API - POST /api/generate-video', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    vi.mocked(db.generationJobs.create).mockResolvedValue({
-      id: 'job-vid-123',
-      clientId: 'test-client',
-      type: 'video_generation',
-      status: 'pending',
-      priority: 100,
-      payload: {},
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    vi.mocked(enqueueVideoGeneration).mockResolvedValue({
+      jobId: 'job-vid-123',
     });
   });
 
@@ -124,21 +112,21 @@ describe('Video Generation API - POST /api/generate-video', () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(db.generationJobs.create).toHaveBeenCalledTimes(1);
-    expect(db.generationJobs.create).toHaveBeenCalledWith(
+    expect(enqueueVideoGeneration).toHaveBeenCalledTimes(1);
+    expect(enqueueVideoGeneration).toHaveBeenCalledWith(
+      'test-client',
       expect.objectContaining({
-        clientId: 'test-client',
-        type: 'video_generation',
-        flowId: 'flow-1',
-        payload: expect.objectContaining({
-          sessionId: 'flow-1',
-          productIds: ['prod-1'],
-          sourceImageUrl: 'https://example.com/base.png',
-          prompt: 'Pan around the product',
-          settings: expect.objectContaining({
-            durationSeconds: 6,
-          }),
+        sessionId: 'flow-1',
+        productIds: ['prod-1'],
+        sourceImageUrl: 'https://example.com/base.png',
+        prompt: 'Pan around the product',
+        settings: expect.objectContaining({
+          durationSeconds: 6,
         }),
+      }),
+      expect.objectContaining({
+        flowId: 'flow-1',
+        priority: 100,
       })
     );
     expect(data.jobId).toBe('job-vid-123');
@@ -146,7 +134,7 @@ describe('Video Generation API - POST /api/generate-video', () => {
     expect(data.queueType).toBe('postgres');
   });
 
-  it('should use clientId from request body when provided', async () => {
+  it('should ignore clientId from request body', async () => {
     const request = new NextRequest('http://localhost:3000/api/generate-video', {
       method: 'POST',
       body: JSON.stringify({
@@ -161,12 +149,11 @@ describe('Video Generation API - POST /api/generate-video', () => {
     const response = await generateVideo(request);
 
     expect(response.status).toBe(200);
-    expect(db.generationJobs.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        clientId: 'custom-client',
-      })
+    expect(enqueueVideoGeneration).toHaveBeenCalledWith(
+      'test-client',
+      expect.anything(),
+      expect.anything()
     );
-    expect(vi.mocked(getClientId)).not.toHaveBeenCalled();
   });
 
   it('should set urgent priority when requested', async () => {
@@ -184,14 +171,16 @@ describe('Video Generation API - POST /api/generate-video', () => {
     const response = await generateVideo(request);
 
     expect(response.status).toBe(200);
-    expect(db.generationJobs.create).toHaveBeenCalledWith(
+    expect(enqueueVideoGeneration).toHaveBeenCalledWith(
+      'test-client',
+      expect.anything(),
       expect.objectContaining({
         priority: 50,
       })
     );
   });
 
-  it('should trim prompt and include inspiration data', async () => {
+  it('should trim prompt and include inspiration note', async () => {
     const request = new NextRequest('http://localhost:3000/api/generate-video', {
       method: 'POST',
       body: JSON.stringify({
@@ -199,7 +188,6 @@ describe('Video Generation API - POST /api/generate-video', () => {
         productId: 'prod-1',
         sourceImageUrl: 'https://example.com/base.png',
         prompt: '  Pan around the product  ',
-        inspirationImageUrl: 'https://example.com/inspo.jpg',
         inspirationNote: 'Warm, cinematic lighting',
         settings: {
           durationSeconds: 8,
@@ -212,24 +200,43 @@ describe('Video Generation API - POST /api/generate-video', () => {
     const response = await generateVideo(request);
 
     expect(response.status).toBe(200);
-    expect(db.generationJobs.create).toHaveBeenCalledWith(
+    expect(enqueueVideoGeneration).toHaveBeenCalledWith(
+      'test-client',
       expect.objectContaining({
-        payload: expect.objectContaining({
-          prompt: 'Pan around the product',
-          inspirationImageUrl: 'https://example.com/inspo.jpg',
-          inspirationNote: 'Warm, cinematic lighting',
-          settings: {
-            durationSeconds: 8,
-            fps: 24,
-            model: 'veo-3.1-generate-preview',
-          },
-        }),
-      })
+        prompt: 'Pan around the product',
+        inspirationNote: 'Warm, cinematic lighting',
+        settings: {
+          durationSeconds: 8,
+          fps: 24,
+          model: 'veo-3.1-generate-preview',
+        },
+      }),
+      expect.anything()
     );
   });
 
+  it('should reject inspirationImageUrl to enforce single-image input', async () => {
+    const request = new NextRequest('http://localhost:3000/api/generate-video', {
+      method: 'POST',
+      body: JSON.stringify({
+        sessionId: 'flow-1',
+        productId: 'prod-1',
+        sourceImageUrl: 'https://example.com/base.png',
+        prompt: 'Pan around the product',
+        inspirationImageUrl: 'https://example.com/inspo.jpg',
+      }),
+    });
+
+    const response = await generateVideo(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe('Validation failed');
+    expect(data.details.join(' ')).toContain('inspirationImageUrl');
+  });
+
   it('should handle job creation errors', async () => {
-    vi.mocked(db.generationJobs.create).mockRejectedValueOnce(new Error('Queue down'));
+    vi.mocked(enqueueVideoGeneration).mockRejectedValueOnce(new Error('Queue down'));
 
     const request = new NextRequest('http://localhost:3000/api/generate-video', {
       method: 'POST',
@@ -245,6 +252,6 @@ describe('Video Generation API - POST /api/generate-video', () => {
     const data = await response.json();
 
     expect(response.status).toBe(500);
-    expect(data.error).toContain('Queue down');
+    expect(data.error).toBe('Internal server error');
   });
 });

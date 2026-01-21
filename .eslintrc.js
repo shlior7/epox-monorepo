@@ -24,15 +24,11 @@ module.exports = {
   },
   plugins: ['@typescript-eslint', 'jest', 'unicorn', 'import', 'perfectionist'],
   rules: {
-
     //
     // typescript-eslint
     //
 
-    '@typescript-eslint/return-await': [
-      'error',
-      'error-handling-correctness-only',
-    ],
+    '@typescript-eslint/return-await': ['error', 'error-handling-correctness-only'],
     '@typescript-eslint/no-explicit-any': 'warn',
     // '@typescript-eslint/consistent-type-exports': 'error',
     '@typescript-eslint/no-unnecessary-template-expression': 'error',
@@ -50,10 +46,7 @@ module.exports = {
     '@typescript-eslint/no-deprecated': 'error',
     '@typescript-eslint/no-require-imports': 'off',
     '@typescript-eslint/array-type': ['error', { default: 'array-simple' }],
-    '@typescript-eslint/consistent-type-imports': [
-      'error',
-      { disallowTypeAnnotations: false },
-    ],
+    '@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
     '@typescript-eslint/no-unused-vars': [
       'warn',
       {
@@ -84,10 +77,7 @@ module.exports = {
         allowElseIf: false,
       },
     ],
-    'no-fallthrough': [
-      'error',
-      { commentPattern: '.*intentional fallthrough.*' },
-    ],
+    'no-fallthrough': ['error', { commentPattern: '.*intentional fallthrough.*' }],
     'no-implicit-coercion': ['error', { boolean: false }],
     'no-lonely-if': 'error',
     'no-unreachable-loop': 'error',
@@ -140,11 +130,7 @@ module.exports = {
   },
   overrides: [
     {
-      files: [
-        './packages/cli-cloudflare-runtime/**',
-        './playground/**',
-        './ci-infra/**',
-      ],
+      files: ['./packages/cli-cloudflare-runtime/**', './playground/**', './ci-infra/**'],
       rules: {
         'no-console': 'off',
       },
@@ -193,11 +179,7 @@ module.exports = {
   settings: {
     'import/resolver': {
       typescript: {
-        project: [
-          './tsconfig.json',
-          './packages/*/tsconfig*.json',
-          './apps/*/tsconfig*.json',
-        ],
+        project: ['./tsconfig.json', './packages/*/tsconfig*.json', './apps/*/tsconfig*.json'],
       },
     },
   },

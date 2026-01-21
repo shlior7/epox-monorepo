@@ -4,18 +4,18 @@
  */
 
 import { type NextRequest, NextResponse } from 'next/server';
-import { getClientId } from '@/lib/services/get-auth';
+import { withSecurity } from '@/lib/security';
 import { getStoreService } from '@/lib/services/erp';
 
 const APP_NAME = process.env.WOOCOMMERCE_APP_NAME ?? 'Epox Platform';
 
-export async function POST(request: NextRequest) {
-  try {
-    const clientId = await getClientId(request);
-    if (!clientId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
+export const POST = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
+  try {
     const { storeUrl, returnUrl } = (await request.json()) as {
       storeUrl?: string;
       returnUrl?: string;
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     console.error('WooCommerce authorize error:', error);
     return NextResponse.json({ error: 'Failed to initialize authentication' }, { status: 500 });
   }
-}
+});
 
 function getBaseUrl(request: NextRequest): string {
   if (process.env.NEXT_PUBLIC_APP_URL) {

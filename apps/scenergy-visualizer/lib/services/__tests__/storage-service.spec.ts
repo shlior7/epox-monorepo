@@ -11,10 +11,7 @@ const uploadDoneMock = vi.fn();
 const originalFetch = globalThis.fetch;
 const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 const expectedBaseUrl = (() => {
-  const publicUrl =
-    process.env.R2_PUBLIC_URL ??
-    process.env.NEXT_PUBLIC_STORAGE_PUBLIC_URL ??
-    process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+  const publicUrl = process.env.R2_PUBLIC_URL ?? process.env.NEXT_PUBLIC_STORAGE_PUBLIC_URL ?? process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
 
   if (publicUrl) {
     return publicUrl.replace(/\/+$/, '');
@@ -145,7 +142,6 @@ describe('s3/storage-service', () => {
     expect(sendMock).toHaveBeenCalledTimes(2);
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to delete base image'), expect.any(Error));
   });
-
 
   it('withFallbackImage issues single HEAD request and falls back on failure', async () => {
     (globalThis.fetch as vi.Mock).mockResolvedValueOnce({ ok: false });

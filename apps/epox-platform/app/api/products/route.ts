@@ -7,12 +7,15 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { storage } from '@/lib/services/storage';
+import { withSecurity } from '@/lib/security/middleware';
 import type { ProductSource } from 'visualizer-types';
 
-// TODO: Replace with actual auth when implemented
-const PLACEHOLDER_CLIENT_ID = 'test-client';
+export const GET = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
@@ -50,16 +53,16 @@ export async function GET(request: NextRequest) {
 
     // Execute count and list queries in parallel
     const [total, products, categories, sceneTypes] = await Promise.all([
-      db.products.countWithFilters(PLACEHOLDER_CLIENT_ID, filterOptions),
-      db.products.listWithFiltersAndImages(PLACEHOLDER_CLIENT_ID, {
+      db.products.countWithFilters(clientId, filterOptions),
+      db.products.listWithFiltersAndImages(clientId, {
         ...filterOptions,
         sort,
         order,
         limit,
         offset,
       }),
-      db.products.getDistinctCategories(PLACEHOLDER_CLIENT_ID),
-      db.products.getDistinctSceneTypes(PLACEHOLDER_CLIENT_ID),
+      db.products.getDistinctCategories(clientId),
+      db.products.getDistinctSceneTypes(clientId),
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -110,9 +113,14 @@ export async function GET(request: NextRequest) {
     console.error('❌ Failed to fetch products:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const { name, sku, category, sceneTypes, price, description } = body;
@@ -141,7 +149,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create product in database
-    const product = await db.products.create(PLACEHOLDER_CLIENT_ID, {
+    const product = await db.products.create(clientId, {
       name: name.trim(),
       category: category?.trim() || null,
       sceneTypes: Array.isArray(sceneTypes) ? sceneTypes : undefined,
@@ -175,4 +183,4 @@ export async function POST(request: NextRequest) {
     console.error('❌ Failed to create product:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
-}
+});

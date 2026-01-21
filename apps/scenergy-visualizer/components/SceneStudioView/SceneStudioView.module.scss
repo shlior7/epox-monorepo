@@ -52,7 +52,9 @@
   cursor: pointer;
   color: semantic-color('text-primary');
   flex-shrink: 0;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 
   &:hover {
     background-color: semantic-color('surface-strong');
@@ -72,7 +74,9 @@
   cursor: pointer;
   color: semantic-color('text-primary');
   flex-shrink: 0;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 
   &:hover {
     background-color: semantic-color('surface-strong');
@@ -133,7 +137,9 @@
   border-radius: 4px;
   color: semantic-color('text-secondary');
   cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 
   &:hover {
     background-color: semantic-color('surface-strong');
@@ -192,7 +198,9 @@
   display: flex;
   gap: 16px;
   align-items: stretch;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 
   &:hover {
     border-color: semantic-color('surface-muted');
@@ -205,7 +213,9 @@
 
   &.dragOver {
     border-color: semantic-color('success');
-    box-shadow: 0 0 0 2px semantic-color('success'), 0 0 20px semantic-color('success-outline');
+    box-shadow:
+      0 0 0 2px semantic-color('success'),
+      0 0 20px semantic-color('success-outline');
     background-color: semantic-color('success-ghost');
   }
 
@@ -225,7 +235,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.2s, background-color 0.2s;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
   flex-shrink: 0;
 
   &.hasProducts {
@@ -284,7 +296,9 @@
   gap: 4px;
   width: 48px; // for gallery mode
   cursor: grab;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
 
   &:hover {
     transform: scale(1.05);
@@ -348,7 +362,9 @@
   cursor: pointer;
   padding: 0;
   opacity: 0;
-  transition: opacity 0.2s, transform 0.15s;
+  transition:
+    opacity 0.2s,
+    transform 0.15s;
   z-index: 3;
 
   &:hover {
@@ -412,7 +428,9 @@
   justify-content: center;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s, background-color 0.2s;
+  transition:
+    opacity 0.2s,
+    background-color 0.2s;
   color: semantic-color('text-inverse');
 
   &:hover {
@@ -514,7 +532,9 @@
   justify-content: center;
   cursor: pointer;
   color: semantic-color('text-muted');
-  transition: background-color 0.2s, color 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 
   &:hover {
     background-color: semantic-color('surface-strong');
@@ -543,7 +563,9 @@
   overflow: hidden;
   border: 2px solid transparent;
   cursor: pointer;
-  transition: border-color 0.2s, transform 0.2s;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
   background: none;
   padding: 0;
   position: relative;
@@ -726,7 +748,9 @@
   font-size: 12px;
   color: semantic-color('primary-muted');
   cursor: grab;
-  transition: background-color 0.2s, transform 0.15s;
+  transition:
+    background-color 0.2s,
+    transform 0.15s;
   user-select: none;
 
   &:hover {
@@ -783,7 +807,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.2s;
+  transition:
+    background-color 0.2s,
+    transform 0.2s;
 
   svg {
     width: 20px;
@@ -812,7 +838,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 
   svg {
     width: 18px;
@@ -843,7 +871,10 @@
   color: semantic-color('text-secondary');
   font-size: 14px;
   cursor: pointer;
-  transition: border-color 0.2s, color 0.2s, background-color 0.2s;
+  transition:
+    border-color 0.2s,
+    color 0.2s,
+    background-color 0.2s;
 
   &:hover {
     border-color: semantic-color('primary');
@@ -910,7 +941,9 @@
   z-index: 2000; // Higher than nav panel
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.3s, visibility 0.3s;
+  transition:
+    opacity 0.3s,
+    visibility 0.3s;
 
   &.open {
     opacity: 1;
@@ -997,7 +1030,9 @@
   border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 
   &:hover {
     background-color: semantic-color('surface-strong');
@@ -1058,7 +1093,9 @@
   overflow: hidden;
   border: 2px solid transparent;
   cursor: pointer;
-  transition: border-color 0.2s, transform 0.2s;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
 
   &:hover {
     border-color: semantic-color('text-muted');
@@ -1142,7 +1179,9 @@
   border: 2px solid transparent;
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color 0.2s, transform 0.2s;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
   opacity: 0.6;
 
   &:hover {
@@ -1181,7 +1220,9 @@
   z-index: 1000;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.3s, visibility 0.3s;
+  transition:
+    opacity 0.3s,
+    visibility 0.3s;
 
   &.open {
     opacity: 1;
@@ -1906,7 +1947,9 @@
   overflow: hidden;
   border: 2px solid transparent;
   cursor: pointer;
-  transition: border-color 0.2s, transform 0.2s;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
   background-color: semantic-color('background');
 
   &:hover {
@@ -2245,7 +2288,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
   z-index: 50;
 
   &:hover {
@@ -2446,7 +2491,7 @@
 .accordionItem {
   width: 100%;
 
-  +.accordionItem {
+  + .accordionItem {
     border-top: 1px solid semantic-color('surface-strong');
   }
 }
@@ -2833,7 +2878,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 
   svg {
     width: 18px;
@@ -3110,7 +3157,10 @@
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 4px 20px semantic-color('success-outline');
-  transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s,
+    opacity 0.2s;
   z-index: 50;
 
   &:hover:not(:disabled) {
@@ -3223,7 +3273,9 @@
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease-out;
+    transition:
+      transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 0.25s ease-out;
     border-radius: 8px;
   }
 
@@ -4391,7 +4443,10 @@
   cursor: pointer;
   color: semantic-color('text-secondary');
   z-index: 5;
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
   opacity: 0;
 
   .flowCard:hover & {
@@ -4456,7 +4511,9 @@
   flex-shrink: 0;
   border: 1px solid semantic-color('surface-muted');
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:hover {
     transform: scale(1.5);
@@ -4526,7 +4583,9 @@
   cursor: pointer;
   color: semantic-color('text-secondary');
   flex-shrink: 0;
-  transition: background-color 0.2s, color 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 
   &:hover {
     background-color: semantic-color('surface-muted');
@@ -4579,7 +4638,9 @@
     z-index: 99;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.3s, visibility 0.3s;
+    transition:
+      opacity 0.3s,
+      visibility 0.3s;
 
     &.visible {
       opacity: 1;

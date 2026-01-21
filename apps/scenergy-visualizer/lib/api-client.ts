@@ -200,14 +200,11 @@ class ApiClient {
   }
 
   async createFlow(clientId: string, sessionId: string, payload: CreateFlowPayload): Promise<Flow> {
-    const data = await this.request<{ flow: Flow }>(
-      `/api/clients/${clientId}/sessions/${sessionId}/flows`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }
-    );
+    const data = await this.request<{ flow: Flow }>(`/api/clients/${clientId}/sessions/${sessionId}/flows`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
     return data.flow;
   }
 

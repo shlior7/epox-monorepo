@@ -5,12 +5,7 @@ const PUBLIC_FILE = /\.[^/]+$/;
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/favicon') ||
-    PUBLIC_FILE.test(pathname)
-  ) {
+  if (pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.startsWith('/favicon') || PUBLIC_FILE.test(pathname)) {
     return NextResponse.next();
   }
 

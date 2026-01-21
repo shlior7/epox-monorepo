@@ -160,20 +160,20 @@ export function MessageBubble({
                   )}
 
                   {/* Error State */}
-                      {part.status === 'error' && (
-                        <div className={styles.errorState}>
-                          <div className={styles.errorTitle}>❌ Generation failed</div>
-                          {part.error && <div className={styles.errorMessage}>{part.error}</div>}
-                          {onRetryGeneration && (
-                            <button
-                              onClick={() => onRetryGeneration(message, part as ImageMessagePart)}
-                              className={styles.retryButton}
-                              data-testid={buildTestId('message', message.id, 'retry-generation')}
-                            >
-                              <Send className={styles.retryIcon} />
-                              Try Again
-                            </button>
-                          )}
+                  {part.status === 'error' && (
+                    <div className={styles.errorState}>
+                      <div className={styles.errorTitle}>❌ Generation failed</div>
+                      {part.error && <div className={styles.errorMessage}>{part.error}</div>}
+                      {onRetryGeneration && (
+                        <button
+                          onClick={() => onRetryGeneration(message, part as ImageMessagePart)}
+                          className={styles.retryButton}
+                          data-testid={buildTestId('message', message.id, 'retry-generation')}
+                        >
+                          <Send className={styles.retryIcon} />
+                          Try Again
+                        </button>
+                      )}
                     </div>
                   )}
 

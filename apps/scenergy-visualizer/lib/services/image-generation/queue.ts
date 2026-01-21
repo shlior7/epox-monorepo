@@ -1,15 +1,15 @@
 /**
  * @deprecated This Redis-based queue is deprecated.
- * Use the new PostgreSQL-based queue in ../job-queue/index.ts instead.
- * 
+ * Use the visualizer-ai generation queue facade instead.
+ *
  * This file is kept for reference during migration.
  * Can be deleted once PostgreSQL queue is confirmed working.
- * 
+ *
  * OLD: Image Generation Queue - Job system with polling support
  * Now with Redis persistence for job survival across restarts
  */
 
-import { getGeminiService, GeminiService } from '../gemini';
+import { getGeminiService, type GeminiService } from 'visualizer-ai';
 import * as R2Media from '../r2/media-service';
 import { v4 as uuidv4 } from 'uuid';
 import { redis } from '../redis/client';
@@ -261,8 +261,8 @@ export class ImageGenerationQueue {
         job.request.productImageIds && job.request.productImageIds.length > 0
           ? job.request.productImageIds
           : job.request.productImageId
-          ? [{ productId, imageId: job.request.productImageId }]
-          : [];
+            ? [{ productId, imageId: job.request.productImageId }]
+            : [];
 
       const loadProductImage = async (targetProductId: string, imageId: string): Promise<File | null> => {
         console.log(`📦 Product image ID provided: ${imageId}`);
@@ -405,11 +405,7 @@ export class ImageGenerationQueue {
       }
 
       const normalizeImageFile = async (file: File): Promise<File> => {
-        if (
-          !file.type ||
-          file.type === 'application/xml' ||
-          file.type === 'application/octet-stream'
-        ) {
+        if (!file.type || file.type === 'application/xml' || file.type === 'application/octet-stream') {
           const extension = file.name.toLowerCase().split('.').pop();
           const mimeTypes: Record<string, string> = {
             jpg: 'image/jpeg',

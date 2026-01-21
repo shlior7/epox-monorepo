@@ -11,6 +11,7 @@
 Implement database migrations and shared package architecture so the admin app (scenergy-visualizer) works with the new data model.
 
 **Definition of Done:**
+
 - [ ] Database schema renamed per design logs
 - [ ] New tables created per design logs
 - [ ] `visualizer-shared` package created with extracted services
@@ -22,15 +23,17 @@ Implement database migrations and shared package architecture so the admin app (
 ## Current State Analysis
 
 ### Existing Tables (from schema files)
-| Current Name | Design Log Target | Action |
-|--------------|------------------|--------|
-| `studio_session` | `collection_session` | Rename |
-| `flow` | `generation_flow` | Rename + make `collection_session_id` nullable |
-| `generated_image` | `generated_asset` | Rename + add columns |
-| `r2_key` | `asset_url` | Rename column |
-| `product` | `product` | Add columns |
+
+| Current Name      | Design Log Target    | Action                                         |
+| ----------------- | -------------------- | ---------------------------------------------- |
+| `studio_session`  | `collection_session` | Rename                                         |
+| `flow`            | `generation_flow`    | Rename + make `collection_session_id` nullable |
+| `generated_image` | `generated_asset`    | Rename + add columns                           |
+| `r2_key`          | `asset_url`          | Rename column                                  |
+| `product`         | `product`            | Add columns                                    |
 
 ### Missing Tables (per Design Log #003)
+
 - `generated_asset_product` - Junction table for multi-product linking
 - `tag` - Tags for organization
 - `tag_assignment` - Polymorphic tag assignments
@@ -41,6 +44,7 @@ Implement database migrations and shared package architecture so the admin app (
 - `inspiration_image` - Inspiration images for sessions
 
 ### Services to Extract (from scenergy-visualizer/lib/services/)
+
 - `gemini/` - AI generation service
 - `image-generation/queue.ts` - Job queue
 - `prompt-builder.ts` - Prompt construction
@@ -54,11 +58,13 @@ Implement database migrations and shared package architecture so the admin app (
 ### Phase 1: Database Schema Migrations (Renames)
 
 **1.1 Rename `studio_session` → `collection_session`**
+
 - Rename table
 - Update FK references in `message`, `flow`
 - Update indexes
 
 **1.2 Rename `flow` → `generation_flow`**
+
 - Rename table
 - Make `collection_session_id` nullable (for standalone flows)
 - Add `is_favorite` column
@@ -66,6 +72,7 @@ Implement database migrations and shared package architecture so the admin app (
 - Update indexes
 
 **1.3 Rename `generated_image` → `generated_asset`**
+
 - Rename table
 - Rename `r2_key` → `asset_url`
 - Add `asset_type` column (default: 'image')
@@ -77,6 +84,7 @@ Implement database migrations and shared package architecture so the admin app (
 - Update indexes
 
 **1.4 Add columns to `product`**
+
 - Add `is_favorite` boolean
 - Add `source` column ('imported' | 'uploaded')
 - Add store import fields (erp_id, erp_sku, erp_url, store_connection_id)
@@ -85,6 +93,7 @@ Implement database migrations and shared package architecture so the admin app (
 ### Phase 2: New Tables
 
 **2.1 Create `generated_asset_product`**
+
 ```sql
 CREATE TABLE generated_asset_product (
   id TEXT PRIMARY KEY,
@@ -109,6 +118,7 @@ CREATE TABLE generated_asset_product (
 ### Phase 3: Update Drizzle Schema Files
 
 Update files in `packages/visualizer-db/src/schema/`:
+
 - `sessions.ts` - Rename exports and table definitions
 - `generated-images.ts` → `generated-assets.ts` - Rename file and contents
 - Create new schema files for new tables
@@ -118,6 +128,7 @@ Update files in `packages/visualizer-db/src/schema/`:
 ### Phase 4: Update Repository Layer
 
 Update files in `packages/visualizer-db/src/repositories/`:
+
 - Rename `StudioSessionRepository` → `CollectionSessionRepository`
 - Rename `FlowRepository` → `GenerationFlowRepository`
 - Rename `GeneratedImageRepository` → `GeneratedAssetRepository`
@@ -127,6 +138,7 @@ Update files in `packages/visualizer-db/src/repositories/`:
 ### Phase 5: Update Types Package
 
 Update `packages/visualizer-types/src/`:
+
 - Add new entity types (Tag, TagAssignment, UserFavorite, etc.)
 - Rename types to match new table names
 - Add type aliases for backward compatibility
@@ -134,6 +146,7 @@ Update `packages/visualizer-types/src/`:
 ### Phase 6: Create Shared Package
 
 Create `packages/visualizer-shared/`:
+
 ```
 packages/visualizer-shared/
 ├── package.json
@@ -154,6 +167,7 @@ packages/visualizer-shared/
 ### Phase 7: Update Admin App
 
 Update `apps/scenergy-visualizer/`:
+
 - Update imports to use new table/type names
 - Update service imports to use shared package
 - Update API routes to use renamed repositories
@@ -200,6 +214,7 @@ graph TD
 ## Files to Modify
 
 ### Schema (visualizer-db)
+
 - `packages/visualizer-db/src/schema/sessions.ts`
 - `packages/visualizer-db/src/schema/generated-images.ts` → `generated-assets.ts`
 - `packages/visualizer-db/src/schema/products.ts`
@@ -209,6 +224,7 @@ graph TD
 - New: `packages/visualizer-db/src/schema/store-sync.ts`
 
 ### Repositories (visualizer-db)
+
 - `packages/visualizer-db/src/repositories/studio-sessions.ts` → `collection-sessions.ts`
 - `packages/visualizer-db/src/repositories/flows.ts` → `generation-flows.ts`
 - `packages/visualizer-db/src/repositories/generated-images.ts` → `generated-assets.ts`
@@ -216,15 +232,17 @@ graph TD
 - `packages/visualizer-db/src/facade.ts`
 
 ### Types (visualizer-types)
+
 - `packages/visualizer-types/src/domain.ts`
 - `packages/visualizer-types/src/database.ts`
 - `packages/visualizer-types/src/index.ts`
 
 ### New Package (visualizer-shared)
+
 - All files in `packages/visualizer-shared/`
 
 ### Admin App (scenergy-visualizer)
+
 - All imports referencing renamed entities
 - API routes
 - Service imports
-

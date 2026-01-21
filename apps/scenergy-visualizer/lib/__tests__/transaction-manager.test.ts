@@ -33,12 +33,7 @@ describe('TransactionManager', () => {
         return { success: true };
       });
 
-      const result = await manager.executeTransaction(
-        { clientId: client.id },
-        getCurrentState,
-        applyUpdate,
-        persistUpdate
-      );
+      const result = await manager.executeTransaction({ clientId: client.id }, getCurrentState, applyUpdate, persistUpdate);
 
       expect(result).toEqual({ success: true });
       expect(persistUpdate).toHaveBeenCalledTimes(1);
@@ -309,14 +304,14 @@ describe('TransactionManager', () => {
             return updated;
           },
           persistUpdate,
-          { 
-            maxRetries: 1, 
+          {
+            maxRetries: 1,
             retryDelay: 10,
             onRollback: (error) => {
               // Manually rollback state in callback
               currentState = client;
               rolledBack = true;
-            }
+            },
           }
         );
       } catch (error) {
@@ -444,4 +439,3 @@ describe('TransactionManager', () => {
     });
   });
 });
-

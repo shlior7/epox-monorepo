@@ -1,9 +1,6 @@
 import type { DrizzleClient } from '../client';
 
-export async function withTransaction<T>(
-  drizzle: DrizzleClient,
-  fn: (tx: DrizzleClient) => Promise<T>
-): Promise<T> {
+export async function withTransaction<T>(drizzle: DrizzleClient, fn: (tx: DrizzleClient) => Promise<T>): Promise<T> {
   const drizzleAny = drizzle as unknown as Record<string, unknown>;
   if (typeof drizzleAny.transaction !== 'function') {
     console.warn(

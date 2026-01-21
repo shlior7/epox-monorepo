@@ -129,10 +129,10 @@ export const normalizeImageInput = async (input: string): Promise<{ mimeType: st
 
   const imageBuffer = await response.arrayBuffer();
   const base64Data = Buffer.from(imageBuffer).toString('base64');
-  
+
   // Get content-type from headers, but handle unreliable values
   let mimeType = response.headers.get('content-type') || '';
-  
+
   // If content-type is missing or unreliable (octet-stream, binary), infer from URL
   if (!mimeType || mimeType === 'application/octet-stream' || mimeType === 'binary/octet-stream') {
     mimeType = inferMimeTypeFromUrl(input);

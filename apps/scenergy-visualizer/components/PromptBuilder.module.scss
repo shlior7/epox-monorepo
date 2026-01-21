@@ -167,7 +167,9 @@
   align-items: center;
   justify-content: center;
   height: 80px;
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
 
   &:hover {
     border-color: color('indigo', 400);

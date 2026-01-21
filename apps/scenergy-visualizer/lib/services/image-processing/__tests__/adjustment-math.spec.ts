@@ -61,10 +61,7 @@ describe('adjustment-math', () => {
   });
 
   it('buildLuminosityCurvePoints returns identity for zero adjustments', () => {
-    const points = buildLuminosityCurvePoints(
-      { highlights: 0, shadows: 0, whites: 0, blacks: 0 },
-      5
-    );
+    const points = buildLuminosityCurvePoints({ highlights: 0, shadows: 0, whites: 0, blacks: 0 }, 5);
 
     expect(points[0]).toEqual([0, 0]);
     expect(points[points.length - 1]).toEqual([255, 255]);
@@ -79,10 +76,7 @@ describe('adjustment-math', () => {
   });
 
   it('buildNormalizedLuminosityCurvePoints returns values in 0-1 range', () => {
-    const points = buildNormalizedLuminosityCurvePoints(
-      { highlights: 100, shadows: 100, whites: 100, blacks: 100 },
-      5
-    );
+    const points = buildNormalizedLuminosityCurvePoints({ highlights: 100, shadows: 100, whites: 100, blacks: 100 }, 5);
 
     // All input and output values should be in 0-1 range
     for (const [input, output] of points) {
@@ -94,10 +88,7 @@ describe('adjustment-math', () => {
   });
 
   it('buildNormalizedLuminosityCurvePoints returns identity for zero adjustments', () => {
-    const points = buildNormalizedLuminosityCurvePoints(
-      { highlights: 0, shadows: 0, whites: 0, blacks: 0 },
-      5
-    );
+    const points = buildNormalizedLuminosityCurvePoints({ highlights: 0, shadows: 0, whites: 0, blacks: 0 }, 5);
 
     expect(points[0]).toEqual([0, 0]);
     expect(points[points.length - 1]).toEqual([1, 1]);

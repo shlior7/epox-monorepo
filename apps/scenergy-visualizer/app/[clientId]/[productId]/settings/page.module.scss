@@ -336,7 +336,9 @@
   overflow: hidden;
   background-color: vars.semantic-color('surface');
   border: 2px solid vars.semantic-color('border');
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 
   &:hover .deleteImageButton {
     opacity: 1;

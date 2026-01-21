@@ -128,10 +128,7 @@ export async function createTestCollectionSession(
  * Wrap test in a transaction that rolls back
  * This ensures test isolation without truncating tables
  */
-export function withTransaction<T>(
-  db: TestDrizzleClient,
-  fn: (tx: TestDrizzleClient) => Promise<T>
-): Promise<T> {
+export function withTransaction<T>(db: TestDrizzleClient, fn: (tx: TestDrizzleClient) => Promise<T>): Promise<T> {
   // Note: For Drizzle ORM with pg driver, we need to use the transaction API
   // This is a simplified version - the actual implementation might need adjustments
   return db.transaction(async (tx) => {

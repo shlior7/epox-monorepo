@@ -47,6 +47,7 @@ Created comprehensive constants matching SceneGen Studio specification:
 Full-featured React component (600+ lines) implementing:
 
 **Three-Panel Layout:**
+
 - **Left Drawer (Product Catalog)**:
   - Collapsible sidebar (288px)
   - Draggable product cards
@@ -77,10 +78,12 @@ Full-featured React component (600+ lines) implementing:
   - Mixed value support for multi-selection
 
 **Modals:**
+
 - **Scene Library Modal**: Full-screen grid of scenes with hover effects
 - **Preview Modal**: Full-screen image preview with download button
 
 **State Management:**
+
 - Complete row/slot management
 - Multi-selection system
 - Drag-and-drop state
@@ -89,6 +92,7 @@ Full-featured React component (600+ lines) implementing:
 - Mixed value handling for batch edits
 
 **Interactions:**
+
 - Drag products from catalog to workspace or slots
 - Click slots to select (single or multi)
 - Generate button per slot
@@ -103,6 +107,7 @@ Full-featured React component (600+ lines) implementing:
 Professional SCSS styling (1000+ lines) implementing:
 
 **Design System:**
+
 - Color palette: Indigo-600 primary, Slate grays, semantic colors
 - Typography: 8-11px system font, bold/black weights, uppercase labels
 - Spacing: Consistent 0.25-2rem scale
@@ -111,6 +116,7 @@ Professional SCSS styling (1000+ lines) implementing:
 - Transitions: 200-300ms ease-in-out
 
 **Component Styles:**
+
 - Header bar with toggle buttons
 - Collapsible drawers with smooth transitions
 - Product cards with drag cursor states
@@ -123,6 +129,7 @@ Professional SCSS styling (1000+ lines) implementing:
 - Hover/active states throughout
 
 **Responsive Considerations:**
+
 - Flexible layouts
 - Min/max width constraints
 - Overflow handling
@@ -131,10 +138,12 @@ Professional SCSS styling (1000+ lines) implementing:
 ### ✅ 5. Navigation Integration
 
 **Files Modified:**
+
 - `/app/[clientId]/settings/page.tsx`
 - `/app/[clientId]/settings/page.module.scss`
 
 **Added "Open Scene Studio" Button:**
+
 - Prominent gradient card with Layers icon
 - Located between client name and products accordion
 - Indigo-themed design with hover effects
@@ -171,11 +180,13 @@ apps/scenergy-visualizer/
 ## Current Features (Working)
 
 ✅ **UI Layout**
+
 - Three-panel responsive design
 - Collapsible left/right drawers
 - Header with toggle controls
 
 ✅ **Product Management**
+
 - Display all client products in catalog
 - Drag products from catalog
 - Drop onto workspace to create slots
@@ -183,6 +194,7 @@ apps/scenergy-visualizer/
 - Remove products from slots
 
 ✅ **Output Slot Management**
+
 - Create empty slots with "New Sequence"
 - Create slots via drag-and-drop
 - Select single/multiple slots
@@ -190,6 +202,7 @@ apps/scenergy-visualizer/
 - Delete products from slots
 
 ✅ **Configuration Panel**
+
 - All 13+ configuration parameters
 - Real-time updates to selected slots
 - Mixed value display for multi-selection
@@ -202,6 +215,7 @@ apps/scenergy-visualizer/
 - Custom prompt textarea
 
 ✅ **Visual Feedback**
+
 - Drag-and-drop overlays
 - Loading/generating states
 - Hover effects throughout
@@ -209,11 +223,13 @@ apps/scenergy-visualizer/
 - Empty states
 
 ✅ **Modals**
+
 - Scene library browser
 - Full-screen preview
 - Keyboard shortcuts (Escape)
 
 ✅ **Revision History**
+
 - Store all generated variations
 - Thumbnail preview bar
 - Click to swap active image
@@ -225,6 +241,7 @@ apps/scenergy-visualizer/
 ### 🔲 Backend Integration
 
 **Generation API:**
+
 ```typescript
 // TODO: Implement API endpoint
 POST /api/scene-studio/generate
@@ -237,6 +254,7 @@ POST /api/scene-studio/generate
 ```
 
 Currently using placeholder simulation:
+
 ```typescript
 // In page.tsx line ~180
 await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -244,6 +262,7 @@ const dummyImageUrl = 'https://via.placeholder.com/512?text=Generated+Scene';
 ```
 
 **Required API Routes:**
+
 - `POST /api/clients/[clientId]/scene-studio/generate` - Generate scene
 - `GET /api/clients/[clientId]/scene-studio` - Load studio state (optional)
 - `PUT /api/clients/[clientId]/scene-studio` - Save studio state (optional)
@@ -251,6 +270,7 @@ const dummyImageUrl = 'https://via.placeholder.com/512?text=Generated+Scene';
 ### 🔲 Data Persistence
 
 **DataContext Integration:**
+
 ```typescript
 // TODO: Add to DataContext
 addSceneStudio(clientId: string, name: string): SceneStudio
@@ -260,6 +280,7 @@ generateSceneImage(clientId: string, studioId: string, slotId: string): Promise<
 ```
 
 **S3 Storage:**
+
 - Save/load studio configurations
 - Store generated scene images
 - Path structure: `clients/[clientId]/scene-studios/[studioId]/`
@@ -267,10 +288,12 @@ generateSceneImage(clientId: string, studioId: string, slotId: string): Promise<
 ### 🔲 Scene Management
 
 **Stock Scenes:**
+
 - Upload actual scene images to `/public/scenes/` or S3
 - Replace placeholder imageUrl paths in constants
 
 **User Scenes:**
+
 - Scene upload UI (modal or dedicated page)
 - Image upload to S3
 - Add to `client.sceneStudios[].userScenes[]`
@@ -279,11 +302,13 @@ generateSceneImage(clientId: string, studioId: string, slotId: string): Promise<
 
 **Current Issue:**
 Product images use API route:
+
 ```
 /api/clients/${clientId}/products/${productId}/images/${imageId}
 ```
 
 **TODO:**
+
 - Verify this endpoint returns proper images
 - Add error handling for missing images
 - Add placeholder images for products without images
@@ -292,6 +317,7 @@ Product images use API route:
 ### 🔲 Generation Service Integration
 
 **Gemini Service Integration:**
+
 ```typescript
 // TODO: Create prompt builder
 function buildScenePrompt(
@@ -314,20 +340,24 @@ geminiService.generateProductScene(
 ### 🔲 UI Enhancements
 
 **Navigation:**
+
 - Add Scene Studio to navigation drawer views
 - Create dedicated view type for scene studios
 - List all scene studios per client
 
 **Product Upload Modal:**
+
 - Integrate with existing product upload system
 - Allow creating products directly from Scene Studio
 
 **Batch Operations:**
+
 - "Generate All Selected" button
 - Bulk configuration updates
 - Batch download generated images
 
 **Credits System:**
+
 - Display credit balance in header
 - Deduct credits on generation
 - Show cost preview before generation
@@ -335,19 +365,23 @@ geminiService.generateProductScene(
 ### 🔲 Advanced Features
 
 **History Management:**
+
 - Save/load workspace state
 - Export/import slot configurations
 - Undo/redo support
 
 **Collaboration:**
+
 - Share studio links
 - Export configurations as presets
 
 **Templates:**
+
 - Save slot configurations as templates
 - Quick-apply preset configurations
 
 **Export Options:**
+
 - Bulk download all generated images
 - Export with metadata (JSON)
 - Different resolution options
@@ -359,6 +393,7 @@ geminiService.generateProductScene(
 ### How to Connect Generation API
 
 1. **Create API Route:**
+
 ```typescript
 // apps/scenergy-visualizer/app/api/clients/[clientId]/scene-studio/generate/route.ts
 
@@ -366,10 +401,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { geminiService } from '@/lib/services/gemini';
 import { SceneGenerationSettings } from '@/lib/types/app-types';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { clientId: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { clientId: string } }) {
   const { products, settings } = await request.json();
 
   // Build prompt from settings
@@ -379,43 +411,32 @@ export async function POST(
   const productImages = await getProductImages(params.clientId, products);
 
   // Call Gemini API
-  const { imageUrl, promptUsed } = await geminiService.generateProductScene(
-    productImages,
-    settings.scene.imageUrl,
-    prompt,
-    settings
-  );
+  const { imageUrl, promptUsed } = await geminiService.generateProductScene(productImages, settings.scene.imageUrl, prompt, settings);
 
   return NextResponse.json({ imageUrl, promptUsed });
 }
 ```
 
 2. **Update handleGenerateRow in page.tsx:**
+
 ```typescript
 const handleGenerateRow = async (rowId: string) => {
   const row = rows.find((r) => r.id === rowId);
   if (!row || row.productIds.length === 0) return;
 
-  setRows((prev) =>
-    prev.map((r) =>
-      r.id === rowId ? { ...r, status: SlotStatus.GENERATING } : r
-    )
-  );
+  setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, status: SlotStatus.GENERATING } : r)));
 
   try {
     const rowProducts = products.filter((p) => row.productIds.includes(p.id));
 
-    const response = await fetch(
-      `/api/clients/${clientId}/scene-studio/generate`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          products: rowProducts,
-          settings: row.settings,
-        }),
-      }
-    );
+    const response = await fetch(`/api/clients/${clientId}/scene-studio/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        products: rowProducts,
+        settings: row.settings,
+      }),
+    });
 
     const { imageUrl, promptUsed } = await response.json();
 
@@ -443,9 +464,7 @@ const handleGenerateRow = async (rowId: string) => {
     );
   } catch (err) {
     console.error('Generation failed:', err);
-    setRows((prev) =>
-      prev.map((r) => (r.id === rowId ? { ...r, status: SlotStatus.ERROR } : r))
-    );
+    setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, status: SlotStatus.ERROR } : r)));
   }
 };
 ```
@@ -453,6 +472,7 @@ const handleGenerateRow = async (rowId: string) => {
 ### How to Add Data Persistence
 
 1. **Extend DataContext:**
+
 ```typescript
 // In lib/contexts/DataContext.tsx
 
@@ -475,13 +495,7 @@ const addSceneStudio = async (clientId: string, name: string) => {
     updatedAt: new Date().toISOString(),
   };
 
-  setClients((prev) =>
-    prev.map((c) =>
-      c.id === clientId
-        ? { ...c, sceneStudios: [...(c.sceneStudios || []), newStudio] }
-        : c
-    )
-  );
+  setClients((prev) => prev.map((c) => (c.id === clientId ? { ...c, sceneStudios: [...(c.sceneStudios || []), newStudio] } : c)));
 
   await persistClients(); // Your existing S3 persistence
   return newStudio;
@@ -489,6 +503,7 @@ const addSceneStudio = async (clientId: string, name: string) => {
 ```
 
 2. **Auto-create Studio on First Visit:**
+
 ```typescript
 // In scene-studio/page.tsx
 
@@ -505,6 +520,7 @@ useEffect(() => {
 ### How to Add Stock Scenes
 
 1. **Add Scene Images:**
+
 ```bash
 # Create public directory structure
 mkdir -p apps/scenergy-visualizer/public/scenes
@@ -518,6 +534,7 @@ mkdir -p apps/scenergy-visualizer/public/scenes
 ```
 
 2. **Or Use S3:**
+
 ```typescript
 // Update constants/scene-studio.ts
 export const STOCK_SCENES: Scene[] = [
@@ -591,6 +608,7 @@ export const STOCK_SCENES: Scene[] = [
 ## Next Steps (Priority Order)
 
 ### Phase 1: Make It Work (Core Functionality)
+
 1. ✅ **DONE:** UI implementation
 2. **Create generation API endpoint**
 3. **Integrate with Gemini service**
@@ -598,6 +616,7 @@ export const STOCK_SCENES: Scene[] = [
 5. **Test end-to-end generation flow**
 
 ### Phase 2: Make It Persistent
+
 1. **Add DataContext methods**
 2. **Implement S3 storage for studios**
 3. **Auto-create default studio**
@@ -605,6 +624,7 @@ export const STOCK_SCENES: Scene[] = [
 5. **Store generated images in S3**
 
 ### Phase 3: Make It Production-Ready
+
 1. **Add error handling & user feedback**
 2. **Implement credits system**
 3. **Add loading skeletons**
@@ -614,6 +634,7 @@ export const STOCK_SCENES: Scene[] = [
 7. **Add analytics/tracking**
 
 ### Phase 4: Advanced Features
+
 1. **Template system**
 2. **Export/import**
 3. **Collaboration features**
@@ -625,24 +646,29 @@ export const STOCK_SCENES: Scene[] = [
 ## Architecture Decisions
 
 ### Why Three-Panel Layout?
+
 Matches SceneGen Studio spec exactly, provides clear separation of concerns:
+
 - Catalog = Input (products)
 - Workspace = Configuration (slots)
 - Properties = Settings (parameters)
 
 ### Why Output Slots Instead of Sessions?
+
 - More flexible: multiple products per slot
 - Revision history per slot
 - Independent configuration per slot
 - Easier batch operations
 
 ### Why Client-Level Instead of Product-Level?
+
 - Cross-product scene generation
 - Client-specific scene libraries
 - Centralized workspace for campaigns
 - Aligns with multi-product sessions pattern
 
 ### Why Not Extend Existing Sessions?
+
 - Different UX paradigm (workspace vs chat)
 - Different data model (slots vs messages)
 - Different use case (batch generation vs iterative refinement)
@@ -653,16 +679,19 @@ Matches SceneGen Studio spec exactly, provides clear separation of concerns:
 ## Support & Resources
 
 ### Documentation
+
 - **SceneGen Studio Spec**: `apps/scenegen-studio/README.md`
 - **App Types**: `lib/types/app-types.ts`
 - **Constants**: `lib/constants/scene-studio.ts`
 
 ### Related Components
+
 - **Client Settings**: `app/[clientId]/settings/page.tsx`
 - **Product Settings**: `app/[clientId]/[productId]/settings/page.tsx`
 - **Session Page**: `app/[clientId]/[productId]/[sessionId]/page.tsx`
 
 ### Similar Patterns
+
 - **Client Sessions**: Multi-product generation pattern
 - **Navigation Drawer**: Plugin-based view system
 - **DataContext**: State management pattern
@@ -675,6 +704,7 @@ Matches SceneGen Studio spec exactly, provides clear separation of concerns:
 Scene Studio is now **fully implemented on the frontend** with a professional, production-ready UI that exactly matches the SceneGen Studio specification. The component is **functional** for user interaction, state management, and UI/UX flows.
 
 **What's working:**
+
 - Complete UI/UX with all interactions
 - Product drag-and-drop
 - Output slot management
@@ -683,6 +713,7 @@ Scene Studio is now **fully implemented on the frontend** with a professional, p
 - Modals and navigation
 
 **What needs integration:**
+
 - Backend generation API
 - Data persistence (S3)
 - Real product/scene images

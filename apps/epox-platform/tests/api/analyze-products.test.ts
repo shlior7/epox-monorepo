@@ -9,7 +9,7 @@ import { POST as analyzeProducts } from '@/app/api/analyze-products/route';
 let mockProductAnalysisService: { analyzeProductWithAI: ReturnType<typeof vi.fn> };
 let mockGemini: { analyzeScene: ReturnType<typeof vi.fn> };
 
-vi.mock('visualizer-services', () => ({
+vi.mock('visualizer-ai', () => ({
   getProductAnalysisService: vi.fn(() => mockProductAnalysisService),
   getGeminiService: vi.fn(() => mockGemini),
 }));
@@ -53,9 +53,7 @@ describe('Analyze Products API - POST /api/analyze-products', () => {
     const request = new NextRequest('http://localhost:3000/api/analyze-products', {
       method: 'POST',
       body: JSON.stringify({
-        products: [
-          { productId: 'prod-1', name: 'Sofa', category: 'Sofas' },
-        ],
+        products: [{ productId: 'prod-1', name: 'Sofa', category: 'Sofas' }],
       }),
     });
 
@@ -70,16 +68,12 @@ describe('Analyze Products API - POST /api/analyze-products', () => {
   });
 
   it('should fall back when AI analysis fails', async () => {
-    mockProductAnalysisService.analyzeProductWithAI.mockRejectedValueOnce(
-      new Error('AI failed')
-    );
+    mockProductAnalysisService.analyzeProductWithAI.mockRejectedValueOnce(new Error('AI failed'));
 
     const request = new NextRequest('http://localhost:3000/api/analyze-products', {
       method: 'POST',
       body: JSON.stringify({
-        products: [
-          { productId: 'prod-1', name: 'Chair', category: 'Chair' },
-        ],
+        products: [{ productId: 'prod-1', name: 'Chair', category: 'Chair' }],
       }),
     });
 

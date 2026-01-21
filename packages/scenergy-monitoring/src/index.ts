@@ -15,4 +15,3 @@ export type { AlertConfig, AlertPayload, AlertChannel } from './alerts';
 // Logging
 export { structuredLog, createLogger } from './logging';
 export type { LogLevel, LogContext } from './logging';
-

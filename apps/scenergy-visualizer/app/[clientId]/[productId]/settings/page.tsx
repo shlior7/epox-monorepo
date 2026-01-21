@@ -332,62 +332,62 @@ export default function ProductSettingsPage() {
 
   const favoritesAccordionSections = hasFavorites
     ? [
-      {
-        value: 'favorites',
-        title: `Favorite Generated Images (${favoriteImages.length})`,
-        defaultExpanded: true,
-        headerSuffix: (
-          <button
-            type="button"
-            className={styles.viewAllButton}
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsFavoriteGalleryOpen(true);
-            }}
-            aria-label="View all favorite images"
-            title="View all in gallery"
-            data-testid={buildTestId('product-settings', 'view-all-favorites-button')}
-          >
-            <Star size={16} fill="currentColor" />
-            <span className={styles.viewAllButtonText}>View All</span>
-          </button>
-        ),
-        children: (
-          <div className={styles.imageGallery}>
-            {favoriteImages.slice(0, 6).map((fav) => {
-              const session = product.sessions.find((s) => s.id === fav.sessionId);
-              const imageUrl = getImageUrl(S3Paths.getMediaFilePath(clientId, productId, fav.sessionId, fav.imageId));
-              const fallbackUrl = getImageUrl(S3Paths.getClientSessionMediaFilePath(clientId, fav.sessionId, fav.imageId));
+        {
+          value: 'favorites',
+          title: `Favorite Generated Images (${favoriteImages.length})`,
+          defaultExpanded: true,
+          headerSuffix: (
+            <button
+              type="button"
+              className={styles.viewAllButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsFavoriteGalleryOpen(true);
+              }}
+              aria-label="View all favorite images"
+              title="View all in gallery"
+              data-testid={buildTestId('product-settings', 'view-all-favorites-button')}
+            >
+              <Star size={16} fill="currentColor" />
+              <span className={styles.viewAllButtonText}>View All</span>
+            </button>
+          ),
+          children: (
+            <div className={styles.imageGallery}>
+              {favoriteImages.slice(0, 6).map((fav) => {
+                const session = product.sessions.find((s) => s.id === fav.sessionId);
+                const imageUrl = getImageUrl(S3Paths.getMediaFilePath(clientId, productId, fav.sessionId, fav.imageId));
+                const fallbackUrl = getImageUrl(S3Paths.getClientSessionMediaFilePath(clientId, fav.sessionId, fav.imageId));
 
-              return (
-                <div
-                  key={fav.imageId}
-                  className={styles.imageCard}
-                  onClick={() => setIsFavoriteGalleryOpen(true)}
-                  data-testid={buildTestId('product-settings', 'favorite-image-card', fav.imageId)}
-                >
-                  <div className={styles.imageWrapper}>
-                    <SafeNextImage
-                      src={imageUrl}
-                      fallbackSrc={fallbackUrl}
-                      alt={`Favorite from ${session?.name || 'session'}`}
-                      className={styles.favoriteImage}
-                      width={180}
-                      height={180}
-                      style={{ objectFit: 'cover' }}
-                    />
-                    <div className={styles.favoriteIcon}>
-                      <Star size={16} fill="currentColor" />
+                return (
+                  <div
+                    key={fav.imageId}
+                    className={styles.imageCard}
+                    onClick={() => setIsFavoriteGalleryOpen(true)}
+                    data-testid={buildTestId('product-settings', 'favorite-image-card', fav.imageId)}
+                  >
+                    <div className={styles.imageWrapper}>
+                      <SafeNextImage
+                        src={imageUrl}
+                        fallbackSrc={fallbackUrl}
+                        alt={`Favorite from ${session?.name || 'session'}`}
+                        className={styles.favoriteImage}
+                        width={180}
+                        height={180}
+                        style={{ objectFit: 'cover' }}
+                      />
+                      <div className={styles.favoriteIcon}>
+                        <Star size={16} fill="currentColor" />
+                      </div>
                     </div>
+                    <div className={styles.imageLabel}>{session?.name || 'Unknown Session'}</div>
                   </div>
-                  <div className={styles.imageLabel}>{session?.name || 'Unknown Session'}</div>
-                </div>
-              );
-            })}
-          </div>
-        ),
-      },
-    ]
+                );
+              })}
+            </div>
+          ),
+        },
+      ]
     : [];
 
   const sessionsCount = product.sessions.length;

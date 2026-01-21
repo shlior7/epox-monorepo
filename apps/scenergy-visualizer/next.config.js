@@ -4,7 +4,7 @@ const path = require('path');
 const nextConfig = {
   devIndicators: false,
   typedRoutes: true,
-  transpilePackages: ['@scenergy/supabase-service'],
+  transpilePackages: ['visualizer-ai', '@scenergy/supabase-service'],
   experimental: {
     viewTransition: true, // Enable View Transitions API (Next.js 16)
   },
@@ -20,9 +20,9 @@ const nextConfig = {
   },
   turbopack: {
     rules: {
-      "*.svg": {
-        loaders: ["@svgr/webpack"],
-        as: "*.js",
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
       },
     },
   },

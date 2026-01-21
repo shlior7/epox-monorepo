@@ -42,7 +42,11 @@ export default function Error({ error, reset }: ErrorProps) {
 
         {/* Actions */}
         <div className="flex items-center justify-center gap-3">
-          <Button variant="outline" onClick={reset} className="inline-flex items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            onClick={reset}
+            className="inline-flex items-center justify-center gap-2"
+          >
             <RefreshCw className="mr-2 h-4 w-4" />
             Try Again
           </Button>

@@ -12,7 +12,9 @@
   padding: vars.spacing('sm');
   color: vars.semantic-color('text-secondary');
   border-radius: vars.radius('md');
-  transition: color var(--transition-fast), background-color var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast);
 
   &:hover {
     background-color: vars.semantic-color('surface-strong');

@@ -81,9 +81,7 @@ export function useSessionsView(ctx: NavContext) {
       variant: 'danger',
       onConfirm: async () => {
         try {
-          await Promise.all(
-            sessionIds.map((sessionId) => ctx.services.data.deleteSession(client.id, product.id, sessionId))
-          );
+          await Promise.all(sessionIds.map((sessionId) => ctx.services.data.deleteSession(client.id, product.id, sessionId)));
 
           if (ctx.selection.sessionId && sessionIds.includes(ctx.selection.sessionId)) {
             ctx.shell.setSelection({ sessionId: null });

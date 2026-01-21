@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Upload, X, Search, ImageIcon, BookmarkIcon, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,10 +12,15 @@ import { MAX_INSPIRATION_IMAGES } from '@/lib/constants';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api-client';
+import type { InspirationSourceType } from 'visualizer-types';
 
 interface InspirationStepProps {
   selectedImages: string[];
   onImagesChange: (images: string[]) => void;
+  selectedItems?: Array<{ url: string; sourceType: InspirationSourceType }>;
+  onSelectedItemsChange?: (
+    items: Array<{ url: string; sourceType: InspirationSourceType }>
+  ) => void;
 }
 
 interface ExploreImage {
@@ -38,13 +43,72 @@ const sceneTypeKeywords = [
   'Modern',
 ];
 
-export function InspirationStep({ selectedImages, onImagesChange }: InspirationStepProps) {
+export function InspirationStep({
+  selectedImages,
+  onImagesChange,
+  selectedItems,
+  onSelectedItemsChange,
+}: InspirationStepProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedSources, setSelectedSources] = useState<Record<string, InspirationSourceType>>(
+    () => {
+      const initial: Record<string, InspirationSourceType> = {};
+      if (selectedItems) {
+        for (const item of selectedItems) {
+          initial[item.url] = item.sourceType;
+        }
+      }
+      return initial;
+    }
+  );
+
+  useEffect(() => {
+    if (!selectedItems) return;
+    setSelectedSources((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const item of selectedItems) {
+        if (next[item.url] !== item.sourceType) {
+          next[item.url] = item.sourceType;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [selectedItems]);
+
+  useEffect(() => {
+    setSelectedSources((prev) => {
+      let changed = false;
+      const next: Record<string, InspirationSourceType> = {};
+      for (const url of selectedImages) {
+        if (prev[url]) {
+          next[url] = prev[url];
+        } else {
+          next[url] = 'upload';
+          changed = true;
+        }
+      }
+      if (Object.keys(next).length !== Object.keys(prev).length) {
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [selectedImages]);
+
+  useEffect(() => {
+    if (!onSelectedItemsChange) return;
+    const items = selectedImages.map((url) => ({
+      url,
+      sourceType: selectedSources[url] ?? 'upload',
+    }));
+    onSelectedItemsChange(items);
+  }, [onSelectedItemsChange, selectedImages, selectedSources]);
 
   // Fetch explore images (from Unsplash API)
   // Append "interior" to room type searches for better results
@@ -61,11 +125,18 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
     queryFn: () => apiClient.listGeneratedImages({ pinned: true }),
   });
 
-  const handleImageSelect = (url: string) => {
+  const handleImageSelect = (url: string, sourceType: InspirationSourceType) => {
     if (selectedImages.includes(url)) {
       onImagesChange(selectedImages.filter((img) => img !== url));
+      setSelectedSources((prev) => {
+        if (!prev[url]) return prev;
+        const next = { ...prev };
+        delete next[url];
+        return next;
+      });
     } else if (selectedImages.length < MAX_INSPIRATION_IMAGES) {
       onImagesChange([...selectedImages, url]);
+      setSelectedSources((prev) => ({ ...prev, [url]: sourceType }));
     } else {
       toast.error(`Maximum ${MAX_INSPIRATION_IMAGES} images allowed`);
     }
@@ -73,6 +144,17 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
 
   const removeImage = (url: string) => {
     onImagesChange(selectedImages.filter((img) => img !== url));
+    setSelectedSources((prev) => {
+      if (!prev[url]) return prev;
+      const next = { ...prev };
+      delete next[url];
+      return next;
+    });
+  };
+
+  const handleClearAll = () => {
+    onImagesChange([]);
+    setSelectedSources({});
   };
 
   const handleSearch = () => {
@@ -128,6 +210,13 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
       if (availableSlots > 0) {
         const toSelect = newlyUploadedUrls.slice(0, availableSlots);
         onImagesChange([...selectedImages, ...toSelect]);
+        setSelectedSources((prev) => {
+          const next = { ...prev };
+          for (const url of toSelect) {
+            next[url] = 'upload';
+          }
+          return next;
+        });
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to upload');
@@ -147,9 +236,9 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
   const libraryImages = libraryData?.images || [];
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-6">
-        <h2 className="mb-2 text-xl font-semibold">Choose Inspiration Images</h2>
+    <div className="mx-auto w-full max-w-5xl">
+      <div className="mb-4 sm:mb-6">
+        <h2 className="mb-2 text-lg font-semibold sm:text-xl">Choose Inspiration Images</h2>
         <p className="text-muted-foreground">
           Optional: Select up to {MAX_INSPIRATION_IMAGES} images to guide the visual style of your
           generation.
@@ -158,12 +247,12 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
 
       {/* Selected Images Preview */}
       {selectedImages.length > 0 && (
-        <div className="mb-6 rounded-lg border border-border bg-card/50 p-4">
+        <div className="mb-4 rounded-lg border border-border bg-card/50 p-4 sm:mb-6">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-medium">
               Selected ({selectedImages.length}/{MAX_INSPIRATION_IMAGES})
             </h3>
-            <Button variant="ghost" size="sm" onClick={() => onImagesChange([])}>
+            <Button variant="ghost" size="sm" onClick={handleClearAll}>
               <X className="mr-1 h-4 w-4" />
               Clear All
             </Button>
@@ -174,7 +263,13 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
                 key={url}
                 className="group relative h-24 w-32 shrink-0 overflow-hidden rounded-lg"
               >
-                <Image src={url} alt="Selected inspiration" fill className="object-cover" unoptimized />
+                <Image
+                  src={url}
+                  alt="Selected inspiration"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
                 <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/40" />
                 <button
                   onClick={() => removeImage(url)}
@@ -190,7 +285,7 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
 
       {/* Tabs */}
       <Tabs defaultValue="explore" className="w-full">
-        <TabsList className="mb-6 grid w-full grid-cols-3">
+        <TabsList className="mb-4 grid w-full grid-cols-3 sm:mb-6">
           <TabsTrigger value="upload" className="gap-2">
             <Upload className="h-4 w-4" />
             Upload
@@ -214,7 +309,7 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                'cursor-pointer rounded-xl border-2 border-dashed p-12 text-center transition-all',
+                'cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-all sm:p-12',
                 isDragging
                   ? 'border-primary bg-primary/10'
                   : 'border-border bg-card/50 hover:border-primary/50'
@@ -228,7 +323,7 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
                 onChange={handleFileSelect}
                 className="hidden"
               />
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted sm:h-16 sm:w-16">
                 {isUploading ? (
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 ) : (
@@ -248,14 +343,14 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
             {uploadedImages.length > 0 && (
               <div>
                 <h4 className="mb-3 font-medium">Uploaded ({uploadedImages.length})</h4>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {uploadedImages.map((url) => {
                     const isSelected = selectedImages.includes(url);
                     const canSelect = !isSelected && selectedImages.length < MAX_INSPIRATION_IMAGES;
                     return (
                       <button
                         key={url}
-                        onClick={() => handleImageSelect(url)}
+                        onClick={() => handleImageSelect(url, 'upload')}
                         disabled={!canSelect && !isSelected}
                         className={cn(
                           'relative aspect-[4/3] overflow-hidden rounded-lg transition-all',
@@ -299,7 +394,7 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
             </div>
 
             {/* Search */}
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <SearchInput
                 placeholder="Search room types..."
                 className="flex-1"
@@ -307,7 +402,7 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
                 onChange={(e: any) => setSearchQuery(e.target.value)}
                 onKeyDown={(e: any) => e.key === 'Enter' && handleSearch()}
               />
-              <Button onClick={handleSearch}>
+              <Button onClick={handleSearch} className="w-full sm:w-auto">
                 <Search className="h-4 w-4" />
               </Button>
             </div>
@@ -318,14 +413,14 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {exploreImages.map((image) => {
                   const isSelected = selectedImages.includes(image.url);
                   const canSelect = !isSelected && selectedImages.length < MAX_INSPIRATION_IMAGES;
                   return (
                     <button
                       key={image.id}
-                      onClick={() => handleImageSelect(image.url)}
+                      onClick={() => handleImageSelect(image.url, 'unsplash')}
                       disabled={!canSelect && !isSelected}
                       className={cn(
                         'relative aspect-[4/3] overflow-hidden rounded-lg transition-all',
@@ -376,14 +471,14 @@ export function InspirationStep({ selectedImages, onImagesChange }: InspirationS
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {libraryImages.map((image: any) => {
                 const isSelected = selectedImages.includes(image.url);
                 const canSelect = !isSelected && selectedImages.length < MAX_INSPIRATION_IMAGES;
                 return (
                   <button
                     key={image.id}
-                    onClick={() => handleImageSelect(image.url)}
+                    onClick={() => handleImageSelect(image.url, 'library')}
                     disabled={!canSelect && !isSelected}
                     className={cn(
                       'relative aspect-[4/3] overflow-hidden rounded-lg transition-all',

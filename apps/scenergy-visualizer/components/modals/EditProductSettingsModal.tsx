@@ -151,7 +151,11 @@ export function EditProductSettingsModal({ isOpen, product, onClose, onSave }: E
   return (
     <Portal>
       <div style={styles.overlay} onClick={onClose} data-testid={buildTestId('edit-product-settings-modal', 'overlay')}>
-        <div style={styles.content} onClick={(e) => e.stopPropagation()} data-testid={buildTestId('edit-product-settings-modal', 'content')}>
+        <div
+          style={styles.content}
+          onClick={(e) => e.stopPropagation()}
+          data-testid={buildTestId('edit-product-settings-modal', 'content')}
+        >
           <form onSubmit={handleSubmit}>
             <div style={styles.header}>
               <h2 style={styles.title}>Edit Product Settings</h2>

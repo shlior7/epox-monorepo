@@ -35,7 +35,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${roboto.variable} ${robotoMono.variable} min-h-screen font-sans antialiased`}>
+      <body
+        className={`${roboto.variable} ${robotoMono.variable} min-h-screen font-sans antialiased`}
+      >
         <Providers>{children}</Providers>
       </body>
     </html>

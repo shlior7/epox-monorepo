@@ -2,16 +2,7 @@ import { describe, it, expect, beforeEach, afterAll, vi, type MockInstance } fro
 import type { ImageGenerationJob } from '../image-generation/queue';
 import { buildSystemImageGenerationPrompt } from '../prompt-builder';
 
-const {
-  redisStore,
-  redisTTL,
-  redisSet,
-  redisGet,
-  redisKeys,
-  redisMget,
-  redisDel,
-  redisExpire,
-} = vi.hoisted(() => {
+const { redisStore, redisTTL, redisSet, redisGet, redisKeys, redisMget, redisDel, redisExpire } = vi.hoisted(() => {
   const redisStore = new Map<string, string>();
   const redisTTL = new Map<string, number>();
 
@@ -63,7 +54,7 @@ const { generateImagesMock, GeminiServiceMock } = vi.hoisted(() => {
   return { generateImagesMock, GeminiServiceMock };
 });
 
-vi.mock('../gemini', () => ({
+vi.mock('visualizer-ai', () => ({
   GeminiService: GeminiServiceMock,
   getGeminiService: () => new GeminiServiceMock(),
 }));
@@ -265,9 +256,7 @@ describe('image-generation queue', () => {
     expect(stored.imageIds).toEqual(['generated-success.jpg']);
     expect(redisExpire).toHaveBeenCalledWith('job:job-success', 600);
 
-    expect(downloadFileMock).toHaveBeenCalledWith(
-      S3Paths.getProductImageBasePath('client-1', 'product-1', 'product-image-1')
-    );
+    expect(downloadFileMock).toHaveBeenCalledWith(S3Paths.getProductImageBasePath('client-1', 'product-1', 'product-image-1'));
     expect(uploadFileMock).toHaveBeenCalledWith(
       S3Paths.getMediaFilePath('client-1', 'product-1', 'session-1', 'generated-success.jpg'),
       expect.any(File)
@@ -315,14 +304,8 @@ describe('image-generation queue', () => {
     await (queue as unknown as { start: (id: string) => Promise<void> }).start('job-fallback');
     await flushPromises();
 
-    expect(downloadFileMock).toHaveBeenNthCalledWith(
-      1,
-      S3Paths.getProductImageBasePath('client-1', 'product-1', 'legacy-image')
-    );
-    expect(downloadFileMock).toHaveBeenNthCalledWith(
-      2,
-      S3Paths.getProductImagePath('client-1', 'product-1', 'legacy-image.png')
-    );
+    expect(downloadFileMock).toHaveBeenNthCalledWith(1, S3Paths.getProductImageBasePath('client-1', 'product-1', 'legacy-image'));
+    expect(downloadFileMock).toHaveBeenNthCalledWith(2, S3Paths.getProductImagePath('client-1', 'product-1', 'legacy-image.png'));
     const stored = JSON.parse(redisStore.get('job:job-fallback') as string) as ImageGenerationJob;
     expect(stored.status).toBe('completed');
   });
@@ -363,14 +346,8 @@ describe('image-generation queue', () => {
     await (queue as unknown as { start: (id: string) => Promise<void> }).start('job-inspiration');
     await flushPromises();
 
-    expect(downloadFileMock).toHaveBeenNthCalledWith(
-      1,
-      S3Paths.getProductImageBasePath('client-1', 'product-1', 'product-image-1')
-    );
-    expect(downloadFileMock).toHaveBeenNthCalledWith(
-      2,
-      S3Paths.getMediaFilePath('client-1', 'product-1', 'session-1', 'inspiration.jpg')
-    );
+    expect(downloadFileMock).toHaveBeenNthCalledWith(1, S3Paths.getProductImageBasePath('client-1', 'product-1', 'product-image-1'));
+    expect(downloadFileMock).toHaveBeenNthCalledWith(2, S3Paths.getMediaFilePath('client-1', 'product-1', 'session-1', 'inspiration.jpg'));
 
     const args = generateImagesMock.mock.calls.at(-1)?.[0];
     expect(args?.productImages?.[0]).toBeInstanceOf(File);
@@ -512,9 +489,7 @@ describe('image-generation queue', () => {
     redisStore.set('job:job-redis-error', JSON.stringify(job));
     redisSet.mockRejectedValueOnce(new Error('Redis down'));
 
-    await expect(
-      (queue as unknown as { start: (id: string) => Promise<void> }).start('job-redis-error')
-    ).rejects.toThrow('Redis down');
+    await expect((queue as unknown as { start: (id: string) => Promise<void> }).start('job-redis-error')).rejects.toThrow('Redis down');
   });
 
   it('enqueue propagates Redis set failures', async () => {

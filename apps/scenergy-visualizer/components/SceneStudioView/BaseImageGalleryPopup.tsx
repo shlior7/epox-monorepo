@@ -16,14 +16,7 @@ interface BaseImageGalleryPopupProps {
   onSelectImage: (imageId: string) => void;
 }
 
-export function BaseImageGalleryPopup({
-  isOpen,
-  onClose,
-  product,
-  clientId,
-  currentImageId,
-  onSelectImage,
-}: BaseImageGalleryPopupProps) {
+export function BaseImageGalleryPopup({ isOpen, onClose, product, clientId, currentImageId, onSelectImage }: BaseImageGalleryPopupProps) {
   const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,18 +59,11 @@ export function BaseImageGalleryPopup({
       <div className={styles.baseImagePopup} ref={popupRef}>
         <div className={styles.baseImagePopupHeader}>
           <h4>Select Base Image</h4>
-          <button
-            className={styles.baseImagePopupClose}
-            onClick={onClose}
-            type="button"
-            aria-label="Close"
-          >
+          <button className={styles.baseImagePopupClose} onClick={onClose} type="button" aria-label="Close">
             <X size={16} />
           </button>
         </div>
-        <p className={styles.baseImagePopupSubtitle}>
-          Choose a base image for {product.name}
-        </p>
+        <p className={styles.baseImagePopupSubtitle}>Choose a base image for {product.name}</p>
         <div className={styles.baseImageGrid}>
           {product.productImageIds.map((imageId) => {
             const isSelected = imageId === currentImageId;
@@ -91,12 +77,7 @@ export function BaseImageGalleryPopup({
                 type="button"
                 title={isSelected ? 'Currently selected' : 'Select this image'}
               >
-                <img
-                  src={getImageUrl(imageId)}
-                  alt={`${product.name} - base image`}
-                  loading="lazy"
-                  draggable={false}
-                />
+                <img src={getImageUrl(imageId)} alt={`${product.name} - base image`} loading="lazy" draggable={false} />
                 {isSelected && (
                   <div className={styles.selectedBadge}>
                     <Check size={12} />

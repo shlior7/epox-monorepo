@@ -5,12 +5,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
+import { withSecurity } from '@/lib/security/middleware';
 import type { CollectionSessionStatus, FlowGenerationSettings } from 'visualizer-types';
 
-// TODO: Replace with actual auth when implemented
-const PLACEHOLDER_CLIENT_ID = 'test-client';
-
-export async function GET(request: NextRequest) {
+export const GET = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(request.url);
 
@@ -36,8 +38,8 @@ export async function GET(request: NextRequest) {
 
     // Execute count and list queries in parallel
     const [total, collections] = await Promise.all([
-      db.collectionSessions.countWithFilters(PLACEHOLDER_CLIENT_ID, filterOptions),
-      db.collectionSessions.listWithFilters(PLACEHOLDER_CLIENT_ID, {
+      db.collectionSessions.countWithFilters(clientId, filterOptions),
+      db.collectionSessions.listWithFilters(clientId, {
         ...filterOptions,
         sort,
         limit,
@@ -47,21 +49,59 @@ export async function GET(request: NextRequest) {
 
     const totalPages = Math.ceil(total / limit);
 
+    const collectionIds = collections.map((collection) => collection.id);
+    const flows = await db.generationFlows.listByCollectionSessionIds(collectionIds);
+    const flowIdsByCollection = new Map<string, string[]>();
+
+    for (const flow of flows) {
+      const collectionId = flow.collectionSessionId;
+      if (!collectionId) continue;
+      const existing = flowIdsByCollection.get(collectionId) ?? [];
+      existing.push(flow.id);
+      flowIdsByCollection.set(collectionId, existing);
+    }
+
+    const assetStatsByCollection = new Map<
+      string,
+      { totalImages: number; generatedCount: number; thumbnailUrl: string }
+    >();
+
+    await Promise.all(
+      collectionIds.map(async (collectionId) => {
+        const flowIds = flowIdsByCollection.get(collectionId) ?? [];
+        const [totalImages, generatedCount, firstAsset] = await Promise.all([
+          db.generatedAssets.countByGenerationFlowIds(clientId, flowIds),
+          db.generatedAssets.countByGenerationFlowIds(clientId, flowIds, 'completed'),
+          db.generatedAssets.getFirstByGenerationFlowIds(clientId, flowIds, 'completed'),
+        ]);
+
+        assetStatsByCollection.set(collectionId, {
+          totalImages,
+          generatedCount,
+          thumbnailUrl: firstAsset?.assetUrl ?? '',
+        });
+      })
+    );
+
     // Map collections to frontend format
-    // TODO: Add actual asset counting when generation is implemented
     const mappedCollections = collections.map((c) => {
       const productIds = c.productIds as string[];
+      const assetStats = assetStatsByCollection.get(c.id) ?? {
+        totalImages: 0,
+        generatedCount: 0,
+        thumbnailUrl: '',
+      };
       return {
         id: c.id,
         name: c.name,
         status: c.status,
         productCount: productIds.length,
         productIds,
-        generatedCount: 0, // Will be populated when generation is implemented
-        totalImages: productIds.length, // Each product gets 1 image by default
+        generatedCount: assetStats.generatedCount,
+        totalImages: assetStats.totalImages,
         createdAt: c.createdAt.toISOString(),
         updatedAt: c.updatedAt.toISOString(),
-        thumbnailUrl: '', // Will be populated when assets are generated
+        thumbnailUrl: assetStats.thumbnailUrl,
       };
     });
 
@@ -78,9 +118,13 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const body = await request.json();
     const { name, productIds, inspirationImages, promptTags } = body;
@@ -94,33 +138,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (name.length > 255) {
-      return NextResponse.json(
-        { error: 'Name must be 255 characters or less' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Name must be 255 characters or less' }, { status: 400 });
     }
 
     // Validate productIds
     if (!Array.isArray(productIds) || productIds.length === 0) {
-      return NextResponse.json(
-        { error: 'productIds must be a non-empty array' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'productIds must be a non-empty array' }, { status: 400 });
     }
 
     if (!productIds.every((id) => typeof id === 'string')) {
-      return NextResponse.json(
-        { error: 'All productIds must be strings' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'All productIds must be strings' }, { status: 400 });
     }
 
     // Validate inspirationImages if provided
     if (inspirationImages !== undefined && typeof inspirationImages !== 'object') {
-      return NextResponse.json(
-        { error: 'inspirationImages must be an object' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'inspirationImages must be an object' }, { status: 400 });
     }
 
     // Convert wizard inspiration images format to settings format
@@ -135,17 +167,18 @@ export async function POST(request: NextRequest) {
       : [];
 
     // Build collection settings
-    const collectionSettings: FlowGenerationSettings | undefined = inspirationImagesArray.length > 0
-      ? {
-          inspirationImages: inspirationImagesArray,
-          aspectRatio: '1:1',
-          imageQuality: '2k' as import('visualizer-types').ImageQuality,
-          variantsCount: 1,
-        }
-      : undefined;
+    const collectionSettings: FlowGenerationSettings | undefined =
+      inspirationImagesArray.length > 0
+        ? {
+            inspirationImages: inspirationImagesArray,
+            aspectRatio: '1:1',
+            imageQuality: '2k' as import('visualizer-types').ImageQuality,
+            variantsCount: 1,
+          }
+        : undefined;
 
     // Create collection in database
-    const collection = await db.collectionSessions.create(PLACEHOLDER_CLIENT_ID, {
+    const collection = await db.collectionSessions.create(clientId, {
       name: name.trim(),
       productIds,
       status: 'draft',
@@ -157,7 +190,7 @@ export async function POST(request: NextRequest) {
     const createdFlows = [];
     for (const productId of productIds) {
       try {
-        const flow = await db.generationFlows.create(PLACEHOLDER_CLIENT_ID, {
+        const flow = await db.generationFlows.create(clientId, {
           collectionSessionId: collection.id,
           name: `${name.trim()} - ${productId}`,
           productIds: [productId],
@@ -169,13 +202,17 @@ export async function POST(request: NextRequest) {
           },
         });
         createdFlows.push(flow);
-        console.log(`✅ Created generation flow ${flow.id} for product ${productId} in collection ${collection.id}`);
+        console.log(
+          `✅ Created generation flow ${flow.id} for product ${productId} in collection ${collection.id}`
+        );
       } catch (error) {
         console.error(`❌ Failed to create flow for product ${productId}:`, error);
       }
     }
 
-    console.log(`✅ Created collection ${collection.id} with ${createdFlows.length} generation flows`);
+    console.log(
+      `✅ Created collection ${collection.id} with ${createdFlows.length} generation flows`
+    );
 
     // Map to frontend format
     const responseCollection = {
@@ -199,4 +236,4 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

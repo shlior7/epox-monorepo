@@ -1,12 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import {
-  fileToBase64,
-  fileToGenerativePart,
-  estimateTokenUsage,
-  optimizePrompt,
-  generateSessionId,
-  parseSize,
-} from '../shared/utils';
+import { fileToBase64, fileToGenerativePart, estimateTokenUsage, optimizePrompt, generateSessionId, parseSize } from '../shared/utils';
 
 const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 

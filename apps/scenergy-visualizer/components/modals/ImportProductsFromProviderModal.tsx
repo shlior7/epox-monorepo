@@ -328,9 +328,7 @@ export function ImportProductsFromProviderModal({ isOpen, clientId, onClose }: I
     for (let i = 0; i < selectedProductsList.length; i++) {
       const wooProduct = selectedProductsList[i];
 
-      setImportStates((prev) =>
-        prev.map((state, idx) => (idx === i ? { ...state, status: 'importing' } : state))
-      );
+      setImportStates((prev) => prev.map((state, idx) => (idx === i ? { ...state, status: 'importing' } : state)));
 
       try {
         // Download images and create files
@@ -366,18 +364,14 @@ export function ImportProductsFromProviderModal({ isOpen, clientId, onClose }: I
         // Create the product
         await addProduct(clientId, wooProduct.name, description, imageFiles);
 
-        setImportStates((prev) =>
-          prev.map((state, idx) => (idx === i ? { ...state, status: 'completed' } : state))
-        );
+        setImportStates((prev) => prev.map((state, idx) => (idx === i ? { ...state, status: 'completed' } : state)));
 
         console.log(`✅ Imported product: ${wooProduct.name}`);
       } catch (err) {
         console.error(`Failed to import product ${wooProduct.name}:`, err);
         setImportStates((prev) =>
           prev.map((state, idx) =>
-            idx === i
-              ? { ...state, status: 'error', error: err instanceof Error ? err.message : 'Unknown error' }
-              : state
+            idx === i ? { ...state, status: 'error', error: err instanceof Error ? err.message : 'Unknown error' } : state
           )
         );
       }
@@ -442,9 +436,7 @@ export function ImportProductsFromProviderModal({ isOpen, clientId, onClose }: I
             <div style={styles.emptyState}>
               <ShoppingCart style={{ width: '48px', height: '48px' }} />
               <div>
-                <div style={{ fontSize: '16px', fontWeight: 500, color: '#ffffff', marginBottom: '8px' }}>
-                  WooCommerce Not Configured
-                </div>
+                <div style={{ fontSize: '16px', fontWeight: 500, color: '#ffffff', marginBottom: '8px' }}>WooCommerce Not Configured</div>
                 <div style={{ fontSize: '14px' }}>
                   This client doesn&apos;t have WooCommerce credentials configured. Please update the client settings first.
                 </div>
@@ -475,13 +467,9 @@ export function ImportProductsFromProviderModal({ isOpen, clientId, onClose }: I
                   >
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '14px', fontWeight: 500, color: '#ffffff' }}>{state.product.name}</div>
-                      {state.error && (
-                        <div style={{ fontSize: '12px', color: colors.red[400], marginTop: '4px' }}>{state.error}</div>
-                      )}
+                      {state.error && <div style={{ fontSize: '12px', color: colors.red[400], marginTop: '4px' }}>{state.error}</div>}
                     </div>
-                    {state.status === 'pending' && (
-                      <div style={{ fontSize: '12px', color: colors.slate[400] }}>Waiting...</div>
-                    )}
+                    {state.status === 'pending' && <div style={{ fontSize: '12px', color: colors.slate[400] }}>Waiting...</div>}
                     {state.status === 'importing' && (
                       <Loader2
                         style={{
@@ -492,12 +480,8 @@ export function ImportProductsFromProviderModal({ isOpen, clientId, onClose }: I
                         }}
                       />
                     )}
-                    {state.status === 'completed' && (
-                      <CheckCircle style={{ width: '20px', height: '20px', color: colors.green[400] }} />
-                    )}
-                    {state.status === 'error' && (
-                      <XCircle style={{ width: '20px', height: '20px', color: colors.red[400] }} />
-                    )}
+                    {state.status === 'completed' && <CheckCircle style={{ width: '20px', height: '20px', color: colors.green[400] }} />}
+                    {state.status === 'error' && <XCircle style={{ width: '20px', height: '20px', color: colors.red[400] }} />}
                   </div>
                 ))}
               </div>
@@ -507,9 +491,7 @@ export function ImportProductsFromProviderModal({ isOpen, clientId, onClose }: I
             <>
               {/* Configuration Section */}
               <div style={styles.configSection}>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: colors.slate[300], marginBottom: '8px' }}>
-                  Filter Products
-                </div>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: colors.slate[300], marginBottom: '8px' }}>Filter Products</div>
 
                 <div style={styles.configRow}>
                   <div style={styles.configField}>
@@ -629,10 +611,7 @@ export function ImportProductsFromProviderModal({ isOpen, clientId, onClose }: I
                     <div style={{ fontSize: '14px', color: colors.slate[400] }}>
                       {products.length} product{products.length !== 1 ? 's' : ''} found
                     </div>
-                    <button
-                      onClick={selectAllProducts}
-                      style={{ ...commonStyles.button.secondary, fontSize: '13px', padding: '6px 12px' }}
-                    >
+                    <button onClick={selectAllProducts} style={{ ...commonStyles.button.secondary, fontSize: '13px', padding: '6px 12px' }}>
                       {selectedProducts.size === products.length ? 'Deselect All' : 'Select All'}
                     </button>
                   </div>
@@ -708,9 +687,7 @@ export function ImportProductsFromProviderModal({ isOpen, clientId, onClose }: I
                 <div style={styles.emptyState}>
                   <ShoppingCart style={{ width: '48px', height: '48px' }} />
                   <div>
-                    <div style={{ fontSize: '16px', fontWeight: 500, color: '#ffffff', marginBottom: '8px' }}>
-                      No Products Fetched Yet
-                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: 500, color: '#ffffff', marginBottom: '8px' }}>No Products Fetched Yet</div>
                     <div style={{ fontSize: '14px' }}>
                       Configure the filters above and click &quot;Fetch Products&quot; to load products from your WooCommerce store.
                     </div>

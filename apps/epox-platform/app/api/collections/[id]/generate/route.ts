@@ -7,27 +7,40 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
-import { getClientId } from '@/lib/services/get-auth';
+import { withGenerationSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
 import type { FlowGenerationSettings } from 'visualizer-types';
+import { enqueueImageGeneration } from 'visualizer-ai';
 
 interface GenerateRequest {
   productIds?: string[]; // Optional: specific products to generate (defaults to all)
   settings?: Partial<FlowGenerationSettings>; // Override collection settings
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const POST = withGenerationSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id: collectionId } = await params;
-    const clientId = await getClientId(request);
     const body: GenerateRequest = await request.json().catch(() => ({}));
 
     // Fetch collection
     const collection = await db.collectionSessions.getById(collectionId);
     if (!collection) {
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: collection.clientId,
+        resourceType: 'collection',
+        resourceId: collectionId,
+      })
+    ) {
+      return forbiddenResponse();
     }
 
     // Determine which products to generate
@@ -80,9 +93,7 @@ export async function POST(
     }
 
     // Get product image URLs for generation
-    const products = await Promise.all(
-      productIdsToGenerate.map((id) => db.products.getById(id))
-    );
+    const products = await Promise.all(productIdsToGenerate.map((id) => db.products.getById(id)));
     const productImages = await Promise.all(
       productIdsToGenerate.map((productId) => db.productImages.list(productId))
     );
@@ -104,19 +115,15 @@ export async function POST(
     }
 
     // Get inspiration image URLs from settings
-    const inspirationImageUrls =
-      mergedSettings.inspirationImages?.map((img) => img.url) || [];
+    const inspirationImageUrls = mergedSettings.inspirationImages?.map((img) => img.url) || [];
 
     // Create a single generation job for all products
     // Use the first flow ID as the session ID (for job tracking)
     const primaryFlowId = flowIds[0];
 
-    const job = await db.generationJobs.create({
+    const { jobId } = await enqueueImageGeneration(
       clientId,
-      type: 'image_generation',
-      priority: 100,
-      flowId: primaryFlowId,
-      payload: {
+      {
         prompt: '', // Will be built by the worker using Art Director
         productIds: productIdsToGenerate,
         sessionId: primaryFlowId,
@@ -128,17 +135,21 @@ export async function POST(
         productImageUrls,
         inspirationImageUrls,
       },
-    });
+      {
+        priority: 100,
+        flowId: primaryFlowId,
+      }
+    );
 
     // Update collection status to generating
     await db.collectionSessions.update(collectionId, { status: 'generating' });
 
-    console.log(`🚀 Started generation job ${job.id} for collection ${collectionId}`);
+    console.log(`🚀 Started generation job ${jobId} for collection ${collectionId}`);
     console.log(`   Products: ${productIdsToGenerate.length}, Flows: ${flowIds.length}`);
 
     return NextResponse.json({
       success: true,
-      jobId: job.id,
+      jobId,
       flowIds,
       flows: createdFlows,
       productCount: productIdsToGenerate.length,
@@ -149,5 +160,4 @@ export async function POST(
     const message = error instanceof Error ? error.message : 'Failed to start generation';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
-
+});

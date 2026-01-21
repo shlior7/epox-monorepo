@@ -9,10 +9,7 @@ import { BaseRepository } from './base';
 const MAX_PRODUCTS_PER_FLOW = 3;
 const MAX_FLOWS_PER_PRODUCT = 10;
 
-function mergeFlowSettings(
-  base: FlowGenerationSettings,
-  updates: Partial<FlowGenerationSettings>
-): FlowGenerationSettings {
+function mergeFlowSettings(base: FlowGenerationSettings, updates: Partial<FlowGenerationSettings>): FlowGenerationSettings {
   const merged = { ...base, ...updates };
   if (updates.postAdjustments) {
     merged.postAdjustments = {
@@ -58,7 +55,9 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
   }
 
   private async validateMaxFlowsPerProducts(productIds: string[]): Promise<void> {
-    if (productIds.length === 0) {return;}
+    if (productIds.length === 0) {
+      return;
+    }
 
     const counts = await this.drizzle
       .select({
@@ -77,7 +76,9 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
   }
 
   private async linkProducts(flowId: string, productIds: string[], createdAt: Date): Promise<void> {
-    if (productIds.length === 0) {return;}
+    if (productIds.length === 0) {
+      return;
+    }
 
     await this.drizzle.insert(generationFlowProduct).values(
       productIds.map((productId) => ({
@@ -90,22 +91,17 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
   }
 
   private async unlinkProducts(flowId: string, productIds: string[]): Promise<void> {
-    if (productIds.length === 0) {return;}
+    if (productIds.length === 0) {
+      return;
+    }
 
     await this.drizzle
       .delete(generationFlowProduct)
-      .where(
-        and(
-          eq(generationFlowProduct.generationFlowId, flowId),
-          inArray(generationFlowProduct.productId, productIds)
-        )
-      );
+      .where(and(eq(generationFlowProduct.generationFlowId, flowId), inArray(generationFlowProduct.productId, productIds)));
   }
 
   private async unlinkAllProducts(flowId: string): Promise<void> {
-    await this.drizzle
-      .delete(generationFlowProduct)
-      .where(eq(generationFlowProduct.generationFlowId, flowId));
+    await this.drizzle.delete(generationFlowProduct).where(eq(generationFlowProduct.generationFlowId, flowId));
   }
 
   // ===== CRUD Operations =====
@@ -186,10 +182,18 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
   async createBatchWithIds(
     clientId: string,
     entries: Array<
-      GenerationFlowCreate & { id: string; status?: GenerationFlow['status']; currentImageIndex?: number; createdAt?: Date; updatedAt?: Date }
+      GenerationFlowCreate & {
+        id: string;
+        status?: GenerationFlow['status'];
+        currentImageIndex?: number;
+        createdAt?: Date;
+        updatedAt?: Date;
+      }
     >
   ): Promise<GenerationFlow[]> {
-    if (entries.length === 0) {return [];}
+    if (entries.length === 0) {
+      return [];
+    }
 
     const now = new Date();
 
@@ -264,7 +268,9 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
   }
 
   async listByCollectionSessionIds(collectionSessionIds: string[]): Promise<GenerationFlow[]> {
-    if (collectionSessionIds.length === 0) {return [];}
+    if (collectionSessionIds.length === 0) {
+      return [];
+    }
 
     const rows = await this.drizzle
       .select()
@@ -400,11 +406,7 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
     );
   }
 
-  async updateSettings(
-    id: string,
-    settings: Partial<FlowGenerationSettings>,
-    expectedVersion?: number
-  ): Promise<GenerationFlow> {
+  async updateSettings(id: string, settings: Partial<FlowGenerationSettings>, expectedVersion?: number): Promise<GenerationFlow> {
     const current = await this.requireById(id);
     const mergedSettings = mergeFlowSettings(current.settings, settings);
     return updateWithVersion<GenerationFlow>(this.drizzle, generationFlow, id, { settings: mergedSettings }, expectedVersion);

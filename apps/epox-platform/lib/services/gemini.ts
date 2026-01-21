@@ -1,10 +1,10 @@
 /**
- * Gemini Service - Re-exports from shared visualizer-services
- * All AI generation logic lives in the shared package
+ * Gemini Service - Re-exports from visualizer-ai
+ * All AI generation logic lives in the AI package
  */
 
 // Re-export everything from the shared Gemini service
-export { GeminiService, getGeminiService } from 'visualizer-services';
+export { GeminiService, getGeminiService } from 'visualizer-ai';
 
 export type {
   GeminiGenerationRequest,
@@ -14,4 +14,4 @@ export type {
   ComponentAnalysisResult,
   SceneAnalysisResult,
   AdjustmentHint,
-} from 'visualizer-services';
+} from 'visualizer-ai';

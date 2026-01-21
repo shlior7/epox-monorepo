@@ -10,14 +10,7 @@ import { useProductsView } from './useProductsView';
 import { buildTestId } from '@/lib/utils/test-ids';
 
 export function ProductsView({ ctx }: { ctx: NavContext }) {
-  const {
-    model,
-    handleProductClick,
-    cancelSelection,
-    cancelBulkDelete,
-    createClientSession,
-    bulkDeleteProducts,
-  } = useProductsView(ctx);
+  const { model, handleProductClick, cancelSelection, cancelBulkDelete, createClientSession, bulkDeleteProducts } = useProductsView(ctx);
   const { focusedIndex, listItemRefs } = ctx.keyboard;
 
   if (!model.client) {
@@ -89,9 +82,7 @@ export function ProductsView({ ctx }: { ctx: NavContext }) {
               data-testid={buildTestId('navigation-drawer', 'product-item', product.id)}
             >
               <div className={styles.itemInner}>
-                {inSelectionMode && (
-                  <Checkbox checked={model.isSelectingProducts ? isSelectedForSession : isSelectedForDelete} />
-                )}
+                {inSelectionMode && <Checkbox checked={model.isSelectingProducts ? isSelectedForSession : isSelectedForDelete} />}
                 <div className={styles.productInfo}>
                   <ItemTitle>{product.name}</ItemTitle>
                   <ItemMeta>

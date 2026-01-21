@@ -51,15 +51,9 @@ describe('SyncManager', () => {
       const newMessage = createTestMessage({ role: 'user' });
       let updatedClient = client;
 
-      await manager.addMessageToSession(
-        client,
-        product.id,
-        session.id,
-        newMessage,
-        (updated) => {
-          updatedClient = updated;
-        }
-      );
+      await manager.addMessageToSession(client, product.id, session.id, newMessage, (updated) => {
+        updatedClient = updated;
+      });
 
       // Check local state was updated
       const updatedSession = updatedClient.products[0].sessions[0];
@@ -80,21 +74,12 @@ describe('SyncManager', () => {
     it('should add multiple messages at once', async () => {
       const { client, product, session } = createTestHierarchy();
 
-      const newMessages = [
-        createTestMessage({ role: 'user' }),
-        createTestMessage({ role: 'assistant' }),
-      ];
+      const newMessages = [createTestMessage({ role: 'user' }), createTestMessage({ role: 'assistant' })];
       let updatedClient = client;
 
-      await manager.addMessageToSession(
-        client,
-        product.id,
-        session.id,
-        newMessages,
-        (updated) => {
-          updatedClient = updated;
-        }
-      );
+      await manager.addMessageToSession(client, product.id, session.id, newMessages, (updated) => {
+        updatedClient = updated;
+      });
 
       const updatedSession = updatedClient.products[0].sessions[0];
       expect(updatedSession.messages).toHaveLength(3); // Original + 2 new
@@ -106,13 +91,7 @@ describe('SyncManager', () => {
 
       const newMessage = createTestMessage();
 
-      const syncPromise = manager.addMessageToSession(
-        client,
-        product.id,
-        session.id,
-        newMessage,
-        () => {}
-      );
+      const syncPromise = manager.addMessageToSession(client, product.id, session.id, newMessage, () => {});
 
       // Check sync state is pending
       await waitFor(10);
@@ -137,18 +116,12 @@ describe('SyncManager', () => {
 
       const newMessage = createTestMessage();
 
-      await manager.addMessageToSession(
-        client,
-        product.id,
-        session.id,
-        newMessage,
-        () => {}
-      );
+      await manager.addMessageToSession(client, product.id, session.id, newMessage, () => {});
 
       // Should emit started and completed events
       expect(events.length).toBeGreaterThanOrEqual(2);
-      expect(events.some(e => e.type === 'sync_started')).toBe(true);
-      expect(events.some(e => e.type === 'sync_completed')).toBe(true);
+      expect(events.some((e) => e.type === 'sync_started')).toBe(true);
+      expect(events.some((e) => e.type === 'sync_completed')).toBe(true);
     });
 
     it('should handle sync failures with rollback', async () => {
@@ -159,20 +132,14 @@ describe('SyncManager', () => {
       vi.mocked(apiModule.apiClient.updateSession).mockRejectedValue(new Error('Persistent DB error'));
 
       try {
-        await manager.addMessageToSession(
-          client,
-          product.id,
-          session.id,
-          newMessage,
-          () => {}
-        );
+        await manager.addMessageToSession(client, product.id, session.id, newMessage, () => {});
       } catch (error) {
         rollbackCalled = true;
         // Expected to fail
       }
 
       expect(rollbackCalled).toBe(true);
-      
+
       // Wait for operation cleanup
       await waitFor(150);
     });
@@ -193,16 +160,9 @@ describe('SyncManager', () => {
 
       let updatedClient = client;
 
-      await manager.updateMessageInSession(
-        client,
-        product.id,
-        session.id,
-        message.id,
-        updates,
-        (updated) => {
-          updatedClient = updated;
-        }
-      );
+      await manager.updateMessageInSession(client, product.id, session.id, message.id, updates, (updated) => {
+        updatedClient = updated;
+      });
 
       // Check local state was updated
       const updatedMessage = updatedClient.products[0].sessions[0].messages[0];
@@ -218,16 +178,9 @@ describe('SyncManager', () => {
       const nonExistentMessageId = 'non-existent-id';
       let updatedClient = client;
 
-      await manager.updateMessageInSession(
-        client,
-        product.id,
-        session.id,
-        nonExistentMessageId,
-        { parts: [] },
-        (updated) => {
-          updatedClient = updated;
-        }
-      );
+      await manager.updateMessageInSession(client, product.id, session.id, nonExistentMessageId, { parts: [] }, (updated) => {
+        updatedClient = updated;
+      });
 
       // Should not throw, messages should remain unchanged
       expect(updatedClient.products[0].sessions[0].messages).toHaveLength(1);
@@ -247,14 +200,7 @@ describe('SyncManager', () => {
 
       const updates = { parts: [{ type: 'text' as const, content: 'Updated' }] };
 
-      await manager.updateMessageInSession(
-        client,
-        product.id,
-        session.id,
-        message.id,
-        updates,
-        () => {}
-      );
+      await manager.updateMessageInSession(client, product.id, session.id, message.id, updates, () => {});
 
       expect(attemptCount).toBe(3);
       expect(apiModule.apiClient.updateSession).toHaveBeenCalledTimes(3);
@@ -270,13 +216,7 @@ describe('SyncManager', () => {
 
       const { client, product, session } = createTestHierarchy();
 
-      await manager.addMessageToSession(
-        client,
-        product.id,
-        session.id,
-        createTestMessage(),
-        () => {}
-      );
+      await manager.addMessageToSession(client, product.id, session.id, createTestMessage(), () => {});
 
       expect(events.length).toBeGreaterThan(0);
 
@@ -284,13 +224,7 @@ describe('SyncManager', () => {
       events.length = 0;
       unsubscribe();
 
-      await manager.addMessageToSession(
-        client,
-        product.id,
-        session.id,
-        createTestMessage(),
-        () => {}
-      );
+      await manager.addMessageToSession(client, product.id, session.id, createTestMessage(), () => {});
 
       expect(events.length).toBe(0);
     });
@@ -305,15 +239,7 @@ describe('SyncManager', () => {
       const { client, product, session } = createTestHierarchy();
 
       // Should not throw even though listener throws
-      await expect(
-        manager.addMessageToSession(
-          client,
-          product.id,
-          session.id,
-          createTestMessage(),
-          () => {}
-        )
-      ).resolves.not.toThrow();
+      await expect(manager.addMessageToSession(client, product.id, session.id, createTestMessage(), () => {})).resolves.not.toThrow();
 
       expect(badListener).toHaveBeenCalled();
     });
@@ -344,13 +270,7 @@ describe('SyncManager', () => {
       expect(manager.isSyncing(client.id, product.id, session.id)).toBe(false);
 
       // After sync completes, should not be syncing
-      await manager.addMessageToSession(
-        client,
-        product.id,
-        session.id,
-        createTestMessage(),
-        () => {}
-      );
+      await manager.addMessageToSession(client, product.id, session.id, createTestMessage(), () => {});
 
       await waitFor(150);
       expect(manager.isSyncing(client.id, product.id, session.id)).toBe(false);
@@ -363,17 +283,11 @@ describe('SyncManager', () => {
       expect(manager.getPendingOperations()).toHaveLength(0);
 
       // Add a message
-      await manager.addMessageToSession(
-        client,
-        product.id,
-        session.id,
-        createTestMessage(),
-        () => {}
-      );
+      await manager.addMessageToSession(client, product.id, session.id, createTestMessage(), () => {});
 
       // After operation completes and cleanup
       await waitFor(150);
-      
+
       // Operations should be cleaned up
       const pendingOps = manager.getPendingOperations();
       expect(pendingOps).toHaveLength(0);
@@ -386,13 +300,7 @@ describe('SyncManager', () => {
       vi.mocked(apiModule.apiClient.updateSession).mockRejectedValue(new Error('Mock failure'));
 
       try {
-        await manager.addMessageToSession(
-          client,
-          product.id,
-          session.id,
-          createTestMessage(),
-          () => {}
-        );
+        await manager.addMessageToSession(client, product.id, session.id, createTestMessage(), () => {});
       } catch (error) {
         // Expected to fail
       }
@@ -401,7 +309,7 @@ describe('SyncManager', () => {
       const failedOps = manager.getFailedOperations();
       expect(failedOps.length).toBeGreaterThan(0);
       expect(failedOps[0].status).toBe('failed');
-      
+
       // Wait for cleanup
       await waitFor(150);
     });
@@ -411,25 +319,15 @@ describe('SyncManager', () => {
     it('should handle multiple concurrent add operations', async () => {
       const { client, product, session } = createTestHierarchy();
 
-      const messages = [
-        createTestMessage(),
-        createTestMessage(),
-        createTestMessage(),
-      ];
+      const messages = [createTestMessage(), createTestMessage(), createTestMessage()];
 
       let updatedClient = client;
 
       // Execute operations sequentially to ensure state updates properly
       for (const msg of messages) {
-        await manager.addMessageToSession(
-          updatedClient,
-          product.id,
-          session.id,
-          msg,
-          (updated) => {
-            updatedClient = updated;
-          }
-        );
+        await manager.addMessageToSession(updatedClient, product.id, session.id, msg, (updated) => {
+          updatedClient = updated;
+        });
       }
 
       // All messages should be added
@@ -442,13 +340,7 @@ describe('SyncManager', () => {
     it('should clear operation history', async () => {
       const { client, product, session } = createTestHierarchy();
 
-      await manager.addMessageToSession(
-        client,
-        product.id,
-        session.id,
-        createTestMessage(),
-        () => {}
-      );
+      await manager.addMessageToSession(client, product.id, session.id, createTestMessage(), () => {});
 
       await waitFor(100);
 

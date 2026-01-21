@@ -98,7 +98,8 @@ export default function NewCollectionPage() {
           <div>
             <h1 className="text-lg font-semibold">Create Collection</h1>
             <p className="text-sm text-muted-foreground">
-              Step {currentStep} of {WIZARD_STEPS.length}: {WIZARD_STEPS[currentStep - 1].description}
+              Step {currentStep} of {WIZARD_STEPS.length}:{' '}
+              {WIZARD_STEPS[currentStep - 1].description}
             </p>
           </div>
         </div>

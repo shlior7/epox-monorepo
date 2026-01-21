@@ -98,9 +98,9 @@ export function useStudioProductsView(ctx: NavContext) {
       .map((product) => normalizeCategory(product.category))
       .filter((category) => category !== UNCATEGORIZED);
     const baseCategories = client.categories?.length ? client.categories : categoriesFromProducts;
-    const normalizedCategories = Array.from(
-      new Set(baseCategories.map((category) => category.trim().toLowerCase()).filter(Boolean))
-    ).sort((a, b) => a.localeCompare(b));
+    const normalizedCategories = Array.from(new Set(baseCategories.map((category) => category.trim().toLowerCase()).filter(Boolean))).sort(
+      (a, b) => a.localeCompare(b)
+    );
     const hasUncategorized = client.products.some((product) => !product.category);
 
     return hasUncategorized ? [...normalizedCategories, UNCATEGORIZED] : normalizedCategories;

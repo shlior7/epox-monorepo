@@ -21,36 +21,36 @@
        ==================================================================== */
 
     /* Background colors - Neutral charcoal */
-    --background: 0 0% 10%;          /* #1a1a1a - app background */
-    --background-alt: 0 0% 15%;      /* #262626 - alternate background */
-    --background-deep: 0 0% 9%;      /* #171717 - deeper surfaces */
+    --background: 0 0% 10%; /* #1a1a1a - app background */
+    --background-alt: 0 0% 15%; /* #262626 - alternate background */
+    --background-deep: 0 0% 9%; /* #171717 - deeper surfaces */
 
     /* Foreground/Text - Clear hierarchy */
-    --foreground: 0 0% 90%;          /* #e5e5e5 - primary text */
-    --foreground-muted: 0 0% 64%;    /* #a3a3a3 - secondary text */
+    --foreground: 0 0% 90%; /* #e5e5e5 - primary text */
+    --foreground-muted: 0 0% 64%; /* #a3a3a3 - secondary text */
 
     /* Cards & Surfaces */
-    --card: 0 0% 15%;                /* #262626 - card background */
-    --card-foreground: 0 0% 90%;     /* #e5e5e5 - card text */
+    --card: 0 0% 15%; /* #262626 - card background */
+    --card-foreground: 0 0% 90%; /* #e5e5e5 - card text */
 
     /* Popover (tooltips, dropdowns) */
-    --popover: 0 0% 15%;             /* #262626 */
+    --popover: 0 0% 15%; /* #262626 */
     --popover-foreground: 0 0% 90%; /* #e5e5e5 */
 
     /* Primary - Indigo/Purple */
-    --primary: 239 84% 67%;          /* #6366f1 */
+    --primary: 239 84% 67%; /* #6366f1 */
     --primary-foreground: 0 0% 100%; /* white */
 
     /* Secondary - Elevated surface */
-    --secondary: 0 0% 17%;           /* #2a2a2a - elevated surfaces */
+    --secondary: 0 0% 17%; /* #2a2a2a - elevated surfaces */
     --secondary-foreground: 0 0% 83%; /* #d4d4d4 */
 
     /* Muted elements */
-    --muted: 0 0% 20%;               /* #333333 - muted surfaces */
-    --muted-foreground: 0 0% 45%;    /* #737373 - muted text */
+    --muted: 0 0% 20%; /* #333333 - muted surfaces */
+    --muted-foreground: 0 0% 45%; /* #737373 - muted text */
 
     /* Accent - Cyan */
-    --accent: 185 75% 50%;           /* cyan */
+    --accent: 185 75% 50%; /* cyan */
     --accent-foreground: 0 0% 6%;
 
     /* Warm accent - Amber */
@@ -58,22 +58,22 @@
     --warm-foreground: 0 0% 6%;
 
     /* Destructive - Red */
-    --destructive: 0 84% 60%;        /* #ef4444 */
+    --destructive: 0 84% 60%; /* #ef4444 */
     --destructive-foreground: 0 0% 100%;
 
     /* Success - Green */
-    --success: 142 76% 36%;          /* #16a34a */
+    --success: 142 76% 36%; /* #16a34a */
     --success-foreground: 0 0% 100%;
 
     /* Warning - Amber */
-    --warning: 38 92% 50%;           /* #f59e0b */
+    --warning: 38 92% 50%; /* #f59e0b */
     --warning-foreground: 0 0% 6%;
 
     /* Borders & Inputs */
-    --border: 0 0% 20%;              /* #333333 */
-    --border-subtle: 0 0% 17%;       /* #2a2a2a */
-    --border-strong: 0 0% 25%;       /* #404040 */
-    --input: 0 0% 9%;                /* #171717 - input background */
+    --border: 0 0% 20%; /* #333333 */
+    --border-subtle: 0 0% 17%; /* #2a2a2a */
+    --border-strong: 0 0% 25%; /* #404040 */
+    --input: 0 0% 9%; /* #171717 - input background */
     --ring: 239 84% 67%;
 
     /* Radius */

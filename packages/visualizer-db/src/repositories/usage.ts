@@ -31,12 +31,7 @@ export class UsageRecordRepository extends BaseRepository<UsageRecord> {
     const rows = await this.drizzle
       .select()
       .from(usageRecord)
-      .where(
-        and(
-          eq(usageRecord.clientId, clientId),
-          eq(usageRecord.month, targetMonth)
-        )
-      )
+      .where(and(eq(usageRecord.clientId, clientId), eq(usageRecord.month, targetMonth)))
       .limit(1);
 
     return rows[0] ? this.mapToEntity(rows[0]) : null;
@@ -121,11 +116,7 @@ export class QuotaLimitRepository extends BaseRepository<QuotaLimit> {
   }
 
   async getByClientId(clientId: string): Promise<QuotaLimit | null> {
-    const rows = await this.drizzle
-      .select()
-      .from(quotaLimit)
-      .where(eq(quotaLimit.clientId, clientId))
-      .limit(1);
+    const rows = await this.drizzle.select().from(quotaLimit).where(eq(quotaLimit.clientId, clientId)).limit(1);
 
     return rows[0] ? this.mapToEntity(rows[0]) : null;
   }
@@ -190,11 +181,7 @@ export class QuotaLimitRepository extends BaseRepository<QuotaLimit> {
       updatePayload.storageQuotaMb = data.storageQuotaMb;
     }
 
-    const [updated] = await this.drizzle
-      .update(quotaLimit)
-      .set(updatePayload)
-      .where(eq(quotaLimit.clientId, clientId))
-      .returning();
+    const [updated] = await this.drizzle.update(quotaLimit).set(updatePayload).where(eq(quotaLimit.clientId, clientId)).returning();
 
     if (!updated) {
       throw new NotFoundError('quota_limit', clientId);
@@ -203,5 +190,3 @@ export class QuotaLimitRepository extends BaseRepository<QuotaLimit> {
     return this.mapToEntity(updated);
   }
 }
-
-

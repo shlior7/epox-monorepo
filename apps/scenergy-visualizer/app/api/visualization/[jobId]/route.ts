@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { visualizationQueue } from '../../../../lib/services/visualization/queue';
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ jobId: string }> }
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params;
 
   if (!jobId) {
@@ -22,6 +19,6 @@ export async function GET(
     session: job.session,
     error: job.error,
     createdAt: job.createdAt,
-    updatedAt: job.updatedAt
+    updatedAt: job.updatedAt,
   });
 }

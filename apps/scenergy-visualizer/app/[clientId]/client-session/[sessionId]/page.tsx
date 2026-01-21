@@ -79,12 +79,7 @@ export default function ClientSessionPage() {
 
   return (
     <div className="session-view" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-      <SceneStudioView
-        clientId={clientId}
-        clientSession={clientSession}
-        products={client.products}
-        onImageClick={handleImageClick}
-      />
+      <SceneStudioView clientId={clientId} clientSession={clientSession} products={client.products} onImageClick={handleImageClick} />
       <ImageModal
         isOpen={imageModalUrl !== null}
         imageUrl={imageModalUrl}

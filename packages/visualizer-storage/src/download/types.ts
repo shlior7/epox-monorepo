@@ -37,5 +37,3 @@ export interface BulkDownloadResult {
   progress: number;
   estimatedSeconds?: number;
 }
-
-

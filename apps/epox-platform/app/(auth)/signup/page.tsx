@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { authClient } from '@/lib/services/auth';
+import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 export default function SignupPage() {
@@ -62,14 +63,33 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Create user account with Better Auth
+      // Organization is auto-created via database hook
+      const { data, error } = await authClient.signUp.email({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) {
+        toast.error(error.message || 'Signup failed');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data?.user) {
+        toast.error('Failed to create account');
+        setIsLoading(false);
+        return;
+      }
 
       toast.success('Account created successfully!');
+
+      // Redirect to dashboard
       router.push('/dashboard');
     } catch (error) {
+      console.error('Signup error:', error);
       toast.error('Failed to create account. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };

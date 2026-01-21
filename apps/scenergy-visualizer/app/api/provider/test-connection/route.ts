@@ -26,10 +26,7 @@ export async function POST(request: Request) {
 
     if (provider === 'woocommerce') {
       if (!credentials.baseUrl || !credentials.consumerKey || !credentials.consumerSecret) {
-        return NextResponse.json(
-          { success: false, error: 'Missing required WooCommerce credentials' },
-          { status: 400 }
-        );
+        return NextResponse.json({ success: false, error: 'Missing required WooCommerce credentials' }, { status: 400 });
       }
     }
 
@@ -44,16 +41,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     } else {
       console.log('❌ Connection test failed');
-      return NextResponse.json(
-        { success: false, error: 'Connection failed. Please check your credentials.' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Connection failed. Please check your credentials.' }, { status: 400 });
     }
   } catch (error) {
     console.error('❌ Connection test error:', error);
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Connection test failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Connection test failed' }, { status: 500 });
   }
 }

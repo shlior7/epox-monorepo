@@ -6,17 +6,19 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
+import { withSecurity } from '@/lib/security/middleware';
 
-// TODO: Replace with actual auth when implemented
-const PLACEHOLDER_CLIENT_ID = 'test-client';
-
-export async function GET(_request: NextRequest) {
+export const GET = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     // Execute all count queries in parallel for performance
     const [productCount, collectionCount, completedAssetsCount] = await Promise.all([
-      db.products.count(PLACEHOLDER_CLIENT_ID),
-      db.collectionSessions.count(PLACEHOLDER_CLIENT_ID),
-      db.generatedAssets.countByStatus(PLACEHOLDER_CLIENT_ID, 'completed'),
+      db.products.count(clientId),
+      db.collectionSessions.count(clientId),
+      db.generatedAssets.countByStatus(clientId, 'completed'),
     ]);
 
     const stats = {
@@ -27,25 +29,35 @@ export async function GET(_request: NextRequest) {
     };
 
     // Get 3 most recent collections
-    const recentCollectionsData = await db.collectionSessions.listRecent(PLACEHOLDER_CLIENT_ID, 3);
+    const recentCollectionsData = await db.collectionSessions.listRecent(clientId, 3);
+    const recentCollectionIds = recentCollectionsData.map((collection) => collection.id);
+
+    const recentFlows = await db.generationFlows.listByCollectionSessionIds(recentCollectionIds);
+    const flowIdsByCollection = new Map<string, string[]>();
+
+    for (const flow of recentFlows) {
+      const collectionId = flow.collectionSessionId;
+      if (!collectionId) continue;
+      const existing = flowIdsByCollection.get(collectionId) ?? [];
+      existing.push(flow.id);
+      flowIdsByCollection.set(collectionId, existing);
+    }
 
     // For each collection, count its assets (in parallel)
     const recentCollections = await Promise.all(
       recentCollectionsData.map(async (c) => {
-        const collectionProductIds = c.productIds as string[];
-
-        // Count all assets where productIds overlap with collection's productIds
+        const flowIds = flowIdsByCollection.get(c.id) ?? [];
         const [totalCount, completedCount, firstAsset] = await Promise.all([
-          db.generatedAssets.countByProductIds(PLACEHOLDER_CLIENT_ID, collectionProductIds),
-          db.generatedAssets.countByProductIds(PLACEHOLDER_CLIENT_ID, collectionProductIds, 'completed'),
-          db.generatedAssets.getFirstByProductIds(PLACEHOLDER_CLIENT_ID, collectionProductIds, 'completed'),
+          db.generatedAssets.countByGenerationFlowIds(clientId, flowIds),
+          db.generatedAssets.countByGenerationFlowIds(clientId, flowIds, 'completed'),
+          db.generatedAssets.getFirstByGenerationFlowIds(clientId, flowIds, 'completed'),
         ]);
 
         return {
           id: c.id,
           name: c.name,
           status: c.status,
-          productCount: collectionProductIds.length,
+          productCount: c.productIds.length,
           generatedCount: completedCount,
           totalImages: totalCount,
           updatedAt: c.updatedAt.toISOString(),
@@ -63,4 +75,4 @@ export async function GET(_request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

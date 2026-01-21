@@ -87,11 +87,7 @@ export function AddBaseImagesModal({ isOpen, clientId, productId, onClose, onIma
 
   return (
     <div style={styles.overlay} onClick={handleClose} data-testid={buildTestId('add-base-images-modal', 'overlay')}>
-      <div
-        style={styles.content}
-        onClick={(e) => e.stopPropagation()}
-        data-testid={buildTestId('add-base-images-modal', 'content')}
-      >
+      <div style={styles.content} onClick={(e) => e.stopPropagation()} data-testid={buildTestId('add-base-images-modal', 'content')}>
         <div style={styles.header}>
           <h2 style={styles.title}>Add Base Images</h2>
           <button

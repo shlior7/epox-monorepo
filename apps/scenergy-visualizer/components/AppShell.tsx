@@ -14,7 +14,15 @@ import { useAuthInfo } from '@/lib/auth/use-auth-info';
 import { NavigationDrawer } from './NavigationDrawer';
 import { Breadcrumb } from './Breadcrumb';
 import { ThemeToggle } from './common/ThemeToggle';
-import { AccountSettingsModal, AddClientModal, AddProductModal, EditProductModal, EditSessionModal, ImageModal, SignOutModal } from './modals';
+import {
+  AccountSettingsModal,
+  AddClientModal,
+  AddProductModal,
+  EditProductModal,
+  EditSessionModal,
+  ImageModal,
+  SignOutModal,
+} from './modals';
 import { BulkAddProductsModal } from './modals/BulkAddProductsModal';
 import { ImportProductsFromProviderModal } from './modals/ImportProductsFromProviderModal';
 import styles from './AppShell.module.scss';

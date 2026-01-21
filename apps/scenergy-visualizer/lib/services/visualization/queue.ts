@@ -1,4 +1,4 @@
-import { VisualizationService } from './service';
+import { getVisualizationService, type VisualizationService } from './service';
 import type { VisualizationRequest, GenerationSession } from '../shared/types';
 import { redis } from '../redis/client';
 
@@ -39,7 +39,7 @@ export class VisualizationQueue {
       session: null,
       error: null,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
     // Save job to Redis with TTL
@@ -68,7 +68,7 @@ export class VisualizationQueue {
     do {
       const result: [string | number, string[]] = await redis.scan(cursor, {
         match: `${this.REDIS_PREFIX}*`,
-        count: 100
+        count: 100,
       });
 
       cursor = result[0];
@@ -76,7 +76,7 @@ export class VisualizationQueue {
 
       // Fetch all jobs for this batch using mget for better performance
       if (keys.length > 0) {
-        const jobDataList = await redis.mget<string[]>(...keys);
+        const jobDataList = await redis.mget<string>(...keys);
         for (const jobData of jobDataList) {
           if (jobData) {
             jobs.push(JSON.parse(jobData));
@@ -95,7 +95,7 @@ export class VisualizationQueue {
     const updatedJob = {
       ...job,
       ...updates,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     await redis.set(this.getJobKey(jobId), JSON.stringify(updatedJob), { ex: this.JOB_TTL });
@@ -112,12 +112,12 @@ export class VisualizationQueue {
       const session = await this.service.generateVisualization(job.request);
       await this.updateJob(jobId, {
         session,
-        status: 'completed'
+        status: 'completed',
       });
     } catch (error) {
       await this.updateJob(jobId, {
         status: 'error',
-        error: error instanceof Error ? error.message : 'Generation failed'
+        error: error instanceof Error ? error.message : 'Generation failed',
       });
     }
   }
@@ -130,11 +130,17 @@ declare global {
 
 const globalForQueue = globalThis as unknown as { __scenergy_visualization_queue?: VisualizationQueue };
 
-export const visualizationQueue =
-  globalForQueue.__scenergy_visualization_queue ?? new VisualizationQueue(new VisualizationService());
-
-if (!globalForQueue.__scenergy_visualization_queue) {
-  globalForQueue.__scenergy_visualization_queue = visualizationQueue;
+function getVisualizationQueue(): VisualizationQueue {
+  if (!globalForQueue.__scenergy_visualization_queue) {
+    globalForQueue.__scenergy_visualization_queue = new VisualizationQueue(getVisualizationService());
+  }
+  return globalForQueue.__scenergy_visualization_queue;
 }
+
+export const visualizationQueue = {
+  enqueue: (...args: Parameters<VisualizationQueue['enqueue']>) => getVisualizationQueue().enqueue(...args),
+  get: (...args: Parameters<VisualizationQueue['get']>) => getVisualizationQueue().get(...args),
+  list: (...args: Parameters<VisualizationQueue['list']>) => getVisualizationQueue().list(...args),
+};
 
 export type { VisualizationJob };

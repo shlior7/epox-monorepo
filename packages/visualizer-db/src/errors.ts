@@ -30,9 +30,7 @@ export class OptimisticLockError extends DatabaseError {
     public expectedVersion: number,
     public actualVersion: number
   ) {
-    super(
-      `Conflict: ${entity} ${id} was modified (expected v${expectedVersion}, got v${actualVersion})`
-    );
+    super(`Conflict: ${entity} ${id} was modified (expected v${expectedVersion}, got v${actualVersion})`);
     this.name = 'OptimisticLockError';
   }
 }

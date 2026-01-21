@@ -77,5 +77,3 @@ export const userSettingsRelations = relations(userSettings, ({ one }) => ({
     references: [user.id],
   }),
 }));
-
-

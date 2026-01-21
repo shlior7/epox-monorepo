@@ -24,6 +24,7 @@ This design log provides a comprehensive catalog of use cases with realistic sce
 ## Problem
 
 We need to document:
+
 1. **Complete use case coverage** - Every user action from onboarding to image management
 2. **Realistic scenarios** - Concrete examples with specific products, quantities, and outcomes
 3. **Error handling** - How the system responds to failures at every step
@@ -31,6 +32,7 @@ We need to document:
 5. **Component mapping** - Which screens, APIs, and components support each use case
 
 Without this documentation:
+
 - Developers won't know all the scenarios to test
 - Designers will miss edge cases in their mockups
 - Product decisions will lack user-centered context
@@ -41,33 +43,43 @@ Without this documentation:
 ## Questions and Answers
 
 ### Q1: Should we document happy path only or include all edge cases?
+
 **A**: Both, with clear separation:
+
 - **Main flow** - Happy path with no errors
 - **Alternative flows** - Valid variations (e.g., skip inspiration step)
 - **Exception flows** - Error conditions and recovery
 
 ### Q2: How detailed should quantifiable outcomes be?
+
 **A**: Specific and realistic:
+
 - ✅ "Generate 45 images in 12 minutes"
 - ❌ "Generate some images quickly"
 - Include ranges: "20-500 products per studioSession"
 - Show quota usage: "45 of 100 monthly generations used"
 
 ### Q3: Should we include future features (team collaboration, API)?
+
 **A**: Yes, but marked clearly:
+
 - Mark as **[Future]** in use case title
 - Describe intended behavior
 - Note dependencies and timeline
 - Helps with architecture planning
 
 ### Q4: How do we handle concurrent user scenarios?
+
 **A**: Document explicitly:
+
 - Single user, single session (most common)
 - Single user, multiple tabs (auto-save conflicts)
 - Multiple users, same client (future team collaboration)
 
 ### Q5: Should personas be generic or based on real customer profiles?
+
 **A**: Mix of both:
+
 - 3 primary personas based on common use cases
 - Include job titles, goals, pain points, technical skill level
 - Use realistic product examples (furniture, fixtures, decor)
@@ -81,24 +93,28 @@ Without this documentation:
 #### Persona 1: Sarah Chen - Furniture Brand Marketing Manager
 
 **Background**:
+
 - Age: 32
 - Company: Modern Living Co. (mid-size furniture brand, 200+ SKUs)
 - Role: Marketing Manager
 - Technical skill: Medium (comfortable with SaaS tools, not a developer)
 
 **Goals**:
+
 - Generate seasonal product catalogs (4x per year, 50-100 products each)
 - Create social media images for new product launches
 - Maintain consistent brand aesthetic across all visuals
 - Reduce dependency on expensive photoshoots
 
 **Pain Points**:
+
 - Current process: 3-week photoshoot + 2-week editing = slow
 - High cost: $500-1000 per product for professional photography
 - Limited scene variety (same studio setup)
 - Difficult to visualize products in different room styles
 
 **Use Case Focus**:
+
 - Bulk generation (50-100 products)
 - Brand consistency (reuse pinned inspiration)
 - Download organization (by studioSession, by product)
@@ -109,24 +125,28 @@ Without this documentation:
 #### Persona 2: Mike Rodriguez - E-commerce Catalog Manager
 
 **Background**:
+
 - Age: 28
 - Company: HomePlus Marketplace (large online retailer, 1000+ SKUs)
 - Role: Catalog Operations Manager
 - Technical skill: High (manages CSV imports, API integrations)
 
 **Goals**:
+
 - Update entire catalog with new visuals quarterly
 - Process large batches (200-500 products at once)
 - Integrate with existing product database
 - Track quota usage and costs
 
 **Pain Points**:
+
 - Managing 1000+ products manually is overwhelming
 - Existing images inconsistent (from multiple vendors)
 - Need to filter/search products efficiently
 - Quota limits constrain large batches
 
 **Use Case Focus**:
+
 - Large dataset handling (500+ products)
 - Product catalog management (CSV import, bulk edits)
 - Filtering and search (by category, room type, SKU)
@@ -137,24 +157,28 @@ Without this documentation:
 #### Persona 3: Alex Thompson - Interior Design Studio Owner
 
 **Background**:
+
 - Age: 45
 - Company: Thompson Interiors (small studio, curated product line of 30-50 SKUs)
 - Role: Owner / Lead Designer
 - Technical skill: Low (prefers simple, guided workflows)
 
 **Goals**:
+
 - Showcase products in aspirational room settings
 - Create mood boards for client presentations
 - Experiment with different design styles
 - High-quality, artistic results
 
 **Pain Points**:
+
 - Limited technical knowledge (needs simple UX)
 - Small product catalog but high quality standards
 - Wants creative control over aesthetics
 - Budget-conscious (needs free/starter tier)
 
 **Use Case Focus**:
+
 - Small studioSessions (10-30 products)
 - High customization (manual inspiration selection)
 - Quality over quantity (regenerate until perfect)
@@ -169,6 +193,7 @@ Without this documentation:
 **Actor**: New user (any persona)
 
 **Preconditions**:
+
 - Admin has created client account
 - Admin has invited user via email
 - User has received invitation email (not expired)
@@ -208,16 +233,19 @@ Without this documentation:
 **Alternative Flows**:
 
 **A1: Token expired**
+
 - System shows: "Invitation expired. Contact your administrator for a new invitation."
 - User cannot proceed
 - Admin must send new invitation
 
 **A2: Email already registered**
+
 - System shows: "Account already exists. Try logging in instead."
 - Provides link to login page
 - User can reset password if needed
 
 **A3: User skips first studioSession**
+
 - Clicks "Skip" or navigates away
 - Dashboard shows empty state persistently
 - Can create studioSession later from dashboard or nav
@@ -229,12 +257,14 @@ Without this documentation:
 - **Session creation fails**: Show error, allow retry, log issue
 
 **Postconditions**:
+
 - User account created and active
 - User logged in with valid session
 - User associated with exactly one client
 - Ready to create first studioSession
 
 **Success Criteria**:
+
 - ✅ User can sign up in <2 minutes
 - ✅ Form validation prevents invalid data
 - ✅ Session persists for 7 days
@@ -242,6 +272,7 @@ Without this documentation:
 - ✅ Clear next step (create studioSession)
 
 **Related Components**:
+
 - `/signup` page (Design Log #005, Screen 1)
 - `SignupForm` component
 - `/api/auth/signup` route
@@ -259,6 +290,7 @@ Without this documentation:
 **Actor**: Logged-in user (Sarah - bulk generation, 45 products)
 
 **Preconditions**:
+
 - User authenticated with active session
 - Client has at least 1 product in catalog
 - User has not exceeded monthly generation quota
@@ -370,24 +402,29 @@ Without this documentation:
 **Alternative Flows**:
 
 **A1: User selects <10 products**
+
 - System shows warning: "Small batch. Consider selecting more products for better efficiency."
 - User can proceed or go back to select more
 
 **A2: User selects >500 products**
+
 - System shows error: "Maximum 500 products per studioSession. Please reduce selection."
 - "Continue" button disabled until count ≤500
 
 **A3: User skips inspiration images (0 selected)**
+
 - System shows confirmation: "No inspirations selected. We'll use default settings. Continue?"
 - User confirms
 - System uses generic modern style defaults
 
 **A4: AI analysis fails**
+
 - System shows error: "AI analysis unavailable. Using basic analysis from product metadata."
 - Fallback: Analyze room types from product metadata only
 - User can still proceed with generic suggestions
 
 **A5: User abandons wizard mid-flow**
+
 - System auto-saves draft every 30 seconds
 - User can return to `/studioSessions/{id}/edit` later
 - Draft shows on dashboard with "Resume" button
@@ -404,6 +441,7 @@ Without this documentation:
 - **User quota exceeded**: Show quota modal before generation, prevent proceeding
 
 **Postconditions**:
+
 - StudioSession created with status `generating` or `completed`
 - 180 GeneratedImage records created
 - 180 images uploaded to R2 (on success)
@@ -411,6 +449,7 @@ Without this documentation:
 - User quota updated (180 generations deducted)
 
 **Success Criteria**:
+
 - ✅ Complete workflow in <7 minutes (excluding generation time)
 - ✅ Auto-save prevents data loss if abandoned
 - ✅ Progress updates visible every 5 seconds
@@ -419,6 +458,7 @@ Without this documentation:
 - ✅ Generated images match inspiration style
 
 **Related Components**:
+
 - StudioSession wizard (Design Log #005, Screen 4)
 - Product selection table (Design Log #005, Step 1)
 - Analysis results (Design Log #005, Step 2)
@@ -427,6 +467,7 @@ Without this documentation:
 - APIs: `/api/studioSessions`, `/api/products`, `/api/analyze`, `/api/generate`
 
 **Quantifiable Outcomes**:
+
 - **Time**: 7 minutes user interaction + 12 minutes background generation = 19 minutes total
 - **Cost**: 180 generations × $0.05 = $9.00 (hypothetical pricing)
 - **Quota**: 180 of 100 monthly limit used (triggers upgrade prompt)
@@ -444,6 +485,7 @@ Without this documentation:
 **Actor**: Logged-in user (during studioSession creation or standalone)
 
 **Preconditions**:
+
 - User has selected 1+ products
 - Gemini API is available and has quota
 - Products have metadata (name, category, room type)
@@ -461,17 +503,18 @@ Without this documentation:
    - Progress bar (simulated, 0% → 100% over 30s)
    - Status messages: "Understanding product types", "Detecting room contexts"
 6. Backend processes analysis:
+
    ```typescript
    // Collect product metadata
    const products = await db.products.findMany({
-     where: { id: { in: productIds } }
+     where: { id: { in: productIds } },
    });
 
    // Analyze with AI
    const prompt = `
      Analyze these ${products.length} products:
-     ${products.map(p => `${p.name} (${p.category}, ${p.roomTypes.join(', ')})`).join('\n')}
-
+     ${products.map((p) => `${p.name} (${p.category}, ${p.roomTypes.join(', ')})`).join('\n')}
+   
      Provide:
      1. Room type distribution (count per room)
      2. Product types detected
@@ -481,6 +524,7 @@ Without this documentation:
 
    const analysis = await gemini.analyze(prompt);
    ```
+
 7. AI returns analysis after 30 seconds
 8. System stores analysis in studioSession:
    ```typescript
@@ -488,8 +532,8 @@ Without this documentation:
      where: { id: studioSessionId },
      data: {
        productAnalysis: analysis,
-       status: "analyzing"
-     }
+       status: 'analyzing',
+     },
    });
    ```
 9. System displays results:
@@ -502,16 +546,19 @@ Without this documentation:
 **Alternative Flows**:
 
 **A1: Analysis completes quickly (<10 seconds)**
+
 - Skip loading animation
 - Show results immediately
 - Same outcome
 
 **A2: User has only metadata (no product images)**
+
 - Analysis based solely on text metadata
 - Warning shown: "No product images found. Analysis may be less accurate."
 - Suggestions more generic
 
 **A3: Products have conflicting room types**
+
 - AI detects mixed categories (e.g., Office + Kitchen + Bedroom)
 - Analysis shows all room types
 - Warning: "Mixed room types detected. Consider splitting into multiple studioSessions."
@@ -527,20 +574,22 @@ Without this documentation:
   const fallbackAnalysis = {
     roomTypeDistribution: aggregateRoomTypes(products),
     productTypes: extractCategories(products),
-    suggestedStyles: ["Modern"], // Generic default
-    recommendedInspirationKeywords: generateKeywordsFromMetadata(products)
+    suggestedStyles: ['Modern'], // Generic default
+    recommendedInspirationKeywords: generateKeywordsFromMetadata(products),
   };
   ```
 - **Network disconnection**: Auto-retry up to 3 times, show offline banner
 - **Invalid product data**: Skip invalid products, analyze remaining, log warning
 
 **Postconditions**:
+
 - StudioSession has `productAnalysis` field populated
 - Analysis results displayed to user
 - Suggested keywords ready for Unsplash search (next step)
 - StudioSession status: `draft` → `analyzing` → `ready`
 
 **Success Criteria**:
+
 - ✅ Analysis completes in <60 seconds for 100 products
 - ✅ Fallback works if AI unavailable
 - ✅ Suggestions are relevant (manual QA spot-check)
@@ -548,12 +597,14 @@ Without this documentation:
 - ✅ No duplicate or nonsensical suggestions
 
 **Related Components**:
+
 - Analysis results screen (Design Log #005, Step 2)
 - `/api/studioSessions/{id}/analyze` endpoint
 - `ProductAnalyzer` service (Design Log #001, shared package)
 - `productAnalysis` field in studioSessions table (Design Log #003)
 
 **Quantifiable Outcomes**:
+
 - **Time**: 30 seconds for 45 products = 0.67s per product
 - **Tokens**: ~1000 input tokens + 500 output tokens = $0.02 (Gemini pricing)
 - **Accuracy**: 90% room type match vs. manual categorization (based on testing)
@@ -569,6 +620,7 @@ Without this documentation:
 **Actor**: Logged-in user (during Step 2 of wizard, after analysis)
 
 **Preconditions**:
+
 - AI analysis completed (UC-003)
 - System has suggested prompt tags based on product analysis
 - User viewing Step 2 (Analysis Results + Q&A Form)
@@ -623,11 +675,11 @@ Without this documentation:
 8. System stores prompt tags:
    ```typescript
    const promptTags: PromptTags = {
-     roomType: ["living room", "bedroom"],
-     mood: ["elegant"],
-     lighting: ["natural"],
-     style: ["scandinavian", "modern"],
-     custom: ["high ceilings", "wooden floors", "open floor plan"]
+     roomType: ['living room', 'bedroom'],
+     mood: ['elegant'],
+     lighting: ['natural'],
+     style: ['scandinavian', 'modern'],
+     custom: ['high ceilings', 'wooden floors', 'open floor plan'],
    };
    ```
 9. User clicks "Next: Inspire"
@@ -638,21 +690,23 @@ Without this documentation:
       data: {
         settings: {
           ...existingSettings,
-          promptTags
-        }
-      }
+          promptTags,
+        },
+      },
     });
     ```
 
 **Alternative Flows**:
 
 **A1: User accepts all AI suggestions (no changes)**
+
 - User reviews pre-selected tags
 - User is satisfied with suggestions
 - User clicks "Next: Inspire" without modifications
 - System uses AI-suggested tags as-is
 
 **A2: User clears all tags**
+
 - User clicks "Clear All" button
 - All tags deselected
 - Prompt preview shows empty
@@ -660,12 +714,14 @@ Without this documentation:
 - User can proceed or re-select tags
 
 **A3: User adds many custom tags**
+
 - User adds 5+ custom tags
 - System shows info: "5 custom tags added"
 - All custom tags included in prompt
 - Prompt preview shows all tags
 
 **A4: User removes a custom tag**
+
 - User clicks × on custom tag bubble
 - Tag removed from custom list
 - Prompt preview updates
@@ -678,12 +734,14 @@ Without this documentation:
 - **Duplicate custom tag**: Prevent duplicates, show info "Tag already exists"
 
 **Postconditions**:
+
 - StudioSession has `settings.promptTags` populated
 - Prompt tags reflected in generation prompt
 - User proceeds to Step 3 with customized settings
 - Tags converted to comma-separated prompt string for AI generation
 
 **Success Criteria**:
+
 - ✅ Tag toggle responds in <100ms (instant feedback)
 - ✅ Prompt preview updates in real-time
 - ✅ AI suggestions relevant to product analysis (>80% accuracy)
@@ -692,12 +750,14 @@ Without this documentation:
 - ✅ Clear visual distinction between selected/deselected tags
 
 **Related Components**:
+
 - Q&A Form / Prompt Tags component (Design Log #005, Step 2)
 - `PromptTagsForm` component
 - `PromptTags` interface (Design Log #003)
 - FlowGenerationSettings with promptTags field
 
 **Quantifiable Outcomes**:
+
 - **Time**: 30-60 seconds to customize tags
 - **Tags**: Average 8-12 tags per studioSession (5 AI-suggested + 3 custom)
 - **Customization rate**: 70% of users modify at least 1 tag
@@ -715,6 +775,7 @@ Without this documentation:
 **Actor**: Logged-in user
 
 **Preconditions**:
+
 - User is on Step 3 of wizard
 - Analysis completed (suggested keywords available)
 - At least one inspiration source is accessible (Upload, Unsplash, or Library)
@@ -753,30 +814,32 @@ Without this documentation:
       data: [
         {
           studioSessionId,
-          imageId: "img_1",
-          source: "unsplash",
-          displayOrder: 0
+          imageId: 'img_1',
+          source: 'unsplash',
+          displayOrder: 0,
         },
         {
           studioSessionId,
-          imageId: "img_2",
-          source: "upload",
-          displayOrder: 1
+          imageId: 'img_2',
+          source: 'upload',
+          displayOrder: 1,
         },
         // ...
-      ]
+      ],
     });
     ```
 
 **Alternative Flows**:
 
 **A1: User selects 0 images (skip inspiration)**
+
 - System shows confirmation: "No inspirations selected. Use default settings?"
 - User confirms
 - System proceeds with generic modern style
 - Base settings use defaults instead of inspiration-derived values
 
 **A2: User selects only from Library (pinned previous generations)**
+
 - User switches to Library tab
 - System loads pinned images: `GET /api/generated-images?pinned=true&clientId={id}`
 - User filters by room: "Living Room"
@@ -785,12 +848,14 @@ Without this documentation:
 - Same outcome as Unsplash selection
 
 **A3: User hits 5-image limit**
+
 - User tries to select 6th image
 - System shows toast: "Maximum 5 inspiration images. Remove one to add more."
 - Select button disabled
 - User must remove an image to select another
 
 **A4: User removes and re-adds images**
+
 - User clicks Remove on selected image
 - System removes from selection (3 of 5)
 - User can select different image
@@ -807,12 +872,14 @@ Without this documentation:
 - **Library empty (no pinned images)**: Show empty state "Pin your favorite generated images to reuse them"
 
 **Postconditions**:
+
 - StudioSession has 0-5 inspiration images linked
 - Each inspiration stored in `inspiration_images` table
 - Upload images saved to R2
 - Ready to proceed to generation step
 
 **Success Criteria**:
+
 - ✅ User can select from all 3 sources
 - ✅ Unsplash search returns relevant results
 - ✅ Upload completes in <10 seconds for 5MB file
@@ -821,6 +888,7 @@ Without this documentation:
 - ✅ Unsplash attribution included (legal requirement)
 
 **Related Components**:
+
 - Inspiration picker (Design Log #005, Step 3)
 - Upload tab with drag-drop
 - Unsplash tab with search
@@ -829,6 +897,7 @@ Without this documentation:
 - `inspiration_images` table (Design Log #003)
 
 **Quantifiable Outcomes**:
+
 - **Selection time**: 3 minutes for 4 images
 - **Uploads**: 1 image × 3MB = 3MB storage used
 - **API calls**: 2 Unsplash searches = 40 results fetched
@@ -845,6 +914,7 @@ Without this documentation:
 **Actor**: Logged-in user (waiting for studioSession to complete)
 
 **Preconditions**:
+
 - StudioSession has status `generating`
 - At least 1 GeneratedImage has status `pending` or `generating`
 - User is on results page or has page open in background
@@ -853,10 +923,11 @@ Without this documentation:
 
 1. User is on `/studioSessions/{id}/results` (navigated after clicking "Generate")
 2. System loads initial state:
+
    ```typescript
    const studioSession = await db.studioSessions.findById(id);
    const images = await db.generatedImages.findMany({
-     where: { studioSessionId: id }
+     where: { studioSessionId: id },
    });
 
    const progress = {
@@ -864,9 +935,10 @@ Without this documentation:
      completed: 0,
      pending: 180,
      generating: 0,
-     error: 0
+     error: 0,
    };
    ```
+
 3. System displays progress UI:
    - Progress bar: 0%
    - Status: "Generating 180 images... 0 of 180 completed"
@@ -877,7 +949,7 @@ Without this documentation:
      queryKey: ['studioSession-progress', id],
      queryFn: () => fetchStudioSessionProgress(id),
      refetchInterval: 5000, // Poll every 5 seconds
-     refetchIntervalInBackground: true // Continue when tab inactive
+     refetchIntervalInBackground: true, // Continue when tab inactive
    });
    ```
 5. Background workers process queue:
@@ -892,8 +964,8 @@ Without this documentation:
          status: 'completed',
          imageId: uploadedImageId,
          progress: 100,
-         completedAt: new Date()
-       }
+         completedAt: new Date(),
+       },
      });
      ```
 6. System polls and gets update (after 5 seconds):
@@ -922,22 +994,26 @@ Without this documentation:
 **Alternative Flows**:
 
 **A1: User navigates away during generation**
+
 - Polling continues in background
 - Browser notification sent when complete
 - User can return to results page anytime
 - Progress preserved
 
 **A2: User closes browser during generation**
+
 - Generation continues on server (queue-based, not session-dependent)
 - Email sent when complete
 - User logs back in later, sees completed studioSession
 
 **A3: User has multiple studioSessions generating simultaneously**
+
 - Each studioSession polls independently
 - Dashboard shows status of all active studioSessions
 - No interference between studioSessions
 
 **A4: All images complete successfully (no errors)**
+
 - Progress reaches 100%
 - Status: "All 180 images generated!"
 - No error summary shown
@@ -960,6 +1036,7 @@ Without this documentation:
   - Completed images remain accessible
 
 **Postconditions**:
+
 - StudioSession status: `generating` → `completed`
 - 176+ GeneratedImages have status `completed` with imageId
 - 0-4 GeneratedImages have status `error` with errorMessage
@@ -967,6 +1044,7 @@ Without this documentation:
 - User notified of completion
 
 **Success Criteria**:
+
 - ✅ Progress updates visible within 5 seconds
 - ✅ UI responsive during polling (no freezing)
 - ✅ Browser notification works when tab inactive
@@ -975,6 +1053,7 @@ Without this documentation:
 - ✅ 95%+ success rate for generations
 
 **Related Components**:
+
 - Results gallery (Design Log #005, Screen 5)
 - Generation progress component (Design Log #005, Step 4)
 - `/api/studioSessions/{id}/status` endpoint
@@ -982,6 +1061,7 @@ Without this documentation:
 - Browser Notification API
 
 **Quantifiable Outcomes**:
+
 - **Total time**: 12 minutes for 180 images = 4 seconds per image avg
 - **Success rate**: 176/180 = 97.8%
 - **Polling requests**: 144 requests over 12 minutes (every 5s)
@@ -1001,6 +1081,7 @@ Without this documentation:
 **Actor**: Logged-in user with completed studioSession
 
 **Preconditions**:
+
 - StudioSession has status `completed`
 - At least 1 GeneratedImage has status `completed`
 - Images uploaded to R2 and accessible
@@ -1028,6 +1109,7 @@ Without this documentation:
    - Progress bar (0% → 100%)
    - "Packaging 176 images... (23/176)"
 9. Background worker processes download job:
+
    ```typescript
    // Fetch all image URLs from R2
    const images = await getCompletedImages(studioSessionId);
@@ -1047,7 +1129,7 @@ Without this documentation:
    // Upload ZIP to R2 with expiration
    const zipKey = `downloads/${jobId}.zip`;
    await s3.putObject(zipKey, zip.toBuffer(), {
-     expiresIn: 86400 // 24 hours
+     expiresIn: 86400, // 24 hours
    });
 
    // Update job status
@@ -1056,10 +1138,11 @@ Without this documentation:
      data: {
        status: 'completed',
        zipUrl: getSignedUrl(zipKey),
-       expiresAt: Date.now() + 86400000
-     }
+       expiresAt: Date.now() + 86400000,
+     },
    });
    ```
+
 10. After 90 seconds, ZIP ready
 11. System shows success modal:
     - "Download Ready! ✓"
@@ -1082,6 +1165,7 @@ Without this documentation:
 **Alternative Flows**:
 
 **A1: Download single image**
+
 - User hovers over image
 - User clicks download icon (⬇️)
 - System generates signed URL: `s3.getSignedUrl(imageKey, { expiresIn: 3600 })`
@@ -1089,12 +1173,14 @@ Without this documentation:
 - Filename format: `{product-slug}_{room-type}_{variant}.jpg`
 
 **A2: Download selected images (bulk select)**
+
 - User enters selection mode (checkbox appears on images)
 - User selects 23 images
 - User clicks "Download Selected (23)"
 - Same ZIP process as "Download All" but only selected images
 
 **A3: Download by product (folder structure)**
+
 - User clicks "Download All" with "Group by Product" option
 - ZIP structure organized by product:
   ```
@@ -1110,6 +1196,7 @@ Without this documentation:
   ```
 
 **A4: Download by room type**
+
 - User clicks "Download All" with "Group by Room" option
 - ZIP structure:
   ```
@@ -1123,6 +1210,7 @@ Without this documentation:
   ```
 
 **A5: User downloads again (within 24 hours)**
+
 - ZIP already created and cached
 - System reuses existing ZIP URL
 - No re-processing needed
@@ -1138,12 +1226,14 @@ Without this documentation:
 - **Expired ZIP link (>24 hours)**: Show message "Download link expired. Generate new link?", recreate ZIP
 
 **Postconditions**:
+
 - ZIP file created and cached in R2 (24-hour expiration)
 - User has local copy of images
 - Download job record saved (for analytics)
 - No changes to GeneratedImages (read-only operation)
 
 **Success Criteria**:
+
 - ✅ ZIP creation completes in <2 minutes for 200 images
 - ✅ Filenames are descriptive and organized
 - ✅ No corrupted images in ZIP
@@ -1152,6 +1242,7 @@ Without this documentation:
 - ✅ User can re-download within 24 hours without regenerating
 
 **Related Components**:
+
 - Results gallery (Design Log #005, Screen 5)
 - Download buttons and modals
 - `/api/studioSessions/{id}/download` endpoint
@@ -1159,6 +1250,7 @@ Without this documentation:
 - R2 signed URLs (Design Log #001)
 
 **Quantifiable Outcomes**:
+
 - **Files**: 176 JPG images
 - **Total size**: 352 MB (2MB avg per image)
 - **ZIP creation time**: 90 seconds
@@ -1177,6 +1269,7 @@ Without this documentation:
 **Actor**: Logged-in user reviewing generated images
 
 **Preconditions**:
+
 - User viewing results gallery
 - At least 1 GeneratedImage with status `completed`
 
@@ -1192,7 +1285,7 @@ Without this documentation:
    ```typescript
    await db.generatedImages.update({
      where: { id: imageId },
-     data: { pinned: true }
+     data: { pinned: true },
    });
    ```
 6. System performs optimistic update:
@@ -1216,6 +1309,7 @@ Without this documentation:
 **Alternative Flows**:
 
 **A1: Unpin an image**
+
 - User clicks pinned image's pin icon again
 - System shows confirmation: "Unpin this image?"
 - User confirms
@@ -1223,6 +1317,7 @@ Without this documentation:
 - Image removed from library
 
 **A2: Pin from different view**
+
 - User can pin from:
   - Results gallery (main use case)
   - Lightbox modal (full-size view)
@@ -1230,11 +1325,13 @@ Without this documentation:
 - Same pin action, different UI location
 
 **A3: Pin limit reached (e.g., 50 pins max)**
+
 - User tries to pin 51st image
 - System shows warning: "Maximum 50 pinned images. Unpin others to pin more."
 - Pin button disabled
 
 **A4: Pinned image deleted**
+
 - User pins image, then deletes it (soft-delete)
 - Image remains pinned but marked `deletedAt`
 - Library filters out deleted images: `WHERE pinned = true AND deletedAt IS NULL`
@@ -1247,12 +1344,14 @@ Without this documentation:
 - **Image not found**: Show error "Image no longer exists."
 
 **Postconditions**:
+
 - GeneratedImage has `pinned = true`
 - Image appears in "My Library" tab
 - Image available for reuse in future studioSessions
 - Pin count tracked per user (analytics)
 
 **Success Criteria**:
+
 - ✅ Pin action completes in <500ms
 - ✅ Optimistic update provides instant feedback
 - ✅ Pinned images persist across sessions
@@ -1261,6 +1360,7 @@ Without this documentation:
 - ✅ Pinned images can be unpinned
 
 **Related Components**:
+
 - Results gallery (Design Log #005, Screen 5)
 - Image card with pin button
 - Library tab in inspiration picker (Design Log #005, Step 3)
@@ -1268,6 +1368,7 @@ Without this documentation:
 - `pinned` field in generated_images table (Design Log #003)
 
 **Quantifiable Outcomes**:
+
 - **Pin action time**: <500ms (optimistic update)
 - **Pinned images**: 5 out of 176 (2.8%)
 - **Reuse**: Pinned images used in 3 future studioSessions
@@ -1284,6 +1385,7 @@ Without this documentation:
 **Actor**: Logged-in user dissatisfied with generated image
 
 **Preconditions**:
+
 - User has GeneratedImage (completed or error)
 - User has remaining quota
 - Original settings and product available
@@ -1325,8 +1427,8 @@ Without this documentation:
        type: 'image',
        status: 'pending',
        settings: adjustedSettings,
-       pinned: false
-     }
+       pinned: false,
+     },
    });
    ```
 9. System enqueues new job:
@@ -1335,14 +1437,14 @@ Without this documentation:
      imageId: newImage.id,
      clientId,
      productId,
-     settings: adjustedSettings
+     settings: adjustedSettings,
    });
    ```
 10. System updates image with jobId:
     ```typescript
     await db.generatedImages.update({
       where: { id: newImage.id },
-      data: { jobId }
+      data: { jobId },
     });
     ```
 11. System closes modal, returns to gallery
@@ -1358,6 +1460,7 @@ Without this documentation:
 **Alternative Flows**:
 
 **A1: Regenerate with completely different room type**
+
 - User changes: Bedroom → Living Room
 - Product (King Bed) may look odd in Living Room
 - System shows warning: "This product is typically used in Bedroom. Continue?"
@@ -1365,12 +1468,14 @@ Without this documentation:
 - May need another regeneration if result unsatisfactory
 
 **A2: Regenerate failed image**
+
 - Original image has status `error`
 - User clicks "Retry" (same as regenerate)
 - Uses same settings, retries generation
 - If fails again, user can adjust settings
 
 **A3: Regenerate multiple times (A/B testing)**
+
 - User regenerates same product 3 times with different styles:
   - Modern
   - Rustic
@@ -1380,6 +1485,7 @@ Without this documentation:
 - User picks best, deletes others
 
 **A4: Regenerate entire studioSession**
+
 - User clicks "Regenerate StudioSession" (future feature)
 - System creates new studioSession with same products, new settings
 - Preserves original studioSession for comparison
@@ -1392,6 +1498,7 @@ Without this documentation:
 - **Invalid settings**: Validate before enqueueing, show inline errors
 
 **Postconditions**:
+
 - New GeneratedImage created (separate from original)
 - Original image unchanged (preserved for comparison)
 - New image generated and uploaded to R2
@@ -1399,6 +1506,7 @@ Without this documentation:
 - Both images visible in gallery (user can delete original)
 
 **Success Criteria**:
+
 - ✅ Regeneration modal pre-fills current settings
 - ✅ All settings editable
 - ✅ New image generates in <60 seconds
@@ -1407,6 +1515,7 @@ Without this documentation:
 - ✅ Quota properly decremented
 
 **Related Components**:
+
 - Results gallery (Design Log #005, Screen 5)
 - Regenerate modal
 - Image card with regenerate button
@@ -1414,6 +1523,7 @@ Without this documentation:
 - GenerationQueue service (Design Log #001)
 
 **Quantifiable Outcomes**:
+
 - **Regeneration time**: 30 seconds
 - **Quota cost**: 1 generation per regeneration
 - **Comparison**: User has 2 versions to choose from
@@ -1432,6 +1542,7 @@ Without this documentation:
 **Actor**: Logged-in user (Mike - catalog manager, 1000+ products)
 
 **Preconditions**:
+
 - User has editor or owner role
 - Client account active
 
@@ -1472,9 +1583,9 @@ Without this documentation:
           roomTypes: row.roomTypes.split(','),
           metadata: {
             importedAt: new Date(),
-            source: 'csv'
-          }
-        }
+            source: 'csv',
+          },
+        },
       });
     }
     ```
@@ -1501,12 +1612,12 @@ Without this documentation:
     await db.products.update({
       where: { id: productId },
       data: {
-        roomTypes: ["Office", "Bedroom"],
+        roomTypes: ['Office', 'Bedroom'],
         metadata: {
           ...existing,
-          updatedAt: new Date()
-        }
-      }
+          updatedAt: new Date(),
+        },
+      },
     });
     ```
 23. System closes modal, updates table row
@@ -1524,7 +1635,7 @@ Without this documentation:
     ```typescript
     await db.products.update({
       where: { id: productId },
-      data: { deletedAt: new Date() }
+      data: { deletedAt: new Date() },
     });
     ```
 29. Product removed from list
@@ -1532,6 +1643,7 @@ Without this documentation:
 **Alternative Flows**:
 
 **A1: Add single product (manual form)**
+
 - User clicks "+ Add Products" → "Add Single Product"
 - System shows form (same as edit modal)
 - User fills all fields manually
@@ -1539,6 +1651,7 @@ Without this documentation:
 - Product created
 
 **A2: CSV import with errors**
+
 - CSV has 10 invalid rows (missing SKU, invalid category)
 - System shows error summary:
   - "190 valid, 10 errors"
@@ -1546,6 +1659,7 @@ Without this documentation:
 - User can fix CSV and retry, or import only valid rows
 
 **A3: Bulk delete products**
+
 - User selects multiple products (checkboxes)
 - User clicks "Delete Selected (15)"
 - System confirms
@@ -1560,11 +1674,13 @@ Without this documentation:
 - **Product in use (active studioSession generating)**: Warn user but allow edit/delete
 
 **Postconditions**:
+
 - Products created/updated/deleted in database
 - Products visible/hidden in products list
 - Products available for studioSession creation
 
 **Success Criteria**:
+
 - ✅ CSV import handles 1000+ products
 - ✅ Import completes in <60 seconds for 500 products
 - ✅ Validation catches all errors before import
@@ -1573,6 +1689,7 @@ Without this documentation:
 - ✅ Search and filter work after import
 
 **Related Components**:
+
 - Products library screen (Design Log #005, Screen 6)
 - Add/Edit product modals
 - CSV upload component
@@ -1590,6 +1707,7 @@ Without this documentation:
 **Actor**: Logged-in user
 
 **Preconditions**:
+
 - User authenticated
 - User has access to settings page
 
@@ -1627,8 +1745,8 @@ Without this documentation:
    await db.users.update({
      where: { id: userId },
      data: {
-       notificationSettings: updatedSettings
-     }
+       notificationSettings: updatedSettings,
+     },
    });
    ```
 8. System shows success toast: "Settings saved ✓"
@@ -1637,6 +1755,7 @@ Without this documentation:
 **Alternative Flows**:
 
 **A1: Update profile information**
+
 - User selects "Profile" tab
 - User changes name: "Sarah Chen" → "Sarah Chen-Smith"
 - User uploads new profile photo
@@ -1644,6 +1763,7 @@ Without this documentation:
 - Profile updated
 
 **A2: Change password**
+
 - User selects "Account" tab
 - User clicks "Change Password"
 - System opens modal
@@ -1652,23 +1772,27 @@ Without this documentation:
 - User logged out of other sessions (security)
 
 **A3: Update generation defaults**
+
 - User selects "Generation Defaults" tab
 - User sets preferred aspect ratio: 1:1 → 16:9
 - User sets variety level: 5 → 7
 - Future studioSessions pre-filled with these defaults
 
 **Postconditions**:
+
 - Settings saved to database
 - User preferences applied to future actions
 - Confirmation shown to user
 
 **Success Criteria**:
+
 - ✅ All settings persist across sessions
 - ✅ Changes take effect immediately
 - ✅ Form validation prevents invalid values
 - ✅ Success feedback shown
 
 **Related Components**:
+
 - Settings page (Design Log #005, Screen 7)
 - Settings tabs and forms
 - `/api/settings` endpoints
@@ -1680,6 +1804,7 @@ Without this documentation:
 **Actor**: Multiple users from same client
 
 **Preconditions**:
+
 - Client has team plan (multi-user)
 - Multiple users with different roles
 
@@ -1697,6 +1822,7 @@ Without this documentation:
 10. Only Sarah can delete studioSession or manage team members
 
 **Future Features**:
+
 - Role-based permissions (owner, editor, viewer)
 - Real-time collaboration (WebSockets)
 - Activity log per studioSession
@@ -1710,6 +1836,7 @@ Without this documentation:
 **Actor**: Developer integrating with external system
 
 **Preconditions**:
+
 - User has API key
 - API quota available
 
@@ -1739,6 +1866,7 @@ Without this documentation:
 7. Developer downloads images programmatically
 
 **Future Features**:
+
 - REST API for all operations
 - Webhooks for completion notifications
 - Rate limiting per API key
@@ -1772,11 +1900,13 @@ Without this documentation:
 11. Generation continues normally
 
 **Alternative**: User closes browser while offline
+
 - Generation continues on server (queue-based)
 - User returns later, sees completed studioSession
 - Email sent when complete
 
 **Handling**:
+
 - ✅ Queue processing independent of client connection
 - ✅ Polling auto-retries on reconnection
 - ✅ Clear offline indicator
@@ -1817,8 +1947,8 @@ Without this documentation:
      data: {
        status: 'error',
        errorMessage: 'AI service unavailable. Please retry.',
-       errorCode: 'GEMINI_ERROR'
-     }
+       errorCode: 'GEMINI_ERROR',
+     },
    });
    ```
 6. Worker continues to next job (doesn't block queue)
@@ -1831,11 +1961,13 @@ Without this documentation:
 10. Retry succeeds (Gemini back online)
 
 **Alternative**: All generations fail (Gemini completely down)
+
 - System pauses queue after 10 consecutive failures
 - Admin notified
 - Users see: "AI service temporarily unavailable. Retry later."
 
 **Handling**:
+
 - ✅ Retry transient errors (3 attempts)
 - ✅ Don't block queue on failures
 - ✅ Clear error messages
@@ -1855,6 +1987,7 @@ Without this documentation:
 3. User creates studioSession with 45 products × 4 variants = 180 generations
 4. User clicks "Generate"
 5. System checks quota before enqueueing:
+
    ```typescript
    const usage = await getMonthlyUsage(clientId);
    const limit = client.plan.generationLimit; // 100
@@ -1864,6 +1997,7 @@ Without this documentation:
      throw new QuotaExceededError();
    }
    ```
+
 6. System shows quota modal before generation:
    - "Monthly Limit Exceeded"
    - "You've used 85 of 100 generations"
@@ -1876,6 +2010,7 @@ Without this documentation:
    - Wait until next month (quota resets Feb 1)
 
 **Alternative**: Quota exceeded mid-generation
+
 - User starts with 90 used, generates 15 (total 105)
 - After 10 images, quota reached (100 total)
 - System pauses queue
@@ -1885,6 +2020,7 @@ Without this documentation:
 - Remaining 5 images complete
 
 **Handling**:
+
 - ✅ Check quota before starting generation (prevent over-generation)
 - ✅ Show clear upgrade path
 - ✅ Preserve completed images if quota hit mid-generation
@@ -1928,11 +2064,13 @@ Without this documentation:
 12. Upload succeeds
 
 **Alternative**: Image has unusual dimensions
+
 - User uploads 100×100px image (too small)
 - System warns: "Image resolution low. Results may vary."
 - User can proceed or upload better image
 
 **Handling**:
+
 - ✅ Validate file type and size before upload
 - ✅ Clear, actionable error messages
 - ✅ Suggest solutions (compression)
@@ -1955,8 +2093,8 @@ Without this documentation:
      where: { id: studioSessionId },
      data: {
        selectedProductIds: [...existing, ...new10],
-       updatedAt: new Date()
-     }
+       updatedAt: new Date(),
+     },
    });
    ```
 5. In Tab 2, user adds different 5 products
@@ -1966,25 +2104,28 @@ Without this documentation:
 9. Tab 1's 10 products lost
 
 **Ideal Handling (future enhancement)**:
+
 - Implement optimistic locking with version field:
   ```typescript
   await db.studioSessions.update({
     where: { id: studioSessionId, version: currentVersion },
     data: {
       ...updates,
-      version: currentVersion + 1
-    }
+      version: currentVersion + 1,
+    },
   });
   ```
 - If update fails (version mismatch), show conflict modal
 - User can merge changes or choose which to keep
 
 **Current MVP Handling**:
+
 - Show warning in UI: "StudioSession open in another tab. Changes may conflict."
 - Detect other tabs via localStorage beacon
 - Suggest closing other tabs
 
 **Alternative**: Two users editing same studioSession (team collaboration, future)
+
 - Use WebSockets for real-time sync
 - Show "Sarah is editing..." indicator
 - Lock fields being edited
@@ -2028,6 +2169,7 @@ Without this documentation:
 13. "Continue" button disabled until count ≤500
 
 **Handling**:
+
 - ✅ Server-side pagination (never load 1000+ products at once)
 - ✅ Client-side selection state (Set of IDs)
 - ✅ Enforce 500 product limit
@@ -2035,6 +2177,7 @@ Without this documentation:
 - ✅ Virtual scrolling for large result sets (future)
 
 **Performance**:
+
 - Page load: <2s for 50 products
 - Search: <500ms for 1000+ product database
 - Selection state: O(1) add/remove with Set
@@ -2044,6 +2187,7 @@ Without this documentation:
 ## Implementation Plan
 
 ### Phase 1: Document and Validate (Week 1)
+
 1. Review all use cases with product team
 2. Validate scenarios with user interviews
 3. Prioritize use cases (P0 = MVP, P1 = v2, P2 = future)
@@ -2051,16 +2195,19 @@ Without this documentation:
 5. Update design docs based on feedback
 
 ### Phase 2: Primary Use Cases (Weeks 2-5)
+
 1. UC-001: Onboarding (Week 2)
 2. UC-002: StudioSession creation (Week 3)
 3. UC-003-005: Analysis, inspiration, progress (Week 4)
 4. UC-006-008: Download, pin, regenerate (Week 5)
 
 ### Phase 3: Secondary Use Cases (Week 6)
+
 1. UC-009: Product management (CSV import, edit, delete)
 2. UC-010: Settings (profile, notifications, defaults)
 
 ### Phase 4: Edge Cases (Week 7)
+
 1. EC-001: Network failures
 2. EC-002: AI failures
 3. EC-003: Quota limits
@@ -2069,6 +2216,7 @@ Without this documentation:
 6. EC-006: Large datasets
 
 ### Phase 5: Testing and QA (Week 8)
+
 1. Create test scenarios from use cases
 2. Manual QA for all primary flows
 3. Automated tests for edge cases
@@ -2085,6 +2233,7 @@ Without this documentation:
 **UC-002: Creating a StudioSession**
 
 **Quantifiable Outcomes**:
+
 - Time: 7 minutes user interaction + 12 minutes generation = 19 minutes total
 - Products: 45 selected from 127 available
 - Images: 180 generated (45 × 4 variants)
@@ -2098,6 +2247,7 @@ Without this documentation:
 
 ```markdown
 **Persona: Sarah Chen - Furniture Brand Marketing Manager**
+
 - Age: 32, Marketing Manager at 200-SKU furniture brand
 - Goal: Generate seasonal catalogs (4x/year, 50-100 products each)
 - Pain: $500-1000 per product for photography, 3-week photoshoots
@@ -2150,8 +2300,10 @@ User creates a studioSession and generates images.
 ## Trade-offs
 
 ### Comprehensive Documentation vs. Flexibility
+
 **Chosen**: Comprehensive documentation
 **Rationale**:
+
 - ✅ Reduces ambiguity during development
 - ✅ Provides test scenarios for QA
 - ✅ Serves as product requirements
@@ -2159,8 +2311,10 @@ User creates a studioSession and generates images.
 - ❌ May need updates as features evolve
 
 ### Realistic Personas vs. Generic Users
+
 **Chosen**: 3 detailed personas
 **Rationale**:
+
 - ✅ Grounded in real use cases
 - ✅ Helps prioritize features
 - ✅ Guides UX decisions
@@ -2168,16 +2322,20 @@ User creates a studioSession and generates images.
 - ❌ Risk of over-indexing on specific personas
 
 ### Happy Path vs. Edge Cases
+
 **Chosen**: Both documented
 **Rationale**:
+
 - ✅ Happy path shows primary workflows
 - ✅ Edge cases ensure robustness
 - ✅ Better test coverage
 - ❌ More documentation to maintain
 
 ### MVP vs. Future Features
+
 **Chosen**: Document both, mark future clearly
 **Rationale**:
+
 - ✅ Helps with architecture planning
 - ✅ Shows product roadmap
 - ✅ Prevents rework later

@@ -48,7 +48,14 @@ interface AccordionProps {
   variant?: 'default' | 'minimal';
 }
 
-export function Accordion({ sections, type = 'single', collapsible = true, defaultValue, isMobile = false, variant = 'default' }: AccordionProps) {
+export function Accordion({
+  sections,
+  type = 'single',
+  collapsible = true,
+  defaultValue,
+  isMobile = false,
+  variant = 'default',
+}: AccordionProps) {
   // Auto-generate defaultValue from sections with defaultExpanded if not provided
   const computedDefaultValue =
     defaultValue ||

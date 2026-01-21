@@ -1,7 +1,15 @@
 import { and, asc, desc, eq, ilike, sql, type SQL } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
 import { collectionSession, generationFlow, message } from '../schema/sessions';
-import type { CollectionSession, CollectionSessionCreate, CollectionSessionUpdate, CollectionSessionWithFlows, CollectionSessionStatus, GenerationFlow, Message } from 'visualizer-types';
+import type {
+  CollectionSession,
+  CollectionSessionCreate,
+  CollectionSessionUpdate,
+  CollectionSessionWithFlows,
+  CollectionSessionStatus,
+  GenerationFlow,
+  Message,
+} from 'visualizer-types';
 import { updateWithVersion } from '../utils/optimistic-lock';
 import { BaseRepository } from './base';
 
@@ -108,11 +116,7 @@ export class CollectionSessionRepository extends BaseRepository<CollectionSessio
       .where(eq(generationFlow.collectionSessionId, id))
       .orderBy(asc(generationFlow.createdAt));
 
-    const messages = await this.drizzle
-      .select()
-      .from(message)
-      .where(eq(message.collectionSessionId, id))
-      .orderBy(asc(message.createdAt));
+    const messages = await this.drizzle.select().from(message).where(eq(message.collectionSessionId, id)).orderBy(asc(message.createdAt));
 
     return {
       ...session,
@@ -185,12 +189,7 @@ export class CollectionSessionRepository extends BaseRepository<CollectionSessio
     const rows = await this.drizzle
       .select()
       .from(collectionSession)
-      .where(
-        and(
-          eq(collectionSession.clientId, clientId),
-          sql`${collectionSession.productIds} @> ${JSON.stringify([productId])}::jsonb`
-        )
-      )
+      .where(and(eq(collectionSession.clientId, clientId), sql`${collectionSession.productIds} @> ${JSON.stringify([productId])}::jsonb`))
       .orderBy(desc(collectionSession.updatedAt))
       .limit(limit);
 

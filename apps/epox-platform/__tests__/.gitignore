@@ -1,0 +1,6 @@
+# Authentication state files
+.auth/
+
+# Test artifacts
+test-results/
+playwright-report/

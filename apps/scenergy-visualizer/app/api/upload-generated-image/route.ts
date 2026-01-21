@@ -18,10 +18,7 @@ export async function POST(request: Request) {
     }
 
     if (!clientId || !sessionId || !imageId) {
-      return NextResponse.json(
-        { error: 'Missing required fields: clientId, sessionId, imageId' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields: clientId, sessionId, imageId' }, { status: 400 });
     }
 
     console.log(`📤 Uploading generated image ${imageId} for session ${sessionId}`);
@@ -52,9 +49,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('❌ Failed to upload generated image:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to upload image' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to upload image' }, { status: 500 });
   }
 }

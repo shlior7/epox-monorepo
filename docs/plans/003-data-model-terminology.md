@@ -11,6 +11,7 @@
 ## Background
 
 The Scenergy Visualizer platform enables clients to generate AI-powered product visualization assets. The data model needs to support:
+
 - Multi-product selection in a single generation flow
 - Multiple generation attempts (GenerationFlows) within a CollectionSession
 - **Standalone GenerationFlows** for single-product focused editing
@@ -21,6 +22,7 @@ The Scenergy Visualizer platform enables clients to generate AI-powered product 
 - Future: Automated product combination strategies
 
 **Table renames for clarity** (per Design Log #001):
+
 - `studio_session` → `collection_session`
 - `flow` → `generation_flow`
 - `generated_image` → `generated_asset` (with `asset_url`, `asset_type`)
@@ -28,6 +30,7 @@ The Scenergy Visualizer platform enables clients to generate AI-powered product 
 ## Problem
 
 We need to document the complete data model that:
+
 1. **Defines** updated terminology (CollectionSession, GenerationFlow, GeneratedAsset)
 2. **Supports** multi-product workflows (user selects 2+ products per flow)
 3. **Enables** standalone GenerationFlows for detailed single-product editing
@@ -42,7 +45,9 @@ We need to document the complete data model that:
 ## Questions and Answers
 
 ### Q1: What's the difference between CollectionSession and GenerationFlow?
+
 **A**:
+
 - **CollectionSession** = Top-level container for bulk generation workflows
   - Contains product selection and base image selection
   - Can spawn multiple GenerationFlows (different attempts)
@@ -54,19 +59,24 @@ We need to document the complete data model that:
   - `collection_session_id` is NULLABLE for standalone flows
 
 ### Q2: How do we handle multiple products in a single GenerationFlow?
+
 **A**: GenerationFlow supports multi-product natively:
+
 ```typescript
 interface GenerationFlow {
-  productIds: string[];  // Can be 1 or many products
+  productIds: string[]; // Can be 1 or many products
   selectedBaseImages: Record<string, string>; // productId → imageId mapping
 }
 ```
+
 - User manually selects which products go together
 - All products rendered in same scene
 - Future: Auto-generate combinations based on strategies
 
 ### Q3: What's the lifecycle of a GenerationFlow?
+
 **A**:
+
 ```mermaid
 stateDiagram-v2
     [*] --> empty: Create flow
@@ -79,47 +89,55 @@ stateDiagram-v2
 ```
 
 ### Q4: How do we track individual generated assets?
+
 **A**: Each asset is a separate record with multi-product linking:
+
 ```typescript
 interface GeneratedAsset {
   id: string;
-  generationFlowId: string;  // FK to generation_flow
-  assetUrl: string;          // WebP URL for CDN (renamed from image_url)
+  generationFlowId: string; // FK to generation_flow
+  assetUrl: string; // WebP URL for CDN (renamed from image_url)
   assetType: 'image' | 'video' | '3d_model'; // Asset type
   settings: GenerationFlowSettings; // Settings used
-  jobId: string | null;      // Redis job ID (transient)
+  jobId: string | null; // Redis job ID (transient)
 }
 
 // Junction table for many-to-many product linking
 interface GeneratedAssetProduct {
   generatedAssetId: string;
   productId: string;
-  isPrimary: boolean;  // Primary product for this asset
+  isPrimary: boolean; // Primary product for this asset
 }
 ```
+
 - One GenerationFlow generates multiple assets (different prompts/variations)
 - Each asset can be linked to multiple products via junction table
 - Assets are stored as WebP for optimal CDN delivery
 - JobId links to Redis queue (can be null after completion)
 
 ### Q5: How do product combination strategies work (future)?
+
 **A**: Add `combinationStrategy` to GenerationFlow schema:
+
 ```typescript
 type CombinationStrategy =
-  | 'manual'              // User selects products (default)
-  | 'match_dimensions'    // Auto-pair by dimensions (mattress 1.60m + bed 1.60m)
-  | 'category_pairing'    // Auto-pair by category (chair + table)
-  | 'one_from_each_group' // Cartesian product of groups
+  | 'manual' // User selects products (default)
+  | 'match_dimensions' // Auto-pair by dimensions (mattress 1.60m + bed 1.60m)
+  | 'category_pairing' // Auto-pair by category (chair + table)
+  | 'one_from_each_group'; // Cartesian product of groups
 
 interface GenerationFlow {
   combinationStrategy?: CombinationStrategy; // Optional, defaults to 'manual'
-  combinationRules?: CombinationRules;       // Strategy-specific rules
+  combinationRules?: CombinationRules; // Strategy-specific rules
 }
 ```
+
 **NOT in MVP** - add later when needed.
 
 ### Q6: How do we handle user authentication across clients?
+
 **A**: Multi-tenant model via Better Auth:
+
 - **User** = Individual person (global identity) - **EXISTING TABLE**
 - **Session** = Auth session for user - **EXISTING TABLE**
 - **Member** = User-to-Client association (role, permissions) - **EXISTING TABLE**
@@ -127,22 +145,27 @@ interface GenerationFlow {
 - Sessions are client-scoped (user must select client)
 
 ### Q7: How do standalone GenerationFlows differ from collection flows?
+
 **A**: Same infrastructure, different entry points:
 
 **Collection Flow** (bulk-first):
+
 - Create CollectionSession → select many products → generate in bulk
 - GenerationFlow has `collectionSessionId` set
 
 **Standalone GenerationFlow** (detail-first):
+
 - Create GenerationFlow directly → select one product → detailed editing
 - GenerationFlow has `collectionSessionId = NULL`
 - Rich editing: editor modal, regenerate, mask regions, compare variations
 - Accessed from: Home page "New Generation" button OR clicking into a flow from collection
 
 ### Q8: How do users organize content with favorites and tags?
+
 **A**: Two complementary systems:
 
 **Favorites** (user-scoped):
+
 ```typescript
 interface UserFavorite {
   userId: string;
@@ -150,16 +173,18 @@ interface UserFavorite {
   entityId: string;
 }
 ```
+
 - Quick access to frequently used items
 - Shown in "Recent & Favorites" sections
 
 **Tags** (client-scoped):
+
 ```typescript
 interface Tag {
   id: string;
   clientId: string;
-  name: string;      // e.g., "Summer 2026", "Living Room"
-  color?: string;    // Hex color for UI
+  name: string; // e.g., "Summer 2026", "Living Room"
+  color?: string; // Hex color for UI
 }
 
 interface TagAssignment {
@@ -168,40 +193,46 @@ interface TagAssignment {
   entityId: string;
 }
 ```
+
 - Flexible categorization
 - Filter by tag in list views
 - Bulk tag assignment
 
 ### Q9: How do we cache asset analysis for editing?
+
 **A**: Store analysis results on the generated_asset record:
 
 ```typescript
 interface AssetAnalysis {
-  analyzedAt: string;           // Timestamp of analysis
-  objects: DetectedObject[];    // Products, props, furniture detected
-  colors: ColorPalette;         // Dominant colors in image
-  lighting: LightingInfo;       // Natural, artificial, direction
+  analyzedAt: string; // Timestamp of analysis
+  objects: DetectedObject[]; // Products, props, furniture detected
+  colors: ColorPalette; // Dominant colors in image
+  lighting: LightingInfo; // Natural, artificial, direction
   composition: CompositionInfo; // Rule of thirds, focal points
-  masks: AutoMask[];            // AI-detected regions for editing
-  version: string;              // Analysis model version
+  masks: AutoMask[]; // AI-detected regions for editing
+  version: string; // Analysis model version
 }
 ```
 
 **Caching strategy**:
+
 - Store `asset_analysis` JSONB + `analysis_version` on generated_asset
 - Populated on first edit action (lazy loading)
 - Instant retrieval on subsequent edits
 
 **Invalidation**:
+
 - Set to NULL when user edits the image (mask, inpaint, filter)
 - Set to NULL when asset is regenerated
 - Re-analyze on next edit action
 - Version mismatch triggers re-analysis (model upgrade)
 
 ### Q10: How do we handle store sync approvals?
+
 **A**: Add approval workflow for images ready to sync to connected stores:
 
 **Approval status** (on generated_asset):
+
 - `pending` - Generated, not yet reviewed
 - `approved` - Ready to sync to store
 - `rejected` - Won't be synced (stays in Scenergy only)
@@ -211,25 +242,27 @@ interface GeneratedAsset {
   // ... existing fields
   approvalStatus: 'pending' | 'approved' | 'rejected';
   approvedAt: Date | null;
-  approvedBy: string | null;  // User ID
+  approvedBy: string | null; // User ID
 }
 ```
 
 **Store connection**:
+
 ```typescript
 interface StoreConnection {
   id: string;
   clientId: string;
   storeType: 'shopify' | 'woocommerce' | 'bigcommerce';
   storeUrl: string;
-  accessToken: string;      // Encrypted OAuth token
+  accessToken: string; // Encrypted OAuth token
   refreshToken?: string;
-  syncOnApproval: boolean;  // Auto-sync when approved
+  syncOnApproval: boolean; // Auto-sync when approved
   status: 'active' | 'disconnected' | 'error';
 }
 ```
 
 **Sync log**:
+
 ```typescript
 interface StoreSyncLog {
   id: string;
@@ -238,15 +271,17 @@ interface StoreSyncLog {
   productId: string;
   action: 'upload' | 'update' | 'delete';
   status: 'pending' | 'success' | 'failed';
-  externalImageUrl?: string;  // URL in the store
+  externalImageUrl?: string; // URL in the store
   errorMessage?: string;
 }
 ```
 
 ### Q11: How do users add products to Scenergy?
+
 **A**: **Two methods** - import from store OR upload manually:
 
 **Method 1: Import from Connected Store**
+
 - `product.source = 'imported'`
 - Connect store via OAuth
 - Import by: Product IDs, Category, or All
@@ -254,6 +289,7 @@ interface StoreSyncLog {
 - **Approve for Store** available → syncs to store
 
 **Method 2: Upload Manually**
+
 - `product.source = 'uploaded'`
 - Upload product images directly
 - Enter product details manually
@@ -275,37 +311,40 @@ interface StoreSyncLog {
 | Enterprise | 1,000+ |
 
 **Converting uploaded → imported**:
+
 - Later connect store
 - Link product by SKU/ID
 - Sets `source = 'imported'` and populates `erp_id`
 
 ### Q12: How do Prompt Tags work in the generation flow?
+
 **A**: Prompt Tags are UI-friendly style attributes that translate to generation prompts:
 
 **User-facing concept**:
+
 - Tag bubbles representing room type, mood, lighting, style
 - User clicks to toggle tags on/off
 - AI suggests initial tags based on product analysis
 - User can add custom tags
 
 **Data representation**:
+
 ```typescript
 interface PromptTags {
-  roomType: string[];       // ["living room", "office"]
-  mood: string[];           // ["cozy", "minimalist"]
-  lighting: string[];       // ["natural", "warm"]
-  style: string[];          // ["scandinavian", "modern"]
-  custom: string[];         // User-added custom tags
+  roomType: string[]; // ["living room", "office"]
+  mood: string[]; // ["cozy", "minimalist"]
+  lighting: string[]; // ["natural", "warm"]
+  style: string[]; // ["scandinavian", "modern"]
+  custom: string[]; // User-added custom tags
 }
 ```
 
 **Prompt generation**:
+
 ```typescript
 // Tags are flattened to comma-separated values in the prompt
 function tagsToPrompt(tags: PromptTags): string {
-  return [...tags.roomType, ...tags.mood, ...tags.lighting, ...tags.style, ...tags.custom]
-    .filter(Boolean)
-    .join(", ");
+  return [...tags.roomType, ...tags.mood, ...tags.lighting, ...tags.style, ...tags.custom].filter(Boolean).join(', ');
 }
 // Result: "living room, office, cozy, minimalist, natural lighting, scandinavian style"
 ```
@@ -313,15 +352,17 @@ function tagsToPrompt(tags: PromptTags): string {
 **Stored on**: `generation_flow.settings.promptTags` as JSONB
 
 ### Q13: When should products be analyzed for prompt engineering?
+
 **A**: Three strategy options:
 
-| Strategy | When | Best For |
-|----------|------|----------|
-| On Import | After product import | Large catalogs |
-| On Collection | When added to session | Smaller catalogs |
-| On Generate | Just before generation | Maximum freshness |
+| Strategy      | When                   | Best For          |
+| ------------- | ---------------------- | ----------------- |
+| On Import     | After product import   | Large catalogs    |
+| On Collection | When added to session  | Smaller catalogs  |
+| On Generate   | Just before generation | Maximum freshness |
 
 **What's analyzed**:
+
 - Product type (sofa, desk, lamp)
 - Materials (leather, wood, metal)
 - Color palette
@@ -566,8 +607,8 @@ interface Session {
 interface Account {
   id: string;
   userId: string;
-  provider: string;           // 'google', 'github', etc.
-  providerAccountId: string;  // OAuth provider's user ID
+  provider: string; // 'google', 'github', etc.
+  providerAccountId: string; // OAuth provider's user ID
   accessToken?: string;
   refreshToken?: string;
   expiresAt?: Date;
@@ -617,17 +658,17 @@ interface Product {
   name: string;
   sku: string;
   category: string;
-  isFavorite: boolean;  // Denormalized for quick queries
+  isFavorite: boolean; // Denormalized for quick queries
 
   // Product source (determines available actions)
-  source: 'imported' | 'uploaded';  // Imported = can sync to store, Uploaded = download only
+  source: 'imported' | 'uploaded'; // Imported = can sync to store, Uploaded = download only
 
   // Store import fields (for bidirectional sync - only for source='imported')
-  storeConnectionId?: string;    // Which store imported from
-  erpId?: string;                // Original product ID in store (for export back)
-  erpSku?: string;               // Store SKU
-  erpUrl?: string;               // Product URL in store
-  importedAt?: Date;             // When imported from store
+  storeConnectionId?: string; // Which store imported from
+  erpId?: string; // Original product ID in store (for export back)
+  erpSku?: string; // Store SKU
+  erpUrl?: string; // Product URL in store
+  importedAt?: Date; // When imported from store
 
   // Product analysis (for prompt engineering)
   analysisData?: ProductAnalysis;
@@ -647,14 +688,14 @@ type ProductSource = 'imported' | 'uploaded';
 
 interface ProductAnalysis {
   analyzedAt: string;
-  productType: string;           // Sofa, desk, lamp, etc.
-  materials: string[];           // Leather, wood, metal, fabric
-  colors: ColorPalette;          // Primary and accent colors
-  style: string[];               // Modern, rustic, minimalist
-  suggestedRoomTypes: string[];  // Living room, bedroom, office
+  productType: string; // Sofa, desk, lamp, etc.
+  materials: string[]; // Leather, wood, metal, fabric
+  colors: ColorPalette; // Primary and accent colors
+  style: string[]; // Modern, rustic, minimalist
+  suggestedRoomTypes: string[]; // Living room, bedroom, office
   scaleHints: { width: string; height: string };
-  promptKeywords: string[];      // AI-extracted keywords for prompts
-  version: string;               // Analysis model version
+  promptKeywords: string[]; // AI-extracted keywords for prompts
+  version: string; // Analysis model version
 }
 
 interface ProductMetadata {
@@ -673,7 +714,7 @@ interface ProductImage {
   r2Key: string;
   isPrimary: boolean;
   displayOrder: number;
-  isFromStore: boolean;  // Imported from store vs uploaded
+  isFromStore: boolean; // Imported from store vs uploaded
   createdAt: Date;
 }
 
@@ -694,10 +735,10 @@ type CollectionSessionStatus = 'draft' | 'generating' | 'completed';
 
 interface GenerationFlow {
   id: string;
-  collectionSessionId: string | null;  // NULLABLE for standalone flows
+  collectionSessionId: string | null; // NULLABLE for standalone flows
   clientId: string;
   name: string | null;
-  productIds: string[];  // Multi-product support!
+  productIds: string[]; // Multi-product support!
   selectedBaseImages: Record<string, string>; // productId → imageId
   status: GenerationFlowStatus;
   settings: GenerationFlowSettings;
@@ -707,21 +748,21 @@ interface GenerationFlow {
 }
 
 type GenerationFlowStatus =
-  | 'empty'        // Just created, no settings
-  | 'configured'   // Settings defined, ready to generate
-  | 'generating'   // Generation in progress
-  | 'completed'    // Generation finished
-  | 'error';       // Generation failed
+  | 'empty' // Just created, no settings
+  | 'configured' // Settings defined, ready to generate
+  | 'generating' // Generation in progress
+  | 'completed' // Generation finished
+  | 'error'; // Generation failed
 
 interface GeneratedAsset {
   id: string;
   clientId: string;
-  generationFlowId: string;   // FK to generation_flow
-  assetUrl: string;           // WebP URL for CDN (renamed from r2Key/image_url)
-  assetType: AssetType;       // Type of asset
+  generationFlowId: string; // FK to generation_flow
+  assetUrl: string; // WebP URL for CDN (renamed from r2Key/image_url)
+  assetType: AssetType; // Type of asset
   status: AssetStatus;
   errorMessage: string | null;
-  jobId: string | null;       // Redis job ID (transient, can be null)
+  jobId: string | null; // Redis job ID (transient, can be null)
 
   // Cached analysis for editing (invalidated on edit)
   assetAnalysis: AssetAnalysis | null;
@@ -730,7 +771,7 @@ interface GeneratedAsset {
   // Store sync approval
   approvalStatus: ApprovalStatus;
   approvedAt: Date | null;
-  approvedBy: string | null;  // User ID
+  approvedBy: string | null; // User ID
 
   createdAt: Date;
   updatedAt: Date;
@@ -756,7 +797,7 @@ interface GeneratedAssetProduct {
   id: string;
   generatedAssetId: string;
   productId: string;
-  isPrimary: boolean;  // Primary product for this asset
+  isPrimary: boolean; // Primary product for this asset
   createdAt: Date;
 }
 
@@ -766,7 +807,7 @@ interface GeneratedAssetProduct {
 
 interface GenerationFlowSettings {
   // Prompt Tags (Q&A form - primary way to configure generation)
-  promptTags: PromptTags;        // Tag-based style configuration (see Q12)
+  promptTags: PromptTags; // Tag-based style configuration (see Q12)
 
   // Legacy/advanced settings (may be derived from promptTags)
   roomType: string;
@@ -777,18 +818,18 @@ interface GenerationFlowSettings {
   aspectRatio: string;
   surroundings: string;
   props: string[];
-  sceneImageUrl?: string;        // Inspiration image URL
-  varietyLevel: number;          // 1-10
+  sceneImageUrl?: string; // Inspiration image URL
+  varietyLevel: number; // 1-10
   matchProductColors: boolean;
-  promptText?: string;           // Custom prompt override (takes precedence)
+  promptText?: string; // Custom prompt override (takes precedence)
 }
 
 interface PromptTags {
-  roomType: string[];            // ["living room", "office", "bedroom"]
-  mood: string[];                // ["cozy", "minimalist", "elegant"]
-  lighting: string[];            // ["natural", "warm", "dramatic"]
-  style: string[];               // ["scandinavian", "modern", "industrial"]
-  custom: string[];              // User-defined custom tags
+  roomType: string[]; // ["living room", "office", "bedroom"]
+  mood: string[]; // ["cozy", "minimalist", "elegant"]
+  lighting: string[]; // ["natural", "warm", "dramatic"]
+  style: string[]; // ["scandinavian", "modern", "industrial"]
+  custom: string[]; // User-defined custom tags
 }
 
 // ====================
@@ -799,7 +840,7 @@ interface Tag {
   id: string;
   clientId: string;
   name: string;
-  color?: string;  // Hex color for UI display
+  color?: string; // Hex color for UI display
   createdAt: Date;
 }
 
@@ -843,7 +884,7 @@ interface StoreConnection {
   storeType: 'shopify' | 'woocommerce' | 'bigcommerce';
   storeUrl: string;
   storeName?: string;
-  accessToken: string;      // Encrypted
+  accessToken: string; // Encrypted
   refreshToken?: string;
   tokenExpiresAt?: Date;
   autoSyncEnabled: boolean;
@@ -861,7 +902,7 @@ interface StoreSyncLog {
   productId: string;
   action: 'upload' | 'update' | 'delete';
   status: 'pending' | 'success' | 'failed';
-  externalImageUrl?: string;  // URL in the store after upload
+  externalImageUrl?: string; // URL in the store after upload
   errorMessage?: string;
   startedAt: Date;
   completedAt?: Date;
@@ -878,17 +919,17 @@ interface GenerationFlowWithCombinations extends GenerationFlow {
 }
 
 type CombinationStrategy =
-  | 'manual'              // User selects products (default)
-  | 'match_dimensions'    // Auto-pair by dimensions
-  | 'category_pairing'    // Auto-pair by category
+  | 'manual' // User selects products (default)
+  | 'match_dimensions' // Auto-pair by dimensions
+  | 'category_pairing' // Auto-pair by category
   | 'one_from_each_group' // Cartesian product of groups
-  | 'style_matching';     // Match by style metadata
+  | 'style_matching'; // Match by style metadata
 
 interface CombinationRules {
-  dimensionTolerance?: number;        // For match_dimensions (e.g., ±10cm)
+  dimensionTolerance?: number; // For match_dimensions (e.g., ±10cm)
   categoryPairs?: Record<string, string[]>; // For category_pairing
-  productGroups?: string[][];         // For one_from_each_group
-  styleKeywords?: string[];           // For style_matching
+  productGroups?: string[][]; // For one_from_each_group
+  styleKeywords?: string[]; // For style_matching
 }
 ```
 
@@ -1312,16 +1353,17 @@ CREATE INDEX idx_inspiration_collection ON inspiration_image(collection_session_
 
 ### Queue vs. Database Separation
 
-| Aspect | Redis Queue (jobId) | Database (GeneratedAsset) |
-|--------|---------------------|---------------------------|
-| **Purpose** | Transient processing state | Permanent asset record |
-| **Lifetime** | Minutes to hours | Forever |
-| **TTL** | 24 hours after completion | No expiration |
-| **Fields** | jobId, status, progress | Full record: assetUrl, assetType, status, productIds |
-| **Query Pattern** | Poll by jobId | List by flow, client, product |
-| **Cleanup** | Auto-expires via Redis TTL | Manual deletion only |
+| Aspect            | Redis Queue (jobId)        | Database (GeneratedAsset)                            |
+| ----------------- | -------------------------- | ---------------------------------------------------- |
+| **Purpose**       | Transient processing state | Permanent asset record                               |
+| **Lifetime**      | Minutes to hours           | Forever                                              |
+| **TTL**           | 24 hours after completion  | No expiration                                        |
+| **Fields**        | jobId, status, progress    | Full record: assetUrl, assetType, status, productIds |
+| **Query Pattern** | Poll by jobId              | List by flow, client, product                        |
+| **Cleanup**       | Auto-expires via Redis TTL | Manual deletion only                                 |
 
 **Synchronization**:
+
 1. User starts generation → Create GenerationFlow (status: 'generating')
 2. For each variation → Enqueue job, get jobId
 3. Worker picks up job → Updates progress via Redis
@@ -1335,6 +1377,7 @@ CREATE INDEX idx_inspiration_collection ON inspiration_image(collection_session_
 ## Implementation Plan
 
 ### Phase 1: Database Migrations
+
 1. Rename `studio_session` → `collection_session`
 2. Rename `flow` → `generation_flow` (add nullable `collection_session_id`)
 3. Rename `generated_image` → `generated_asset`
@@ -1350,6 +1393,7 @@ CREATE INDEX idx_inspiration_collection ON inspiration_image(collection_session_
 13. Create `store_sync_log` table
 
 ### Phase 2: Update Drizzle Schemas
+
 1. Update collection_session schema
 2. Update generation_flow schema (nullable FK)
 3. Update generated_asset schema (asset_url, asset_type)
@@ -1358,6 +1402,7 @@ CREATE INDEX idx_inspiration_collection ON inspiration_image(collection_session_
 6. Update relations
 
 ### Phase 3: Service Layer Updates
+
 1. Rename `StudioSessionService` → `CollectionSessionService`
 2. Rename `FlowService` → `GenerationFlowService` (support standalone flows)
 3. Rename `GeneratedImageService` → `GeneratedAssetService` (multi-product linking)
@@ -1371,13 +1416,16 @@ CREATE INDEX idx_inspiration_collection ON inspiration_image(collection_session_
 11. Create `StoreSyncService` (sync assets to stores, log results)
 
 ### Phase 4: WebP Optimization
+
 1. Add sharp dependency for WebP conversion
 2. Update R2 upload to convert to WebP (quality=85)
 3. Set CDN cache headers (1 year)
 4. Store WebP URL in asset_url
 
 ### Phase 5: FUTURE - Combination Strategies
+
 **NOT IN MVP** - Implement when needed:
+
 1. Add `combination_strategy` column to generation_flow table
 2. Add `combination_rules` JSONB column
 3. Create `CombinationEngine` service
@@ -1401,12 +1449,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   });
 
   // Create new GenerationFlow with selected products
-  const flow = await db.insert(generationFlow).values({
-    collectionSessionId: collection.id, // Linked to collection
-    clientId: collection.clientId,
-    productIds, // Multi-product array
-    status: 'empty',
-  }).returning();
+  const flow = await db
+    .insert(generationFlow)
+    .values({
+      collectionSessionId: collection.id, // Linked to collection
+      clientId: collection.clientId,
+      productIds, // Multi-product array
+      status: 'empty',
+    })
+    .returning();
 
   return Response.json(flow[0]);
 }
@@ -1423,14 +1474,17 @@ export async function POST(req: Request) {
   const user = await getCurrentUser();
 
   // Standalone GenerationFlow (no collection)
-  const flow = await db.insert(generationFlow).values({
-    collectionSessionId: null,  // STANDALONE!
-    clientId: user.clientId,
-    productIds: [productId],
-    settings,
-    name: `Generation for ${product.name}`,
-    status: 'configured',
-  }).returning();
+  const flow = await db
+    .insert(generationFlow)
+    .values({
+      collectionSessionId: null, // STANDALONE!
+      clientId: user.clientId,
+      productIds: [productId],
+      settings,
+      name: `Generation for ${product.name}`,
+      status: 'configured',
+    })
+    .returning();
 
   return Response.json({ generationFlowId: flow[0].id });
 }
@@ -1450,9 +1504,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const queue = new AssetGenerationQueue({ prefix: 'client' });
 
   // Update flow status
-  await db.update(generationFlow)
-    .set({ status: 'generating' })
-    .where(eq(generationFlow.id, flow.id));
+  await db.update(generationFlow).set({ status: 'generating' }).where(eq(generationFlow.id, flow.id));
 
   // Log analytics event
   await db.insert(generationEvent).values({
@@ -1472,13 +1524,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     });
 
     // Create asset record
-    const asset = await db.insert(generatedAsset).values({
-      generationFlowId: flow.id,
-      clientId: flow.clientId,
-      assetType: 'image',
-      jobId,
-      status: 'pending',
-    }).returning();
+    const asset = await db
+      .insert(generatedAsset)
+      .values({
+        generationFlowId: flow.id,
+        clientId: flow.clientId,
+        assetType: 'image',
+        jobId,
+        status: 'pending',
+      })
+      .returning();
 
     // Link asset to product(s)
     await db.insert(generatedAssetProduct).values({
@@ -1510,15 +1565,11 @@ export async function handleAssetGeneration(job: Job) {
     const webpBuffer = await WebPOptimizer.convert(imageBuffer, { quality: 85 });
 
     // Upload to R2
-    const assetUrl = await R2Uploader.uploadGeneratedAsset(
-      clientId,
-      flowId,
-      job.id,
-      webpBuffer
-    );
+    const assetUrl = await R2Uploader.uploadGeneratedAsset(clientId, flowId, job.id, webpBuffer);
 
     // Update asset record
-    await db.update(generatedAsset)
+    await db
+      .update(generatedAsset)
       .set({
         assetUrl,
         status: 'completed',
@@ -1537,21 +1588,17 @@ export async function handleAssetGeneration(job: Job) {
 
     // Check if all assets complete for this flow
     const pendingAssets = await db.query.generatedAsset.findMany({
-      where: and(
-        eq(generatedAsset.generationFlowId, flowId),
-        eq(generatedAsset.status, 'pending')
-      ),
+      where: and(eq(generatedAsset.generationFlowId, flowId), eq(generatedAsset.status, 'pending')),
     });
 
     if (pendingAssets.length === 0) {
-      await db.update(generationFlow)
-        .set({ status: 'completed' })
-        .where(eq(generationFlow.id, flowId));
+      await db.update(generationFlow).set({ status: 'completed' }).where(eq(generationFlow.id, flowId));
     }
 
     return { success: true };
   } catch (error) {
-    await db.update(generatedAsset)
+    await db
+      .update(generatedAsset)
       .set({
         status: 'error',
         errorMessage: error.message,
@@ -1575,13 +1622,16 @@ export async function handleAssetGeneration(job: Job) {
 
 ```typescript
 // When an asset can be used for multiple products (e.g., product variants)
-const asset = await db.insert(generatedAsset).values({
-  generationFlowId: flow.id,
-  clientId,
-  assetType: 'image',
-  assetUrl: webpUrl,
-  status: 'completed',
-}).returning();
+const asset = await db
+  .insert(generatedAsset)
+  .values({
+    generationFlowId: flow.id,
+    clientId,
+    assetType: 'image',
+    assetUrl: webpUrl,
+    status: 'completed',
+  })
+  .returning();
 
 // Link to multiple products via junction table
 await db.insert(generatedAssetProduct).values([
@@ -1595,18 +1645,18 @@ await db.insert(generatedAssetProduct).values([
 
 ```typescript
 // Toggle favorite on a GenerationFlow
-await db.insert(userFavorite).values({
-  userId: user.id,
-  entityType: 'generation_flow',
-  entityId: generationFlowId,
-}).onConflictDoNothing();
+await db
+  .insert(userFavorite)
+  .values({
+    userId: user.id,
+    entityType: 'generation_flow',
+    entityId: generationFlowId,
+  })
+  .onConflictDoNothing();
 
 // Query favorites
 const favorites = await db.query.userFavorite.findMany({
-  where: and(
-    eq(userFavorite.userId, user.id),
-    eq(userFavorite.entityType, 'generation_flow')
-  ),
+  where: and(eq(userFavorite.userId, user.id), eq(userFavorite.entityType, 'generation_flow')),
 });
 
 // Add tag to product
@@ -1621,10 +1671,7 @@ const productsWithTag = await db
   .select()
   .from(product)
   .innerJoin(tagAssignment, eq(tagAssignment.entityId, product.id))
-  .where(and(
-    eq(tagAssignment.tagId, 'summer-2026-tag-id'),
-    eq(tagAssignment.entityType, 'product')
-  ));
+  .where(and(eq(tagAssignment.tagId, 'summer-2026-tag-id'), eq(tagAssignment.entityType, 'product')));
 ```
 
 ### ✅ Good: Querying Assets for a Product (via junction table)
@@ -1676,14 +1723,14 @@ CREATE TABLE generated_asset ...    // Good
 // Creating a generation flow with prompt tags from the Q&A form
 const settings: GenerationFlowSettings = {
   promptTags: {
-    roomType: ["living room", "office"],
-    mood: ["cozy", "minimalist"],
-    lighting: ["natural"],
-    style: ["scandinavian"],
-    custom: ["high ceilings", "wooden floors"],
+    roomType: ['living room', 'office'],
+    mood: ['cozy', 'minimalist'],
+    lighting: ['natural'],
+    style: ['scandinavian'],
+    custom: ['high ceilings', 'wooden floors'],
   },
   // Other settings can be derived or set directly
-  aspectRatio: "16:9",
+  aspectRatio: '16:9',
   varietyLevel: 5,
   matchProductColors: true,
   sceneImageUrl: inspirationImage.url,
@@ -1694,11 +1741,11 @@ function buildPromptFromTags(tags: PromptTags): string {
   const allTags = [
     ...tags.roomType,
     ...tags.mood,
-    ...tags.lighting.map(l => `${l} lighting`),
-    ...tags.style.map(s => `${s} style`),
+    ...tags.lighting.map((l) => `${l} lighting`),
+    ...tags.style.map((s) => `${s} style`),
     ...tags.custom,
   ];
-  return allTags.filter(Boolean).join(", ");
+  return allTags.filter(Boolean).join(', ');
 }
 
 // Result: "living room, office, cozy, minimalist, natural lighting, scandinavian style, high ceilings, wooden floors"
@@ -1723,8 +1770,10 @@ CREATE TABLE generated_asset (
 ## Trade-offs
 
 ### CollectionSession vs. StudioSession
+
 **Chosen**: CollectionSession (renamed)
 **Rationale**:
+
 - ✅ Better describes bulk generation purpose
 - ✅ Aligns with "collection flow" terminology
 - ✅ Clearer distinction from standalone GenerationFlows
@@ -1732,16 +1781,20 @@ CREATE TABLE generated_asset (
 - ❌ Need to update all references
 
 ### GenerationFlow vs. Flow
+
 **Chosen**: GenerationFlow (renamed)
 **Rationale**:
+
 - ✅ More descriptive of purpose
 - ✅ Avoids confusion with "flow" in other contexts
 - ✅ Clear domain terminology
 - ❌ Slightly longer name
 
 ### Multi-Product Junction Table vs. Array Column
+
 **Chosen**: Junction table (generated_asset_product)
 **Rationale**:
+
 - ✅ Asset can be shared across product variants
 - ✅ Supports viewing all assets for a product (reverse lookup)
 - ✅ Enables "use this image for these products" UX
@@ -1750,8 +1803,10 @@ CREATE TABLE generated_asset (
 - ❌ Need to manage junction table entries
 
 ### WebP vs. Original Format Storage
+
 **Chosen**: WebP optimized (with optional original)
 **Rationale**:
+
 - ✅ Smaller file sizes for CDN delivery
 - ✅ Better loading performance on storefronts
 - ✅ Universal browser support now
@@ -1759,8 +1814,10 @@ CREATE TABLE generated_asset (
 - ❌ Need sharp dependency for conversion
 
 ### Polymorphic Favorites/Tags vs. Separate Tables
+
 **Chosen**: Polymorphic (entity_type + entity_id)
 **Rationale**:
+
 - ✅ Single table for all entity types
 - ✅ Easier to add new entity types
 - ✅ Consistent API surface
@@ -1768,8 +1825,10 @@ CREATE TABLE generated_asset (
 - ❌ Need to validate entity_type in application
 
 ### Nullable collection_session_id vs. Separate Table
+
 **Chosen**: Nullable FK on generation_flow
 **Rationale**:
+
 - ✅ Same table for collection and standalone flows
 - ✅ Simpler queries and schema
 - ✅ Can easily convert standalone to collection flow

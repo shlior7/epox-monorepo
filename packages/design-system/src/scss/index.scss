@@ -3,7 +3,7 @@
 ///
 /// Usage:
 /// @use '@repo/design-system/scss' as ds;
-/// 
+///
 /// .element {
 ///   color: ds.color(ds.$indigo, 500);
 ///   padding: ds.spacing('4');
@@ -11,5 +11,3 @@
 /// }
 
 @forward 'tokens';
-
-

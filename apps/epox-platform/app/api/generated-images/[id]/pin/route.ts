@@ -1,0 +1,57 @@
+/**
+ * Toggle pin status for a generated image
+ */
+
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { db } from '@/lib/services/db';
+import { withSecurity } from '@/lib/security/middleware';
+import { verifyOwnership, forbiddenResponse } from '@/lib/security/auth';
+
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+export const POST = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  try {
+    const { id } = await params;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing required parameter: id' }, { status: 400 });
+    }
+
+    // Get the asset to verify ownership and get current pin status
+    const asset = await db.generatedAssets.getById(id);
+
+    if (!asset) {
+      return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: asset.clientId,
+        resourceType: 'generated-image',
+        resourceId: id,
+      })
+    ) {
+      return forbiddenResponse();
+    }
+
+    // Toggle pin status
+    const newPinnedStatus = !asset.pinned;
+    await db.generatedAssets.update(id, { pinned: newPinnedStatus });
+
+    console.log(`📌 Asset ${id} pinned status: ${newPinnedStatus}`);
+    return NextResponse.json({ success: true, isPinned: newPinnedStatus });
+  } catch (error: unknown) {
+    console.error('❌ Failed to toggle pin status:', error);
+    const message = error instanceof Error ? error.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+});

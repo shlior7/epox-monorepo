@@ -26,6 +26,7 @@
 ### 1. `/api/collections` (GET, POST)
 
 **Current Issues:**
+
 - Fetches all collections then filters in JS
 - Counts assets by fetching all and filtering
 - No SQL pagination
@@ -116,6 +117,7 @@ export async function GET(request: NextRequest) {
 ```
 
 **Validation for POST:**
+
 ```typescript
 // Name validation
 if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -171,12 +173,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 ```
 
 **PATCH validation:**
+
 ```typescript
 if (body.name !== undefined && (typeof body.name !== 'string' || body.name.trim().length === 0)) {
   return NextResponse.json({ error: 'Name must be non-empty string' }, { status: 400 });
 }
 
-if (body.productIds !== undefined && (!Array.isArray(body.productIds) || body.productIds.length === 0)) {
+if (
+  body.productIds !== undefined &&
+  (!Array.isArray(body.productIds) || body.productIds.length === 0)
+) {
   return NextResponse.json({ error: 'At least one product is required' }, { status: 400 });
 }
 ```
@@ -186,6 +192,7 @@ if (body.productIds !== undefined && (!Array.isArray(body.productIds) || body.pr
 ### 3. `/api/generated-images` (GET)
 
 **Current Issues:**
+
 - Fetches all assets (limit: 10000) then filters in JS
 - Fetches all products to build productMap
 - No SQL pagination
@@ -294,6 +301,7 @@ export async function GET(request: NextRequest) {
 ### 4. `/api/dashboard` (GET)
 
 **Current Issues:**
+
 - Fetches all products, collections, assets then counts in JS
 - Multiple separate queries instead of aggregation
 
@@ -390,20 +398,22 @@ export async function GET(request: NextRequest) {
 ## Performance Comparison
 
 ### Before (All Routes)
-| Route | Issue | Impact |
-|-------|-------|--------|
-| Collections | Fetch all, filter in JS | 3s+ with 100 collections |
-| Collections detail | Fetch all assets to count | 2s+ with 1000 assets |
-| Generated images | Fetch 10,000 assets, filter in JS | 5s+, 400MB memory |
-| Dashboard | 3 full table scans | 8s+ total |
+
+| Route              | Issue                             | Impact                   |
+| ------------------ | --------------------------------- | ------------------------ |
+| Collections        | Fetch all, filter in JS           | 3s+ with 100 collections |
+| Collections detail | Fetch all assets to count         | 2s+ with 1000 assets     |
+| Generated images   | Fetch 10,000 assets, filter in JS | 5s+, 400MB memory        |
+| Dashboard          | 3 full table scans                | 8s+ total                |
 
 ### After (With SQL)
-| Route | Improvement | Impact |
-|-------|-------------|--------|
-| Collections | SQL filter + pagination | <50ms, constant memory |
-| Collections detail | SQL COUNT | <20ms |
-| Generated images | SQL filter + JOIN + pagination | <100ms, 1MB memory |
-| Dashboard | Parallel COUNT queries | <100ms total |
+
+| Route              | Improvement                    | Impact                 |
+| ------------------ | ------------------------------ | ---------------------- |
+| Collections        | SQL filter + pagination        | <50ms, constant memory |
+| Collections detail | SQL COUNT                      | <20ms                  |
+| Generated images   | SQL filter + JOIN + pagination | <100ms, 1MB memory     |
+| Dashboard          | Parallel COUNT queries         | <100ms total           |
 
 ---
 
@@ -426,6 +436,7 @@ CREATE INDEX generated_asset_product_ids_idx ON generated_asset USING gin(produc
 ## Validation Checklist
 
 For each route, ensure:
+
 - [ ] Input validation (type, length, format)
 - [ ] SQL injection prevention (use parameterized queries)
 - [ ] Max limit on pagination (≤100)

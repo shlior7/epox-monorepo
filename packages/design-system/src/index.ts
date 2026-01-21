@@ -1,6 +1,6 @@
 /**
  * @repo/design-system
- * 
+ *
  * Shared design system for epox-monorepo applications
  * Provides consistent design tokens, themes, and utilities
  */
@@ -22,5 +22,3 @@ export {
   semanticLight,
   tokens,
 } from './tokens';
-
-

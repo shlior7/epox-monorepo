@@ -18,9 +18,7 @@ describe('useNavigationState', () => {
   });
 
   it('sets view to sessions when activeProductId and activeSessionId are provided', () => {
-    const { result } = renderHook(() =>
-      useNavigationState('client-1', 'product-1', 'session-1', null)
-    );
+    const { result } = renderHook(() => useNavigationState('client-1', 'product-1', 'session-1', null));
 
     expect(result.current.view).toBe('sessions');
     expect(result.current.selectedClientId).toBe('client-1');
@@ -28,18 +26,15 @@ describe('useNavigationState', () => {
   });
 
   it('sets view to clientSessions when activeClientSessionId is provided', () => {
-    const { result } = renderHook(() =>
-      useNavigationState('client-1', null, null, 'client-session-1')
-    );
+    const { result } = renderHook(() => useNavigationState('client-1', null, null, 'client-session-1'));
 
     expect(result.current.view).toBe('clientSessions');
   });
 
   it('resets bulk delete mode when view changes', () => {
-    const { result, rerender } = renderHook(
-      ({ clientId }) => useNavigationState(clientId, null, null, null),
-      { initialProps: { clientId: null as string | null } }
-    );
+    const { result, rerender } = renderHook(({ clientId }) => useNavigationState(clientId, null, null, null), {
+      initialProps: { clientId: null as string | null },
+    });
 
     act(() => {
       result.current.setIsBulkDeleteMode(true);

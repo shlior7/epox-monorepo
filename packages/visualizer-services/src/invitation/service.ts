@@ -4,9 +4,7 @@
  */
 
 import { SignJWT, jwtVerify } from 'jose';
-import type {
-  InvitationTokenPayload
-} from './types';
+import type { InvitationTokenPayload } from './types';
 
 export interface InvitationServiceConfig {
   jwtSecret: string;
@@ -93,7 +91,7 @@ let _invitationService: InvitationService | null = null;
 export function getInvitationService(): InvitationService {
   if (!_invitationService) {
     const jwtSecret = process.env.JWT_SECRET ?? process.env.INVITATION_JWT_SECRET;
-    const baseUrl = (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL) ?? 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? 'http://localhost:3000';
 
     if (!jwtSecret) {
       throw new Error('JWT_SECRET or INVITATION_JWT_SECRET environment variable is required');
@@ -111,5 +109,3 @@ export function getInvitationService(): InvitationService {
 export function resetInvitationService(): void {
   _invitationService = null;
 }
-
-

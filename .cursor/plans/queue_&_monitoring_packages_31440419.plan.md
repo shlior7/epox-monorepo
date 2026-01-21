@@ -12,6 +12,7 @@ Two-lane architecture for AI operations:
 
 - **Lane A (Fast)**: Direct API calls with rate limiting (product analysis, prompts)
 - **Lane B (Heavy)**: Queue-based processing with persistence (image/video generation)
+
 ```mermaid
 flowchart TB
     subgraph vercel [Vercel API Routes]
@@ -22,38 +23,37 @@ flowchart TB
         Enqueue[scenergy-queue Client]
         Poll[GET /api/jobs/:id]
     end
-    
+
     subgraph redis [Redis/Upstash]
         RateLimiter[Rate Limit State]
         BullQueues[BullMQ Queues]
         JobStatus[Job Status Cache]
     end
-    
+
     subgraph workers [Cloud Run]
         Worker[AI Worker]
     end
-    
+
     subgraph storage [Persistence]
         R2[R2 Storage]
         DB[(PostgreSQL)]
     end
-    
+
     Request --> Router
     Router -->|No: analysis| RateCheck
     Router -->|Yes: images| Enqueue
     RateCheck -->|Yes| Direct --> Response1[Return Result]
     RateCheck -->|No| BusyResponse[503 Busy]
-    
+
     Enqueue --> BullQueues
     BullQueues --> Worker
     Worker --> R2
     Worker --> DB
     Worker --> JobStatus
-    
+
     Poll --> JobStatus
     JobStatus --> Frontend[Frontend Updates]
 ```
-
 
 ---
 
@@ -132,8 +132,6 @@ packages/scenergy-monitoring/
 │   └── logging/              # Structured JSON logs
 ```
 
-
-
 ### services/ai-worker
 
 ```javascript
@@ -150,23 +148,23 @@ services/ai-worker/
 ```javascript
 1. API Route receives request
    └── Validates input, builds prompt
-   
+
 2. QueueClient.enqueue()
    └── Adds job to BullMQ with priority
    └── Returns jobId immediately
-   
+
 3. Worker picks up job
    └── setJobStatus({ status: 'active', progress: 0 })
-   
+
 4. For each product × variant:
    └── Call Gemini API
    └── Save image to R2
    └── Create DB record (generated_asset)
    └── Update progress in Redis
-   
+
 5. Job completes
    └── setJobStatus({ status: 'completed', result: {...} })
-   
+
 6. Frontend polls /api/jobs/:id
    └── Receives status, progress, result
    └── Updates UI accordingly
@@ -205,17 +203,15 @@ AI_RATE_LIMIT_VISION=30
 AI_RATE_LIMIT_IMAGE=20
 ```
 
-
-
 ### Cloud Run Settings
 
 ```yaml
-min-instances: 0              # Scale to zero when idle
-max-instances: 10             # Max 50 concurrent jobs (10 × 5)
+min-instances: 0 # Scale to zero when idle
+max-instances: 10 # Max 50 concurrent jobs (10 × 5)
 cpu: 2
 memory: 2Gi
 cpu-throttling: true
-ingress: internal             # No public access
+ingress: internal # No public access
 ```
 
 ---
@@ -228,18 +224,20 @@ ingress: internal             # No public access
 import { getQueueClient } from 'scenergy-queue';
 
 const queue = getQueueClient();
-const { jobId } = await queue.enqueue('image_generation', {
-  clientId: 'client-123',
-  sessionId: 'session-456',
-  productIds: ['prod-1', 'prod-2'],
-  prompt: 'Modern living room...',
-  settings: { aspectRatio: '16:9', imageQuality: '2k' },
-}, {
-  priority: 'normal',  // urgent | normal | batch
-});
+const { jobId } = await queue.enqueue(
+  'image_generation',
+  {
+    clientId: 'client-123',
+    sessionId: 'session-456',
+    productIds: ['prod-1', 'prod-2'],
+    prompt: 'Modern living room...',
+    settings: { aspectRatio: '16:9', imageQuality: '2k' },
+  },
+  {
+    priority: 'normal', // urgent | normal | batch
+  }
+);
 ```
-
-
 
 ### Poll Job Status (Frontend)
 
@@ -256,16 +254,12 @@ function GenerationProgress({ jobId }) {
 }
 ```
 
-
-
 ### Direct API Call with Rate Limiting (Lane A)
 
 ```typescript
 import { withRateLimit, getProductAnalysisService } from 'visualizer-services';
 
-const result = await withRateLimit('gemini-text', () =>
-  getProductAnalysisService().analyzeProductsBatchWithAI(products)
-);
+const result = await withRateLimit('gemini-text', () => getProductAnalysisService().analyzeProductsBatchWithAI(products));
 
 if (!result.success) {
   return NextResponse.json({ retryAfter: result.retryAfter }, { status: 503 });
@@ -310,8 +304,6 @@ redis-cli GET "job-status:abc123"
 redis-cli KEYS "job-status:*"
 ```
 
-
-
 ### Structured Logs
 
 ```json
@@ -339,8 +331,6 @@ docker run -p 6379:6379 redis
 cd services/ai-worker
 yarn dev
 ```
-
-
 
 ### Production Deployment
 

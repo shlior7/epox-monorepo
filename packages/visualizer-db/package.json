@@ -10,6 +10,7 @@
     "./errors": "./src/errors.ts",
     "./schema": "./src/schema/index.ts",
     "./types": "./src/schema/generated/db-types.generated.ts",
+    "./repositories": "./src/repositories/index.ts",
     "./repositories/generation-jobs": "./src/repositories/generation-jobs.ts",
     "./utils/prompt-resolver": "./src/utils/prompt-resolver.ts",
     "./testkit": "./src/testkit.ts"

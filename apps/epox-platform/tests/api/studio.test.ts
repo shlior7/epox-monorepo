@@ -54,7 +54,8 @@ describe('Studio API - POST /api/studio', () => {
     const data = await response.json();
 
     expect(response.status).toBe(201);
-    expect(db.generationFlows.create).toHaveBeenCalledWith('client-1',
+    expect(db.generationFlows.create).toHaveBeenCalledWith(
+      'client-1',
       expect.objectContaining({
         productIds: ['prod-1'],
         selectedBaseImages: { 'prod-1': 'img-1' },

@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getGeminiService } from '@/lib/services/gemini';
-import type { EditImageRequest, EditImageResponse } from '@/lib/services/gemini/types';
+import { getGeminiService } from 'visualizer-ai';
+import type { EditImageRequest, EditImageResponse } from 'visualizer-ai';
 
 export async function POST(request: Request): Promise<NextResponse<EditImageResponse | { success: boolean; error: string }>> {
   try {
@@ -24,10 +24,6 @@ export async function POST(request: Request): Promise<NextResponse<EditImageResp
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     console.error('❌ Image editing failed:', error);
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed to edit image' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Failed to edit image' }, { status: 500 });
   }
 }
-

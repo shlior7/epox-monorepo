@@ -11,6 +11,7 @@
 ## Background
 
 The platform has two distinct user personas:
+
 1. **Admins** - Internal team managing multiple clients (scenergy-visualizer app)
 2. **Client Users** - External users who belong to a single client (visualizer-client app)
 
@@ -19,6 +20,7 @@ Currently, only admin authentication exists via the `adminUser` table. We need t
 ## Problem
 
 We need an authentication and authorization system that:
+
 - Supports two different user types without mixing concerns
 - Uses the existing `visualizer-auth` package (Better Auth)
 - Scopes all data access to the authenticated user's client
@@ -28,27 +30,35 @@ We need an authentication and authorization system that:
 ## Questions and Answers
 
 ### Q1: Should we use separate auth tables or a unified user table with roles?
+
 **A**: Separate tables:
+
 - `adminUser` - Existing, for internal team
 - `user` - New, for client users
 
 **Rationale**:
+
 - Different access patterns (admins see all clients, users see one)
 - Different feature sets (admins manage clients, users generate)
 - Easier to secure (no accidental role confusion)
 - Cleaner separation for future auth requirements
 
 ### Q2: How do we handle user-to-client association?
+
 **A**: Use `member` table (many-to-many):
+
 ```
 user ↔ member ↔ client
 ```
+
 - MVP: One user = one client (one membership)
 - Future: One user can belong to multiple clients (multiple memberships)
 - The `member` record can store role information (`owner`, `editor`, `viewer`)
 
 ### Q3: Should client users be able to create clients?
+
 **A**: No, not in MVP:
+
 - Admins create clients via scenergy-visualizer
 - Admins invite users to clients
 - Users receive invitation email → sign up → auto-associated with client
@@ -56,19 +66,24 @@ user ↔ member ↔ client
 Future: Self-service client creation with billing
 
 ### Q4: How do we prevent client users from accessing other clients' data?
+
 **A**: Multi-layered approach:
+
 1. **App-level**: ClientContext provides activeClientId from session
 2. **API-level**: All queries filtered by `WHERE clientId = session.activeClientId`
 3. **Database-level**: Row-level security policies (future enhancement)
 4. **Middleware**: Authentication middleware validates clientId matches user's membership
 
 ### Q5: What happens if a user belongs to multiple clients?
+
 **A**: For MVP:
+
 - User must have exactly one membership
 - Reject signup/login if user has 0 or 2+ memberships
 - Error message: "Please contact support"
 
 Future phase:
+
 - Client switcher in UI
 - `session.activeClientId` to track current client
 - Update endpoint to switch between clients
@@ -155,17 +170,17 @@ interface User {
 
 interface Member {
   id: string;
-  userId: string;          // FK: user.id
-  clientId: string;        // FK: client.id
+  userId: string; // FK: user.id
+  clientId: string; // FK: client.id
   role: 'owner' | 'editor' | 'viewer';
   status: 'active' | 'invited' | 'suspended';
-  invitedBy?: string;      // FK: adminUser.id
+  invitedBy?: string; // FK: adminUser.id
   invitedAt?: Date;
   joinedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   // FUTURE: Add credit_balance for Phase 2 (credit system)
-  creditBalance?: number;  // Track credits at member level
+  creditBalance?: number; // Track credits at member level
 }
 
 interface Session {
@@ -251,11 +266,11 @@ CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 
 ### Role Definitions
 
-| Role | Permissions |
-|------|-------------|
-| **owner** | Full access: manage products, generate images, invite users, billing |
-| **editor** | Create/edit collections, generate images, manage products |
-| **viewer** | View collections, download images (read-only) |
+| Role       | Permissions                                                          |
+| ---------- | -------------------------------------------------------------------- |
+| **owner**  | Full access: manage products, generate images, invite users, billing |
+| **editor** | Create/edit collections, generate images, manage products            |
+| **viewer** | View collections, download images (read-only)                        |
 
 MVP: Only `editor` role implemented. All invited users are editors.
 
@@ -332,18 +347,20 @@ sequenceDiagram
 ### Session Structure
 
 #### Client User Session
+
 ```typescript
 interface ClientSession {
   userId: string;
   email: string;
   name: string;
-  clientId: string;         // From member record
+  clientId: string; // From member record
   role: 'owner' | 'editor' | 'viewer';
   expiresAt: Date;
 }
 ```
 
 #### Admin Session
+
 ```typescript
 interface AdminSession {
   adminUserId: string;
@@ -404,7 +421,7 @@ export async function GET(request: Request) {
   // Get collections ONLY for this user's client
   const collections = await db.collections.findMany({
     where: {
-      clientId: session.clientId,  // 🔒 Critical: scope to user's client
+      clientId: session.clientId, // 🔒 Critical: scope to user's client
     },
   });
 
@@ -480,6 +497,7 @@ export function useClient() {
 ## Implementation Plan
 
 ### Phase 1: Database Setup
+
 1. Create `users` table migration
 2. Create `members` table migration
 3. Create `sessions` table migration
@@ -487,12 +505,14 @@ export function useClient() {
 5. Run migrations in dev environment
 
 ### Phase 2: Auth Package Configuration
+
 1. Configure Better Auth for client users
 2. Set up email provider (for invitations)
 3. Configure OAuth providers (Google, GitHub) - optional
 4. Create auth client helpers (`getSession`, `login`, `signup`)
 
 ### Phase 3: Client App Auth Implementation
+
 1. Create `/login` page with form
 2. Create `/signup` page (invitation flow)
 3. Implement auth API routes (`/api/auth/[...all]`)
@@ -500,6 +520,7 @@ export function useClient() {
 5. Create ClientContext provider
 
 ### Phase 4: Invitation System
+
 1. Admin UI: Invite user form (in scenergy-visualizer)
 2. API: Create member with `status=invited`
 3. Email service: Send invitation with signup link
@@ -507,6 +528,7 @@ export function useClient() {
 5. Activate member on successful signup
 
 ### Phase 5: Security Hardening
+
 1. Add CSRF protection
 2. Add rate limiting
 3. Add session expiration
@@ -514,6 +536,7 @@ export function useClient() {
 5. Audit all API routes for clientId scoping
 
 ### Phase 6: Testing
+
 1. Unit tests for auth helpers
 2. Integration tests for login/signup flows
 3. E2E tests for invitation flow
@@ -532,7 +555,7 @@ export async function GET(request: Request) {
 
   const products = await db.products.findMany({
     where: {
-      clientId: session.clientId,  // ✅ Always scope to user's client
+      clientId: session.clientId, // ✅ Always scope to user's client
     },
   });
 
@@ -547,7 +570,7 @@ export async function GET(request: Request) {
 export async function GET(request: Request) {
   const session = await getSession(request);
 
-  const products = await db.products.findMany();  // ❌ No where clause!
+  const products = await db.products.findMany(); // ❌ No where clause!
 
   return Response.json(products);
 }
@@ -595,8 +618,10 @@ export function InvitationEmail({ clientName, inviterName, signupLink }: Props) 
 ## Trade-offs
 
 ### Invitation-Only vs. Self-Service Signup
+
 **Chosen**: Invitation-only (MVP)
 **Rationale**:
+
 - ✅ Admins control who joins
 - ✅ Prevents spam/abuse
 - ✅ Ensures user-client association is correct
@@ -606,8 +631,10 @@ export function InvitationEmail({ clientName, inviterName, signupLink }: Props) 
 Future: Self-service with billing integration
 
 ### JWT vs. Session Cookies
+
 **Chosen**: Session cookies (Better Auth default)
 **Rationale**:
+
 - ✅ Can revoke sessions server-side
 - ✅ Smaller cookie size
 - ✅ Easier to add session metadata (clientId)
@@ -617,8 +644,10 @@ Future: Self-service with billing integration
 Mitigation: Use Redis for session storage
 
 ### Single Client vs. Multi-Client per User
+
 **Chosen**: Single client (MVP)
 **Rationale**:
+
 - ✅ Simpler UX (no client switcher)
 - ✅ Simpler auth logic
 - ✅ Clearer scoping
@@ -646,12 +675,14 @@ graph LR
 ### Phase 1: MVP - Invitation Only (Months 1-3)
 
 **Current Implementation** (as documented above):
+
 - Admin manually invites users to clients
 - No payment infrastructure
 - No credit tracking
 - Focus on product validation
 
 **Goals**:
+
 - Validate product-market fit
 - Collect pricing feedback
 - Measure usage patterns
@@ -659,6 +690,7 @@ graph LR
 ### Phase 2: Credit-Based System (Months 4-9)
 
 **Overview**:
+
 - Users sign up and receive 10 free credits
 - 1 credit = 1 image generation
 - Users purchase credit packages as needed
@@ -667,6 +699,7 @@ graph LR
 #### Database Schema Changes
 
 **Add credit_balance to members table**:
+
 ```sql
 ALTER TABLE members
 ADD COLUMN credit_balance INTEGER DEFAULT 0;
@@ -710,14 +743,15 @@ CREATE INDEX idx_credit_transactions_type ON credit_transactions(type);
 
 Based on Design Log #008:
 
-| Package | Credits | Price | Price per Credit | Target Segment |
-|---------|---------|-------|------------------|----------------|
-| Free Trial | 10 | $0 | $0 | New signups (auto-granted) |
-| Starter | 50 | $12 | $0.24 | Hobbyists, small brands |
-| Pro | 200 | $40 | $0.20 | Growing brands |
-| Business | 1,000 | $150 | $0.15 | Agencies, large catalogs |
+| Package    | Credits | Price | Price per Credit | Target Segment             |
+| ---------- | ------- | ----- | ---------------- | -------------------------- |
+| Free Trial | 10      | $0    | $0               | New signups (auto-granted) |
+| Starter    | 50      | $12   | $0.24            | Hobbyists, small brands    |
+| Pro        | 200     | $40   | $0.20            | Growing brands             |
+| Business   | 1,000   | $150  | $0.15            | Agencies, large catalogs   |
 
 **Seeding credit packages**:
+
 ```sql
 INSERT INTO credit_packages (name, credits, price_cents, sort_order) VALUES
   ('Starter', 50, 1200, 1),
@@ -728,6 +762,7 @@ INSERT INTO credit_packages (name, credits, price_cents, sort_order) VALUES
 #### Updated Authentication Flow
 
 **Signup flow changes**:
+
 ```mermaid
 sequenceDiagram
     participant Admin
@@ -752,6 +787,7 @@ sequenceDiagram
 ```
 
 **Generation flow with credits**:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -787,7 +823,7 @@ interface ClientSession {
   name: string;
   clientId: string;
   role: 'owner' | 'editor' | 'viewer';
-  creditBalance: number;  // NEW: Include for quick access
+  creditBalance: number; // NEW: Include for quick access
   expiresAt: Date;
 }
 ```
@@ -795,6 +831,7 @@ interface ClientSession {
 #### UI Changes
 
 **Credit display in header**:
+
 ```tsx
 <Header>
   <Logo />
@@ -805,32 +842,39 @@ interface ClientSession {
 ```
 
 **Pre-generation confirmation**:
+
 ```tsx
 // Show modal when credits < 10
-{creditBalance < 10 && (
-  <ConfirmationModal>
-    <p>This will use 1 credit.</p>
-    <p>You have {creditBalance} credits remaining.</p>
-    <Button>Continue</Button>
-    <Link href="/pricing">Buy More Credits</Link>
-  </ConfirmationModal>
-)}
+{
+  creditBalance < 10 && (
+    <ConfirmationModal>
+      <p>This will use 1 credit.</p>
+      <p>You have {creditBalance} credits remaining.</p>
+      <Button>Continue</Button>
+      <Link href="/pricing">Buy More Credits</Link>
+    </ConfirmationModal>
+  );
+}
 ```
 
 **Low balance warning**:
+
 ```tsx
 // Show banner when credits < 5
-{creditBalance < 5 && (
-  <Banner variant="warning">
-    Low balance: {creditBalance} credits remaining.
-    <Link href="/pricing">Buy more →</Link>
-  </Banner>
-)}
+{
+  creditBalance < 5 && (
+    <Banner variant="warning">
+      Low balance: {creditBalance} credits remaining.
+      <Link href="/pricing">Buy more →</Link>
+    </Banner>
+  );
+}
 ```
 
 ### Phase 3: Subscription Tiers (Months 10-18)
 
 **Overview**:
+
 - Add subscription plans with recurring monthly credits
 - Include store sync features (Shopify, WooCommerce)
 - Tiered by product catalog size
@@ -866,13 +910,14 @@ CREATE INDEX idx_subscriptions_stripe_subscription_id ON subscriptions(stripe_su
 
 Based on Design Log #008:
 
-| Tier | Products | Price/Month | Included Credits/Mo | Overage | Target |
-|------|----------|-------------|---------------------|---------|--------|
-| Basic | 100 | $49 | 100 | $0.20/credit | Small stores |
-| Pro | 500 | $149 | 500 | $0.18/credit | Growing brands |
-| Business | 2,000 | $399 | 2,000 | $0.15/credit | Large retailers |
+| Tier     | Products | Price/Month | Included Credits/Mo | Overage      | Target          |
+| -------- | -------- | ----------- | ------------------- | ------------ | --------------- |
+| Basic    | 100      | $49         | 100                 | $0.20/credit | Small stores    |
+| Pro      | 500      | $149        | 500                 | $0.18/credit | Growing brands  |
+| Business | 2,000    | $399        | 2,000               | $0.15/credit | Large retailers |
 
 **Key features**:
+
 - Monthly credits expire at end of period (don't roll over)
 - Can purchase additional credit packs if needed
 - Store sync automation included
@@ -881,11 +926,13 @@ Based on Design Log #008:
 #### Credit Allocation Strategy
 
 **Priority order** (when deducting credits):
+
 1. Use expiring subscription credits first
 2. Then use oldest purchased credits (FIFO)
 3. Then use free/bonus credits
 
 **Implementation**:
+
 ```typescript
 async function deductCredits(memberId: string, amount: number) {
   // 1. Check subscription credits (expire monthly)
@@ -919,9 +966,7 @@ export async function POST(req: Request) {
 
   if (event.type === 'invoice.payment_succeeded') {
     const invoice = event.data.object;
-    const subscription = await db.subscriptions.findByStripeId(
-      invoice.subscription
-    );
+    const subscription = await db.subscriptions.findByStripeId(invoice.subscription);
 
     // Grant monthly credits (reset to full amount)
     await db.subscriptions.update(subscription.id, {
@@ -947,6 +992,7 @@ export async function POST(req: Request) {
 ### Migration Strategy
 
 **Phase 1 → Phase 2 (MVP to Credits)**:
+
 1. Deploy credit tables via migration
 2. Backfill existing members with 50 free credits (one-time)
 3. Enable credit purchase UI
@@ -954,6 +1000,7 @@ export async function POST(req: Request) {
 5. Monitor conversion rate (free → paid)
 
 **Phase 2 → Phase 3 (Credits to Subscriptions)**:
+
 1. Deploy subscription tables
 2. Create Stripe subscription products
 3. Add subscription UI
@@ -965,12 +1012,14 @@ export async function POST(req: Request) {
 See Design Log #008 for complete details.
 
 **Key principles**:
+
 - Start with generous free tier (10 credits) to drive signups
 - Credit pricing at 4-5x cost ($0.20-$0.25 per credit)
 - Subscriptions provide better value (encourage upgrade)
 - Annual plans offer 17% discount (2 months free)
 
 **Revenue projections** (moderate scenario, 12 months):
+
 - Phase 2 (Credits): $10,000 MRR
 - Phase 3 (Subscriptions): $28,000 MRR (combined)
 - Target: $50,000 MRR by month 18
@@ -978,6 +1027,7 @@ See Design Log #008 for complete details.
 ### Authorization Changes
 
 **Current** (MVP):
+
 ```typescript
 // API routes just check session exists
 const session = await getSession(request);
@@ -987,6 +1037,7 @@ if (!session) {
 ```
 
 **Future** (with credits):
+
 ```typescript
 // API routes also check credit balance
 const session = await getSession(request);
@@ -996,11 +1047,14 @@ if (!session) {
 
 // Check credits before generation
 if (session.creditBalance < 1) {
-  return Response.json({
-    error: 'Insufficient credits',
-    balance: 0,
-    purchaseUrl: '/pricing',
-  }, { status: 402 }); // 402 Payment Required
+  return Response.json(
+    {
+      error: 'Insufficient credits',
+      balance: 0,
+      purchaseUrl: '/pricing',
+    },
+    { status: 402 }
+  ); // 402 Payment Required
 }
 ```
 

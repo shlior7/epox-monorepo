@@ -43,4 +43,3 @@ worker.start().catch((err: unknown) => {
   console.error('Worker failed to start:', err);
   process.exit(1);
 });
-

@@ -241,11 +241,7 @@ export function assertUploadCount(storage: TestStorage, expected: number): void 
 /**
  * Assert file content matches expected
  */
-export async function assertFileContent(
-  storage: TestStorage,
-  key: string,
-  expected: Buffer | string
-): Promise<void> {
+export async function assertFileContent(storage: TestStorage, key: string, expected: Buffer | string): Promise<void> {
   const actual = await storage.readFile(key);
   const expectedBuffer = Buffer.isBuffer(expected) ? expected : Buffer.from(expected);
 
@@ -259,8 +255,7 @@ export async function assertFileContent(
 // ============================================================================
 
 /** 1x1 red PNG pixel */
-export const TEST_IMAGE_PNG_BASE64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
+export const TEST_IMAGE_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
 
 /** 1x1 red PNG pixel as data URL */
 export const TEST_IMAGE_PNG_DATA_URL = `data:image/png;base64,${TEST_IMAGE_PNG_BASE64}`;
@@ -276,4 +271,3 @@ export function getTestImageBuffer(): Buffer {
 export function generateTestKey(prefix = 'test', ext = 'png'): string {
   return `${prefix}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 }
-

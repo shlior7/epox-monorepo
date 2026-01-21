@@ -7,6 +7,8 @@ import { Sparkles, Mail, Lock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
+import { authClient } from '@/lib/services/auth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,9 +20,29 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login - replace with actual auth
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    router.push('/dashboard');
+    try {
+      const { data, error } = await authClient.signIn.email({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast.error(error.message || 'Login failed');
+        setIsLoading(false);
+        return;
+      }
+
+      toast.success('Welcome back!');
+      try {
+        router.push('/dashboard');
+      } finally {
+        setIsLoading(false);
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      toast.error('An unexpected error occurred');
+      setIsLoading(false);
+    }
   };
 
   return (

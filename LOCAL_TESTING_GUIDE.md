@@ -48,12 +48,14 @@ cd /Users/liorsht/MyThings/MyProjects/epox-monorepo
 **Terminal 1** (keep worker running from Step 2)
 
 **Terminal 2** (start Next.js):
+
 ```bash
 cd apps/epox-platform
 yarn dev
 ```
 
 **Terminal 3** (make API calls):
+
 ```bash
 # Enqueue a job
 curl -X POST http://localhost:3000/api/generate-images \
@@ -101,6 +103,7 @@ node dist/index.js
 ```
 
 You should see:
+
 ```
 [ai-worker] Starting AI Worker {"concurrency":3,"maxJobsPerMinute":60}
 [ai-worker] Listening on port 8080
@@ -129,12 +132,14 @@ curl -X POST http://localhost:3000/api/generate-images \
 ## What You'll See
 
 ### Worker Terminal
+
 ```
 🚀 [1] image_generation
 ✅ [1] Done in 2847ms
 ```
 
 ### API Response
+
 ```json
 {
   "jobId": "1",
@@ -146,6 +151,7 @@ curl -X POST http://localhost:3000/api/generate-images \
 ```
 
 ### Job Status Polling
+
 ```bash
 # Pending
 curl http://localhost:3000/api/jobs/1
@@ -171,6 +177,7 @@ curl http://localhost:3000/api/jobs/1
 ## Troubleshooting
 
 ### "Connection refused" to Redis
+
 ```bash
 # Check Redis is running
 docker ps --filter "name=redis"
@@ -182,12 +189,14 @@ docker run -d --name redis -p 6399:6379 redis:7
 ```
 
 ### "GEMINI_API_KEY not set"
+
 ```bash
 export GEMINI_API_KEY="your-actual-key"
 # Or set in .env.local (platform will read it)
 ```
 
 ### Worker not processing jobs
+
 ```bash
 # 1. Check worker is running
 curl http://localhost:8080/health
@@ -199,9 +208,11 @@ docker exec scenergy-queue-redis-test redis-cli KEYS "bull:ai-jobs:*"
 ```
 
 ### Jobs stuck in "waiting"
+
 This is normal if you hit the RPM limit. The queue will automatically retry when the rate limit window resets.
 
 Check your rate limit:
+
 ```bash
 # Free tier
 export GEMINI_RPM="10"
@@ -213,6 +224,7 @@ export GEMINI_RPM="60"
 ## Testing Different Scenarios
 
 ### Test Priority Queue
+
 ```bash
 # Normal priority
 curl -X POST http://localhost:3000/api/generate-images \
@@ -224,6 +236,7 @@ curl -X POST http://localhost:3000/api/generate-images \
 ```
 
 ### Test Multiple Products
+
 ```bash
 # Generate image combining 3 products
 curl -X POST http://localhost:3000/api/generate-images \
@@ -235,6 +248,7 @@ curl -X POST http://localhost:3000/api/generate-images \
 ```
 
 ### Test Rate Limiting
+
 ```bash
 # Set low limit
 export GEMINI_RPM="10"
@@ -263,8 +277,8 @@ docker stop scenergy-queue-redis-test
 ## Next Steps
 
 Once local testing works:
+
 1. Deploy to Cloud Run (see `services/ai-worker/README.md`)
 2. Add Upstash Redis for production
 3. Monitor with Bull Board dashboard
 4. Scale with multiple workers if needed
-

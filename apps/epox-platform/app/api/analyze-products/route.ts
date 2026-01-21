@@ -14,11 +14,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import {
-  getProductAnalysisService,
-  getGeminiService,
-  type AIAnalysisResult,
-} from 'visualizer-services';
+import { getProductAnalysisService, getGeminiService, type AIAnalysisResult } from 'visualizer-ai';
 import { getAISuggestedTags } from '@/lib/services/prompt-builder';
 import type { PromptTags } from '@/lib/types';
 import { withSecurity, validateUrls } from '@/lib/security';

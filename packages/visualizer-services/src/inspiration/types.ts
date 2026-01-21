@@ -74,5 +74,3 @@ export interface MergedInspirationSettings {
   props: string[];
   primaryImageUrl: string;
 }
-
-

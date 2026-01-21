@@ -30,7 +30,7 @@ const mockGemini = {
   analyzeProductSubject: vi.fn(),
 };
 
-vi.mock('visualizer-services', () => ({
+vi.mock('visualizer-ai', () => ({
   getGeminiService: vi.fn(() => mockGemini),
 }));
 
@@ -116,12 +116,14 @@ describe('Upload API - POST /api/upload', () => {
     expect(response.status).toBe(200);
     expect(data.productImageId).toBe('img-1');
     expect(data.key).toContain('clients/test-client/products/prod-1');
-    expect(db.productImages.create).toHaveBeenCalledWith('prod-1',
+    expect(db.productImages.create).toHaveBeenCalledWith(
+      'prod-1',
       expect.objectContaining({
         sortOrder: 0,
       })
     );
-    expect(db.products.update).toHaveBeenCalledWith('prod-1',
+    expect(db.products.update).toHaveBeenCalledWith(
+      'prod-1',
       expect.objectContaining({
         analysisVersion: '2.0',
         sceneTypes: ['Living Room'],

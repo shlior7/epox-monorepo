@@ -45,11 +45,14 @@ export interface GeminiGenerationResponse {
 
 // ===== VIDEO GENERATION TYPES =====
 
+export type VideoResolution = '720p' | '1080p';
+export type VideoAspectRatio = '16:9' | '9:16';
+
 export interface GeminiVideoRequest {
   prompt: string;
   sourceImageUrl: string;
-  durationSeconds?: number;
-  fps?: number;
+  aspectRatio?: VideoAspectRatio;
+  resolution?: VideoResolution;
   model?: string;
 }
 
@@ -61,8 +64,8 @@ export interface GeminiVideoResponse {
     model: string;
     prompt: string;
     generatedAt: string;
-    durationSeconds?: number;
-    fps?: number;
+    aspectRatio?: VideoAspectRatio;
+    resolution?: VideoResolution;
   };
 }
 

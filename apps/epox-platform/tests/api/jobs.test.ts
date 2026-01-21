@@ -6,15 +6,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET as getJob } from '@/app/api/jobs/[id]/route';
 
-vi.mock('@/lib/services/db', () => ({
-  db: {
-    generationJobs: {
-      getById: vi.fn(),
-    },
-  },
+vi.mock('visualizer-ai', () => ({
+  getJobStatus: vi.fn(),
 }));
 
-import { db } from '@/lib/services/db';
+import { getJobStatus } from 'visualizer-ai';
 
 describe('Jobs API - GET /api/jobs/[id]', () => {
   beforeEach(() => {
@@ -29,7 +25,7 @@ describe('Jobs API - GET /api/jobs/[id]', () => {
   });
 
   it('should return 404 when job not found', async () => {
-    vi.mocked(db.generationJobs.getById).mockResolvedValue(null);
+    vi.mocked(getJobStatus).mockResolvedValue(null);
 
     const request = new NextRequest('http://localhost:3000/api/jobs/job-1');
     const response = await getJob(request, { params: Promise.resolve({ id: 'job-1' }) });
@@ -38,7 +34,7 @@ describe('Jobs API - GET /api/jobs/[id]', () => {
   });
 
   it('should map processing status to active', async () => {
-    vi.mocked(db.generationJobs.getById).mockResolvedValue({
+    vi.mocked(getJobStatus).mockResolvedValue({
       id: 'job-1',
       type: 'image_generation',
       status: 'processing',
@@ -60,7 +56,7 @@ describe('Jobs API - GET /api/jobs/[id]', () => {
   });
 
   it('should include videoIds for video jobs', async () => {
-    vi.mocked(db.generationJobs.getById).mockResolvedValue({
+    vi.mocked(getJobStatus).mockResolvedValue({
       id: 'job-vid-1',
       type: 'video_generation',
       status: 'completed',
@@ -81,7 +77,7 @@ describe('Jobs API - GET /api/jobs/[id]', () => {
   });
 
   it('should handle errors', async () => {
-    vi.mocked(db.generationJobs.getById).mockRejectedValueOnce(new Error('DB error'));
+    vi.mocked(getJobStatus).mockRejectedValueOnce(new Error('DB error'));
 
     const request = new NextRequest('http://localhost:3000/api/jobs/job-1');
     const response = await getJob(request, { params: Promise.resolve({ id: 'job-1' }) });

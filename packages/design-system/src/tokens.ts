@@ -1,6 +1,6 @@
 /**
  * Design Tokens - Shared design system for both epox-platform and scenergy-visualizer
- * 
+ *
  * Inspired by modern AI generation platforms (Ideogram, Kling, Midjourney)
  * with a focus on:
  * - Deep, rich dark themes with vibrant accents
@@ -17,22 +17,22 @@ export const colors = {
   // Pure neutrals
   white: '#ffffff',
   black: '#000000',
-  
+
   // Charcoal Neutrals - Cinema/Studio feel (primary for dark theme)
   charcoal: {
-    950: '#0a0a0b',  // Deepest black - overlays
-    900: '#0f1012',  // Background deep
-    850: '#131417',  // Main app background
-    800: '#18191d',  // Card backgrounds
-    750: '#1d1f24',  // Elevated surfaces
-    700: '#24262d',  // Borders, dividers
-    600: '#2e3139',  // Muted borders
-    500: '#3d4149',  // Disabled states
-    400: '#5c616b',  // Tertiary text
-    300: '#8b919d',  // Secondary text
-    200: '#b8bcc6',  // Primary text muted
-    100: '#e4e6eb',  // Primary text
-    50: '#f4f5f7',   // Bright text
+    950: '#0a0a0b', // Deepest black - overlays
+    900: '#0f1012', // Background deep
+    850: '#131417', // Main app background
+    800: '#18191d', // Card backgrounds
+    750: '#1d1f24', // Elevated surfaces
+    700: '#24262d', // Borders, dividers
+    600: '#2e3139', // Muted borders
+    500: '#3d4149', // Disabled states
+    400: '#5c616b', // Tertiary text
+    300: '#8b919d', // Secondary text
+    200: '#b8bcc6', // Primary text muted
+    100: '#e4e6eb', // Primary text
+    50: '#f4f5f7', // Bright text
   },
 
   // Slate - Cool undertones (for light theme compatibility)
@@ -56,7 +56,7 @@ export const colors = {
     800: '#3730a3',
     700: '#4338ca',
     600: '#4f46e5',
-    500: '#6366f1',  // Primary accent
+    500: '#6366f1', // Primary accent
     400: '#818cf8',
     300: '#a5b4fc',
     200: '#c7d2fe',
@@ -70,7 +70,7 @@ export const colors = {
     800: '#155e75',
     700: '#0e7490',
     600: '#0891b2',
-    500: '#06b6d4',  // Secondary accent
+    500: '#06b6d4', // Secondary accent
     400: '#22d3ee',
     300: '#67e8f9',
     200: '#a5f3fc',
@@ -84,7 +84,7 @@ export const colors = {
     800: '#92400e',
     700: '#b45309',
     600: '#d97706',
-    500: '#f59e0b',  // Warm accent
+    500: '#f59e0b', // Warm accent
     400: '#fbbf24',
     300: '#fcd34d',
     200: '#fde68a',
@@ -100,7 +100,7 @@ export const colors = {
     400: '#34d399',
     300: '#6ee7b7',
   },
-  
+
   rose: {
     700: '#be123c',
     600: '#e11d48',
@@ -135,17 +135,17 @@ export const typography = {
 
   // Font sizes
   fontSize: {
-    '2xs': '0.625rem',   // 10px
-    xs: '0.75rem',       // 12px
-    sm: '0.8125rem',     // 13px
-    md: '0.875rem',      // 14px
-    base: '1rem',        // 16px
-    lg: '1.125rem',      // 18px
-    xl: '1.25rem',       // 20px
-    '2xl': '1.5rem',     // 24px
-    '3xl': '1.875rem',   // 30px
-    '4xl': '2.25rem',    // 36px
-    '5xl': '3rem',       // 48px
+    '2xs': '0.625rem', // 10px
+    xs: '0.75rem', // 12px
+    sm: '0.8125rem', // 13px
+    md: '0.875rem', // 14px
+    base: '1rem', // 16px
+    lg: '1.125rem', // 18px
+    xl: '1.25rem', // 20px
+    '2xl': '1.5rem', // 24px
+    '3xl': '1.875rem', // 30px
+    '4xl': '2.25rem', // 36px
+    '5xl': '3rem', // 48px
   },
 
   // Font weights
@@ -183,25 +183,25 @@ export const typography = {
 
 export const spacing = {
   '0': '0',
-  '0.5': '0.125rem',  // 2px
-  '1': '0.25rem',     // 4px
-  '1.5': '0.375rem',  // 6px
-  '2': '0.5rem',      // 8px
-  '2.5': '0.625rem',  // 10px
-  '3': '0.75rem',     // 12px
-  '3.5': '0.875rem',  // 14px
-  '4': '1rem',        // 16px
-  '5': '1.25rem',     // 20px
-  '6': '1.5rem',      // 24px
-  '7': '1.75rem',     // 28px
-  '8': '2rem',        // 32px
-  '9': '2.25rem',     // 36px
-  '10': '2.5rem',     // 40px
-  '12': '3rem',       // 48px
-  '14': '3.5rem',     // 56px
-  '16': '4rem',       // 64px
-  '20': '5rem',       // 80px
-  '24': '6rem',       // 96px
+  '0.5': '0.125rem', // 2px
+  '1': '0.25rem', // 4px
+  '1.5': '0.375rem', // 6px
+  '2': '0.5rem', // 8px
+  '2.5': '0.625rem', // 10px
+  '3': '0.75rem', // 12px
+  '3.5': '0.875rem', // 14px
+  '4': '1rem', // 16px
+  '5': '1.25rem', // 20px
+  '6': '1.5rem', // 24px
+  '7': '1.75rem', // 28px
+  '8': '2rem', // 32px
+  '9': '2.25rem', // 36px
+  '10': '2.5rem', // 40px
+  '12': '3rem', // 48px
+  '14': '3.5rem', // 56px
+  '16': '4rem', // 64px
+  '20': '5rem', // 80px
+  '24': '6rem', // 96px
 } as const;
 
 // =============================================================================
@@ -210,13 +210,13 @@ export const spacing = {
 
 export const borderRadius = {
   none: '0',
-  sm: '0.25rem',      // 4px
-  DEFAULT: '0.5rem',  // 8px
-  md: '0.5rem',       // 8px
-  lg: '0.75rem',      // 12px
-  xl: '1rem',         // 16px
-  '2xl': '1.25rem',   // 20px
-  '3xl': '1.5rem',    // 24px
+  sm: '0.25rem', // 4px
+  DEFAULT: '0.5rem', // 8px
+  md: '0.5rem', // 8px
+  lg: '0.75rem', // 12px
+  xl: '1rem', // 16px
+  '2xl': '1.25rem', // 20px
+  '3xl': '1.5rem', // 24px
   full: '9999px',
 } as const;
 
@@ -234,7 +234,7 @@ export const shadows = {
   '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
   inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.3)',
   none: 'none',
-  
+
   // Glow effects for accents
   glow: {
     primary: '0 0 20px rgba(99, 102, 241, 0.3), 0 0 40px rgba(99, 102, 241, 0.1)',
@@ -295,27 +295,27 @@ export const semanticDark = {
   background: colors.charcoal[850],
   backgroundAlt: colors.charcoal[800],
   backgroundDeep: colors.charcoal[900],
-  
+
   // Surfaces
   surface: colors.charcoal[800],
   surfaceHover: colors.charcoal[750],
   surfaceActive: colors.charcoal[700],
   surfaceStrong: colors.charcoal[700],
   surfaceMuted: colors.charcoal[600],
-  
+
   // Text
   text: colors.charcoal[100],
   textPrimary: colors.charcoal[100],
   textSecondary: colors.charcoal[300],
   textTertiary: colors.charcoal[400],
   textMuted: colors.charcoal[500],
-  
+
   // Borders
   border: colors.charcoal[700],
   borderSubtle: colors.charcoal[700],
   borderStrong: colors.charcoal[600],
   borderMuted: colors.charcoal[600],
-  
+
   // Primary accent
   primary: colors.indigo[500],
   primaryHover: colors.indigo[400],
@@ -323,30 +323,30 @@ export const semanticDark = {
   primaryMuted: colors.indigo[300],
   primarySoft: `rgba(99, 102, 241, 0.15)`,
   primaryGlow: `rgba(99, 102, 241, 0.3)`,
-  
+
   // Secondary accent
   accent: colors.cyan[500],
   accentHover: colors.cyan[400],
   accentSoft: `rgba(6, 182, 212, 0.15)`,
-  
+
   // Warm accent
   warm: colors.amber[500],
   warmHover: colors.amber[400],
   warmSoft: `rgba(245, 158, 11, 0.15)`,
-  
+
   // Status
   success: colors.emerald[500],
   successHover: colors.emerald[400],
   successSoft: `rgba(16, 185, 129, 0.15)`,
-  
+
   warning: colors.amber[500],
   warningHover: colors.amber[400],
   warningSoft: `rgba(245, 158, 11, 0.15)`,
-  
+
   error: colors.rose[500],
   errorHover: colors.rose[400],
   errorSoft: `rgba(244, 63, 94, 0.15)`,
-  
+
   // Overlays
   overlay: 'rgba(0, 0, 0, 0.5)',
   overlayLight: 'rgba(0, 0, 0, 0.3)',
@@ -362,27 +362,27 @@ export const semanticLight = {
   background: colors.slate[100],
   backgroundAlt: colors.slate[50],
   backgroundDeep: colors.slate[200],
-  
+
   // Surfaces
   surface: colors.white,
   surfaceHover: colors.slate[50],
   surfaceActive: colors.slate[100],
   surfaceStrong: colors.slate[200],
   surfaceMuted: colors.slate[100],
-  
+
   // Text
   text: colors.slate[900],
   textPrimary: colors.slate[900],
   textSecondary: colors.slate[600],
   textTertiary: colors.slate[500],
   textMuted: colors.slate[400],
-  
+
   // Borders
   border: colors.slate[200],
   borderSubtle: colors.slate[200],
   borderStrong: colors.slate[300],
   borderMuted: colors.slate[200],
-  
+
   // Primary accent
   primary: colors.indigo[600],
   primaryHover: colors.indigo[500],
@@ -390,30 +390,30 @@ export const semanticLight = {
   primaryMuted: colors.indigo[400],
   primarySoft: `rgba(79, 70, 229, 0.1)`,
   primaryGlow: `rgba(79, 70, 229, 0.2)`,
-  
+
   // Secondary accent
   accent: colors.cyan[600],
   accentHover: colors.cyan[500],
   accentSoft: `rgba(8, 145, 178, 0.1)`,
-  
+
   // Warm accent
   warm: colors.amber[600],
   warmHover: colors.amber[500],
   warmSoft: `rgba(217, 119, 6, 0.1)`,
-  
+
   // Status
   success: colors.emerald[600],
   successHover: colors.emerald[500],
   successSoft: `rgba(5, 150, 105, 0.1)`,
-  
+
   warning: colors.amber[600],
   warningHover: colors.amber[500],
   warningSoft: `rgba(217, 119, 6, 0.1)`,
-  
+
   error: colors.rose[600],
   errorHover: colors.rose[500],
   errorSoft: `rgba(225, 29, 72, 0.1)`,
-  
+
   // Overlays
   overlay: 'rgba(0, 0, 0, 0.3)',
   overlayLight: 'rgba(0, 0, 0, 0.1)',
@@ -438,5 +438,3 @@ export type DesignTokens = typeof tokens;
 export type Colors = typeof colors;
 export type SemanticDark = typeof semanticDark;
 export type SemanticLight = typeof semanticLight;
-
-

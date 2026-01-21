@@ -3,3 +3,7 @@ export * from './GenerationFlowCard';
 export * from './PostAdjustmentsPanel';
 export * from './CollectionConfigPanel';
 export * from './FlowGenerateConfigPanel';
+export * from './AssetCard';
+export * from './ProductAssetCard';
+export * from './ThumbnailNav';
+export * from './shared';

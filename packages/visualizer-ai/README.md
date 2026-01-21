@@ -94,4 +94,3 @@ This package is written in TypeScript and includes full type definitions.
 ## License
 
 Private - Internal use only
-

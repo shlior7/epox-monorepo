@@ -35,11 +35,7 @@ interface FlowAssistantProps {
 }
 
 // Simple intent parser for flow operations
-function parseUserIntent(
-  message: string,
-  selectedFlow: Flow | null,
-  products: Product[]
-): { response: string; actions: FlowAction[] } {
+function parseUserIntent(message: string, selectedFlow: Flow | null, products: Product[]): { response: string; actions: FlowAction[] } {
   const lowerMessage = message.toLowerCase();
   const actions: FlowAction[] = [];
   let response = '';
@@ -118,7 +114,7 @@ function parseUserIntent(
       });
       response += (response ? ' ' : '') + "I'll start generating the image now.";
     } else {
-      response = "Please add products to the flow first before generating.";
+      response = 'Please add products to the flow first before generating.';
     }
   }
 
@@ -313,12 +309,7 @@ export function FlowAssistant({
                 {message.actions && message.actions.length > 0 && (
                   <div className={styles.actionButtons}>
                     {message.actions.map((action, idx) => (
-                      <button
-                        key={idx}
-                        className={styles.actionButton}
-                        onClick={() => handleActionClick(action)}
-                        type="button"
-                      >
+                      <button key={idx} className={styles.actionButton} onClick={() => handleActionClick(action)} type="button">
                         {action.label}
                       </button>
                     ))}
@@ -350,13 +341,12 @@ export function FlowAssistant({
             rows={2}
             disabled={isProcessing}
           />
-          <button
-            className={styles.sendButton}
-            onClick={handleSend}
-            disabled={!inputText.trim() || isProcessing}
-            type="button"
-          >
-            {isProcessing ? <Loader2 className={styles.spinner} style={{ width: 18, height: 18 }} /> : <Send style={{ width: 18, height: 18 }} />}
+          <button className={styles.sendButton} onClick={handleSend} disabled={!inputText.trim() || isProcessing} type="button">
+            {isProcessing ? (
+              <Loader2 className={styles.spinner} style={{ width: 18, height: 18 }} />
+            ) : (
+              <Send style={{ width: 18, height: 18 }} />
+            )}
           </button>
         </div>
       </div>

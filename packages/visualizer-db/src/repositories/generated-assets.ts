@@ -9,6 +9,7 @@ export interface GeneratedAssetListOptions {
   /** Filter by generation flow ID */
   flowId?: string;
   productId?: string;
+  productIds?: string[];
   pinned?: boolean;
   status?: AssetStatus;
   approvalStatus?: ApprovalStatus;
@@ -371,6 +372,11 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
       conditions.push(sql`${generatedAsset.productIds} @> ${JSON.stringify([options.productId])}::jsonb`);
     }
 
+    if (options.productIds && options.productIds.length > 0) {
+      const arrayLiteral = `array[${options.productIds.map((id) => `'${id.replaceAll("'", "''")}'`).join(', ')}]`;
+      conditions.push(sql`${generatedAsset.productIds} ?| ${sql.raw(arrayLiteral)}`);
+    }
+
     if (options.pinned !== undefined) {
       conditions.push(eq(generatedAsset.pinned, options.pinned));
     }
@@ -424,6 +430,56 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
     return result.count;
   }
 
+  // ===== COUNT BY GENERATION FLOW IDS =====
+
+  async countByGenerationFlowIds(clientId: string, generationFlowIds: string[], status?: AssetStatus): Promise<number> {
+    if (generationFlowIds.length === 0) {
+      return 0;
+    }
+
+    const conditions: SQL[] = [
+      eq(generatedAsset.clientId, clientId),
+      isNull(generatedAsset.deletedAt),
+      inArray(generatedAsset.generationFlowId, generationFlowIds),
+    ];
+
+    if (status) {
+      conditions.push(eq(generatedAsset.status, status));
+    }
+
+    const [result] = await this.drizzle
+      .select({ count: sql<number>`count(*)::int` })
+      .from(generatedAsset)
+      .where(and(...conditions));
+
+    return result.count;
+  }
+
+  async getFirstByGenerationFlowIds(clientId: string, generationFlowIds: string[], status?: AssetStatus): Promise<GeneratedAsset | null> {
+    if (generationFlowIds.length === 0) {
+      return null;
+    }
+
+    const conditions: SQL[] = [
+      eq(generatedAsset.clientId, clientId),
+      isNull(generatedAsset.deletedAt),
+      inArray(generatedAsset.generationFlowId, generationFlowIds),
+    ];
+
+    if (status) {
+      conditions.push(eq(generatedAsset.status, status));
+    }
+
+    const rows = await this.drizzle
+      .select()
+      .from(generatedAsset)
+      .where(and(...conditions))
+      .orderBy(desc(generatedAsset.createdAt))
+      .limit(1);
+
+    return rows[0] ? this.mapToEntity(rows[0]) : null;
+  }
+
   // ===== GET FIRST BY PRODUCT IDS (for thumbnails) =====
 
   async getFirstByProductIds(clientId: string, productIds: string[], status?: AssetStatus): Promise<GeneratedAsset | null> {
@@ -457,7 +513,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
    */
   async getDistinctSceneTypes(
     clientId: string,
-    options?: Pick<GeneratedAssetListOptions, 'flowId' | 'productId' | 'status'>
+    options?: Pick<GeneratedAssetListOptions, 'flowId' | 'productId' | 'productIds' | 'status'>
   ): Promise<string[]> {
     const conditions: SQL[] = [eq(generatedAsset.clientId, clientId), isNull(generatedAsset.deletedAt)];
 
@@ -468,6 +524,11 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
     if (options?.productId) {
       // productIds is a JSONB column, use jsonb containment operator with proper jsonb cast
       conditions.push(sql`${generatedAsset.productIds} @> ${JSON.stringify([options.productId])}::jsonb`);
+    }
+
+    if (options?.productIds && options.productIds.length > 0) {
+      const arrayLiteral = `array[${options.productIds.map((id) => `'${id.replaceAll("'", "''")}'`).join(', ')}]`;
+      conditions.push(sql`${generatedAsset.productIds} ?| ${sql.raw(arrayLiteral)}`);
     }
 
     if (options?.status) {

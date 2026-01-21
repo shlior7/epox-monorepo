@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, GenerateVideosOperation } from '@google/genai';
 import { createDefaultConfig } from './config';
 import { AI_MODELS, ERROR_MESSAGES } from './constants';
 import { estimateTokenUsage } from './utils';
@@ -91,6 +91,99 @@ Your response must be a valid JSON object with these exact fields:
 
 `;
 
+const VISION_SCANNER_PROMPT = `You are a Forensic Interior Architecture Scanner. Your goal is to analyze the input image and extract a structured inventory of visual elements for a generative 3D reconstruction pipeline.
+
+### CRITICAL INSTRUCTIONS
+1. **NO SUMMARIZATION:** Do not describe the "vibe." Break the scene down into atomic elements.
+2. **STRICT JSON OUTPUT:** You must output ONLY valid JSON. No markdown formatting, no conversational text.
+3. **UNIVERSAL SCANNING:** Detect every major surface, prop, and light source.
+4. **STYLING DETECTION:** Explicitly look for accessories placed ON the main furniture/subject in the reference (e.g., throw blankets, pillows, open books) and extract them separately.
+
+### OUTPUT SCHEMA (JSON)
+{
+  "styleSummary": "A concise, one-sentence visual hook describing the overall vibe (e.g., 'A serene, cream-white Japandi bedroom with soft organic curves.')",
+  "detectedSceneType": "The type of scene/room detected (e.g., 'Bedroom', 'Living-Room', 'Office', 'Kitchen', 'Garden', 'Studio'). Use hyphenated format for multi-word types.",
+  "heroObjectAccessories": {
+    "description": "If the reference image contains a main object (like a bed, sofa, or table) with decor ON it, describe it here. If none, return null.",
+    "identity": "String (e.g., 'Chunky Knit Throw Blanket', 'Ceramic Vase with dried flowers')",
+    "materialPhysics": "String (e.g., 'Cream wool with heavy drape', 'Matte white porcelain')",
+    "placement": "String (e.g., 'Draped casually over the bottom left corner', 'Centered on the table surface')"
+  },
+  "sceneInventory": [
+    {
+      "identity": "String (e.g., 'Back Wall', 'Curtain', 'Floor Lamp')",
+      "geometry": "String (e.g., 'Arched', 'Tall and columnar', 'Flat and expansive')",
+      "surfacePhysics": "String (e.g., 'Rough hewn limestone', 'Semi-transparent linen', 'Polished concrete')",
+      "colorGrading": "String (e.g., 'Warm terracotta', 'Desaturated sage green', 'Deep navy')",
+      "spatialContext": "String (e.g., 'Framing the view', 'Draping loosely over the window', 'Receding into shadow')"
+    }
+  ],
+  "lightingPhysics": {
+    "sourceDirection": "String (e.g., 'Hard sunlight from top-left')",
+    "shadowQuality": "String (e.g., 'Long, sharp, high-contrast shadows')",
+    "colorTemperature": "String (e.g., 'Golden hour warm', 'Cool overcast blue')"
+  }
+}
+`;
+
+const SUBJECT_SCANNER_PROMPT = `You are a Product Taxonomy and Computer Vision Analyst. Your goal is to analyze the input product image and output strict metadata to control a generative pipeline.
+
+### OUTPUT SCHEMA (JSON)
+{
+  "subjectClassHyphenated": "String (e.g., 'Dining-Chair', 'Serum-Bottle', 'Floor-Lamp', 'Coffee-Table'). Hyphenate multi-word names to treat them as a single token.",
+  "nativeSceneTypes": "Array of strings - ALL logical environments where this object could naturally function. Use hyphenated format. Examples: ['Living-Room', 'Office', 'Bedroom'] for a chair, ['Bathroom', 'Vanity-Counter'] for skincare, ['Kitchen', 'Dining-Room'] for cookware.",
+  "nativeSceneCategory": "Enum (Select ONE strictly: 'Indoor Room', 'Outdoor Nature', 'Urban/Street', 'Studio'). Based on where this product is typically used.",
+  "inputCameraAngle": "Enum (Select ONE strictly: 'Frontal', 'Angled', 'Top-Down', 'Low Angle'). Based on the product's perspective in the frame.",
+  "dominantColors": "Array of color names detected in the product (e.g., ['Walnut Brown', 'Brass Gold', 'Cream White'])",
+  "materialTags": "Array of material keywords (e.g., ['wood', 'metal', 'fabric', 'glass', 'leather', 'ceramic'])"
+}
+
+### IMPORTANT RULES
+1. For nativeSceneTypes, include ALL plausible scene types where this product could be placed. A dining chair could work in a dining room, office, or living room. A bed only works in a bedroom.
+2. Use hyphenated format for multi-word scene types: "Living-Room" not "Living Room"
+3. Be specific with subjectClassHyphenated - "Accent-Chair" is better than just "Chair"
+4. Detect the actual camera angle from the image perspective, not what would be ideal
+`;
+
+const VIDEO_PROMPT_ENHANCE_PROMPT = `You are a professional video prompt engineer.
+
+Goal: create a concise, production-ready video prompt based on the provided image and settings.
+
+Rules:
+- Return plain text only (no JSON, no quotes).
+- Keep it to 2-3 sentences, max 60 words.
+- Align strictly with the image contents; do not invent new objects.
+- Incorporate settings if provided (video type, camera motion, aspect ratio, resolution, sound).
+- Follow best practices: single continuous shot, clear subject action, smooth physically plausible motion, consistent lighting/scale, avoid impossible actions or physics-defying effects.
+`;
+
+const VIDEO_SYSTEM_PROMPT_PREFIX = 'SYSTEM GUIDELINES:';
+
+const VIDEO_GENERATION_SYSTEM_GUIDELINES = `Create a high-end commercial product video that showcases the product.
+- Preserve product identity (shape, materials, colors, branding) from the source image.
+- Keep background, lighting, and shadows consistent; avoid flicker.
+- Use a single continuous shot with smooth, physically plausible motion.
+- Keep the product in frame and in focus; avoid occlusion.
+- Do not add or remove objects or change the environment unless explicitly requested.
+- Follow any provided settings and sound instructions exactly.`;
+
+const buildVideoGenerationPrompt = (
+  prompt: string,
+  settings: { aspectRatio?: GeminiVideoRequest['aspectRatio']; resolution?: GeminiVideoRequest['resolution'] }
+): string => {
+  const trimmedPrompt = prompt.trim();
+  if (trimmedPrompt.startsWith(VIDEO_SYSTEM_PROMPT_PREFIX)) {
+    return trimmedPrompt;
+  }
+
+  const settingsLines: string[] = [];
+  if (settings.aspectRatio) settingsLines.push(`Aspect ratio: ${settings.aspectRatio}`);
+  if (settings.resolution) settingsLines.push(`Resolution: ${settings.resolution}`);
+  const settingsBlock = settingsLines.length > 0 ? `Settings:\n${settingsLines.join('\n')}\n` : '';
+
+  return `${VIDEO_SYSTEM_PROMPT_PREFIX}\n${VIDEO_GENERATION_SYSTEM_GUIDELINES}\n\n${settingsBlock}User prompt:\n${trimmedPrompt}`;
+};
+
 const SUPPORTED_ASPECT_RATIOS = new Set(['1:1', '3:4', '4:3', '9:16', '16:9']);
 
 const normalizeAspectRatio = (value?: string): string => {
@@ -119,6 +212,37 @@ const normalizeVertexModelName = (model: string): string => {
     return model;
   }
   return `publishers/google/models/${model}`;
+};
+
+type VisionScannerOutput = {
+  styleSummary: string;
+  detectedSceneType: string;
+  heroObjectAccessories: {
+    identity: string;
+    materialPhysics: string;
+    placement: string;
+  } | null;
+  sceneInventory: Array<{
+    identity: string;
+    geometry: string;
+    surfacePhysics: string;
+    colorGrading: string;
+    spatialContext: string;
+  }>;
+  lightingPhysics: {
+    sourceDirection: string;
+    shadowQuality: string;
+    colorTemperature: string;
+  };
+};
+
+type SubjectScannerOutput = {
+  subjectClassHyphenated: string;
+  nativeSceneTypes: string[];
+  nativeSceneCategory: 'Indoor Room' | 'Outdoor Nature' | 'Urban/Street' | 'Studio';
+  inputCameraAngle: 'Frontal' | 'Angled' | 'Top-Down' | 'Low Angle';
+  dominantColors?: string[];
+  materialTags?: string[];
 };
 
 export class GeminiService {
@@ -686,15 +810,21 @@ export class GeminiService {
 
   /**
    * Generate a single video using Gemini video generation API.
+   * Uses exponential backoff for polling to reduce API calls.
    */
   async generateVideo(request: GeminiVideoRequest): Promise<GeminiVideoResponse> {
     const operationName = await this.startVideoGeneration(request);
     let result: GeminiVideoResponse | null = null;
 
-    // Prevent infinite polling with a timeout (10 minutes)
+    // Exponential backoff configuration
     const maxTimeoutMs = 10 * 60 * 1000; // 10 minutes
-    const pollIntervalMs = 5000; // 5 seconds
+    const initialPollIntervalMs = 2000; // Start at 2 seconds
+    const maxPollIntervalMs = 30000; // Cap at 30 seconds
+    const backoffMultiplier = 1.5; // 1.5x increase each time
     const startTime = Date.now();
+
+    let currentPollIntervalMs = initialPollIntervalMs;
+    let pollCount = 0;
 
     while (!result) {
       const elapsedMs = Date.now() - startTime;
@@ -702,16 +832,26 @@ export class GeminiService {
         throw new Error(`Video generation timed out after ${Math.round(elapsedMs / 1000)}s (operation: ${operationName})`);
       }
 
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      // Exponential backoff: 2s, 3s, 4.5s, 6.75s, 10.1s, 15.2s, 22.8s, 30s (cap)
+      await new Promise((resolve) => setTimeout(resolve, currentPollIntervalMs));
+
       result = await this.pollVideoGeneration({
         operationName,
         prompt: request.prompt,
         model: request.model,
-        durationSeconds: request.durationSeconds,
-        fps: request.fps,
+        aspectRatio: request.aspectRatio,
+        resolution: request.resolution,
       });
+
+      // Increase interval for next poll (capped at max)
+      if (!result) {
+        pollCount++;
+        currentPollIntervalMs = Math.min(currentPollIntervalMs * backoffMultiplier, maxPollIntervalMs);
+        console.log(`🎬 Video still processing... (poll #${pollCount}, next check in ${Math.round(currentPollIntervalMs / 1000)}s)`);
+      }
     }
 
+    console.log(`✅ Video completed after ${pollCount} polls in ${Math.round((Date.now() - startTime) / 1000)}s`);
     return result;
   }
 
@@ -724,20 +864,29 @@ export class GeminiService {
     const videoClient = this.vertexClient ?? this.client;
     const resolvedModel = this.vertexClient ? normalizeVertexModelName(model) : model;
 
+    // Map resolution to Gemini's personGeneration format (if applicable)
+    // Veo uses aspectRatio directly
+    const aspectRatio = request.aspectRatio ?? '16:9';
+
+    const prompt = buildVideoGenerationPrompt(request.prompt, {
+      aspectRatio: request.aspectRatio,
+      resolution: request.resolution,
+    });
+
     console.log(`🎬 GEMINI: Starting video generation with ${resolvedModel}...`);
+    console.log(`🎬 GEMINI: aspectRatio=${aspectRatio}, resolution=${request.resolution}`);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const operation = await (videoClient.models as any).generateVideos({
       model: resolvedModel,
-      prompt: request.prompt,
+      prompt,
       image: {
         imageBytes: image.base64Data,
         mimeType: image.mimeType,
       },
       config: {
         numberOfVideos: 1,
-        ...(request.durationSeconds ? { durationSeconds: request.durationSeconds } : {}),
-        ...(request.fps ? { fps: request.fps } : {}),
+        aspectRatio,
       },
     });
 
@@ -756,14 +905,13 @@ export class GeminiService {
     operationName: string;
     prompt: string;
     model?: string;
-    durationSeconds?: number;
-    fps?: number;
+    aspectRatio?: '16:9' | '9:16';
+    resolution?: '720p' | '1080p';
   }): Promise<GeminiVideoResponse | null> {
     const videoClient = this.vertexClient ?? this.client;
 
-    const operation = {
-      name: request.operationName,
-    };
+    const operation = new GenerateVideosOperation();
+    operation.name = request.operationName;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updatedOperation = await (videoClient.operations as any).getVideosOperation({ operation });
@@ -784,6 +932,10 @@ export class GeminiService {
       throw new Error('Video generation completed but no URI returned.');
     }
 
+    const resolvedPrompt = buildVideoGenerationPrompt(request.prompt, {
+      aspectRatio: request.aspectRatio,
+      resolution: request.resolution,
+    });
     const { buffer, mimeType } = await this.downloadGeneratedVideo(downloadLink);
     const resolvedModel = request.model ?? 'veo-3.1-generate-preview';
 
@@ -793,10 +945,10 @@ export class GeminiService {
       mimeType,
       metadata: {
         model: resolvedModel,
-        prompt: request.prompt,
+        prompt: resolvedPrompt,
         generatedAt: new Date().toISOString(),
-        durationSeconds: request.durationSeconds,
-        fps: request.fps,
+        aspectRatio: request.aspectRatio,
+        resolution: request.resolution,
       },
     };
   }
@@ -804,10 +956,12 @@ export class GeminiService {
   private async downloadGeneratedVideo(downloadLink: string): Promise<{ buffer: Buffer; mimeType: string }> {
     const apiKey = AI_CONFIG.gemini.apiKey;
     const headers: HeadersInit = {};
+    let url = downloadLink;
 
-    // Use Authorization header instead of query parameter to avoid exposing API key
+    // Gemini video download expects the API key as a query parameter.
     if (apiKey && !downloadLink.includes('key=')) {
-      headers.Authorization = `Bearer ${apiKey}`;
+      const separator = downloadLink.includes('?') ? '&' : '?';
+      url = `${downloadLink}${separator}key=${encodeURIComponent(apiKey)}`;
     }
 
     // Set up timeout (default 5 minutes for video downloads)
@@ -816,7 +970,7 @@ export class GeminiService {
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const videoResponse = await fetch(downloadLink, {
+      const videoResponse = await fetch(url, {
         headers,
         signal: controller.signal,
       });
@@ -848,6 +1002,117 @@ export class GeminiService {
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  /**
+   * Enhance a video prompt using Gemini vision + text capabilities
+   */
+  async enhanceVideoPrompt(
+    imageUrl: string,
+    videoType?: string,
+    settings?: {
+      videoType?: string;
+      cameraMotion?: string;
+      aspectRatio?: '16:9' | '9:16';
+      resolution?: '720p' | '1080p';
+      sound?: 'with_music' | 'no_sound' | 'automatic' | 'custom';
+      soundPrompt?: string;
+    },
+    userPrompt?: string
+  ): Promise<string> {
+    console.log('🎬 Enhancing video prompt:', `${imageUrl.substring(0, 100)}...`);
+
+    const image = await normalizeImageInput(imageUrl);
+    const imagePart = {
+      inlineData: {
+        data: image.base64Data,
+        mimeType: image.mimeType,
+      },
+    };
+
+    const resolvedVideoType = videoType ?? settings?.videoType;
+    const lines: string[] = [];
+
+    if (userPrompt?.trim()) {
+      lines.push(`Base prompt: ${userPrompt.trim()}`);
+    }
+    if (resolvedVideoType) {
+      lines.push(`Video type: ${resolvedVideoType}`);
+    }
+    if (settings?.cameraMotion) {
+      lines.push(`Camera motion: ${settings.cameraMotion}`);
+    }
+    if (settings?.aspectRatio) {
+      lines.push(`Aspect ratio: ${settings.aspectRatio}`);
+    }
+    if (settings?.resolution) {
+      lines.push(`Resolution: ${settings.resolution}`);
+    }
+    if (settings?.sound) {
+      if (settings.sound === 'custom' && settings.soundPrompt?.trim()) {
+        lines.push(`Sound: ${settings.soundPrompt.trim()}`);
+      } else if (settings.sound === 'with_music') {
+        lines.push('Sound: with music');
+      } else if (settings.sound === 'no_sound') {
+        lines.push('Sound: no sound');
+      } else if (settings.sound === 'automatic') {
+        lines.push('Sound: automatic');
+      } else {
+        lines.push(`Sound: ${settings.sound}`);
+      }
+    }
+
+    const context = lines.length > 0 ? lines.join('\n') : 'Base prompt: (none provided)';
+
+    let response = await this.client.models
+      .generateContent({
+        model: this.resolveTextModel(this.textModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: `${VIDEO_PROMPT_ENHANCE_PROMPT}\n${context}` }, imagePart],
+          },
+        ],
+      })
+      .catch(async (error: unknown) => {
+        if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel) {
+          console.warn(`⚠️ Video prompt enhancement failed on ${this.textModel}, retrying with ${this.fallbackTextModel}...`);
+          return this.client.models.generateContent({
+            model: this.resolveTextModel(this.fallbackTextModel),
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: `${VIDEO_PROMPT_ENHANCE_PROMPT}\n${context}` }, imagePart],
+              },
+            ],
+          });
+        }
+        throw error;
+      });
+
+    if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel && !response.text) {
+      console.warn(`⚠️ No text returned by ${this.textModel}, retrying with fallback ${this.fallbackTextModel}...`);
+      response = await this.client.models.generateContent({
+        model: this.resolveTextModel(this.fallbackTextModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: `${VIDEO_PROMPT_ENHANCE_PROMPT}\n${context}` }, imagePart],
+          },
+        ],
+      });
+    }
+
+    const text = response.text?.trim();
+    if (text) {
+      return text;
+    }
+
+    if (lines.length > 0) {
+      return lines.join('\n');
+    }
+
+    return 'Cinematic video of the provided scene with smooth camera motion and natural lighting.';
   }
 
   /**
@@ -986,6 +1251,144 @@ export class GeminiService {
     console.log('📝 Gemini response:', text);
 
     return JSON.parse(text);
+  }
+
+  /**
+   * Vision Scanner: Analyze inspiration/reference image for scene reconstruction
+   */
+  async analyzeInspirationImage(imageUrl: string): Promise<VisionScannerOutput> {
+    console.log('🔍 Vision Scanner analyzing inspiration image:', `${imageUrl.substring(0, 100)}...`);
+
+    const image = await normalizeImageInput(imageUrl);
+    const imagePart = {
+      inlineData: {
+        data: image.base64Data,
+        mimeType: image.mimeType,
+      },
+    };
+
+    console.log('🚀 Sending inspiration image to Gemini for Vision Scanner analysis...');
+    let response = await this.client.models
+      .generateContent({
+        model: this.resolveTextModel(this.textModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: VISION_SCANNER_PROMPT }, imagePart],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      })
+      .catch(async (error: unknown) => {
+        if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel) {
+          console.warn(`⚠️ Vision Scanner failed on ${this.textModel}, retrying with ${this.fallbackTextModel}...`);
+          return this.client.models.generateContent({
+            model: this.resolveTextModel(this.fallbackTextModel),
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: VISION_SCANNER_PROMPT }, imagePart],
+              },
+            ],
+            config: {
+              responseMimeType: 'application/json',
+            },
+          });
+        }
+        throw error;
+      });
+
+    if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel && !response.text) {
+      console.warn(`⚠️ No text returned by ${this.textModel}, retrying with fallback ${this.fallbackTextModel}...`);
+      response = await this.client.models.generateContent({
+        model: this.resolveTextModel(this.fallbackTextModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: VISION_SCANNER_PROMPT }, imagePart],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+    }
+
+    const text = response.text ?? '';
+    console.log('📝 Vision Scanner response:', text.substring(0, 500));
+
+    return JSON.parse(text) as VisionScannerOutput;
+  }
+
+  /**
+   * Subject Scanner: Analyze product image for taxonomy and constraints
+   */
+  async analyzeProductSubject(imageUrl: string): Promise<SubjectScannerOutput> {
+    console.log('🔍 Subject Scanner analyzing product image:', `${imageUrl.substring(0, 100)}...`);
+
+    const image = await normalizeImageInput(imageUrl);
+    const imagePart = {
+      inlineData: {
+        data: image.base64Data,
+        mimeType: image.mimeType,
+      },
+    };
+
+    console.log('🚀 Sending product image to Gemini for Subject Scanner analysis...');
+    let response = await this.client.models
+      .generateContent({
+        model: this.resolveTextModel(this.textModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: SUBJECT_SCANNER_PROMPT }, imagePart],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      })
+      .catch(async (error: unknown) => {
+        if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel) {
+          console.warn(`⚠️ Subject Scanner failed on ${this.textModel}, retrying with ${this.fallbackTextModel}...`);
+          return this.client.models.generateContent({
+            model: this.resolveTextModel(this.fallbackTextModel),
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: SUBJECT_SCANNER_PROMPT }, imagePart],
+              },
+            ],
+            config: {
+              responseMimeType: 'application/json',
+            },
+          });
+        }
+        throw error;
+      });
+
+    if (this.fallbackTextModel && this.fallbackTextModel !== this.textModel && !response.text) {
+      console.warn(`⚠️ No text returned by ${this.textModel}, retrying with fallback ${this.fallbackTextModel}...`);
+      response = await this.client.models.generateContent({
+        model: this.resolveTextModel(this.fallbackTextModel),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: SUBJECT_SCANNER_PROMPT }, imagePart],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+    }
+
+    const text = response.text ?? '';
+    console.log('📝 Subject Scanner response:', text.substring(0, 500));
+
+    return JSON.parse(text) as SubjectScannerOutput;
   }
 
   /**

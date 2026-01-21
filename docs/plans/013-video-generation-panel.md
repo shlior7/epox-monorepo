@@ -10,6 +10,7 @@
 ## Background
 
 The epox-platform Studio supports image generation flows in:
+
 - `apps/epox-platform/app/(dashboard)/studio/[id]/page.tsx`
 - `apps/epox-platform/app/(dashboard)/studio/collections/[id]/page.tsx`
 
@@ -43,19 +44,23 @@ Video generation is not exposed in epox-platform Studio, and there is no panel f
 ### Video Inputs (Video Tab)
 
 **Base Image**
+
 - Single flow: use the selected base image from Product Details (existing selection).
 - Collection: use `collection.selectedBaseImages[productId]` for each flow (fallback to primary image).
 - Show a preview and provide a link to change the base image using existing selectors.
 
 **Inspiration Image**
+
 - Choose one image from the current inspiration images list or select "None".
 - Optional note to describe inspiration intent (used in prompt if model only accepts text).
 
 **Prompt**
+
 - Dedicated video prompt (separate from image `userPrompt`).
 - Final prompt is composed from prompt + settings + inspiration note.
 
 **Video Settings**
+
 - Freeform text inputs (optional):
   - Video type (e.g., "pan over product", "actor uses product")
   - Camera motion
@@ -79,8 +84,6 @@ Users can save the current video settings as a named preset and re-apply later.
 export interface VideoPromptSettings {
   videoType?: string;
   cameraMotion?: string;
-  subjectAction?: string;
-  sceneAction?: string;
   durationSeconds?: number;
 }
 
@@ -113,16 +116,10 @@ export interface VideoPreset {
 `apps/epox-platform/app/(dashboard)/studio/[id]/page.tsx`
 
 ```ts
-function buildVideoPrompt(
-  basePrompt: string,
-  settings: VideoPromptSettings,
-  inspirationNote?: string
-): string {
+function buildVideoPrompt(basePrompt: string, settings: VideoPromptSettings, inspirationNote?: string): string {
   const lines = [basePrompt.trim()];
   if (settings.videoType) lines.push(`Video type: ${settings.videoType}`);
   if (settings.cameraMotion) lines.push(`Camera motion: ${settings.cameraMotion}`);
-  if (settings.subjectAction) lines.push(`Subject action: ${settings.subjectAction}`);
-  if (settings.sceneAction) lines.push(`Scene action: ${settings.sceneAction}`);
   if (settings.durationSeconds) lines.push(`Duration: ${settings.durationSeconds}s`);
   if (inspirationNote) lines.push(`Style reference: ${inspirationNote}`);
   return lines.filter(Boolean).join('\n');
@@ -162,6 +159,7 @@ flowchart TD
 ## Examples
 
 ✅ Good (prompt includes settings):
+
 ```
 Prompt: Clean studio shot of the chair
 Video type: slow pan over product
@@ -173,6 +171,7 @@ Style reference: warm minimal studio
 ```
 
 ❌ Bad (missing base image selection):
+
 ```
 Prompt: cinematic
 ```

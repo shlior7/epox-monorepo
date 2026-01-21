@@ -43,14 +43,7 @@ import {
   STOCK_SCENES,
   cloneDefaultSceneSettings,
 } from '@/lib/constants/scene-studio';
-import {
-  Product,
-  Scene,
-  SlotStatus,
-  SceneGenerationSettings,
-  OutputSlotConfig,
-  GeneratedSceneImage,
-} from '@/lib/types/app-types';
+import { Product, Scene, SlotStatus, SceneGenerationSettings, OutputSlotConfig, GeneratedSceneImage } from '@/lib/types/app-types';
 import styles from './page.module.scss';
 
 export default function SceneStudioPage() {
@@ -162,25 +155,15 @@ export default function SceneStudioPage() {
 
   // Update selected rows
   const updateSelectedRows = (updates: Partial<SceneGenerationSettings>) => {
-    setRows((prev) =>
-      prev.map((row) =>
-        selectedRowIds.has(row.id)
-          ? { ...row, settings: { ...row.settings, ...updates } }
-          : row
-      )
-    );
+    setRows((prev) => prev.map((row) => (selectedRowIds.has(row.id) ? { ...row, settings: { ...row.settings, ...updates } } : row)));
   };
 
   // Get mixed value for multi-selection
-  const getMixedValue = <K extends keyof SceneGenerationSettings>(
-    field: K
-  ): SceneGenerationSettings[K] | 'Mixed' | '' => {
+  const getMixedValue = <K extends keyof SceneGenerationSettings>(field: K): SceneGenerationSettings[K] | 'Mixed' | '' => {
     const selected = rows.filter((r) => selectedRowIds.has(r.id));
     if (selected.length === 0) return '' as any;
     const firstValue = selected[0].settings[field];
-    const isMixed = selected.some(
-      (r) => JSON.stringify(r.settings[field]) !== JSON.stringify(firstValue)
-    );
+    const isMixed = selected.some((r) => JSON.stringify(r.settings[field]) !== JSON.stringify(firstValue));
     return (isMixed ? 'Mixed' : (firstValue ?? '')) as any;
   };
 
@@ -189,11 +172,7 @@ export default function SceneStudioPage() {
     const row = rows.find((r) => r.id === rowId);
     if (!row || row.productIds.length === 0) return;
 
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === rowId ? { ...r, status: SlotStatus.GENERATING } : r
-      )
-    );
+    setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, status: SlotStatus.GENERATING } : r)));
 
     try {
       // TODO: Implement actual generation API call
@@ -226,9 +205,7 @@ export default function SceneStudioPage() {
         )
       );
     } catch (err) {
-      setRows((prev) =>
-        prev.map((r) => (r.id === rowId ? { ...r, status: SlotStatus.ERROR } : r))
-      );
+      setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, status: SlotStatus.ERROR } : r)));
     }
   };
 
@@ -274,9 +251,7 @@ export default function SceneStudioPage() {
 
       <div className={styles.content}>
         {/* LEFT: Scenes List */}
-        <aside
-          className={`${styles.productDrawer} ${isProductDrawerOpen ? styles.productDrawerOpen : styles.productDrawerClosed}`}
-        >
+        <aside className={`${styles.productDrawer} ${isProductDrawerOpen ? styles.productDrawerOpen : styles.productDrawerClosed}`}>
           <div className={styles.drawerInner}>
             <div className={styles.drawerHeader}>
               <span className={styles.drawerTitle}>Scenes</span>
@@ -298,9 +273,7 @@ export default function SceneStudioPage() {
                     </div>
                     <div className={styles.productInfo}>
                       <p className={styles.productName}>{scene.name}</p>
-                      <p className={styles.productMeta}>
-                        {scene.outputSlots?.length || 0} slots
-                      </p>
+                      <p className={styles.productMeta}>{scene.outputSlots?.length || 0} slots</p>
                     </div>
                     {scene.id === studioId && (
                       <div className={styles.activeIndicator}>
@@ -374,9 +347,7 @@ export default function SceneStudioPage() {
                             r.id === row.id
                               ? {
                                   ...r,
-                                  productIds: Array.from(
-                                    new Set([...r.productIds, pid])
-                                  ),
+                                  productIds: Array.from(new Set([...r.productIds, pid])),
                                 }
                               : r
                           )
@@ -404,9 +375,7 @@ export default function SceneStudioPage() {
                                     r.id === row.id
                                       ? {
                                           ...r,
-                                          productIds: r.productIds.filter(
-                                            (id) => id !== pid
-                                          ),
+                                          productIds: r.productIds.filter((id) => id !== pid),
                                         }
                                       : r
                                   )
@@ -464,24 +433,13 @@ export default function SceneStudioPage() {
                           e.stopPropagation();
                           handleGenerateRow(row.id);
                         }}
-                        disabled={
-                          row.productIds.length === 0 ||
-                          row.status === SlotStatus.GENERATING
-                        }
+                        disabled={row.productIds.length === 0 || row.status === SlotStatus.GENERATING}
                         className={styles.executeButton}
                       >
-                        {row.status === SlotStatus.GENERATING ? (
-                          <Loader2 className={styles.spinner} />
-                        ) : (
-                          <Play />
-                        )}
+                        {row.status === SlotStatus.GENERATING ? <Loader2 className={styles.spinner} /> : <Play />}
                         Execute
                       </button>
-                      {row.history.length > 0 && (
-                        <span className={styles.revisionCount}>
-                          {row.history.length} Revisions
-                        </span>
-                      )}
+                      {row.history.length > 0 && <span className={styles.revisionCount}>{row.history.length} Revisions</span>}
                     </div>
                   </div>
                 </div>
@@ -494,11 +452,7 @@ export default function SceneStudioPage() {
                         key={h.id}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setRows((prev) =>
-                            prev.map((r) =>
-                              r.id === row.id ? { ...r, outputImage: h.url } : r
-                            )
-                          );
+                          setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, outputImage: h.url } : r)));
                         }}
                         className={`${styles.revisionThumb} ${row.outputImage === h.url ? styles.revisionActive : ''}`}
                       >
@@ -513,16 +467,11 @@ export default function SceneStudioPage() {
         </main>
 
         {/* RIGHT: Properties Panel */}
-        <aside
-          className={`${styles.propertiesDrawer} ${isConfigDrawerOpen ? styles.propertiesDrawerOpen : styles.propertiesDrawerClosed}`}
-        >
+        <aside className={`${styles.propertiesDrawer} ${isConfigDrawerOpen ? styles.propertiesDrawerOpen : styles.propertiesDrawerClosed}`}>
           <div className={styles.drawerInner}>
             <div className={styles.drawerHeader}>
               <span className={styles.drawerTitle}>Properties</span>
-              <button
-                onClick={() => setIsConfigDrawerOpen(false)}
-                className={styles.closeButton}
-              >
+              <button onClick={() => setIsConfigDrawerOpen(false)} className={styles.closeButton}>
                 <X />
               </button>
             </div>
@@ -535,13 +484,8 @@ export default function SceneStudioPage() {
                     <label className={styles.propertyLabel}>
                       <ImagePlus /> Backdrop
                     </label>
-                    <div
-                      onClick={() => setShowSceneLibrary(true)}
-                      className={styles.scenePreview}
-                    >
-                      {(getMixedValue('scene') as Scene)?.imageUrl && (
-                        <img src={(getMixedValue('scene') as Scene).imageUrl} alt="Scene" />
-                      )}
+                    <div onClick={() => setShowSceneLibrary(true)} className={styles.scenePreview}>
+                      {(getMixedValue('scene') as Scene)?.imageUrl && <img src={(getMixedValue('scene') as Scene).imageUrl} alt="Scene" />}
                       <div className={styles.sceneOverlay}>Change Scene</div>
                     </div>
                   </div>
@@ -550,22 +494,14 @@ export default function SceneStudioPage() {
                   <div className={styles.propertyGroup}>
                     <div className={styles.propertyHeader}>
                       <label className={styles.propertyLabel}>Interpretation Variety</label>
-                      <span className={styles.propertyValue}>
-                        {getMixedValue('varietyLevel')}
-                      </span>
+                      <span className={styles.propertyValue}>{getMixedValue('varietyLevel')}</span>
                     </div>
                     <input
                       type="range"
                       min="1"
                       max="10"
-                      value={
-                        getMixedValue('varietyLevel') === 'Mixed'
-                          ? 5
-                          : Number(getMixedValue('varietyLevel'))
-                      }
-                      onChange={(e) =>
-                        updateSelectedRows({ varietyLevel: Number(e.target.value) })
-                      }
+                      value={getMixedValue('varietyLevel') === 'Mixed' ? 5 : Number(getMixedValue('varietyLevel'))}
+                      onChange={(e) => updateSelectedRows({ varietyLevel: Number(e.target.value) })}
                       className={styles.slider}
                     />
                   </div>
@@ -574,12 +510,7 @@ export default function SceneStudioPage() {
                   <div className={styles.toggleGrid}>
                     <div className={styles.toggleItem}>
                       <span>Color Match</span>
-                      <button
-                        onClick={() =>
-                          updateSelectedRows({ colorTheme: !getMixedValue('colorTheme') })
-                        }
-                        className={styles.toggle}
-                      >
+                      <button onClick={() => updateSelectedRows({ colorTheme: !getMixedValue('colorTheme') })} className={styles.toggle}>
                         {getMixedValue('colorTheme') ? (
                           <ToggleRight className={styles.toggleOn} />
                         ) : (
@@ -589,12 +520,7 @@ export default function SceneStudioPage() {
                     </div>
                     <div className={styles.toggleItem}>
                       <span>Add Accents</span>
-                      <button
-                        onClick={() =>
-                          updateSelectedRows({ accessories: !getMixedValue('accessories') })
-                        }
-                        className={styles.toggle}
-                      >
+                      <button onClick={() => updateSelectedRows({ accessories: !getMixedValue('accessories') })} className={styles.toggle}>
                         {getMixedValue('accessories') ? (
                           <ToggleRight className={styles.toggleOn} />
                         ) : (
@@ -608,11 +534,7 @@ export default function SceneStudioPage() {
                   <div className={styles.propertyGroup}>
                     <label className={styles.propertyLabel}>Room Template</label>
                     <select
-                      value={
-                        getMixedValue('sceneType') === 'Mixed'
-                          ? ''
-                          : String(getMixedValue('sceneType'))
-                      }
+                      value={getMixedValue('sceneType') === 'Mixed' ? '' : String(getMixedValue('sceneType'))}
                       onChange={(e) => updateSelectedRows({ sceneType: e.target.value })}
                       className={styles.select}
                     >
@@ -627,11 +549,7 @@ export default function SceneStudioPage() {
                   <div className={styles.propertyGroup}>
                     <label className={styles.propertyLabel}>Atmospheric Lighting</label>
                     <select
-                      value={
-                        getMixedValue('lighting') === 'Mixed'
-                          ? ''
-                          : String(getMixedValue('lighting'))
-                      }
+                      value={getMixedValue('lighting') === 'Mixed' ? '' : String(getMixedValue('lighting'))}
                       onChange={(e) => updateSelectedRows({ lighting: e.target.value })}
                       className={styles.select}
                     >
@@ -646,11 +564,7 @@ export default function SceneStudioPage() {
                   <div className={styles.propertyGroup}>
                     <label className={styles.propertyLabel}>Camera Orientation</label>
                     <select
-                      value={
-                        getMixedValue('cameraAngle') === 'Mixed'
-                          ? ''
-                          : String(getMixedValue('cameraAngle'))
-                      }
+                      value={getMixedValue('cameraAngle') === 'Mixed' ? '' : String(getMixedValue('cameraAngle'))}
                       onChange={(e) => updateSelectedRows({ cameraAngle: e.target.value })}
                       className={styles.select}
                     >
@@ -665,11 +579,7 @@ export default function SceneStudioPage() {
                   <div className={styles.propertyGroup}>
                     <label className={styles.propertyLabel}>Aesthetic Style</label>
                     <select
-                      value={
-                        getMixedValue('style') === 'Mixed'
-                          ? ''
-                          : String(getMixedValue('style'))
-                      }
+                      value={getMixedValue('style') === 'Mixed' ? '' : String(getMixedValue('style'))}
                       onChange={(e) => updateSelectedRows({ style: e.target.value })}
                       className={styles.select}
                     >
@@ -684,11 +594,7 @@ export default function SceneStudioPage() {
                   <div className={styles.propertyGroup}>
                     <label className={styles.propertyLabel}>Surrounding Objects</label>
                     <select
-                      value={
-                        getMixedValue('surroundings') === 'Mixed'
-                          ? ''
-                          : String(getMixedValue('surroundings'))
-                      }
+                      value={getMixedValue('surroundings') === 'Mixed' ? '' : String(getMixedValue('surroundings'))}
                       onChange={(e) => updateSelectedRows({ surroundings: e.target.value })}
                       className={styles.select}
                     >
@@ -703,11 +609,7 @@ export default function SceneStudioPage() {
                   <div className={styles.propertyGroup}>
                     <label className={styles.propertyLabel}>Color Palette</label>
                     <select
-                      value={
-                        getMixedValue('colorScheme') === 'Mixed'
-                          ? ''
-                          : String(getMixedValue('colorScheme'))
-                      }
+                      value={getMixedValue('colorScheme') === 'Mixed' ? '' : String(getMixedValue('colorScheme'))}
                       onChange={(e) => updateSelectedRows({ colorScheme: e.target.value })}
                       className={styles.select}
                     >
@@ -731,10 +633,7 @@ export default function SceneStudioPage() {
                             key={tag}
                             onClick={() => {
                               let next: string[] = [];
-                              if (Array.isArray(current))
-                                next = active
-                                  ? current.filter((t) => t !== tag)
-                                  : [...current, tag];
+                              if (Array.isArray(current)) next = active ? current.filter((t) => t !== tag) : [...current, tag];
                               else next = [tag];
                               updateSelectedRows({ props: next });
                             }}
@@ -767,11 +666,7 @@ export default function SceneStudioPage() {
                   <div className={styles.propertyGroup}>
                     <label className={styles.propertyLabel}>Stylist Directives</label>
                     <textarea
-                      value={
-                        getMixedValue('promptText') === 'Mixed'
-                          ? ''
-                          : String(getMixedValue('promptText'))
-                      }
+                      value={getMixedValue('promptText') === 'Mixed' ? '' : String(getMixedValue('promptText'))}
                       onChange={(e) => updateSelectedRows({ promptText: e.target.value })}
                       className={styles.textarea}
                       placeholder="e.g. emphasize the oak grain texture..."
@@ -825,10 +720,7 @@ export default function SceneStudioPage() {
           <div className={styles.previewContent} onClick={(e) => e.stopPropagation()}>
             <img src={bigPreviewUrl} alt="Preview" />
             <div className={styles.previewActions}>
-              <button
-                onClick={() => handleDownload(bigPreviewUrl, 'SceneStudio-Render.jpg')}
-                className={styles.downloadButton}
-              >
+              <button onClick={() => handleDownload(bigPreviewUrl, 'SceneStudio-Render.jpg')} className={styles.downloadButton}>
                 Download Master
               </button>
               <button onClick={() => setBigPreviewUrl(null)} className={styles.previewClose}>

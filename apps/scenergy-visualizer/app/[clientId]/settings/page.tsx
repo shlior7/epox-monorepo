@@ -17,7 +17,7 @@ import { useModalHandlers } from '@/lib/contexts/ModalContext';
 import { useConfirm } from '@/lib/hooks/useConfirm';
 import { useToast } from '@/lib/hooks/useToast';
 import { getImageUrl, getPreviewImageUrl, S3Paths } from '@/lib/services/s3/browser';
-import { DEFAULT_AI_MODEL_CONFIG } from '@/lib/services/shared/constants';
+import { DEFAULT_AI_MODEL_CONFIG } from 'visualizer-ai/client';
 import type { AIModelConfig, Product } from '@/lib/types/app-types';
 import { buildTestId } from '@/lib/utils/test-ids';
 import clsx from 'clsx';

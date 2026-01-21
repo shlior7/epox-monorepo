@@ -11,6 +11,7 @@
 ## Background
 
 The `visualizer-client` platform needs a comprehensive REST API to support:
+
 - Client user authentication and authorization
 - Product browsing and filtering (1000+ products)
 - Studio session management with multi-flow support
@@ -21,6 +22,7 @@ The `visualizer-client` platform needs a comprehensive REST API to support:
 - Generated image management (download, pin, delete, regenerate)
 
 The API must be:
+
 - **Secure** - All routes scoped to authenticated user's clientId
 - **Fast** - Optimized queries, pagination, caching
 - **Reliable** - Graceful error handling, retry logic
@@ -30,6 +32,7 @@ The API must be:
 ## Problem
 
 We need to design a complete REST API that:
+
 1. **Follows consistent patterns** - Naming, responses, errors, versioning
 2. **Enforces authorization** - All data scoped to user's clientId
 3. **Handles errors gracefully** - RFC 7807 Problem Details format
@@ -42,7 +45,9 @@ We need to design a complete REST API that:
 ## Questions and Answers
 
 ### Q1: Should we use REST, GraphQL, or tRPC?
+
 **A**: REST with OpenAPI specs:
+
 - REST: Familiar, well-supported, easy to document
 - OpenAPI: Auto-generate TypeScript types, API docs
 - Future: Can add GraphQL layer for complex queries if needed
@@ -50,32 +55,42 @@ We need to design a complete REST API that:
 **Rationale**: REST is simpler for MVP, widely understood, excellent tooling.
 
 ### Q2: How do we handle API versioning?
+
 **A**: URL versioning initially, header-based later:
+
 - MVP: `/api/v1/studioSessions` (explicit version in path)
 - Future: Accept header versioning for backward compatibility
 - Deprecation policy: 6-month notice before removing old versions
 
 ### Q3: What's our pagination strategy?
+
 **A**: Hybrid approach:
+
 - **Cursor-based**: For real-time data (generated images, studioSessions)
 - **Offset-based**: For stable data (products, with limit of 10k results)
 - Always include `total`, `hasMore`, `nextCursor` in responses
 
 ### Q4: How do we handle file uploads?
+
 **A**: Multipart upload with streaming:
+
 - Direct upload to API → stream to R2
 - Max 10MB per image
 - Support multiple file upload (up to 5 images)
 - Return R2 URL immediately after upload
 
 ### Q5: Should we expose WebSockets or polling for progress?
+
 **A**: Polling (MVP), WebSocket (future):
+
 - Polling: Every 5 seconds while `status = 'generating'`
 - Exponential backoff if no changes
 - Future: Upgrade to WebSocket for real-time push
 
 ### Q6: How do we prevent SQL injection and XSS?
+
 **A**: Multiple layers:
+
 - Drizzle ORM: Parameterized queries (prevents SQL injection)
 - Zod schemas: Input validation before processing
 - DOMPurify: Sanitize any HTML content (minimal use case)
@@ -164,6 +179,7 @@ Errors:
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST https://api.example.com/api/auth/signup \
   -H "Content-Type: application/json" \
@@ -215,6 +231,7 @@ Errors:
 ```
 
 **Example Request:**
+
 ```javascript
 const response = await fetch('/api/auth/login', {
   method: 'POST',
@@ -222,8 +239,8 @@ const response = await fetch('/api/auth/login', {
   body: JSON.stringify({
     email: 'john@example.com',
     password: 'SecurePass123!',
-    rememberMe: true
-  })
+    rememberMe: true,
+  }),
 });
 
 const { user, session, client } = await response.json();
@@ -376,6 +393,7 @@ Errors:
 ```
 
 **Example Request:**
+
 ```javascript
 const params = new URLSearchParams({
   page: '1',
@@ -384,7 +402,7 @@ const params = new URLSearchParams({
   category: 'furniture',
   roomType: 'office',
   sort: 'name',
-  order: 'asc'
+  order: 'asc',
 });
 
 const response = await fetch(`/api/products?${params}`);
@@ -489,18 +507,15 @@ Errors:
 ```
 
 **Example Request:**
+
 ```javascript
 const response = await fetch('/api/sessions', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     name: 'Modern Furniture StudioSession',
-    selectedProductIds: [
-      'prod_123',
-      'prod_456',
-      'prod_789'
-    ]
-  })
+    selectedProductIds: ['prod_123', 'prod_456', 'prod_789'],
+  }),
 });
 
 const { data: studioSession } = await response.json();
@@ -584,7 +599,7 @@ Errors:
 
 #### 3.4 Update StudioSession
 
-```typescript
+````typescript
 PATCH /api/sessions/{studioSessionId}
 
 Request:
@@ -620,15 +635,17 @@ Example Request (saving prompt tags from Q&A form):
     "custom": ["high ceilings", "wooden floors"]
   }
 }
-```
+````
 
 Errors:
+
 - 400: Invalid update (can't modify generating studioSession)
 - 401: Not authenticated
 - 403: Not authorized
 - 404: StudioSession not found
 - 422: Validation failed
-```
+
+````
 
 #### 3.5 Delete StudioSession
 
@@ -643,7 +660,7 @@ Errors:
 - 401: Not authenticated
 - 403: Not authorized
 - 404: StudioSession not found
-```
+````
 
 #### 3.6 Analyze StudioSession Products
 
@@ -715,6 +732,7 @@ Errors:
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST https://api.example.com/api/sessions/coll_abc123/analyze \
   -H "Authorization: Bearer <session_token>"
@@ -868,19 +886,20 @@ Errors:
 ```
 
 **Example Request:**
+
 ```javascript
 const response = await fetch(`/api/sessions/${studioSessionId}/generate`, {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${sessionToken}`
+    Authorization: `Bearer ${sessionToken}`,
   },
   body: JSON.stringify({
     overrideSettings: {
       aspectRatio: '16:9',
-      varietyLevel: 7
-    }
-  })
+      varietyLevel: 7,
+    },
+  }),
 });
 
 const { data, meta } = await response.json();
@@ -963,6 +982,7 @@ Errors:
 ```
 
 **Polling Example:**
+
 ```javascript
 // Poll every 5 seconds while generating
 async function pollStudioSessionStatus(studioSessionId) {
@@ -1274,11 +1294,12 @@ Errors:
 ```
 
 **Example - Pin Image:**
+
 ```javascript
 const response = await fetch(`/api/images/${imageId}`, {
   method: 'PATCH',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ pinned: true })
+  body: JSON.stringify({ pinned: true }),
 });
 
 const { data: image } = await response.json();
@@ -1367,6 +1388,7 @@ Errors:
 ```
 
 **Example:**
+
 ```javascript
 // Trigger browser download
 window.location.href = `/api/images/${imageId}/download`;
@@ -1411,17 +1433,20 @@ Errors:
 ```
 
 **Full Example - Bulk Download:**
+
 ```javascript
 // Step 1: Request ZIP creation
 const createResponse = await fetch('/api/images/bulk-download', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    imageIds: ['image_001', 'image_002', 'image_003']
-  })
+    imageIds: ['image_001', 'image_002', 'image_003'],
+  }),
 });
 
-const { data: { jobId } } = await createResponse.json();
+const {
+  data: { jobId },
+} = await createResponse.json();
 
 // Step 2: Poll for completion
 async function pollDownloadJob(jobId) {
@@ -1433,7 +1458,7 @@ async function pollDownloadJob(jobId) {
     setTimeout(() => pollDownloadJob(jobId), 2000);
   } else if (data.status === 'completed') {
     console.log('ZIP ready!');
-    window.location.href = data.downloadUrl;  // Trigger download
+    window.location.href = data.downloadUrl; // Trigger download
   } else {
     console.error('ZIP creation failed');
   }
@@ -1484,6 +1509,7 @@ Errors:
 ```
 
 **Example - Upload with FormData:**
+
 ```javascript
 const formData = new FormData();
 formData.append('file', imageFile);
@@ -1491,7 +1517,7 @@ formData.append('purpose', 'inspiration');
 
 const response = await fetch('/api/images/upload', {
   method: 'POST',
-  body: formData
+  body: formData,
   // Note: Don't set Content-Type, browser sets it with boundary
 });
 
@@ -1598,6 +1624,7 @@ Errors:
 ```
 
 **Example:**
+
 ```bash
 curl -X POST https://api.example.com/api/analyze/scene \
   -H "Content-Type: application/json" \
@@ -1712,12 +1739,13 @@ Errors:
 ```
 
 **Example:**
+
 ```javascript
 const query = encodeURIComponent('modern home office');
 const response = await fetch(`/api/unsplash/search?query=${query}&page=1&perPage=30`);
 const { data } = await response.json();
 
-data.results.forEach(photo => {
+data.results.forEach((photo) => {
   console.log(`${photo.alt_description} by ${photo.user.name}`);
 });
 ```
@@ -1910,6 +1938,7 @@ Errors:
 ### Pagination Strategy
 
 #### Offset-based (for stable data)
+
 ```typescript
 // Products, Categories (data doesn't change frequently)
 GET /api/products?page=1&limit=50
@@ -1928,6 +1957,7 @@ Response:
 ```
 
 #### Cursor-based (for real-time data)
+
 ```typescript
 // Generated Images, StudioSessions (data updates frequently)
 GET /api/images?cursor=eyJpZCI6ImFzc2V0XzEyMyJ9&limit=50
@@ -1946,11 +1976,13 @@ Response:
 ### Filtering and Sorting
 
 **URL Pattern:**
+
 ```
 GET /api/products?category=furniture&roomType=office&minPrice=100&sort=name&order=asc
 ```
 
 **Query Parameters:**
+
 - Filters: Use field names directly (`category`, `roomType`, `status`)
 - Ranges: Prefix with `min`/`max` (`minPrice`, `maxPrice`)
 - Arrays: Comma-separated (`tags=modern,minimal`) or multiple (`tags=modern&tags=minimal`)
@@ -2015,6 +2047,7 @@ Response:
 ### File Upload Pattern
 
 **Single file:**
+
 ```typescript
 POST /api/images/upload
 Content-Type: multipart/form-data
@@ -2030,6 +2063,7 @@ const response = await fetch('/api/images/upload', {
 ```
 
 **Multiple files:**
+
 ```typescript
 POST /api/images/upload-multiple
 Content-Type: multipart/form-data
@@ -2050,18 +2084,19 @@ All error responses follow RFC 7807 format:
 
 ```typescript
 interface ProblemDetails {
-  type: string;         // URI reference identifying the problem type
-  title: string;        // Short, human-readable summary
-  status: number;       // HTTP status code
-  detail: string;       // Human-readable explanation
-  instance?: string;    // URI reference identifying this occurrence
-  [key: string]: any;   // Additional problem-specific fields
+  type: string; // URI reference identifying the problem type
+  title: string; // Short, human-readable summary
+  status: number; // HTTP status code
+  detail: string; // Human-readable explanation
+  instance?: string; // URI reference identifying this occurrence
+  [key: string]: any; // Additional problem-specific fields
 }
 ```
 
 **Example Error Responses:**
 
 **Validation Error (422):**
+
 ```json
 {
   "type": "https://api.example.com/errors/validation-error",
@@ -2083,6 +2118,7 @@ interface ProblemDetails {
 ```
 
 **Authentication Error (401):**
+
 ```json
 {
   "type": "https://api.example.com/errors/unauthorized",
@@ -2094,6 +2130,7 @@ interface ProblemDetails {
 ```
 
 **Rate Limit Error (429):**
+
 ```json
 {
   "type": "https://api.example.com/errors/rate-limit-exceeded",
@@ -2106,11 +2143,12 @@ interface ProblemDetails {
     "used": 100,
     "resetDate": "2026-02-01T00:00:00Z"
   },
-  "retryAfter": 2592000  // Seconds until reset
+  "retryAfter": 2592000 // Seconds until reset
 }
 ```
 
 **Not Found (404):**
+
 ```json
 {
   "type": "https://api.example.com/errors/not-found",
@@ -2122,6 +2160,7 @@ interface ProblemDetails {
 ```
 
 **Server Error (500):**
+
 ```json
 {
   "type": "https://api.example.com/errors/internal-server-error",
@@ -2156,7 +2195,7 @@ export class ApiError extends Error {
       title: this.title,
       status: this.status,
       detail: this.detail,
-      ...this.additionalFields
+      ...this.additionalFields,
     };
   }
 }
@@ -2172,14 +2211,17 @@ export async function POST(request: Request) {
 
     // Unknown error - log and return generic 500
     console.error('Unexpected error:', error);
-    return NextResponse.json({
-      type: 'https://api.example.com/errors/internal-server-error',
-      title: 'Internal Server Error',
-      status: 500,
-      detail: 'An unexpected error occurred',
-      errorId: generateErrorId(),
-      timestamp: new Date().toISOString()
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        type: 'https://api.example.com/errors/internal-server-error',
+        title: 'Internal Server Error',
+        status: 500,
+        detail: 'An unexpected error occurred',
+        errorId: generateErrorId(),
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 }
+    );
   }
 }
 ```
@@ -2187,6 +2229,7 @@ export async function POST(request: Request) {
 ### Versioning Strategy
 
 **MVP: URL Versioning**
+
 ```
 /api/v1/studioSessions
 /api/v1/products
@@ -2194,12 +2237,14 @@ export async function POST(request: Request) {
 ```
 
 **Future: Header Versioning**
+
 ```
 GET /api/sessions
 Accept: application/vnd.epox.v2+json
 ```
 
 **Deprecation Policy:**
+
 1. Announce deprecation 6 months in advance
 2. Return `Deprecation` header: `Deprecation: Sun, 01 Feb 2027 00:00:00 GMT`
 3. Return `Sunset` header: `Sunset: Sun, 01 Aug 2027 00:00:00 GMT`
@@ -2217,7 +2262,7 @@ Accept: application/vnd.epox.v2+json
 const allowedOrigins = [
   'https://app.example.com',
   'https://visualizer.example.com',
-  process.env.NODE_ENV === 'development' && 'http://localhost:3000'
+  process.env.NODE_ENV === 'development' && 'http://localhost:3000',
 ].filter(Boolean);
 
 export function middleware(request: NextRequest) {
@@ -2230,7 +2275,7 @@ export function middleware(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     response.headers.set('Access-Control-Allow-Credentials', 'true');
-    response.headers.set('Access-Control-Max-Age', '86400');  // 24 hours
+    response.headers.set('Access-Control-Max-Age', '86400'); // 24 hours
   }
 
   return response;
@@ -2241,19 +2286,20 @@ export function middleware(request: NextRequest) {
 
 **Per-Endpoint Limits:**
 
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `POST /api/auth/login` | 5 requests | 15 minutes |
-| `POST /api/auth/signup` | 3 requests | 1 hour |
-| `POST /api/auth/password-reset/*` | 5 requests | 1 hour |
-| `GET /api/products` | 100 requests | 1 minute |
-| `GET /api/sessions` | 100 requests | 1 minute |
-| `POST /api/sessions/*/generate` | 10 requests | 1 hour |
-| `POST /api/images/upload` | 30 requests | 1 hour |
-| `GET /api/unsplash/search` | 50 requests | 1 hour |
-| Default | 1000 requests | 1 hour |
+| Endpoint                          | Limit         | Window     |
+| --------------------------------- | ------------- | ---------- |
+| `POST /api/auth/login`            | 5 requests    | 15 minutes |
+| `POST /api/auth/signup`           | 3 requests    | 1 hour     |
+| `POST /api/auth/password-reset/*` | 5 requests    | 1 hour     |
+| `GET /api/products`               | 100 requests  | 1 minute   |
+| `GET /api/sessions`               | 100 requests  | 1 minute   |
+| `POST /api/sessions/*/generate`   | 10 requests   | 1 hour     |
+| `POST /api/images/upload`         | 30 requests   | 1 hour     |
+| `GET /api/unsplash/search`        | 50 requests   | 1 hour     |
+| Default                           | 1000 requests | 1 hour     |
 
 **Implementation:**
+
 ```typescript
 // lib/middleware/rate-limit.ts
 import { Redis } from 'ioredis';
@@ -2261,14 +2307,14 @@ import { Redis } from 'ioredis';
 const redis = new Redis(process.env.REDIS_URL);
 
 export async function rateLimit(
-  identifier: string,  // User ID or IP address
+  identifier: string, // User ID or IP address
   endpoint: string,
   maxRequests: number,
   windowSeconds: number
 ): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
   const key = `rate_limit:${endpoint}:${identifier}`;
   const now = Date.now();
-  const windowStart = now - (windowSeconds * 1000);
+  const windowStart = now - windowSeconds * 1000;
 
   // Remove old entries
   await redis.zremrangebyscore(key, 0, windowStart);
@@ -2278,12 +2324,12 @@ export async function rateLimit(
 
   if (requestCount >= maxRequests) {
     const oldestRequest = await redis.zrange(key, 0, 0, 'WITHSCORES');
-    const resetAt = parseInt(oldestRequest[1]) + (windowSeconds * 1000);
+    const resetAt = parseInt(oldestRequest[1]) + windowSeconds * 1000;
 
     return {
       allowed: false,
       remaining: 0,
-      resetAt
+      resetAt,
     };
   }
 
@@ -2294,7 +2340,7 @@ export async function rateLimit(
   return {
     allowed: true,
     remaining: maxRequests - requestCount - 1,
-    resetAt: now + (windowSeconds * 1000)
+    resetAt: now + windowSeconds * 1000,
   };
 }
 
@@ -2306,29 +2352,34 @@ export async function POST(request: Request) {
     session.userId,
     'POST:/api/sessions/:id/generate',
     10,
-    3600  // 1 hour
+    3600 // 1 hour
   );
 
   if (!allowed) {
-    return NextResponse.json({
-      type: 'https://api.example.com/errors/rate-limit-exceeded',
-      title: 'Too Many Requests',
-      status: 429,
-      detail: 'You have exceeded the rate limit for this endpoint',
-      retryAfter: Math.ceil((resetAt - Date.now()) / 1000)
-    }, {
-      status: 429,
-      headers: {
-        'X-RateLimit-Limit': '10',
-        'X-RateLimit-Remaining': '0',
-        'X-RateLimit-Reset': resetAt.toString(),
-        'Retry-After': Math.ceil((resetAt - Date.now()) / 1000).toString()
+    return NextResponse.json(
+      {
+        type: 'https://api.example.com/errors/rate-limit-exceeded',
+        title: 'Too Many Requests',
+        status: 429,
+        detail: 'You have exceeded the rate limit for this endpoint',
+        retryAfter: Math.ceil((resetAt - Date.now()) / 1000),
+      },
+      {
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': '10',
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': resetAt.toString(),
+          'Retry-After': Math.ceil((resetAt - Date.now()) / 1000).toString(),
+        },
       }
-    });
+    );
   }
 
   // Add rate limit headers to success response
-  const response = NextResponse.json({ /* ... */ });
+  const response = NextResponse.json({
+    /* ... */
+  });
   response.headers.set('X-RateLimit-Limit', '10');
   response.headers.set('X-RateLimit-Remaining', remaining.toString());
   response.headers.set('X-RateLimit-Reset', resetAt.toString());
@@ -2346,20 +2397,21 @@ export async function POST(request: Request) {
 import { z } from 'zod';
 
 export const createStudioSessionSchema = z.object({
-  name: z.string()
-    .min(1, 'StudioSession name is required')
-    .max(100, 'StudioSession name must be less than 100 characters'),
-  selectedProductIds: z.array(z.string().uuid())
+  name: z.string().min(1, 'StudioSession name is required').max(100, 'StudioSession name must be less than 100 characters'),
+  selectedProductIds: z
+    .array(z.string().uuid())
     .min(1, 'Must select at least 1 product')
-    .max(500, 'Maximum 500 products per studioSession')
+    .max(500, 'Maximum 500 products per studioSession'),
 });
 
 export const generateStudioSessionSchema = z.object({
-  overrideSettings: z.object({
-    aspectRatio: z.enum(['1:1', '16:9', '9:16']).optional(),
-    varietyLevel: z.number().min(1).max(10).optional(),
-    matchProductColors: z.boolean().optional()
-  }).optional()
+  overrideSettings: z
+    .object({
+      aspectRatio: z.enum(['1:1', '16:9', '9:16']).optional(),
+      varietyLevel: z.number().min(1).max(10).optional(),
+      matchProductColors: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 // Usage in API route
@@ -2373,16 +2425,19 @@ export async function POST(request: Request) {
     // ... use validatedData (fully typed)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({
-        type: 'https://api.example.com/errors/validation-error',
-        title: 'Validation Failed',
-        status: 422,
-        detail: 'The request body contains invalid fields',
-        errors: error.errors.map(e => ({
-          field: e.path.join('.'),
-          message: e.message
-        }))
-      }, { status: 422 });
+      return NextResponse.json(
+        {
+          type: 'https://api.example.com/errors/validation-error',
+          title: 'Validation Failed',
+          status: 422,
+          detail: 'The request body contains invalid fields',
+          errors: error.errors.map((e) => ({
+            field: e.path.join('.'),
+            message: e.message,
+          })),
+        },
+        { status: 422 }
+      );
     }
 
     throw error;
@@ -2398,7 +2453,7 @@ export async function POST(request: Request) {
 // ✅ Safe - Parameterized query
 const products = await db.products.findMany({
   where: eq(products.clientId, clientId),
-  limit: 50
+  limit: 50,
 });
 
 // ✅ Safe - Even with user input
@@ -2406,8 +2461,8 @@ const searchTerm = request.url.searchParams.get('search');
 const products = await db.products.findMany({
   where: and(
     eq(products.clientId, clientId),
-    like(products.name, `%${searchTerm}%`)  // Still safe!
-  )
+    like(products.name, `%${searchTerm}%`) // Still safe!
+  ),
 });
 
 // ❌ Never use raw SQL with user input
@@ -2419,11 +2474,7 @@ const results = await db.execute(sql`SELECT * FROM products WHERE name = '${sear
 
 ```typescript
 // lib/validation/file-upload.ts
-const ALLOWED_MIME_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp'
-];
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -2452,8 +2503,8 @@ export async function validateImageUpload(file: File) {
   const buffer = await file.arrayBuffer();
   const bytes = new Uint8Array(buffer);
 
-  const isValidJPEG = bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF;
-  const isValidPNG = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47;
+  const isValidJPEG = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const isValidPNG = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
   const isValidWebP = bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;
 
   if (!isValidJPEG && !isValidPNG && !isValidWebP) {
@@ -2542,27 +2593,27 @@ components:
           type: array
           items:
             type: string
-          example: ["living room", "bedroom"]
+          example: ['living room', 'bedroom']
         mood:
           type: array
           items:
             type: string
-          example: ["cozy", "minimalist", "elegant"]
+          example: ['cozy', 'minimalist', 'elegant']
         lighting:
           type: array
           items:
             type: string
-          example: ["natural", "warm", "soft"]
+          example: ['natural', 'warm', 'soft']
         style:
           type: array
           items:
             type: string
-          example: ["scandinavian", "modern", "contemporary"]
+          example: ['scandinavian', 'modern', 'contemporary']
         custom:
           type: array
           items:
             type: string
-          example: ["high ceilings", "wooden floors"]
+          example: ['high ceilings', 'wooden floors']
 
     StudioSession:
       type: object
@@ -2719,6 +2770,7 @@ paths:
 ```
 
 **Auto-generate TypeScript types:**
+
 ```bash
 npx openapi-typescript openapi.yaml --output src/types/api.ts
 ```
@@ -2733,10 +2785,7 @@ export class ApiClient {
     private getToken: () => Promise<string | null>
   ) {}
 
-  private async request<T>(
-    path: string,
-    options: RequestInit = {}
-  ): Promise<{ data: T; meta?: any }> {
+  private async request<T>(path: string, options: RequestInit = {}): Promise<{ data: T; meta?: any }> {
     const token = await this.getToken();
 
     const response = await fetch(`${this.baseUrl}${path}`, {
@@ -2744,8 +2793,8 @@ export class ApiClient {
       headers: {
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers
-      }
+        ...options.headers,
+      },
     });
 
     if (!response.ok) {
@@ -2758,75 +2807,63 @@ export class ApiClient {
 
   // Products
   products = {
-    list: (params?: ProductListParams) =>
-      this.request<Product[]>('/products?' + new URLSearchParams(params)),
+    list: (params?: ProductListParams) => this.request<Product[]>('/products?' + new URLSearchParams(params)),
 
-    get: (id: string) =>
-      this.request<Product>(`/products/${id}`),
+    get: (id: string) => this.request<Product>(`/products/${id}`),
 
-    categories: () =>
-      this.request<Array<{ category: string; count: number }>>('/products/categories')
+    categories: () => this.request<Array<{ category: string; count: number }>>('/products/categories'),
   };
 
   // StudioSessions
   studioSessions = {
-    list: (params?: StudioSessionListParams) =>
-      this.request<StudioSession[]>('/studioSessions?' + new URLSearchParams(params)),
+    list: (params?: StudioSessionListParams) => this.request<StudioSession[]>('/studioSessions?' + new URLSearchParams(params)),
 
     create: (data: CreateStudioSessionRequest) =>
       this.request<StudioSession>('/studioSessions', {
         method: 'POST',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       }),
 
-    get: (id: string) =>
-      this.request<StudioSession>(`/studioSessions/${id}`),
+    get: (id: string) => this.request<StudioSession>(`/studioSessions/${id}`),
 
     analyze: (id: string) =>
       this.request<ProductAnalysisResult>(`/studioSessions/${id}/analyze`, {
-        method: 'POST'
+        method: 'POST',
       }),
 
     generate: (id: string, overrides?: Partial<FlowGenerationSettings>) =>
       this.request(`/studioSessions/${id}/generate`, {
         method: 'POST',
-        body: JSON.stringify({ overrideSettings: overrides })
+        body: JSON.stringify({ overrideSettings: overrides }),
       }),
 
-    status: (id: string) =>
-      this.request<StudioSessionStatus>(`/studioSessions/${id}/status`)
+    status: (id: string) => this.request<StudioSessionStatus>(`/studioSessions/${id}/status`),
   };
 
   // Generated Images
   generatedImages = {
-    list: (params?: ImageListParams) =>
-      this.request<GeneratedImage[]>('/images?' + new URLSearchParams(params)),
+    list: (params?: ImageListParams) => this.request<GeneratedImage[]>('/images?' + new URLSearchParams(params)),
 
-    get: (id: string) =>
-      this.request<GeneratedImage>(`/images/${id}`),
+    get: (id: string) => this.request<GeneratedImage>(`/images/${id}`),
 
     update: (id: string, data: UpdateImageRequest) =>
       this.request<GeneratedImage>(`/images/${id}`, {
         method: 'PATCH',
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
       }),
 
-    delete: (id: string) =>
-      this.request(`/images/${id}`, { method: 'DELETE' }),
+    delete: (id: string) => this.request(`/images/${id}`, { method: 'DELETE' }),
 
     regenerate: (id: string, settings?: Partial<FlowGenerationSettings>) =>
       this.request<GeneratedImage>(`/images/${id}/regenerate`, {
         method: 'POST',
-        body: JSON.stringify({ settings })
-      })
+        body: JSON.stringify({ settings }),
+      }),
   };
 }
 
 // Usage
-const client = new ApiClient(
-  'https://api.example.com/api/v1',
-  async () => localStorage.getItem('session_token')
-);
+const client = new ApiClient('https://api.example.com/api/v1', async () => localStorage.getItem('session_token'));
 
 const { data: products } = await client.products.list({ category: 'furniture' });
 ```
@@ -2836,6 +2873,7 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 ## Implementation Plan
 
 ### Phase 1: Core Infrastructure (Week 1)
+
 1. Set up API versioning structure (`/api/v1/`)
 2. Create error handler with RFC 7807 format
 3. Implement rate limiting middleware
@@ -2843,6 +2881,7 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 5. Create input validation helpers (Zod schemas)
 
 ### Phase 2: Authentication Endpoints (Week 1)
+
 1. Implement signup endpoint with invitation validation
 2. Create login endpoint with session management
 3. Add logout endpoint
@@ -2851,6 +2890,7 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 6. Test auth flows end-to-end
 
 ### Phase 3: Product Endpoints (Week 2)
+
 1. Implement product list with pagination
 2. Add filtering (category, room type, search)
 3. Create product detail endpoint
@@ -2859,6 +2899,7 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 6. Optimize queries with indexes
 
 ### Phase 4: StudioSession CRUD (Week 2)
+
 1. Create studioSession creation endpoint
 2. Implement studioSession list with filters
 3. Add studioSession detail endpoint
@@ -2867,6 +2908,7 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 6. Test studioSession workflows
 
 ### Phase 5: Analysis Services (Week 3)
+
 1. Implement product analysis endpoint (single)
 2. Create batch product analysis endpoint
 3. Add scene analysis endpoint
@@ -2875,6 +2917,7 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 6. Add fallback logic for AI failures
 
 ### Phase 6: Generation Endpoints (Week 3)
+
 1. Create studioSession generation trigger endpoint
 2. Implement generation status polling endpoint
 3. Build generated image CRUD endpoints
@@ -2883,6 +2926,7 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 6. Test generation workflows end-to-end
 
 ### Phase 7: Image Upload & Management (Week 4)
+
 1. Implement single image upload endpoint
 2. Create multiple image upload endpoint
 3. Add image detail endpoint
@@ -2891,6 +2935,7 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 6. Add file validation (MIME type, size, signature)
 
 ### Phase 8: Unsplash Integration (Week 4)
+
 1. Create Unsplash search endpoint
 2. Implement Unsplash download endpoint
 3. Add attribution tracking
@@ -2898,6 +2943,7 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 5. Add fallback mock data
 
 ### Phase 9: User Settings (Week 5)
+
 1. Implement profile update endpoint
 2. Create password change endpoint
 3. Add notification settings endpoint
@@ -2905,6 +2951,7 @@ const { data: products } = await client.products.list({ category: 'furniture' })
 5. Create account deletion endpoint
 
 ### Phase 10: Documentation & Testing (Week 5-6)
+
 1. Write OpenAPI/Swagger specification
 2. Auto-generate TypeScript types
 3. Create API client SDK
@@ -2928,8 +2975,8 @@ export async function GET(request: Request) {
     meta: {
       total: products.length,
       page: 1,
-      limit: 50
-    }
+      limit: 50,
+    },
   });
 }
 ```
@@ -2947,16 +2994,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ data: studioSession }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({
-        type: 'https://api.example.com/errors/validation-error',
-        title: 'Validation Failed',
-        status: 422,
-        detail: 'Invalid request body',
-        errors: error.errors
-      }, { status: 422 });
+      return NextResponse.json(
+        {
+          type: 'https://api.example.com/errors/validation-error',
+          title: 'Validation Failed',
+          status: 422,
+          detail: 'Invalid request body',
+          errors: error.errors,
+        },
+        { status: 422 }
+      );
     }
 
-    throw error;  // Caught by global error handler
+    throw error; // Caught by global error handler
   }
 }
 ```
@@ -2969,7 +3019,7 @@ export async function GET(request: Request) {
 
   // Always scope to user's client
   const products = await db.products.findMany({
-    where: eq(products.clientId, session.clientId)
+    where: eq(products.clientId, session.clientId),
   });
 
   return NextResponse.json({ data: products });
@@ -2981,7 +3031,7 @@ export async function GET(request: Request) {
 ```typescript
 // ❌ No auth check - anyone can access
 export async function GET(request: Request) {
-  const products = await db.products.findMany();  // Returns ALL products
+  const products = await db.products.findMany(); // Returns ALL products
   return NextResponse.json(products);
 }
 
@@ -2993,7 +3043,7 @@ export async function GET(request: Request) {
   }
 
   const products = await db.products.findMany({
-    where: eq(products.clientId, session.clientId)
+    where: eq(products.clientId, session.clientId),
   });
 
   return NextResponse.json({ data: products });
@@ -3005,11 +3055,11 @@ export async function GET(request: Request) {
 ```typescript
 // ❌ Mixing response formats
 export async function GET() {
-  return NextResponse.json(products);  // Just array
+  return NextResponse.json(products); // Just array
 }
 
 export async function POST() {
-  return NextResponse.json({ success: true, data: product });  // Different shape
+  return NextResponse.json({ success: true, data: product }); // Different shape
 }
 
 // ✅ Consistent format
@@ -3027,8 +3077,10 @@ export async function POST() {
 ## Trade-offs
 
 ### REST vs. GraphQL
+
 **Chosen**: REST
 **Rationale**:
+
 - ✅ Simpler to implement and understand
 - ✅ Better caching (HTTP-level)
 - ✅ Excellent tooling (OpenAPI, Swagger)
@@ -3039,16 +3091,20 @@ export async function POST() {
 Future: Add GraphQL layer for complex queries
 
 ### Cursor vs. Offset Pagination
+
 **Chosen**: Hybrid (cursor for real-time, offset for stable)
 **Rationale**:
+
 - ✅ Cursor: Handles real-time data (generated images)
 - ✅ Offset: Simpler for stable data (products, categories)
 - ✅ Can switch per-endpoint based on use case
 - ❌ Need to maintain both implementations
 
 ### Polling vs. WebSockets
+
 **Chosen**: Polling (MVP), WebSocket (future)
 **Rationale**:
+
 - ✅ Polling: Simpler, works with serverless
 - ✅ No connection management needed
 - ✅ Easier to debug
@@ -3058,8 +3114,10 @@ Future: Add GraphQL layer for complex queries
 Future: Upgrade to WebSocket for real-time push
 
 ### API Versioning in URL vs. Header
+
 **Chosen**: URL versioning (`/api/v1/`)
 **Rationale**:
+
 - ✅ Explicit and visible
 - ✅ Easier to test and document
 - ✅ Can serve different versions simultaneously
@@ -3069,8 +3127,10 @@ Future: Upgrade to WebSocket for real-time push
 Future: Support header-based versioning for gradual migration
 
 ### Soft-Delete vs. Hard-Delete
+
 **Chosen**: Soft-delete for user data
 **Rationale**:
+
 - ✅ Prevents accidental data loss
 - ✅ 30-day recovery window
 - ✅ Audit trail
@@ -3078,8 +3138,10 @@ Future: Support header-based versioning for gradual migration
 - ❌ Database grows (mitigated by cron cleanup)
 
 ### Synchronous vs. Asynchronous Processing
+
 **Chosen**: Async for generation, sync for CRUD
 **Rationale**:
+
 - ✅ Generation: Async (long-running, 1-5 minutes)
 - ✅ CRUD: Sync (fast, <100ms)
 - ✅ Return 202 Accepted for async operations

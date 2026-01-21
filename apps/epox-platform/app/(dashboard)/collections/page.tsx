@@ -22,6 +22,8 @@ import { SearchInput } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/spinner';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +67,9 @@ export default function CollectionsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null);
+  const [deleteAssetPolicy, setDeleteAssetPolicy] = useState<'delete_all' | 'keep_pinned_approved'>(
+    'keep_pinned_approved'
+  );
 
   // Fetch collections with useQuery - auto-refetches when filter changes
   const {
@@ -85,7 +90,8 @@ export default function CollectionsPage() {
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (collectionId: string) => apiClient.deleteCollection(collectionId),
+    mutationFn: (payload: { id: string; assetPolicy: 'delete_all' | 'keep_pinned_approved' }) =>
+      apiClient.deleteCollection(payload.id, { assetPolicy: payload.assetPolicy }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['collections'] });
       toast.success('Collection deleted successfully');
@@ -99,12 +105,13 @@ export default function CollectionsPage() {
 
   const handleDeleteClick = (collection: Collection) => {
     setCollectionToDelete(collection);
+    setDeleteAssetPolicy('keep_pinned_approved');
     setDeleteDialogOpen(true);
   };
 
   const handleConfirmDelete = () => {
     if (collectionToDelete) {
-      deleteMutation.mutate(collectionToDelete.id);
+      deleteMutation.mutate({ id: collectionToDelete.id, assetPolicy: deleteAssetPolicy });
     }
   };
 
@@ -165,7 +172,9 @@ export default function CollectionsPage() {
           </div>
         ) : error ? (
           <div className="py-12 text-center">
-            <p className="mb-4 text-destructive">{error instanceof Error ? error.message : 'Failed to load collections'}</p>
+            <p className="mb-4 text-destructive">
+              {error instanceof Error ? error.message : 'Failed to load collections'}
+            </p>
             <Button variant="outline" onClick={() => window.location.reload()}>
               Retry
             </Button>
@@ -183,7 +192,9 @@ export default function CollectionsPage() {
                     <Plus className="h-6 w-6 text-primary" />
                   </div>
                   <h3 className="mb-1 font-medium">Create New Collection</h3>
-                  <p className="text-sm text-muted-foreground">Generate images for multiple products</p>
+                  <p className="text-sm text-muted-foreground">
+                    Generate images for multiple products
+                  </p>
                 </Card>
               </Link>
 
@@ -215,10 +226,42 @@ export default function CollectionsPage() {
           <DialogHeader>
             <DialogTitle>Delete Collection</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{collectionToDelete?.name}"? This action cannot be
-              undone and will remove all generated images associated with this collection.
+              Choose what to do with assets created by "{collectionToDelete?.name}". This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          <RadioGroup
+            value={deleteAssetPolicy}
+            onValueChange={(value) =>
+              setDeleteAssetPolicy(value as 'delete_all' | 'keep_pinned_approved')
+            }
+            className="space-y-3"
+          >
+            <div className="flex items-start gap-3 rounded-lg border border-border p-3">
+              <RadioGroupItem id="delete-collection-assets" value="delete_all" className="mt-0.5" />
+              <div className="space-y-1">
+                <Label htmlFor="delete-collection-assets">
+                  Remove all assets in this collection
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Deletes every generated asset owned by this collection.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border border-border p-3">
+              <RadioGroupItem
+                id="keep-collection-assets"
+                value="keep_pinned_approved"
+                className="mt-0.5"
+              />
+              <div className="space-y-1">
+                <Label htmlFor="keep-collection-assets">Keep pinned and approved assets</Label>
+                <p className="text-xs text-muted-foreground">
+                  Only deletes assets that are not pinned and not approved.
+                </p>
+              </div>
+            </div>
+          </RadioGroup>
           <DialogFooter>
             <Button
               variant="outline"
@@ -282,7 +325,9 @@ function CollectionCard({
                   Edit
                 </DropdownMenuItem>
                 {collection.status === 'draft' && (
-                  <DropdownMenuItem onClick={() => router.push(`/studio/collections/${collection.id}`)}>
+                  <DropdownMenuItem
+                    onClick={() => router.push(`/studio/collections/${collection.id}`)}
+                  >
                     <Play className="mr-2 h-4 w-4" />
                     Open Studio
                   </DropdownMenuItem>

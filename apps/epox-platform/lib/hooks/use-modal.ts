@@ -33,10 +33,7 @@ export function useModal() {
     router.push(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
   }, [searchParams, router, pathname]);
 
-  const isOpen = useCallback(
-    (modal: ModalType) => currentModal === modal,
-    [currentModal]
-  );
+  const isOpen = useCallback((modal: ModalType) => currentModal === modal, [currentModal]);
 
   return {
     currentModal,
@@ -45,4 +42,3 @@ export function useModal() {
     isOpen,
   };
 }
-

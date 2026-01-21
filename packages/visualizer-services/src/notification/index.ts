@@ -1,8 +1,4 @@
-export {
-  NotificationService,
-  getNotificationService,
-  resetNotificationService,
-} from './service';
+export { NotificationService, getNotificationService, resetNotificationService } from './service';
 export type { NotificationServiceConfig } from './service';
 export type {
   NotificationType,
@@ -12,5 +8,3 @@ export type {
   NotificationPreferences,
 } from './types';
 export { DEFAULT_NOTIFICATION_PREFERENCES } from './types';
-
-

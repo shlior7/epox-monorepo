@@ -17,10 +17,7 @@ export async function updateWithVersion<T extends { version: number }>(
 ): Promise<T> {
   const updatePayload: Record<string, unknown> = {
     ...data,
-    version:
-      expectedVersion !== undefined
-        ? expectedVersion + 1
-        : sql`${(table as any).version} + 1`,
+    version: expectedVersion !== undefined ? expectedVersion + 1 : sql`${(table as any).version} + 1`,
   };
 
   if ('updatedAt' in table) {
@@ -28,11 +25,13 @@ export async function updateWithVersion<T extends { version: number }>(
   }
 
   const whereClause =
-    expectedVersion !== undefined
-      ? and(eq((table as any).id, id), eq((table as any).version, expectedVersion))
-      : eq((table as any).id, id);
+    expectedVersion !== undefined ? and(eq((table as any).id, id), eq((table as any).version, expectedVersion)) : eq((table as any).id, id);
 
-  const updated = await drizzle.update(table as any).set(updatePayload).where(whereClause).returning();
+  const updated = await drizzle
+    .update(table as any)
+    .set(updatePayload)
+    .where(whereClause)
+    .returning();
 
   if (updated[0]) {
     return updated[0] as T;

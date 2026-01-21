@@ -11,6 +11,7 @@ Successfully extracted all Gemini/AI logic from `visualizer-services` into an in
 Located at: `packages/visualizer-ai/`
 
 **Files Created:**
+
 - `package.json` - Package configuration with minimal dependencies
 - `tsconfig.json` - TypeScript configuration
 - `src/constants.ts` - AI model constants and configurations
@@ -25,10 +26,12 @@ Located at: `packages/visualizer-ai/`
 ## Dependencies
 
 The new package has **minimal dependencies**:
+
 - `@google/generative-ai` - Official Google Generative AI SDK
 - TypeScript dev dependencies only
 
 **No longer requires:**
+
 - Database packages
 - Storage packages
 - Email services
@@ -40,6 +43,7 @@ The new package has **minimal dependencies**:
 ## What Was Updated
 
 ### 1. `packages/scenergy-queue/src/queue/worker.ts`
+
 ```typescript
 // Before
 import { getGeminiService } from 'visualizer-services';
@@ -49,16 +53,18 @@ import { getGeminiService } from 'visualizer-ai';
 ```
 
 ### 2. `packages/scenergy-queue/package.json`
+
 ```json
 {
   "dependencies": {
-    "visualizer-ai": "1.0.0",
+    "visualizer-ai": "1.0.0"
     // Removed: "visualizer-services": "1.0.0"
   }
 }
 ```
 
 ### 3. `services/ai-worker/package.json`
+
 ```json
 {
   "dependencies": {
@@ -73,10 +79,12 @@ import { getGeminiService } from 'visualizer-ai';
 The `visualizer-ai` package exports:
 
 ### Services
+
 - `GeminiService` - Main service class
 - `getGeminiService()` - Singleton getter
 
 ### Types
+
 - `GeminiGenerationRequest`
 - `GeminiGenerationResponse`
 - `EditImageRequest`
@@ -88,12 +96,14 @@ The `visualizer-ai` package exports:
 - And more...
 
 ### Constants
+
 - `AI_MODELS` - Model IDs
 - `AVAILABLE_IMAGE_MODELS` - Model configurations
 - `DEFAULT_AI_MODEL_CONFIG` - Default settings
 - `ERROR_MESSAGES` - Error constants
 
 ### Utils
+
 - `fileToBase64()`
 - `fileToGenerativePart()`
 - `estimateTokenUsage()`
@@ -130,6 +140,7 @@ const result = await gemini.generateImages({
 ## Environment Variables
 
 Required for `visualizer-ai`:
+
 ```bash
 GOOGLE_AI_STUDIO_API_KEY=your-api-key
 
@@ -154,11 +165,13 @@ GOOGLE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
 If issues arise, you can temporarily revert:
 
 1. In `packages/scenergy-queue/src/queue/worker.ts`:
+
    ```typescript
    import { getGeminiService } from 'visualizer-services';
    ```
 
 2. In `packages/scenergy-queue/package.json`:
+
    ```json
    "visualizer-services": "1.0.0"
    ```
@@ -174,4 +187,3 @@ If issues arise, you can temporarily revert:
 - Other parts of the system (web app, etc.) can continue using `visualizer-services`
 - Only the AI worker benefits from the lighter `visualizer-ai` package
 - Both packages can coexist during transition period
-

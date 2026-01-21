@@ -39,10 +39,7 @@ export function encryptCredentials(payload: StoreCredentialsPayload, key: Buffer
   };
 }
 
-export function decryptCredentials(
-  encrypted: EncryptedCredentials,
-  key: Buffer = getCredentialsKey()
-): StoreCredentialsPayload {
+export function decryptCredentials(encrypted: EncryptedCredentials, key: Buffer = getCredentialsKey()): StoreCredentialsPayload {
   const iv = Buffer.from(encrypted.iv, 'base64');
   const tag = Buffer.from(encrypted.tag, 'base64');
   const ciphertext = Buffer.from(encrypted.ciphertext, 'base64');

@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { apiClient } from '@/lib/api-client';
 
-type PollingStatus = 'idle' | 'polling' | 'completed' | 'failed' | 'timeout';
+type PollingStatus = 'idle' | 'polling' | 'retrying' | 'completed' | 'failed' | 'timeout';
 
 interface GenerationJob {
   jobId: string;
@@ -12,6 +12,7 @@ interface GenerationJob {
   status: PollingStatus;
   progress: number;
   error?: string;
+  retryCount?: number;
 }
 
 interface UseGenerationPollingOptions {
@@ -35,6 +36,8 @@ export function useGenerationPolling({
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<PollingStatus>('idle');
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const attemptRef = useRef(0);
@@ -157,6 +160,7 @@ export function useGenerationPolling({
           setStatus('completed');
           setProgress(100);
           setIsGenerating(false);
+          setError(null);
           clearPersistedJob();
           onComplete?.();
           return;
@@ -166,9 +170,36 @@ export function useGenerationPolling({
           console.error('❌ Generation failed:', jobData.error);
           setStatus('failed');
           setIsGenerating(false);
+          setError(jobData.error || 'Generation failed');
           clearPersistedJob();
           onError?.(jobData.error || 'Generation failed');
           return;
+        }
+
+        // Check if job is being retried (pending with error means retry scheduled)
+        const attempts = jobData.attempts ?? 0;
+        const maxJobAttempts = jobData.maxAttempts ?? 3;
+
+        if (jobData.status === 'pending' && jobData.error && attempts > 0) {
+          // Job failed but is being retried
+          if (attempts >= maxJobAttempts) {
+            // All retries exhausted but status not yet updated to failed
+            // This shouldn't normally happen, but handle it defensively
+            console.error('❌ Generation failed after all retries:', jobData.error);
+            setStatus('failed');
+            setIsGenerating(false);
+            setError(jobData.error);
+            clearPersistedJob();
+            onError?.(jobData.error || 'Generation failed after retries');
+            return;
+          }
+
+          // Still has retries left - show retrying state
+          console.log(`🔄 Job retrying (attempt ${attempts}/${maxJobAttempts}): ${jobData.error}`);
+          setStatus('retrying');
+          setRetryCount(attempts);
+          setError(jobData.error);
+          persistJob({ status: 'retrying', retryCount: attempts, error: jobData.error });
         }
 
         // Update progress
@@ -207,6 +238,8 @@ export function useGenerationPolling({
       setIsGenerating(true);
       setProgress(0);
       setStatus('polling');
+      setError(null);
+      setRetryCount(0);
       persistJob({
         jobId,
         sessionId,
@@ -226,6 +259,8 @@ export function useGenerationPolling({
     setProgress(0);
     setStatus('idle');
     setCurrentJobId(null);
+    setError(null);
+    setRetryCount(0);
     clearPersistedJob();
   }, [stopPolling, clearPersistedJob]);
 
@@ -234,8 +269,9 @@ export function useGenerationPolling({
     progress,
     status,
     currentJobId,
+    error,
+    retryCount,
     startGeneration,
     cancelGeneration,
   };
 }
-

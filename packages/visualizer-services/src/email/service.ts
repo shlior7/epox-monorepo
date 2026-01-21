@@ -12,13 +12,7 @@ import type {
   PasswordResetEmailPayload,
   WeeklyUsageSummaryPayload,
 } from './types';
-import {
-  invitationEmail,
-  generationCompletedEmail,
-  generationFailedEmail,
-  passwordResetEmail,
-  weeklyUsageSummaryEmail,
-} from './templates';
+import { invitationEmail, generationCompletedEmail, generationFailedEmail, passwordResetEmail, weeklyUsageSummaryEmail } from './templates';
 
 export interface EmailServiceConfig {
   apiKey: string;
@@ -49,7 +43,7 @@ export class EmailService {
     if (this.config.provider === 'console') {
       // Development mode: log to console
       console.log('📧 Email would be sent:');
-      console.log('  To:', Array.isArray(request.to) ? request.to.map(t => t.email).join(', ') : request.to.email);
+      console.log('  To:', Array.isArray(request.to) ? request.to.map((t) => t.email).join(', ') : request.to.email);
       console.log('  Subject:', request.subject);
       console.log('  From:', from.email);
       console.log('  ---');
@@ -62,19 +56,21 @@ export class EmailService {
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
+          Authorization: `Bearer ${this.config.apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           from: `${from.name} <${from.email}>`,
           to: Array.isArray(request.to)
-            ? request.to.map(t => t.name ? `${t.name} <${t.email}>` : t.email)
-            : request.to.name ? `${request.to.name} <${request.to.email}>` : request.to.email,
+            ? request.to.map((t) => (t.name ? `${t.name} <${t.email}>` : t.email))
+            : request.to.name
+              ? `${request.to.name} <${request.to.email}>`
+              : request.to.email,
           subject: request.subject,
           html: request.html,
           text: request.text,
           reply_to: request.replyTo?.email,
-          tags: request.tags?.map(name => ({ name })),
+          tags: request.tags?.map((name) => ({ name })),
         }),
       });
 
@@ -177,5 +173,3 @@ export function getEmailService(): EmailService {
 export function resetEmailService(): void {
   _emailService = null;
 }
-
-

@@ -1,6 +1,6 @@
 /**
  * Rate Limiter Middleware - Prevent API abuse and quota exhaustion
- * Uses Redis for distributed rate limiting across multiple server instances
+ * Uses in-memory counters (per-process, non-distributed)
  *
  * Configuration via environment variables:
  * - RATE_LIMIT_TIER: 'free' | 'standard' | 'vertex' | 'unlimited' (default: 'standard')
@@ -64,10 +64,7 @@ function getRateLimitTier(): RateLimitTier {
 /**
  * Get rate limit value with environment override support
  */
-function getRateLimitValue(
-  configKey: 'imageGeneration' | 'batch' | 'polling',
-  envKey: string
-): number {
+function getRateLimitValue(configKey: 'imageGeneration' | 'batch' | 'polling', envKey: string): number {
   // Check for explicit override first
   const override = process.env[envKey];
   if (override) {

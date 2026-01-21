@@ -329,7 +329,9 @@
   background-color: vars.semantic-color('accent');
   border: none;
   cursor: pointer;
-  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    opacity var(--transition-fast);
   white-space: nowrap;
 
   &:disabled {
@@ -354,7 +356,9 @@
   border: none;
   color: vars.semantic-color('text-inverse');
   cursor: pointer;
-  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    opacity var(--transition-fast);
 
   &:disabled {
     opacity: 0.5;
@@ -396,7 +400,9 @@
   flex-wrap: wrap;
   min-width: 0;
   position: relative;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .productRowInteractive {
@@ -414,7 +420,9 @@
   &:hover {
     background-color: vars.semantic-color('surface-hover');
     border-color: vars.semantic-color('accent');
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06);
   }
 }
 
@@ -455,7 +463,12 @@
   cursor: pointer;
   background-color: vars.semantic-color('surface-overlay');
   color: vars.semantic-color('text-primary');
-  transition: background-color var(--transition-fast), transform var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    opacity var(--transition-fast);
 }
 
 .favoriteButton:hover:not(:disabled) {
@@ -496,7 +509,9 @@
   opacity: 0;
   pointer-events: none;
   transform: translateY(4px);
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
   box-shadow: 0 4px 6px vars.semantic-color('overlay-soft');
   z-index: 10;
 }
@@ -717,7 +732,9 @@
   border-radius: vars.radius('md');
   cursor: pointer;
   border: 2px solid vars.semantic-color('warning');
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
 
   &:hover {
     transform: scale(1.02);
@@ -750,7 +767,9 @@
   color: vars.semantic-color('text-inverse');
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--transition-fast), background-color var(--transition-fast);
+  transition:
+    opacity var(--transition-fast),
+    background-color var(--transition-fast);
 
   &:hover {
     background-color: vars.semantic-color('error');

@@ -1,7 +1,30 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Play, Plus, Trash2, Image as ImageIcon, Loader2, X, Paintbrush, Sun, Layout, Star, Bug, Copy, Pencil, MoreVertical, Layers, ImagePlus, ChevronDown, ChevronUp, Settings, Palette, MapPin, Home } from 'lucide-react';
+import {
+  Play,
+  Plus,
+  Trash2,
+  Image as ImageIcon,
+  Loader2,
+  X,
+  Paintbrush,
+  Sun,
+  Layout,
+  Star,
+  Bug,
+  Copy,
+  Pencil,
+  MoreVertical,
+  Layers,
+  ImagePlus,
+  ChevronDown,
+  ChevronUp,
+  Settings,
+  Palette,
+  MapPin,
+  Home,
+} from 'lucide-react';
 import clsx from 'clsx';
 import type { Flow, Product, FlowGenerationSettings, FlowGeneratedImage } from '@/lib/types/app-types';
 import * as S3Service from '@/lib/services/s3/browser';
@@ -119,9 +142,7 @@ export function FlowCard({
   }, [showImageMenu, activeProductMenu]);
 
   // Filter out products that are being moved (optimistic UI)
-  const flowProducts = products.filter(
-    (p) => flow.productIds.includes(p.id) && !hiddenProductIds?.has(p.id)
-  );
+  const flowProducts = products.filter((p) => flow.productIds.includes(p.id) && !hiddenProductIds?.has(p.id));
   const hasProducts = flowProducts.length > 0;
   const currentImage = flow.generatedImages[flow.currentImageIndex];
   const canExecute = hasProducts && flow.status !== 'generating';
@@ -318,10 +339,7 @@ export function FlowCard({
           <span>All</span>
         </button>
         {/* Individual setting tags */}
-        <div
-          ref={tagsContainerRef}
-          className={clsx(styles.tagsInnerContainer, { [styles.tagsCollapsed]: !tagsExpanded && tagsOverflow })}
-        >
+        <div ref={tagsContainerRef} className={clsx(styles.tagsInnerContainer, { [styles.tagsCollapsed]: !tagsExpanded && tagsOverflow })}>
           {tags.map((tag, index) => (
             <button
               key={index}
@@ -351,9 +369,7 @@ export function FlowCard({
             {tagsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         )}
-        {!hasAnyTags && (
-          <span className={styles.noTagsLabel}>No settings configured</span>
-        )}
+        {!hasAnyTags && <span className={styles.noTagsLabel}>No settings configured</span>}
       </div>
     );
   };
@@ -366,9 +382,7 @@ export function FlowCard({
   };
 
   // Calculate flow name - use first product name or "Untitled Flow"
-  const flowName = flowProducts.length > 0
-    ? flowProducts.map(p => p.name).join(', ')
-    : 'Empty Flow';
+  const flowName = flowProducts.length > 0 ? flowProducts.map((p) => p.name).join(', ') : 'Empty Flow';
   const revisionCount = flow.generatedImages.length;
 
   // Collapsed mode - thin view with just name, revisions, and execute
@@ -450,10 +464,12 @@ export function FlowCard({
         })}
       >
         {hasProducts ? (
-          <div className={clsx(styles.productThumbnails, {
-            [styles.singleLayout]: productDisplayMode === 'single',
-            [styles.sideBySideLayout]: productDisplayMode === 'side-by-side',
-          })}>
+          <div
+            className={clsx(styles.productThumbnails, {
+              [styles.singleLayout]: productDisplayMode === 'single',
+              [styles.sideBySideLayout]: productDisplayMode === 'side-by-side',
+            })}
+          >
             {flowProducts.map((product) => {
               const imageUrl = getProductImageUrl(product);
               const selectedImageId = flow.selectedBaseImages[product.id] || product.productImageIds[0];
@@ -556,10 +572,7 @@ export function FlowCard({
             )}
           </div>
         ) : (
-          <div
-            className={styles.addProductsLabel}
-            title="Drag products from the side panel"
-          >
+          <div className={styles.addProductsLabel} title="Drag products from the side panel">
             <ImagePlus style={{ width: 24, height: 24 }} />
             <span>Drag products here</span>
           </div>
@@ -576,9 +589,9 @@ export function FlowCard({
               style={{
                 filter: currentImage.settings?.postAdjustments
                   ? generateFilterString(currentImage.settings.postAdjustments)
-                  : (flow.settings.postAdjustments
+                  : flow.settings.postAdjustments
                     ? generateFilterString(flow.settings.postAdjustments)
-                    : 'none')
+                    : 'none',
               }}
             />
             {/* Hamburger menu for image actions */}
@@ -624,7 +637,10 @@ export function FlowCard({
                         })}
                         type="button"
                       >
-                        <Star style={{ width: 16, height: 16 }} fill={isFavorite?.(currentImage.imageId, flowProducts[0].id) ? 'currentColor' : 'none'} />
+                        <Star
+                          style={{ width: 16, height: 16 }}
+                          fill={isFavorite?.(currentImage.imageId, flowProducts[0].id) ? 'currentColor' : 'none'}
+                        />
                         <span>{isFavorite?.(currentImage.imageId, flowProducts[0].id) ? 'Remove from Favorites' : 'Add to Favorites'}</span>
                       </button>
                     )}
@@ -711,9 +727,9 @@ export function FlowCard({
                   style={{
                     filter: img.settings?.postAdjustments
                       ? generateFilterString(img.settings.postAdjustments)
-                      : (flow.settings.postAdjustments
+                      : flow.settings.postAdjustments
                         ? generateFilterString(flow.settings.postAdjustments)
-                        : 'none')
+                        : 'none',
                   }}
                 />
               </div>
@@ -783,10 +799,7 @@ export function FlowCard({
             setShowDeleteConfirm(false);
           }}
         >
-          <div
-            className={styles.deleteConfirmModal}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className={styles.deleteConfirmModal} onClick={(e) => e.stopPropagation()}>
             <h3>Delete Image</h3>
             <p>Are you sure you want to delete this generated image?</p>
             <div className={styles.deleteConfirmActions}>

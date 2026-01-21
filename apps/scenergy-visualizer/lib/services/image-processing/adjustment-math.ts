@@ -25,9 +25,9 @@ export function exposureToMultiplier(exposure: number): number {
 export function contrastToFactor(contrast: number): number {
   // Use a curve that's more aggressive in the positive direction
   if (contrast >= 0) {
-    return 1 + (contrast / 50); // 0 to 3
+    return 1 + contrast / 50; // 0 to 3
   } else {
-    return 1 + (contrast / 100); // 1 to 0
+    return 1 + contrast / 100; // 1 to 0
   }
 }
 
@@ -72,7 +72,7 @@ export function calculateLuminosityAdjustment(
   masks: Pick<LightAdjustments, 'highlights' | 'shadows' | 'whites' | 'blacks'>
 ): number {
   const lumNorm = lum / 255;
-  
+
   // Soft masks using power curves for smooth transitions
   const highlightMask = Math.pow(lumNorm, 2);
   const shadowMask = Math.pow(1 - lumNorm, 2);
@@ -84,10 +84,10 @@ export function calculateLuminosityAdjustment(
   // - shadows/blacks: positive coefficient (lift to brighten dark areas)
   // Values scaled so full +100/-100 produces visible but not extreme changes
   return (
-    masks.highlights * highlightMask * -0.25 +  // Recover highlights
-    masks.shadows * shadowMask * 0.25 +          // Lift shadows
-    masks.whites * whiteMask * -0.15 +           // Recover whites
-    masks.blacks * blackMask * 0.15              // Lift blacks
+    masks.highlights * highlightMask * -0.25 + // Recover highlights
+    masks.shadows * shadowMask * 0.25 + // Lift shadows
+    masks.whites * whiteMask * -0.15 + // Recover whites
+    masks.blacks * blackMask * 0.15 // Lift blacks
   );
 }
 

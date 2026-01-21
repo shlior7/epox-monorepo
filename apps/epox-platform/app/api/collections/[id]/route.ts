@@ -6,8 +6,15 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
+import { storage } from 'visualizer-storage';
+import { withSecurity } from '@/lib/security/middleware';
+import { verifyOwnership, forbiddenResponse } from '@/lib/security/auth';
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id } = await params;
 
@@ -18,10 +25,13 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
     }
 
-    // For now, return product count as total images (each product gets 1 image by default)
-    // Generated count will be updated when we actually generate assets
-    const totalImages = collection.productIds.length;
-    const generatedCount = 0; // Will be populated when generation is implemented
+    const flows = await db.generationFlows.listByCollectionSession(id);
+    const flowIds = flows.map((flow) => flow.id);
+
+    const [totalImages, generatedCount] = await Promise.all([
+      db.generatedAssets.countByGenerationFlowIds(clientId, flowIds),
+      db.generatedAssets.countByGenerationFlowIds(clientId, flowIds, 'completed'),
+    ]);
 
     // Migrate old selectedBaseImages format to new settings.inspirationImages if needed
     let settings = collection.settings;
@@ -70,12 +80,15 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json(response);
   } catch (error: unknown) {
     console.error('❌ Failed to fetch collection:', error);
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id } = await params;
     const body = await request.json();
@@ -85,6 +98,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if (!collection) {
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: collection.clientId,
+        resourceType: 'collection',
+        resourceId: id,
+      })
+    ) {
+      return forbiddenResponse();
     }
 
     // Validate inputs if provided
@@ -159,23 +184,86 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json(response);
   } catch (error: unknown) {
     console.error('❌ Failed to update collection:', error);
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id } = await params;
+    const body = await request.json().catch(() => ({}));
+    const assetPolicy = body?.assetPolicy;
+    const validPolicies = ['delete_all', 'keep_pinned_approved'] as const;
+
+    if (assetPolicy !== undefined && !validPolicies.includes(assetPolicy)) {
+      return NextResponse.json(
+        { error: 'assetPolicy must be one of: delete_all, keep_pinned_approved' },
+        { status: 400 }
+      );
+    }
+
+    const effectivePolicy = (assetPolicy ??
+      'keep_pinned_approved') as (typeof validPolicies)[number];
 
     // Fetch collection first to verify existence
     const collection = await db.collectionSessions.getById(id);
 
     if (!collection) {
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: collection.clientId,
+        resourceType: 'collection',
+        resourceId: id,
+      })
+    ) {
+      return forbiddenResponse();
+    }
+
+    const flows = await db.generationFlows.listByCollectionSession(id);
+    const flowIds = flows.map((flow) => flow.id);
+
+    if (flowIds.length > 0) {
+      const assets = await db.generatedAssets.listByGenerationFlowIds(flowIds);
+      const activeAssets = assets.filter((asset) => !asset.deletedAt);
+
+      if (effectivePolicy === 'delete_all') {
+        for (const asset of activeAssets) {
+          if (!asset.assetUrl) continue;
+          try {
+            const url = new URL(asset.assetUrl);
+            const key = url.pathname.replace(/^\//, '');
+            await storage.delete(key);
+          } catch (storageError) {
+            console.warn(`⚠️ Failed to delete from storage:`, storageError);
+          }
+        }
+        await db.generatedAssets.deleteByGenerationFlowIds(flowIds);
+      } else {
+        const assetsToDelete = activeAssets.filter(
+          (asset) => !asset.pinned && asset.approvalStatus !== 'approved'
+        );
+
+        for (const asset of assetsToDelete) {
+          await db.generatedAssets.hardDelete(asset.id);
+          if (!asset.assetUrl) continue;
+          try {
+            const url = new URL(asset.assetUrl);
+            const key = url.pathname.replace(/^\//, '');
+            await storage.delete(key);
+          } catch (storageError) {
+            console.warn(`⚠️ Failed to delete from storage:`, storageError);
+          }
+        }
+      }
     }
 
     // Delete collection
@@ -185,7 +273,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, id });
   } catch (error: unknown) {
     console.error('❌ Failed to delete collection:', error);
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
+});

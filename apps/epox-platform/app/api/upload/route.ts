@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { storage, storagePaths } from '@/lib/services/storage';
 import { db } from '@/lib/services/db';
-import { getGeminiService } from 'visualizer-services';
+import { getGeminiService } from 'visualizer-ai';
+import { withUploadSecurity } from '@/lib/security/middleware';
 import type { SubjectAnalysis, ProductAnalysis } from 'visualizer-types';
 
-// TODO: Replace with actual auth when implemented
-const PLACEHOLDER_CLIENT_ID = 'test-client';
-
-export async function POST(request: NextRequest) {
+export const POST = withUploadSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -35,10 +37,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine file extension
-    const extension = file.type === 'image/jpeg' ? 'jpg' :
-                     file.type === 'image/png' ? 'png' :
-                     file.type === 'image/webp' ? 'webp' :
-                     file.type === 'image/gif' ? 'gif' : 'jpg';
+    const extension =
+      file.type === 'image/jpeg'
+        ? 'jpg'
+        : file.type === 'image/png'
+          ? 'png'
+          : file.type === 'image/webp'
+            ? 'webp'
+            : file.type === 'image/gif'
+              ? 'gif'
+              : 'jpg';
 
     // Generate asset ID
     const assetId = `upload_${Date.now()}`;
@@ -50,18 +58,13 @@ export async function POST(request: NextRequest) {
     if (type === 'product' && productId) {
       // Product image - generate unique image ID
       const imageId = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      storageKey = storagePaths.productImageBase(PLACEHOLDER_CLIENT_ID, productId, imageId);
+      storageKey = storagePaths.productImageBase(clientId, productId, imageId);
     } else if (type === 'collection' && collectionId) {
       // Collection asset
-      storageKey = storagePaths.collectionAsset(PLACEHOLDER_CLIENT_ID, collectionId, assetId, extension);
+      storageKey = storagePaths.collectionAsset(clientId, collectionId, assetId, extension);
     } else {
       // Generic inspiration or temporary upload
-      storageKey = storagePaths.inspirationImage(
-        PLACEHOLDER_CLIENT_ID,
-        'temp',
-        assetId,
-        extension
-      );
+      storageKey = storagePaths.inspirationImage(clientId, 'temp', assetId, extension);
     }
 
     console.log(`📤 Uploading file: ${storageKey}`);
@@ -81,7 +84,9 @@ export async function POST(request: NextRequest) {
         sortOrder,
       });
 
-      console.log(`✅ Created product image record: ${productImageRecord.id} for product ${productId}`);
+      console.log(
+        `✅ Created product image record: ${productImageRecord.id} for product ${productId}`
+      );
 
       // Run Subject Scanner on first product image (primary image)
       // This pre-computes the product's subject analysis for prompt engineering
@@ -102,7 +107,9 @@ export async function POST(request: NextRequest) {
             analyzedAt: new Date().toISOString(),
             productType: subjectAnalysis.subjectClassHyphenated.replace(/-/g, ' '),
             materials: subjectAnalysis.materialTags ?? existingAnalysis?.materials ?? [],
-            colors: existingAnalysis?.colors ?? { primary: subjectAnalysis.dominantColors?.[0] ?? 'neutral' },
+            colors: existingAnalysis?.colors ?? {
+              primary: subjectAnalysis.dominantColors?.[0] ?? 'neutral',
+            },
             style: existingAnalysis?.style ?? [],
             sceneTypes: subjectAnalysis.nativeSceneTypes,
             scaleHints: existingAnalysis?.scaleHints ?? { width: 'medium', height: 'medium' },
@@ -148,4 +155,4 @@ export async function POST(request: NextRequest) {
     console.error('❌ Failed to upload file:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
-}
+});

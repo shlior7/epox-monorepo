@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/lib/contexts/auth-context';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -36,8 +37,29 @@ const navigation = [
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
-export function Sidebar({ setCollapsed, collapsed }: { setCollapsed: (collapsed: boolean) => void, collapsed: boolean }) {
+export function Sidebar({
+  setCollapsed,
+  collapsed,
+}: {
+  setCollapsed: (collapsed: boolean) => void;
+  collapsed: boolean;
+}) {
   const pathname = usePathname();
+  const { user, signOut } = useAuth();
+
+  // Get user initials for avatar
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const userName = user?.name || 'User';
+  const userEmail = user?.email || '';
+  const userInitials = getInitials(userName);
 
   return (
     <aside
@@ -88,24 +110,23 @@ export function Sidebar({ setCollapsed, collapsed }: { setCollapsed: (collapsed:
           )}
         </Link>
 
-
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setCollapsed(!collapsed)}
-            className={cn(
-              'text-muted-foreground hover:text-foreground',
-              'h-6 w-6 transition-all duration-200',
-              collapsed &&
-                'absolute -right-3 border border-border bg-transparent hover:bg-charcoal-700'
-            )}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronLeft className="h-3.5 w-3.5" />
-            )}
-          </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => setCollapsed(!collapsed)}
+          className={cn(
+            'text-muted-foreground hover:text-foreground',
+            'h-6 w-6 transition-all duration-200',
+            collapsed &&
+              'absolute -right-3 border border-border bg-transparent hover:bg-charcoal-700'
+          )}
+        >
+          {collapsed ? (
+            <ChevronRight className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronLeft className="h-3.5 w-3.5" />
+          )}
+        </Button>
       </div>
 
       {/* Navigation */}
@@ -160,10 +181,7 @@ export function Sidebar({ setCollapsed, collapsed }: { setCollapsed: (collapsed:
       </nav>
 
       {/* Quick Action */}
-      {!collapsed && (
-        <div className="px-2 pb-3">
-        </div>
-      )}
+      {!collapsed && <div className="px-2 pb-3"></div>}
 
       {/* User Section */}
       <div className="relative border-t border-border/50 p-2">
@@ -181,37 +199,40 @@ export function Sidebar({ setCollapsed, collapsed }: { setCollapsed: (collapsed:
             >
               <Avatar className="h-8 w-8 ring-2 ring-border/50">
                 <AvatarFallback className="bg-primary/20 text-xs font-semibold text-primary">
-                  JD
+                  {userInitials}
                 </AvatarFallback>
               </Avatar>
               {!collapsed && (
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">John Doe</p>
-                  <p className="truncate text-[10px] text-muted-foreground">john@example.com</p>
+                  <p className="truncate text-sm font-medium text-foreground">{userName}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">{userEmail}</p>
                 </div>
               )}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align={collapsed ? 'center' : 'end'}
-            side="top"
-            className="w-56"
-          >
+          <DropdownMenuContent align={collapsed ? 'center' : 'end'} side="top" className="w-56">
             <div className="px-2 py-1.5">
-              <p className="text-sm font-medium">John Doe</p>
-              <p className="text-xs text-muted-foreground">john@example.com</p>
+              <p className="text-sm font-medium">{userName}</p>
+              <p className="text-xs text-muted-foreground">{userEmail}</p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              Profile
+            <DropdownMenuItem asChild>
+              <Link href="/settings">
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
+            <DropdownMenuItem asChild>
+              <Link href="/settings">
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+            <DropdownMenuItem
+              onClick={() => signOut()}
+              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Sign out
             </DropdownMenuItem>

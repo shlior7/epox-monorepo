@@ -11,6 +11,7 @@
 This directory contains comprehensive design documentation for the **visualizer-client** platform - a SaaS application that enables clients to generate AI-powered product visualizations at scale.
 
 The platform allows users to:
+
 - Create studio sessions with multiple products (bulk selection: 20-500 products)
 - Configure generation flows with different settings
 - Generate hundreds of product images automatically using AI
@@ -25,9 +26,11 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 ### Core Architecture & Infrastructure
 
 #### [📋 Design Log #001: Architecture & Infrastructure](./001-architecture-infrastructure.md)
+
 **Focus**: System architecture, technology stack, package structure
 
 **Key Topics**:
+
 - High-level architecture diagram (apps, shared package, core packages)
 - Package structure (`visualizer-shared`, separation from `scenergy-visualizer`)
 - Technology stack (Next.js, Drizzle, Redis, Gemini, **Cloudflare R2**)
@@ -36,6 +39,7 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 - Environment configuration
 
 **Key Decisions**:
+
 - ✅ Create `visualizer-shared` package for code reuse
 - ✅ Separate apps for admin vs. client (independent deployment)
 - ✅ **Reuse existing data model** (StudioSession, Flow, GeneratedImage)
@@ -48,9 +52,11 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 ### Authentication & Security
 
 #### [🔐 Design Log #002: Authentication & Authorization](./002-authentication-authorization.md)
+
 **Focus**: User authentication, client scoping, security model, future monetization
 
 **Key Topics**:
+
 - Separate auth tables (`adminUser` vs `user`)
 - User-to-client association via `member` table
 - Invitation-based signup flow (MVP)
@@ -59,6 +65,7 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 - **Future**: Credit system (Phase 2) and subscriptions (Phase 3)
 
 **Key Decisions**:
+
 - ✅ Invitation-only signup (MVP, admins invite users)
 - ✅ Session cookies (Better Auth) over JWT
 - ✅ Single client per user (MVP, multi-client future)
@@ -67,6 +74,7 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 - 🔜 **Phase 3**: Subscription tiers with store sync
 
 **Future Evolution**:
+
 - Phase 1 (MVP): Invitation-only, no payments
 - Phase 2 (Months 4-9): Credit system, self-service signup, 10 free credits
 - Phase 3 (Months 10-18): Subscription tiers ($49-$399/mo), store sync
@@ -74,6 +82,7 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 **Related**: Design Log #008 (Business Model & Pricing)
 
 **Related Files**:
+
 - Database: `users`, `members`, `sessions` tables
 - Future: `credit_transactions`, `credit_packages`, `subscriptions` tables
 - Middleware: `apps/visualizer-client/middleware.ts`
@@ -84,9 +93,11 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 ### Data Model & Terminology
 
 #### [💾 Design Log #003: Data Model & Terminology](./003-data-model-terminology.md)
+
 **Focus**: Database schema, entity relationships
 
 **Key Topics**:
+
 - **Core entities**: StudioSession, Flow, GeneratedImage (existing tables, no changes)
 - Multi-product support in Flow via `productIds: string[]`
 - Flow lifecycle (empty → configured → generating → completed/error)
@@ -95,17 +106,20 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 - **Future**: Multi-product combination strategies
 
 **Key Decisions**:
+
 - ✅ Flow already supports multi-product (productIds array)
 - ✅ Soft-delete with 30-day recovery window
 - ✅ JSONB for flexible settings storage
 - 🔜 **Future**: Add `combinationStrategy` to Flow (match_dimensions, category_pairing, etc.)
 
 **Important Note**:
+
 - The term "Collection" in user-facing UX may refer to StudioSession
 - "Job" refers to transient Redis queue items (jobId field)
 - "GeneratedImage" is the permanent database record
 
 **Database Schema**:
+
 - **Existing tables** (reuse as-is): `studio_session`, `flow`, `generated_image`, `product`, `product_image`
 - **New tables** (authentication): `users`, `members`, `sessions`, `accounts`
 - **Future tables** (monetization): `credit_transactions`, `credit_packages`, `subscriptions`
@@ -116,9 +130,11 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 ### User Experience
 
 #### [🔀 Design Log #004: User Flows & Journey](./004-user-flows-journey.md)
+
 **Focus**: End-to-end user workflows, interaction patterns
 
 **Key Topics**:
+
 - **Onboarding flow**: Invitation → signup → first studio session (<5 min)
 - **Studio session creation flow**: 4-step wizard (Select Products → Analyze → Inspire → Generate)
 - **Asset management flow**: Gallery, download, pin, delete generated images
@@ -126,6 +142,7 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 - **Settings flow**: Profile, notifications, defaults
 
 **Key Patterns**:
+
 - Auto-save drafts every 30 seconds
 - Real-time polling (every 5s during generation)
 - Soft-delete with 10-second undo toast
@@ -133,6 +150,7 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 - Bulk operations (multi-select, ZIP download)
 
 **User Personas**:
+
 - Sarah Chen (Furniture Marketing Manager) - Seasonal catalogs, 50-100 products
 - Mike Rodriguez (E-commerce Catalog Manager) - Large datasets, 1000+ SKUs
 - Alex Thompson (Interior Design Studio) - Small curated collections, high customization
@@ -140,9 +158,11 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 ---
 
 #### [🎨 Design Log #005: Screens & UI Components](./005-screens-ui-components.md)
+
 **Focus**: Screen layouts, component library, responsive design
 
 **Key Topics**:
+
 - **8 screens**: Login, Dashboard, Sessions List, Wizard (4 steps), Results, Products, Settings, Errors
 - **Core components**: ProductTable, InspirationPicker, GenerationProgress, ImageGallery
 - **Design system**: Colors, typography, spacing scales
@@ -150,12 +170,14 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 - **Accessibility**: WCAG AA compliance
 
 **Component Specifications**:
+
 - ProductTable (virtualized, search, filter, sort, multi-select)
 - InspirationPicker (3 tabs: Upload, Unsplash, Library)
 - GenerationProgress (real-time updates, per-flow status)
 - ImageGallery (lightbox, download, pin, delete actions)
 
 **State Management**:
+
 - React Context for global state (ClientContext, ModalContext)
 - TanStack Query for server state (caching, polling)
 
@@ -164,14 +186,17 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 ### Requirements & Use Cases
 
 #### [📝 Design Log #006: Use Cases & Scenarios](./006-use-cases-scenarios.md)
+
 **Focus**: Detailed use cases, user scenarios, edge cases
 
 **Key Topics**:
+
 - **8 primary use cases**: Onboarding, creating studio sessions, AI analysis, inspiration selection, progress monitoring, downloads, pinning, regeneration
 - **4 secondary use cases**: Product management, settings, team collaboration (future), API integration (future)
 - **6 edge cases**: Network failures, AI failures, quota limits, invalid uploads, concurrent editing, large datasets
 
 **Example Quantifiable Scenario**:
+
 - User: Sarah (Furniture Marketing Manager)
 - Action: Create studio session with 45 products
 - Flows: Create 3 flows with different settings
@@ -181,6 +206,7 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 - Cost: $9.00, Storage: 360MB
 
 **Each Use Case Includes**:
+
 - Actor, preconditions, main flow, alternatives, exceptions, postconditions
 - Success criteria (measurable)
 - Related components (mapped to other design logs)
@@ -190,9 +216,11 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 ### API & Integration
 
 #### [🔌 Design Log #007: API Design](./007-api-design.md)
+
 **Focus**: REST API specifications, endpoints, security
 
 **Key Topics**:
+
 - **9 API sections**: Auth, Products, **Studio Sessions**, **Flows**, **Generated Images**, Images/Upload, Analysis, Unsplash, User
 - **Complete endpoint specs**: Methods, paths, request/response types, auth, rate limits
 - **API patterns**: Pagination (cursor/offset), filtering, sorting, polling, batch operations
@@ -200,6 +228,7 @@ All design documents follow the **Design Log Methodology** (see `/.claude/rules/
 - **Error handling**: RFC 7807 Problem Details format
 
 **Key Endpoints**:
+
 ```text
 POST   /api/auth/signup
 GET    /api/products?search=desk&category=furniture
@@ -215,6 +244,7 @@ GET    /api/unsplash/search?query=modern+office
 ```
 
 **Rate Limits** (per client):
+
 - Auth endpoints: 5 req/min (prevent brute force)
 - Product list: 30 req/min
 - Generate: 10 req/hour (prevent abuse)
@@ -226,9 +256,11 @@ GET    /api/unsplash/search?query=modern+office
 ### Business Model & Pricing
 
 #### [💰 Design Log #008: Business Model & Pricing Strategy](./008-business-model-pricing.md)
+
 **Focus**: Monetization strategy, pricing tiers, revenue projections
 
 **Key Topics**:
+
 - **Phase 1 (MVP)**: Invitation-only, no payments, validation
 - **Phase 2 (Months 4-9)**: Credit system, self-service signup
   - 10 free credits on signup (expires in 30 days)
@@ -244,17 +276,20 @@ GET    /api/unsplash/search?query=modern+office
   - Agency tier: $499/mo (manage 10 clients)
 
 **Financial Analysis**:
+
 - Cost per generation: $0.05 (Gemini API + R2 + compute)
 - Selling price: $0.15-$0.24 per credit
 - Target gross margin: **70%**
 - LTV:CAC ratio: 8:1 (credits), 119:1 (subscriptions)
 
 **Revenue Projections** (1,000 users, moderate scenario):
+
 - Phase 2: $10,000 MRR
 - Phase 3: $28,000 MRR (combined)
 - Phase 4: $100,000+ MRR
 
 **Pricing Strategy**:
+
 - ✅ Hybrid model (credits + subscriptions)
 - ✅ No credit expiration (purchased credits)
 - ✅ Transparent pricing (show cost before generating)
@@ -265,30 +300,35 @@ GET    /api/unsplash/search?query=modern+office
 ## Design Principles
 
 ### 1. Reuse Existing Infrastructure
+
 - **StudioSession** (existing table) serves as the container
 - **Flow** (existing table) supports multi-product generation
 - **GeneratedImage** (existing table) stores all outputs
 - Only add `user`/`member` tables for authentication
 
 ### 2. Progressive Disclosure
+
 - Show simple defaults first
 - Hide advanced settings behind "Advanced" toggle
 - Guide users through 4-step wizard
 - AI fills in sensible values (user just confirms)
 
 ### 3. Bulk-First UX
+
 - Designed for 100+ products, not one at a time
 - Product table with search, filter, multi-select
 - Studio session workflow (not individual generation)
 - Batch download (ZIP archive)
 
 ### 4. Non-Technical Language
+
 - "Warm lighting" not "temperature: 5500K"
 - "Modern style" not "embedding vector: [0.23, ...]"
 - "Scene inspiration" not "conditioning image"
 - "Studio Session" (user-facing) vs. StudioSession (database)
 
 ### 5. Resilient by Default
+
 - Auto-save drafts (resume from any step)
 - Soft-delete (30-day recovery)
 - Retry logic for network/AI failures
@@ -296,6 +336,7 @@ GET    /api/unsplash/search?query=modern+office
 - Clear error messages with actionable next steps
 
 ### 6. Performance
+
 - Virtual scrolling for large tables (1000+ products)
 - Optimistic UI updates
 - Skeleton loaders (perceived speed)
@@ -308,57 +349,63 @@ GET    /api/unsplash/search?query=modern+office
 
 ### Core Entities
 
-| Term | Definition | Database Table | User-Facing Name |
-|------|------------|----------------|------------------|
-| **StudioSession** | User's working environment for a set of products | `studio_session` | "Session" or "Studio" |
-| **Flow** | Single generation attempt with specific settings | `flow` | "Flow" or "Generation" |
-| **GeneratedImage** | Permanent record of a generated image | `generated_image` | "Image" or "Asset" |
-| **Product** | Client's catalog item (furniture, decor, etc.) | `product` | "Product" |
-| **Member** | User's association with a client | `member` | N/A (backend only) |
+| Term               | Definition                                       | Database Table    | User-Facing Name       |
+| ------------------ | ------------------------------------------------ | ----------------- | ---------------------- |
+| **StudioSession**  | User's working environment for a set of products | `studio_session`  | "Session" or "Studio"  |
+| **Flow**           | Single generation attempt with specific settings | `flow`            | "Flow" or "Generation" |
+| **GeneratedImage** | Permanent record of a generated image            | `generated_image` | "Image" or "Asset"     |
+| **Product**        | Client's catalog item (furniture, decor, etc.)   | `product`         | "Product"              |
+| **Member**         | User's association with a client                 | `member`          | N/A (backend only)     |
 
 ### Storage
 
-| Old Term | New Term | Why |
-|----------|----------|-----|
-| S3 | **Cloudflare R2** | Already in use, lower costs, S3-compatible API |
-| S3 bucket | R2 bucket | Terminology alignment |
-| s3Key | r2Key | Field naming consistency |
+| Old Term  | New Term          | Why                                            |
+| --------- | ----------------- | ---------------------------------------------- |
+| S3        | **Cloudflare R2** | Already in use, lower costs, S3-compatible API |
+| S3 bucket | R2 bucket         | Terminology alignment                          |
+| s3Key     | r2Key             | Field naming consistency                       |
 
 ---
 
 ## Implementation Roadmap
 
 ### Phase 1: Foundation (Weeks 1-2)
+
 - [ ] Create `visualizer-shared` package
 - [ ] Database migrations (users, members, sessions, accounts only)
 - [ ] Extract core services to shared package (ImageGenerationQueue, prompt builder)
 - [ ] Set up Better Auth for client users
 
 ### Phase 2: Authentication (Week 3)
+
 - [ ] User signup/login flows
 - [ ] Invitation system (admin invites users)
 - [ ] ClientContext (derive clientId from membership)
 - [ ] Authorization middleware
 
 ### Phase 3: Product Selection (Week 4)
+
 - [ ] ProductTable component (search, filter, sort, multi-select)
 - [ ] Products API with pagination
 - [ ] Studio session creation (draft mode)
 - [ ] Auto-save drafts
 
 ### Phase 4: AI Analysis (Week 5)
+
 - [ ] Product analyzer service (metadata → room assignments)
 - [ ] Scene analyzer service (images → style/lighting/colors)
 - [ ] Unsplash integration
 - [ ] InspirationPicker component (Upload, Unsplash, Library tabs)
 
 ### Phase 5: Generation (Week 6)
+
 - [ ] Reuse ImageGenerationQueue from shared package
 - [ ] Flow creation API
 - [ ] Generate API endpoint (enqueue for selected products)
 - [ ] Status polling API (query flow and generated_image tables)
 
 ### Phase 6: Asset Management (Week 7)
+
 - [ ] ImageGallery component
 - [ ] GenerationProgress component (real-time updates)
 - [ ] Download single/bulk (ZIP)
@@ -366,6 +413,7 @@ GET    /api/unsplash/search?query=modern+office
 - [ ] Soft-delete with undo
 
 ### Phase 7: Polish & Testing (Week 8)
+
 - [ ] Error handling for all edge cases
 - [ ] Loading states and skeletons
 - [ ] Responsive design testing
@@ -373,12 +421,14 @@ GET    /api/unsplash/search?query=modern+office
 - [ ] Performance optimization (virtual scrolling)
 
 ### Phase 8: Deployment (Week 9)
+
 - [ ] Environment configuration (staging, production)
 - [ ] Deploy to Vercel
 - [ ] Monitoring and logging setup
 - [ ] Load testing
 
 ### Phase 9: Credit System (Months 4-9) - FUTURE
+
 - [ ] Add credit_balance to members table
 - [ ] Create credit_transactions, credit_packages tables
 - [ ] Stripe integration
@@ -387,6 +437,7 @@ GET    /api/unsplash/search?query=modern+office
 - [ ] Generation quota checks
 
 ### Phase 10: Subscriptions (Months 10-18) - FUTURE
+
 - [ ] Create subscriptions table
 - [ ] Stripe subscription webhooks
 - [ ] Store sync features (Shopify, WooCommerce)
@@ -425,6 +476,7 @@ graph TD
 ```
 
 **Reading Order**:
+
 1. **Start here**: #001 (Architecture) - Understand the system
 2. **Then**: #003 (Data Model) - What data we store and how
 3. **Then**: #002 (Authentication) - How users access it (+ future monetization)
@@ -435,6 +487,7 @@ graph TD
 8. **Finally**: #008 (Business Model) - Monetization strategy
 
 **By Role**:
+
 - **Product Managers**: Read #004 (Flows), #006 (Use Cases), #005 (Screens), #008 (Pricing)
 - **Engineers**: Read #001 (Architecture), #003 (Data Model), #007 (API), #002 (Auth)
 - **Designers**: Read #005 (Screens), #004 (Flows), #006 (Use Cases)
@@ -498,6 +551,7 @@ These questions are tracked across all design logs and need resolution:
 The platform is ready when:
 
 ### Technical (MVP)
+
 - [ ] Both apps (admin, client) generate images using same services
 - [ ] No duplicated generation logic (ImageGenerationQueue is shared)
 - [ ] All API queries scoped to user's clientId (no data leakage)
@@ -507,6 +561,7 @@ The platform is ready when:
 - [ ] R2 storage structure is consistent between apps
 
 ### User Experience (MVP)
+
 - [ ] New user: Invitation → signup → first studio session in <5 minutes
 - [ ] Bulk generation: 100 products selected and flows created in <30 seconds
 - [ ] Progress updates: <10 second latency during generation
@@ -514,12 +569,14 @@ The platform is ready when:
 - [ ] Mobile responsive: All screens work on 375px width
 
 ### Performance (MVP)
+
 - [ ] Product table: Renders 1000+ products smoothly
 - [ ] Studio session creation: No blocking operations (all async)
 - [ ] Image gallery: Infinite scroll with virtual rendering
 - [ ] Generation queue: Processes 10 jobs/minute (Gemini rate limit)
 
 ### Security (MVP)
+
 - [ ] All endpoints validate session
 - [ ] All queries filter by clientId
 - [ ] Cannot access other clients' data
@@ -527,6 +584,7 @@ The platform is ready when:
 - [ ] Rate limiting prevents abuse
 
 ### Future (Credit System - Phase 2)
+
 - [ ] Users can sign up without invitation (self-service)
 - [ ] Credit balance displayed in UI
 - [ ] Generation blocked when balance = 0
@@ -535,6 +593,7 @@ The platform is ready when:
 - [ ] $10K MRR target
 
 ### Future (Subscriptions - Phase 3)
+
 - [ ] Users can subscribe to monthly plans
 - [ ] Store sync works with Shopify/WooCommerce
 - [ ] Monthly credits auto-granted via webhook
@@ -553,28 +612,32 @@ The platform is ready when:
 
 ## Document History
 
-| Date | Version | Changes |
-|------|---------|---------|
-| 2026-01-10 | 1.0 | Initial design logs created (#001-#007) |
-| 2026-01-11 | 2.0 | **Major update**: Aligned with existing data model, added #008 (Business Model) |
+| Date       | Version | Changes                                                                         |
+| ---------- | ------- | ------------------------------------------------------------------------------- |
+| 2026-01-10 | 1.0     | Initial design logs created (#001-#007)                                         |
+| 2026-01-11 | 2.0     | **Major update**: Aligned with existing data model, added #008 (Business Model) |
 
 ### Version 2.0 Changes (2026-01-11)
 
 **Data Model Alignment**:
+
 - ✅ Removed "GeneratedAsset" concept - use existing `generated_image` table
 - ✅ Removed "Collection" concept - use existing `studio_session` table
 - ✅ Kept existing Flow model (already supports multi-product)
 
 **Storage**:
+
 - ✅ Changed S3 → Cloudflare R2 throughout all logs
 - ✅ Updated storage paths to match existing structure
 
 **Future Features**:
+
 - 🔜 Added multi-product combination strategies (FUTURE - not MVP)
 - 🔜 Added credit system design (Phase 2 - Design Log #002, #008)
 - 🔜 Added subscription tiers (Phase 3 - Design Log #002, #008)
 
 **New Design Log**:
+
 - 📋 Design Log #008: Business Model & Pricing Strategy
 
 ---
@@ -582,11 +645,13 @@ The platform is ready when:
 ## Contact & Contribution
 
 For questions or clarifications about these design logs:
+
 1. Check if your question is addressed in "Open Questions" section
 2. Review related design logs (see Cross-References above)
 3. Contact: [Product/Engineering Team]
 
 When updating design logs:
+
 1. Follow the methodology in `/.claude/rules/design-log.md`
 2. Update "Last Updated" date in this README
 3. Add new logs to the numbered sequence (009, 010, etc.)

@@ -22,16 +22,13 @@ import {
 } from 'lucide-react';
 import { Portal, Z_INDEX } from '../common/Portal';
 import { ModelSelector } from '../common/ModelSelector';
-import { AI_MODELS } from '@/lib/services/shared/constants';
+import { AI_MODELS } from 'visualizer-ai/client';
 import { PostAdjustmentsPanel, generateFilterString, hasAdjustments } from './PostAdjustmentsPanel';
 import type { PostAdjustments } from '@/lib/types/app-types';
-import type { AdjustmentHint } from '@/lib/services/gemini/types';
+import type { AdjustmentHint } from 'visualizer-ai/client';
 import { DEFAULT_POST_ADJUSTMENTS } from '@/lib/types/app-types';
 import { ImageModal } from '../modals/ImageModal';
-import {
-  WebGLPreviewService,
-  getWebGLPreviewService,
-} from '@/lib/services/image-processing/webgl-preview';
+import { WebGLPreviewService, getWebGLPreviewService } from '@/lib/services/image-processing/webgl-preview';
 import styles from './SceneStudioView.module.scss';
 
 interface ImageComponent {
@@ -84,9 +81,7 @@ export function ImageEditorModal({
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedModelId, setSelectedModelId] = useState(
-    modelOverrides?.imageModel || AI_MODELS.IMAGE_EDIT
-  );
+  const [selectedModelId, setSelectedModelId] = useState(modelOverrides?.imageModel || AI_MODELS.IMAGE_EDIT);
 
   // Editor tabs: 'edit' for AI editing, 'adjustments' for post-processing
   const [activeTab, setActiveTab] = useState<'edit' | 'adjustments'>('edit');
@@ -324,71 +319,81 @@ export function ImageEditorModal({
   }, [adjustments, currentImageUrl]);
 
   // Apply an AI-suggested adjustment hint
-  const handleApplyHint = useCallback(async (hint: AdjustmentHint) => {
-    setIsApplyingHint(hint.id);
-    setError(null);
+  const handleApplyHint = useCallback(
+    async (hint: AdjustmentHint) => {
+      setIsApplyingHint(hint.id);
+      setError(null);
 
-    try {
-      console.log('🎯 Applying adjustment hint:', hint.label);
+      try {
+        console.log('🎯 Applying adjustment hint:', hint.label);
 
-      // Call the edit API with the hint's prompt
-      const response = await fetch('/api/edit-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          baseImageDataUrl: currentImageUrl,
-          prompt: hint.prompt,
-          aspectRatio,
-          modelOverrides: {
-            ...modelOverrides,
-            imageModel: selectedModelId,
-          },
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.editedImageDataUrl) {
-        // Add as new revision
-        const newRevision: Revision = {
-          id: `hint-${Date.now()}`,
-          imageDataUrl: data.editedImageDataUrl,
-          timestamp: Date.now(),
-          prompt: `Applied: ${hint.label}`,
-        };
-
-        setRevisions((prev) => {
-          const next = [...prev, newRevision];
-          setCurrentRevisionIndex(next.length - 1);
-          return next;
+        // Call the edit API with the hint's prompt
+        const response = await fetch('/api/edit-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            baseImageDataUrl: currentImageUrl,
+            prompt: hint.prompt,
+            aspectRatio,
+            modelOverrides: {
+              ...modelOverrides,
+              imageModel: selectedModelId,
+            },
+          }),
         });
 
-        // Remove the applied hint from the list
-        setAdjustmentHints((prev) => prev.filter((h) => h.id !== hint.id));
+        const data = await response.json();
 
-        console.log('✅ Hint applied successfully');
-      } else {
-        throw new Error(data.error || 'Failed to apply adjustment');
+        if (data.success && data.editedImageDataUrl) {
+          // Add as new revision
+          const newRevision: Revision = {
+            id: `hint-${Date.now()}`,
+            imageDataUrl: data.editedImageDataUrl,
+            timestamp: Date.now(),
+            prompt: `Applied: ${hint.label}`,
+          };
+
+          setRevisions((prev) => {
+            const next = [...prev, newRevision];
+            setCurrentRevisionIndex(next.length - 1);
+            return next;
+          });
+
+          // Remove the applied hint from the list
+          setAdjustmentHints((prev) => prev.filter((h) => h.id !== hint.id));
+
+          console.log('✅ Hint applied successfully');
+        } else {
+          throw new Error(data.error || 'Failed to apply adjustment');
+        }
+      } catch (err) {
+        console.error('Failed to apply hint:', err);
+        setError(err instanceof Error ? err.message : 'Failed to apply adjustment');
+      } finally {
+        setIsApplyingHint(null);
       }
-    } catch (err) {
-      console.error('Failed to apply hint:', err);
-      setError(err instanceof Error ? err.message : 'Failed to apply adjustment');
-    } finally {
-      setIsApplyingHint(null);
-    }
-  }, [currentImageUrl, aspectRatio, modelOverrides, selectedModelId]);
+    },
+    [currentImageUrl, aspectRatio, modelOverrides, selectedModelId]
+  );
 
   // Get icon component for adjustment hint
   const getHintIcon = (iconName: AdjustmentHint['icon']) => {
     const iconStyle = { width: 16, height: 16 };
     switch (iconName) {
-      case 'sun': return <Sun style={iconStyle} />;
-      case 'thermometer': return <Thermometer style={iconStyle} />;
-      case 'palette': return <Palette style={iconStyle} />;
-      case 'contrast': return <Contrast style={iconStyle} />;
-      case 'sparkles': return <Sparkles style={iconStyle} />;
-      case 'eye': return <Eye style={iconStyle} />;
-      default: return <Sparkles style={iconStyle} />;
+      case 'sun':
+        return <Sun style={iconStyle} />;
+      case 'thermometer':
+        return <Thermometer style={iconStyle} />;
+      case 'palette':
+        return <Palette style={iconStyle} />;
+      case 'contrast':
+        return <Contrast style={iconStyle} />;
+      case 'sparkles':
+        return <Sparkles style={iconStyle} />;
+      case 'eye':
+        return <Eye style={iconStyle} />;
+      default:
+        return <Sparkles style={iconStyle} />;
     }
   };
 
@@ -436,26 +441,20 @@ export function ImageEditorModal({
   };
 
   const handleComponentPromptChange = (componentId: string, prompt: string) => {
-    setComponents((prev) =>
-      prev.map((c) => (c.id === componentId ? { ...c, editPrompt: prompt } : c))
-    );
+    setComponents((prev) => prev.map((c) => (c.id === componentId ? { ...c, editPrompt: prompt } : c)));
   };
 
   const handleComponentImageUpload = async (componentId: string, file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
-      setComponents((prev) =>
-        prev.map((c) => (c.id === componentId ? { ...c, referenceImageUrl: dataUrl } : c))
-      );
+      setComponents((prev) => prev.map((c) => (c.id === componentId ? { ...c, referenceImageUrl: dataUrl } : c)));
     };
     reader.readAsDataURL(file);
   };
 
   const handleRemoveComponentImage = (componentId: string) => {
-    setComponents((prev) =>
-      prev.map((c) => (c.id === componentId ? { ...c, referenceImageUrl: undefined } : c))
-    );
+    setComponents((prev) => prev.map((c) => (c.id === componentId ? { ...c, referenceImageUrl: undefined } : c)));
   };
 
   const handleGenerateEdit = async () => {
@@ -524,9 +523,7 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
 
         // Clear the prompts for next edit
         setGeneralPrompt('');
-        setComponents((prev) =>
-          prev.map((c) => ({ ...c, editPrompt: '', referenceImageUrl: undefined }))
-        );
+        setComponents((prev) => prev.map((c) => ({ ...c, editPrompt: '', referenceImageUrl: undefined })));
       } else {
         throw new Error(data.error || 'Failed to generate edited image');
       }
@@ -591,11 +588,7 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
 
   return (
     <Portal>
-      <div
-        className={styles.editorModalOverlay}
-        onClick={handleOverlayClick}
-        style={{ zIndex: Z_INDEX.MODAL }}
-      >
+      <div className={styles.editorModalOverlay} onClick={handleOverlayClick} style={{ zIndex: Z_INDEX.MODAL }}>
         <div className={styles.editorModal}>
           {/* Header */}
           <div className={styles.editorModalHeader}>
@@ -610,10 +603,7 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
             {/* Left: Image Preview & Revision Gallery */}
             <div className={styles.editorImageSection}>
               {/* Main Image Preview */}
-              <div
-                className={styles.editorImagePreview}
-                onClick={() => setShowFullscreenPreview(true)}
-              >
+              <div className={styles.editorImagePreview} onClick={() => setShowFullscreenPreview(true)}>
                 {/* WebGL Preview (when available and adjustments tab active) */}
                 {activeTab === 'adjustments' && (
                   <div
@@ -635,15 +625,9 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
                     filter: activeTab === 'adjustments' ? generateFilterString(adjustments) : 'none',
                   }}
                 />
-                {!isOriginal && (
-                  <div className={styles.revisionBadge}>
-                    Revision {currentRevisionIndex}
-                  </div>
-                )}
+                {!isOriginal && <div className={styles.revisionBadge}>Revision {currentRevisionIndex}</div>}
                 {activeTab === 'adjustments' && hasAdjustments(adjustments) && (
-                  <div className={styles.adjustmentsBadge}>
-                    {showWebglPreview ? 'WebGL Preview' : 'CSS Preview'}
-                  </div>
+                  <div className={styles.adjustmentsBadge}>{showWebglPreview ? 'WebGL Preview' : 'CSS Preview'}</div>
                 )}
               </div>
 
@@ -699,9 +683,7 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
                           <Trash2 style={{ width: 10, height: 10 }} />
                         </button>
                       )}
-                      <span className={styles.revisionLabel}>
-                        {index === 0 ? 'Original' : `#${index}`}
-                      </span>
+                      <span className={styles.revisionLabel}>{index === 0 ? 'Original' : `#${index}`}</span>
                     </div>
                   ))}
                 </div>
@@ -770,12 +752,7 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
                           <span className={styles.editorLabelHint}>(optional)</span>
                         </label>
                         {components.length === 0 ? (
-                          <button
-                            className={styles.analyzeButtonSmall}
-                            onClick={handleAnalyze}
-                            disabled={isAnalyzing}
-                            type="button"
-                          >
+                          <button className={styles.analyzeButtonSmall} onClick={handleAnalyze} disabled={isAnalyzing} type="button">
                             {isAnalyzing ? (
                               <>
                                 <Loader2 className={styles.spinIcon} style={{ width: 14, height: 14 }} />
@@ -789,12 +766,7 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
                             )}
                           </button>
                         ) : (
-                          <button
-                            className={styles.reanalyzeButton}
-                            onClick={handleAnalyze}
-                            disabled={isAnalyzing}
-                            type="button"
-                          >
+                          <button className={styles.reanalyzeButton} onClick={handleAnalyze} disabled={isAnalyzing} type="button">
                             {isAnalyzing ? (
                               <Loader2 className={styles.spinIcon} style={{ width: 14, height: 14 }} />
                             ) : (
@@ -812,9 +784,7 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
                       ) : (
                         <>
                           {/* Scene Overview */}
-                          {overallDescription && (
-                            <p className={styles.editorDescription}>{overallDescription}</p>
-                          )}
+                          {overallDescription && <p className={styles.editorDescription}>{overallDescription}</p>}
 
                           {/* Adjustment Hints */}
                           {adjustmentHints.length > 0 && (
@@ -851,11 +821,7 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
                               <div
                                 key={component.id}
                                 className={`${styles.componentItem} ${selectedComponentId === component.id ? styles.selected : ''}`}
-                                onClick={() =>
-                                  setSelectedComponentId(
-                                    selectedComponentId === component.id ? null : component.id
-                                  )
-                                }
+                                onClick={() => setSelectedComponentId(selectedComponentId === component.id ? null : component.id)}
                               >
                                 <div className={styles.componentHeader}>
                                   <span className={styles.componentName}>{component.name}</span>
@@ -863,9 +829,7 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
                                     <span className={styles.componentEdited}>edited</span>
                                   )}
                                 </div>
-                                <span className={styles.componentDescription}>
-                                  {component.description}
-                                </span>
+                                <span className={styles.componentDescription}>{component.description}</span>
 
                                 {/* Expanded Edit Area */}
                                 {selectedComponentId === component.id && (
@@ -874,9 +838,7 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
                                       type="text"
                                       className={styles.componentPromptInput}
                                       value={component.editPrompt || ''}
-                                      onChange={(e) =>
-                                        handleComponentPromptChange(component.id, e.target.value)
-                                      }
+                                      onChange={(e) => handleComponentPromptChange(component.id, e.target.value)}
                                       placeholder={`Edit the ${component.name}...`}
                                     />
 
@@ -923,13 +885,10 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
                   /* Adjustments Tab Content */
                   <div className={styles.adjustmentsTabContent}>
                     <p className={styles.adjustmentsDescription}>
-                      Adjust light, color, and effects without losing image quality.
-                      Changes are previewed live and can be applied as a new revision.
+                      Adjust light, color, and effects without losing image quality. Changes are previewed live and can be applied as a new
+                      revision.
                     </p>
-                    <PostAdjustmentsPanel
-                      adjustments={adjustments}
-                      onChange={setAdjustments}
-                    />
+                    <PostAdjustmentsPanel adjustments={adjustments} onChange={setAdjustments} />
                   </div>
                 )}
               </div>
@@ -959,12 +918,7 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
                     </button>
 
                     {/* Save Button - only enabled when there are revisions */}
-                    <button
-                      className={styles.saveEditButton}
-                      onClick={() => setShowSaveDialog(true)}
-                      disabled={!hasEdits}
-                      type="button"
-                    >
+                    <button className={styles.saveEditButton} onClick={() => setShowSaveDialog(true)} disabled={!hasEdits} type="button">
                       <Check style={{ width: 18, height: 18 }} />
                       <span>Save Changes</span>
                     </button>
@@ -990,12 +944,7 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
                         </>
                       )}
                     </button>
-                    <button
-                      className={styles.saveEditButton}
-                      onClick={() => setShowSaveDialog(true)}
-                      disabled={!hasEdits}
-                      type="button"
-                    >
+                    <button className={styles.saveEditButton} onClick={() => setShowSaveDialog(true)} disabled={!hasEdits} type="button">
                       <Check style={{ width: 18, height: 18 }} />
                       <span>Save Changes</span>
                     </button>
@@ -1021,32 +970,18 @@ IMPORTANT: Other than the specified edits, keep the rest of the image unchanged.
                     <span>Revision {currentRevisionIndex}</span>
                   </div>
                 </div>
-                <p className={styles.saveDialogHint}>
-                  This will upload the edited image to the flow.
-                </p>
+                <p className={styles.saveDialogHint}>This will upload the edited image to the flow.</p>
                 <div className={styles.saveDialogActions}>
-                  <button
-                    className={styles.saveDialogButton}
-                    onClick={() => handleSave('overwrite')}
-                    type="button"
-                  >
+                  <button className={styles.saveDialogButton} onClick={() => handleSave('overwrite')} type="button">
                     <RefreshCw style={{ width: 16, height: 16 }} />
                     <span>Overwrite Current</span>
                   </button>
-                  <button
-                    className={`${styles.saveDialogButton} ${styles.primary}`}
-                    onClick={() => handleSave('new')}
-                    type="button"
-                  >
+                  <button className={`${styles.saveDialogButton} ${styles.primary}`} onClick={() => handleSave('new')} type="button">
                     <Plus style={{ width: 16, height: 16 }} />
                     <span>Save as New</span>
                   </button>
                 </div>
-                <button
-                  className={styles.saveDialogCancel}
-                  onClick={() => setShowSaveDialog(false)}
-                  type="button"
-                >
+                <button className={styles.saveDialogCancel} onClick={() => setShowSaveDialog(false)} type="button">
                   Cancel
                 </button>
               </div>

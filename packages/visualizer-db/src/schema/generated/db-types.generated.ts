@@ -39,6 +39,27 @@ export interface AdminUser {
   updatedAt: Date;
 }
 
+export interface AiCostTracking {
+  id: string;
+  clientId: string;
+  userId: string | null;
+  requestId: string | null;
+  jobId: string | null;
+  operationType: string;
+  model: string;
+  provider: string;
+  costUsdCents: number;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  imageCount: number | null;
+  videoDurationSeconds: number | null;
+  metadata: unknown | null;
+  success: number;
+  errorMessage: string | null;
+  durationMs: number | null;
+  createdAt: Date;
+}
+
 export interface ChatSession {
   id: string;
   productId: string;

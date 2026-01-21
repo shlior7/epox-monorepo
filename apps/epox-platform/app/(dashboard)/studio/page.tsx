@@ -16,7 +16,7 @@ import {
   Plus,
   Sparkles,
   Video,
-  Wand2
+  Wand2,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -81,10 +81,7 @@ export default function StudioPage() {
 
   return (
     <>
-      <PageHeader
-        title="Studio"
-        description="Create stunning AI-powered product visualizations"
-      />
+      <PageHeader title="Studio" description="Create stunning AI-powered product visualizations" />
 
       <div className="space-y-8 p-8">
         {/* Studio Features Grid */}
@@ -119,9 +116,7 @@ export default function StudioPage() {
                     <feature.icon className="h-6 w-6 text-white" />
                   </div>
                   <CardTitle className="text-base">{feature.title}</CardTitle>
-                  <CardDescription className="text-sm">
-                    {feature.description}
-                  </CardDescription>
+                  <CardDescription className="text-sm">{feature.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="relative pt-0">
                   {feature.disabled ? (
@@ -300,4 +295,3 @@ export default function StudioPage() {
     </>
   );
 }
-

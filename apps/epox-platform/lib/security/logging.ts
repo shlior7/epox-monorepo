@@ -5,6 +5,8 @@
  * Helps with monitoring, alerting, and incident response.
  */
 
+import * as Sentry from '@sentry/nextjs';
+import { logger } from '@/lib/logger';
 import { SECURITY_FLAGS } from './config';
 
 // ============================================================================
@@ -34,29 +36,21 @@ export interface SecurityEvent {
 // ============================================================================
 
 /**
- * Logs a security event
- *
- * In production, this should integrate with your monitoring service
- * (e.g., Datadog, Sentry, CloudWatch)
+ * Logs a security event using Pino structured logging
+ * Also reports to Sentry for high-severity events
  */
 export function logSecurityEvent(type: SecurityEventType, data: Record<string, unknown>): void {
   if (!SECURITY_FLAGS.ENABLE_SECURITY_LOGGING) {
     return;
   }
 
-  const event: SecurityEvent = {
-    type,
-    timestamp: new Date().toISOString(),
-    data: sanitizeLogData(data),
-  };
+  const sanitizedData = sanitizeLogData(data);
 
-  // Log to console (structured for log aggregators)
-  console.log(JSON.stringify({ security_event: event }));
-
-  // TODO: In production, send to monitoring service:
-  // - Sentry.captureMessage(`Security Event: ${type}`, { extra: event });
-  // - datadog.log(event);
-  // - cloudwatch.putMetricData(...)
+  // Log via Pino (sends to Better Stack in production)
+  logger.warn(
+    { event: 'security', securityEventType: type, ...sanitizedData },
+    `Security: ${type}`
+  );
 }
 
 /**
@@ -106,15 +100,23 @@ const HIGH_SEVERITY_EVENTS: SecurityEventType[] = [
 
 /**
  * Logs a high-severity security event with alerting
+ * Sends to Sentry for real-time monitoring
  */
 export function logSecurityAlert(type: SecurityEventType, data: Record<string, unknown>): void {
-  logSecurityEvent(type, data);
+  const sanitizedData = sanitizeLogData(data);
 
-  if (HIGH_SEVERITY_EVENTS.includes(type) && process.env.NODE_ENV === 'production') {
-    // TODO: Trigger real-time alert
-    // - PagerDuty/OpsGenie integration
-    // - Slack webhook
-    // - Email notification
-    console.error(`🚨 SECURITY ALERT: ${type}`, data);
+  // Log via Pino
+  logger.error(
+    { event: 'security_alert', securityEventType: type, ...sanitizedData },
+    `Security Alert: ${type}`
+  );
+
+  // Report high-severity events to Sentry
+  if (HIGH_SEVERITY_EVENTS.includes(type)) {
+    Sentry.captureMessage(`Security Alert: ${type}`, {
+      level: 'warning',
+      tags: { securityEventType: type },
+      extra: sanitizedData,
+    });
   }
 }

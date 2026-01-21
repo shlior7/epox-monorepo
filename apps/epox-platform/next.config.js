@@ -1,7 +1,16 @@
+const { withSentryConfig } = require('@sentry/nextjs');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['visualizer-types', 'visualizer-db', 'visualizer-services', '@scenergy/erp-service'],
+  transpilePackages: [
+    'visualizer-types',
+    'visualizer-db',
+    'visualizer-ai',
+    '@scenergy/erp-service',
+  ],
   output: 'standalone',
+  // Required to build with Turbopack when webpack config is present.
+  turbopack: {},
   images: {
     remotePatterns: [
       {
@@ -16,4 +25,24 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+// Sentry configuration options
+const sentryWebpackPluginOptions = {
+  // Suppresses source map uploading logs during build
+  silent: true,
+
+  // Upload source maps to Sentry
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // Auth token for uploading source maps
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Hide source maps from browser devtools in production
+  hideSourceMaps: true,
+
+  // Disable Sentry webpack plugin in development
+  disableServerWebpackPlugin: process.env.NODE_ENV !== 'production',
+  disableClientWebpackPlugin: process.env.NODE_ENV !== 'production',
+};
+
+module.exports = withSentryConfig(nextConfig, sentryWebpackPluginOptions);

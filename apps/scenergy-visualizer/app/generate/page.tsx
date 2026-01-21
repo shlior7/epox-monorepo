@@ -545,8 +545,10 @@ export default function GenerationWorkspacePage() {
 
   return (
     <main className={styles.page}>
-        {/* Header */}
-        <header className={styles.header}>        <div className={styles.headerActions}>
+      {/* Header */}
+      <header className={styles.header}>
+        {' '}
+        <div className={styles.headerActions}>
           <button
             onClick={() => setIsDrawerOpen(!isDrawerOpen)}
             style={{
@@ -719,10 +721,7 @@ export default function GenerationWorkspacePage() {
               </div>
             </div>
 
-            <button
-              onClick={() => setIsDrawerOpen(false)}
-              className={styles.closeButton}
-            >
+            <button onClick={() => setIsDrawerOpen(false)} className={styles.closeButton}>
               ×
             </button>
           </div>
@@ -756,9 +755,7 @@ export default function GenerationWorkspacePage() {
                   Upload a product asset in the visualizer to compare against generated visuals.
                 </div>
               )}
-              <span className={styles.originalAssetBadge}>
-                Original asset
-              </span>
+              <span className={styles.originalAssetBadge}>Original asset</span>
             </div>
 
             {/* Generated Preview */}
@@ -814,9 +811,7 @@ export default function GenerationWorkspacePage() {
                 </div>
               )}
 
-              <span className={styles.generatedPreviewBadge}>
-                Generated preview
-              </span>
+              <span className={styles.generatedPreviewBadge}>Generated preview</span>
 
               {/* Download button on top right */}
               {imageSrc && (
@@ -901,11 +896,7 @@ export default function GenerationWorkspacePage() {
                     className={clsx(styles.variantCard, { [styles.variantCardActive]: isActive })}
                   >
                     {hasImage ? (
-                      <img
-                        src={variant.imageUrl}
-                        alt={variant.summary}
-                        className={styles.variantImage}
-                      />
+                      <img src={variant.imageUrl} alt={variant.summary} className={styles.variantImage} />
                     ) : (
                       <div className={styles.variantPlaceholder}>
                         {variant.status === 'generating' ? (
@@ -939,7 +930,12 @@ export default function GenerationWorkspacePage() {
                     <div
                       className={styles.statusBadge}
                       style={{
-                        color: variant.status === 'completed' ? 'var(--color-success)' : variant.status === 'generating' ? 'var(--color-primary)' : 'var(--color-secondary)',
+                        color:
+                          variant.status === 'completed'
+                            ? 'var(--color-success)'
+                            : variant.status === 'generating'
+                              ? 'var(--color-primary)'
+                              : 'var(--color-secondary)',
                       }}
                     >
                       {variant.summary}

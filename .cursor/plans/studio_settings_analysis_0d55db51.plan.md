@@ -49,36 +49,36 @@ todos:
 ```typescript
 // ===== SUBJECT SCANNER OUTPUT (stored in product.analysis) =====
 export interface SubjectAnalysis {
-  subjectClassHyphenated: string;      // e.g., "Dining-Chair", "Serum-Bottle"
-  nativeSceneTypes: string[];          // ARRAY: ["Living-Room", "Office", "Bedroom"]
+  subjectClassHyphenated: string; // e.g., "Dining-Chair", "Serum-Bottle"
+  nativeSceneTypes: string[]; // ARRAY: ["Living-Room", "Office", "Bedroom"]
   nativeSceneCategory: 'Indoor Room' | 'Outdoor Nature' | 'Urban/Street' | 'Studio';
   inputCameraAngle: 'Frontal' | 'Angled' | 'Top-Down' | 'Low Angle';
-  dominantColors?: string[];           // Optional: extracted palette
-  materialTags?: string[];             // Optional: "wood", "metal", "fabric"
+  dominantColors?: string[]; // Optional: extracted palette
+  materialTags?: string[]; // Optional: "wood", "metal", "fabric"
 }
 
 // ===== VISION SCANNER OUTPUT (per inspiration image) =====
 export interface VisionAnalysisResult {
   // Structured JSON (for programmatic use)
   json: {
-    styleSummary: string;              // "A serene, cream-white Japandi bedroom..."
-    detectedSceneType: string;         // "Bedroom", "Office" - AI-detected from image
+    styleSummary: string; // "A serene, cream-white Japandi bedroom..."
+    detectedSceneType: string; // "Bedroom", "Office" - AI-detected from image
     heroObjectAccessories?: {
       identity: string;
       materialPhysics: string;
       placement: string;
     } | null;
     sceneInventory: Array<{
-      identity: string;                // "Back Wall", "Floor Lamp"
-      geometry: string;                // "Arched", "Tall and columnar"
-      surfacePhysics: string;          // "Rough hewn limestone"
-      colorGrading: string;            // "Warm terracotta"
-      spatialContext: string;          // "Framing the view"
+      identity: string; // "Back Wall", "Floor Lamp"
+      geometry: string; // "Arched", "Tall and columnar"
+      surfacePhysics: string; // "Rough hewn limestone"
+      colorGrading: string; // "Warm terracotta"
+      spatialContext: string; // "Framing the view"
     }>;
     lightingPhysics: {
-      sourceDirection: string;         // "Hard sunlight from top-left"
-      shadowQuality: string;           // "Long, sharp shadows"
-      colorTemperature: string;        // "Golden hour warm"
+      sourceDirection: string; // "Hard sunlight from top-left"
+      shadowQuality: string; // "Long, sharp shadows"
+      colorTemperature: string; // "Golden hour warm"
     };
   };
   // Auto-generated text prompt (for UI display / editable)
@@ -90,8 +90,8 @@ export interface VisionAnalysisResult {
 // Example: { "Bedroom": [analysis1, analysis2], "Office": [analysis3] }
 export interface SceneTypeInspirationMap {
   [sceneType: string]: {
-    inspirationImages: InspirationImage[];  // Images that match this scene type
-    mergedAnalysis: VisionAnalysisResult;   // Combined/dominant analysis for this scene type
+    inspirationImages: InspirationImage[]; // Images that match this scene type
+    mergedAnalysis: VisionAnalysisResult; // Combined/dominant analysis for this scene type
   };
 }
 
@@ -99,13 +99,13 @@ export interface SceneTypeInspirationMap {
 export interface InspirationImage {
   url: string;
   thumbnailUrl?: string;
-  tags?: string[];                     // User-added or auto-detected tags
-  addedAt: string;                     // ISO date
+  tags?: string[]; // User-added or auto-detected tags
+  addedAt: string; // ISO date
   sourceType: 'upload' | 'library' | 'stock' | 'unsplash';
 }
 
 // ===== STYLE PRESET (for Simple Mode) =====
-export type StylePreset = 
+export type StylePreset =
   | 'Modern Minimalist'
   | 'Scandinavian'
   | 'Industrial'
@@ -131,10 +131,10 @@ export type LightingPreset =
 ```typescript
 export interface FlowGenerationSettings {
   // ===== SCENE STYLE (Section 1) =====
-  inspirationImages: InspirationImage[];        // Multiple images (raw uploads)
+  inspirationImages: InspirationImage[]; // Multiple images (raw uploads)
   sceneTypeInspirations?: SceneTypeInspirationMap; // Grouped by detected scene type
-  stylePreset?: StylePreset;                    // Simple Mode dropdown
-  lightingPreset?: LightingPreset;              // Simple Mode dropdown
+  stylePreset?: StylePreset; // Simple Mode dropdown
+  lightingPreset?: LightingPreset; // Simple Mode dropdown
 
   // ===== USER PROMPT (Section 3) =====
   // User's additional details - gets APPENDED to generated prompt, not replacing it
@@ -157,11 +157,11 @@ Update `ProductAnalysis` in [`packages/visualizer-types/src/domain.ts`](packages
 ```typescript
 export interface ProductAnalysis {
   category?: string;
-  sceneTypes?: string[];          // Renamed from roomTypes
+  sceneTypes?: string[]; // Renamed from roomTypes
   style?: string[];
   features?: string[];
   colors?: string[];
-  
+
   // Subject Scanner output (pre-computed on product creation)
   subject?: SubjectAnalysis;
 }
@@ -180,25 +180,25 @@ Create [`apps/epox-platform/app/api/art-director/route.ts`](apps/epox-platform/a
 
 interface ArtDirectorRequest {
   // Product data
-  subjectAnalysis: SubjectAnalysis;         // Includes nativeSceneTypes[]
-  
+  subjectAnalysis: SubjectAnalysis; // Includes nativeSceneTypes[]
+
   // Flow-level inspiration (grouped by scene type)
   sceneTypeInspirations: SceneTypeInspirationMap;
-  
+
   // User settings
   stylePreset?: StylePreset;
   lightingPreset?: LightingPreset;
-  userPrompt?: string;                      // Additional details to append
+  userPrompt?: string; // Additional details to append
 }
 
 interface ArtDirectorResponse {
-  finalPrompt: string;                      // Complete prompt sent to generator
-  matchedSceneType: string;                 // Which scene type was matched
+  finalPrompt: string; // Complete prompt sent to generator
+  matchedSceneType: string; // Which scene type was matched
   segments: {
-    introAnchor: string;                    // Segment A - Subject locking
-    sceneNarrative: string;                 // Segment B - Scene description
-    userAdditions: string;                  // User's additional details (if any)
-    outroAnchor: string;                    // Segment C - Safety net
+    introAnchor: string; // Segment A - Subject locking
+    sceneNarrative: string; // Segment B - Scene description
+    userAdditions: string; // User's additional details (if any)
+    outroAnchor: string; // Segment C - Safety net
   };
 }
 ```
@@ -221,17 +221,17 @@ Add to product creation flow in:
 
 - [`apps/epox-platform/app/api/products/route.ts`](apps/epox-platform/app/api/products/route.ts) (POST handler)
 - [`apps/epox-platform/app/api/products/[id]/route.ts`](apps/epox-platform/app/api/products/[id]/route.ts) (PATCH for image upload)
+
 ```typescript
 // After product image is uploaded/imported:
 const subjectAnalysis = await gemini.analyzeProductSubject(imageUrl);
 await db.products.update(productId, {
   analysis: {
     ...existingAnalysis,
-    subject: subjectAnalysis
-  }
+    subject: subjectAnalysis,
+  },
 });
 ```
-
 
 ---
 
@@ -304,19 +304,20 @@ await db.products.update(productId, {
 
 ### How It Works
 
-1. **Product Creation**: Subject Scanner extracts `nativeSceneTypes[]` (e.g., Chair → ["Living-Room", "Office", "Bedroom"])
+1.  **Product Creation**: Subject Scanner extracts `nativeSceneTypes[]` (e.g., Chair → ["Living-Room", "Office", "Bedroom"])
 
-2. **Inspiration Upload**: Vision Scanner analyzes each image and detects `detectedSceneType` (e.g., "Bedroom")
+2.  **Inspiration Upload**: Vision Scanner analyzes each image and detects `detectedSceneType` (e.g., "Bedroom")
 
-3. **Grouping**: System groups inspiration images by their detected scene type:
-   ```
-   sceneTypeInspirations: {
-     "Bedroom": { images: [img1, img2], mergedAnalysis: {...} },
-     "Office":  { images: [img3], mergedAnalysis: {...} }
-   }
-   ```
+3.  **Grouping**: System groups inspiration images by their detected scene type:
 
-4. **Generation**: For each product, Art Director:
+    ```
+    sceneTypeInspirations: {
+      "Bedroom": { images: [img1, img2], mergedAnalysis: {...} },
+      "Office":  { images: [img3], mergedAnalysis: {...} }
+    }
+    ```
+
+4.  **Generation**: For each product, Art Director:
 
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 - Looks at product's `nativeSceneTypes[]`
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 - Finds matching inspiration from `sceneTypeInspirations`
@@ -332,7 +333,7 @@ Collection Products:
 
 Inspiration Images Uploaded:
  - img1.jpg → detected as "Bedroom"
- - img2.jpg → detected as "Bedroom"  
+ - img2.jpg → detected as "Bedroom"
  - img3.jpg → detected as "Office"
 
 Result - sceneTypeInspirations:
@@ -365,7 +366,7 @@ flowchart TD
         SceneDetect[Detect Scene Type per Image]
         GroupByScene[Group by Scene Type]
         FlowSettings[(flow.settings.sceneTypeInspirations)]
-        
+
         InspirationUpload --> VisionScanner
         VisionScanner --> SceneDetect
         SceneDetect --> GroupByScene
@@ -378,7 +379,7 @@ flowchart TD
         ArtDirector[Art Director API]
         FinalPrompt[3-Segment Prompt]
         GenerationWorker[Generation Worker]
-        
+
         ProductDB --> ProductTypes
         ProductTypes --> MatchScene
         FlowSettings --> MatchScene
@@ -422,7 +423,7 @@ export const DEFAULT_FLOW_SETTINGS: FlowGenerationSettings = {
 
 | [`apps/epox-platform/app/api/products/route.ts`](apps/epox-platform/app/api/products/route.ts) | Modify | Integrate Subject Scanner on create |
 
-| [`apps/epox-platform/app/(dashboard)/studio/[id]/page.tsx`](apps/epox-platform/app/(dashboard)/studio/[id]/page.tsx) | Modify | Rebuild with 4-section Simple Mode UI |
+| [`apps/epox-platform/app/(dashboard)/studio/[id]/page.tsx`](<apps/epox-platform/app/(dashboard)/studio/[id]/page.tsx>) | Modify | Rebuild with 4-section Simple Mode UI |
 
 | [`apps/epox-platform/app/api/studio/[id]/settings/route.ts`](apps/epox-platform/app/api/studio/[id]/settings/route.ts) | Modify | Support new fields |
 

@@ -133,7 +133,13 @@ export function SignOutModal({ isOpen, onClose, onSignedOut }: SignOutModalProps
               <LogOut size={16} />
               Sign Out
             </h2>
-            <button style={styles.closeButton} onClick={onClose} aria-label="Close" type="button" data-testid={buildTestId('sign-out-modal', 'close-button')}>
+            <button
+              style={styles.closeButton}
+              onClick={onClose}
+              aria-label="Close"
+              type="button"
+              data-testid={buildTestId('sign-out-modal', 'close-button')}
+            >
               <X size={16} />
             </button>
           </div>

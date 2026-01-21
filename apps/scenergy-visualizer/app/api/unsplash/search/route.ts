@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 // Mock Unsplash images for development/demo - organized by category
 function getMockUnsplashImages(query: string) {
   const queryLower = query.toLowerCase();
-  
+
   // Category-specific image collections
   const categoryImages: Record<string, typeof allImages> = {
     'living room': [
@@ -56,49 +56,49 @@ function getMockUnsplashImages(query: string) {
       { id: 'living-3', photoId: '1617806118233-18e1de247200', desc: 'Industrial loft living space' },
       { id: 'living-4', photoId: '1600585154526-990dced4db0d', desc: 'Cozy living room corner' },
     ],
-    'bedroom': [
+    bedroom: [
       { id: 'bed-1', photoId: '1618221195710-dd6b41faaea6', desc: 'Minimalist bedroom interior' },
       { id: 'bed-2', photoId: '1560448204-e02f11c3d0e2', desc: 'Luxury hotel bedroom' },
       { id: 'bed-3', photoId: '1616594039964-ae9021a400a0', desc: 'Scandinavian bedroom design' },
       { id: 'bed-4', photoId: '1615874959474-d609969a20ed', desc: 'Modern master bedroom' },
     ],
-    'kitchen': [
+    kitchen: [
       { id: 'kitchen-1', photoId: '1600210492493-0946911123ea', desc: 'Contemporary kitchen design' },
       { id: 'kitchen-2', photoId: '1556909114-f6e7ad7d3136', desc: 'White modern kitchen' },
       { id: 'kitchen-3', photoId: '1600585154340-be6161a56a0c', desc: 'Open kitchen with island' },
       { id: 'kitchen-4', photoId: '1556909172-54557c7e4fb7', desc: 'Minimalist kitchen space' },
     ],
-    'office': [
+    office: [
       { id: 'office-1', photoId: '1600607687939-ce8a6c25118c', desc: 'Modern home office space' },
       { id: 'office-2', photoId: '1593062096033-9a26b09da705', desc: 'Professional workspace' },
       { id: 'office-3', photoId: '1497366216548-37526070297c', desc: 'Creative studio office' },
       { id: 'office-4', photoId: '1524758631624-e2822e304c36', desc: 'Home office with view' },
     ],
-    'outdoor': [
+    outdoor: [
       { id: 'outdoor-1', photoId: '1600566753190-17f0baa2a6c3', desc: 'Outdoor patio with furniture' },
       { id: 'outdoor-2', photoId: '1600585154526-990dced4db0d', desc: 'Garden seating area' },
       { id: 'outdoor-3', photoId: '1558618666-fcd25c85cd64', desc: 'Backyard deck design' },
       { id: 'outdoor-4', photoId: '1600566752355-35792bedcfea', desc: 'Pool area with loungers' },
     ],
-    'minimal': [
+    minimal: [
       { id: 'minimal-1', photoId: '1618221195710-dd6b41faaea6', desc: 'Minimalist interior' },
       { id: 'minimal-2', photoId: '1615529328331-f8917597711f', desc: 'Clean modern space' },
       { id: 'minimal-3', photoId: '1600210492493-0946911123ea', desc: 'Simple white room' },
       { id: 'minimal-4', photoId: '1600607687939-ce8a6c25118c', desc: 'Minimal workspace' },
     ],
-    'luxury': [
+    luxury: [
       { id: 'luxury-1', photoId: '1600585154340-be6161a56a0c', desc: 'Luxury living room' },
       { id: 'luxury-2', photoId: '1560448204-e02f11c3d0e2', desc: 'High-end hotel suite' },
       { id: 'luxury-3', photoId: '1600566753376-12c8ab7fb75b', desc: 'Elegant dining room' },
       { id: 'luxury-4', photoId: '1617806118233-18e1de247200', desc: 'Premium loft space' },
     ],
-    'modern': [
+    modern: [
       { id: 'modern-1', photoId: '1586023492125-27b2c045efd7', desc: 'Modern living room design' },
       { id: 'modern-2', photoId: '1600210492493-0946911123ea', desc: 'Contemporary kitchen' },
       { id: 'modern-3', photoId: '1600607687939-ce8a6c25118c', desc: 'Modern office space' },
       { id: 'modern-4', photoId: '1615529328331-f8917597711f', desc: 'Modern entryway' },
     ],
-    'industrial': [
+    industrial: [
       { id: 'industrial-1', photoId: '1617806118233-18e1de247200', desc: 'Industrial loft space' },
       { id: 'industrial-2', photoId: '1600573472550-8090b5e0745e', desc: 'Exposed brick interior' },
       { id: 'industrial-3', photoId: '1600585154526-990dced4db0d', desc: 'Factory-style living' },
