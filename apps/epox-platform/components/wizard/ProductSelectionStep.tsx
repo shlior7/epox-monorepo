@@ -168,18 +168,13 @@ export function ProductSelectionStep({
             </div>
           )}
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={selectAll}
-              className="font-medium"
-            >
+            <Button variant="outline" size="sm" onClick={selectAll} className="font-medium">
               Select All
             </Button>
             {selectedIds.length > 0 && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={clearSelection}
                 className="text-muted-foreground hover:text-foreground"
               >
@@ -220,7 +215,7 @@ export function ProductSelectionStep({
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded bg-secondary">
-                      {(product.images?.[0]?.baseUrl || product.imageUrl) ? (
+                      {product.images?.[0]?.baseUrl || product.imageUrl ? (
                         <Image
                           src={product.images?.[0]?.baseUrl || product.imageUrl}
                           alt={product.name}

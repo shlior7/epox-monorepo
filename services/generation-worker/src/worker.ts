@@ -10,9 +10,9 @@
  * - Fallback polling every 30s ensures no jobs are missed
  */
 
-import { Pool, neonConfig } from '@neondatabase/serverless';
+import { Pool } from '@neondatabase/serverless';
 import { getGeminiService } from 'visualizer-ai';
-import { getDb } from 'visualizer-db';
+import { getDb, configureWebSocket } from 'visualizer-db';
 import { GenerationJobRepository, type GenerationJob } from 'visualizer-db/repositories/generation-jobs';
 import {
   type ImageEditPayload,
@@ -23,15 +23,7 @@ import {
   generatedAssetProduct,
 } from 'visualizer-db/schema';
 import { storage, storagePaths } from 'visualizer-storage';
-import {
-  logger,
-  logJobClaimed,
-  logJobProgress,
-  logJobSuccess,
-  logJobFailed,
-  logWorkerStarted,
-  logWorkerStopped,
-} from './logger';
+import { logger, logJobClaimed, logJobProgress, logJobSuccess, logJobFailed, logWorkerStarted, logWorkerStopped } from './logger';
 
 // ============================================================================
 // CONFIG
@@ -82,6 +74,10 @@ export class GenerationWorker {
 
   async start(): Promise<void> {
     this.isRunning = true;
+
+    // Configure WebSocket before any database operations
+    await configureWebSocket();
+
     const mode = this.config.enableListenNotify
       ? `LISTEN/NOTIFY with ${this.config.fallbackPollIntervalMs}ms fallback`
       : `Polling every ${this.config.fallbackPollIntervalMs}ms`;
@@ -145,14 +141,7 @@ export class GenerationWorker {
     }
 
     try {
-      // Configure WebSocket for Node.js (eslint-disable-next-line to handle optional chain)
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      const isNode = typeof process !== 'undefined' && process.versions?.node;
-      if (isNode && !neonConfig.webSocketConstructor) {
-        const ws = await import('ws');
-        neonConfig.webSocketConstructor = ws.default as unknown as typeof WebSocket;
-      }
-
+      // WebSocket is already configured in start() method
       // Create dedicated pool for LISTEN (single connection)
       this.listenerPool = new Pool({ connectionString: databaseUrl, max: 1 });
 
@@ -312,12 +301,15 @@ export class GenerationWorker {
     const variants = payload.settings?.numberOfVariants ?? 1;
 
     // Debug log only (won't be sent to Better Stack in production)
-    logger.debug({
-      jobId: job.id,
-      clientId: job.clientId,
-      productCount: payload.productIds?.length ?? 0,
-      variants,
-    }, 'Processing image generation');
+    logger.debug(
+      {
+        jobId: job.id,
+        clientId: job.clientId,
+        productCount: payload.productIds?.length ?? 0,
+        variants,
+      },
+      'Processing image generation'
+    );
 
     for (let i = 0; i < variants; i++) {
       // Update progress using repository
@@ -382,13 +374,16 @@ export class GenerationWorker {
     }
 
     if (!payload.operationName) {
-      logger.info({
-        jobId: job.id,
-        settings: payload.settings,
-        aspectRatio: payload.settings?.aspectRatio,
-        resolution: payload.settings?.resolution,
-        model: payload.settings?.model,
-      }, 'Starting video generation with settings');
+      logger.info(
+        {
+          jobId: job.id,
+          settings: payload.settings,
+          aspectRatio: payload.settings?.aspectRatio,
+          resolution: payload.settings?.resolution,
+          model: payload.settings?.model,
+        },
+        'Starting video generation with settings'
+      );
 
       const operationName = await this.gemini.startVideoGeneration({
         prompt: payload.prompt,
@@ -596,13 +591,7 @@ export class GenerationWorker {
   private async handleJobError(job: GenerationJob, errorMsg: string, error?: unknown): Promise<void> {
     const canRetry = job.attempts < job.maxAttempts;
 
-    logJobFailed(
-      job.id,
-      error instanceof Error ? error : errorMsg,
-      job.attempts,
-      job.maxAttempts,
-      canRetry
-    );
+    logJobFailed(job.id, error instanceof Error ? error : errorMsg, job.attempts, job.maxAttempts, canRetry);
 
     if (canRetry) {
       const payload =

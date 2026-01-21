@@ -24,10 +24,7 @@
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import type {
-  GeneratedAsset,
-  GeneratedAssetCreate,
-} from 'visualizer-types';
+import type { GeneratedAsset, GeneratedAssetCreate } from 'visualizer-types';
 import * as schema from './schema/index';
 
 // ============================================================================
@@ -79,9 +76,7 @@ export interface MockGeneratedAssetRepository {
   clear: () => void;
 }
 
-function createMockGeneratedAssetRepository(
-  store: InMemoryStore<GeneratedAsset>
-): MockGeneratedAssetRepository {
+function createMockGeneratedAssetRepository(store: InMemoryStore<GeneratedAsset>): MockGeneratedAssetRepository {
   return {
     async create(data: GeneratedAssetCreate): Promise<GeneratedAsset> {
       const id = generateId('asset');
@@ -266,7 +261,7 @@ export async function createRealTestDb(): Promise<RealTestDb> {
     console.error('❌ PostgreSQL connection failed:', error);
     throw new Error(
       'Failed to connect to test PostgreSQL. Is Docker running?\n' +
-      'Run: docker-compose -f packages/visualizer-db/docker-compose.test.yml up -d'
+        'Run: docker-compose -f packages/visualizer-db/docker-compose.test.yml up -d'
     );
   }
 
@@ -342,10 +337,7 @@ export async function truncateAllTables(db: RealTestDb): Promise<void> {
 /**
  * Create a test client in the real database
  */
-export async function createTestClient(
-  db: RealTestDb,
-  overrides?: Partial<{ name: string; slug: string }>
-): Promise<string> {
+export async function createTestClient(db: RealTestDb, overrides?: Partial<{ name: string; slug: string }>): Promise<string> {
   const id = `client_${Date.now()}`;
   const name = overrides?.name ?? 'Test Client';
   const slug = overrides?.slug ?? `test-client-${Date.now()}`;
@@ -439,10 +431,7 @@ export async function createTestDatabase(strategy: TestStrategy): Promise<TestDa
 /**
  * Assert that a generated asset was created with specific properties
  */
-export function assertAssetCreated(
-  db: MockDatabaseFacade,
-  expected: Partial<GeneratedAsset>
-): GeneratedAsset {
+export function assertAssetCreated(db: MockDatabaseFacade, expected: Partial<GeneratedAsset>): GeneratedAsset {
   const assets = db.generatedAssets.getAll();
 
   const match = assets.find((asset) =>
@@ -483,17 +472,11 @@ export function assertAssetCount(db: MockDatabaseFacade, expected: number): void
 /**
  * Assert assets were created for a specific job
  */
-export function assertJobAssets(
-  db: MockDatabaseFacade,
-  jobId: string,
-  expectedCount: number
-): GeneratedAsset[] {
+export function assertJobAssets(db: MockDatabaseFacade, jobId: string, expectedCount: number): GeneratedAsset[] {
   const assets = db.generatedAssets.getAll().filter((a) => a.jobId === jobId);
 
   if (assets.length !== expectedCount) {
-    throw new Error(
-      `Expected ${expectedCount} assets for job ${jobId} but found ${assets.length}`
-    );
+    throw new Error(`Expected ${expectedCount} assets for job ${jobId} but found ${assets.length}`);
   }
 
   return assets;

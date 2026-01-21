@@ -30,7 +30,7 @@ interface UseJobStatusOptions {
 
 export function useJobStatus(jobId: string | null, options: UseJobStatusOptions = {}) {
   const { enabled = true, onComplete, onError, maxAttempts = 60 } = options;
-  
+
   const [status, setStatus] = useState<JobStatusResult | null>(null);
   const [isPolling, setIsPolling] = useState(false);
 
@@ -43,7 +43,7 @@ export function useJobStatus(jobId: string | null, options: UseJobStatusOptions 
     const fetchStatus = async (): Promise<void> => {
       try {
         const data = await apiClient.getJobStatus(jobId);
-        
+
         const jobResult: JobStatusResult = {
           id: data.id,
           type: 'image_generation',
@@ -52,7 +52,7 @@ export function useJobStatus(jobId: string | null, options: UseJobStatusOptions 
           result: data.result,
           error: data.error,
         };
-        
+
         setStatus(jobResult);
 
         if (jobResult.status === 'completed') {
@@ -70,7 +70,7 @@ export function useJobStatus(jobId: string | null, options: UseJobStatusOptions 
         // Continue polling with backoff
         attempts++;
         if (attempts >= maxAttempts) {
-          setStatus((prev) => prev ? { ...prev, status: 'timeout' } : null);
+          setStatus((prev) => (prev ? { ...prev, status: 'timeout' } : null));
           setIsPolling(false);
           onError?.('Job timed out');
           return;
@@ -153,4 +153,3 @@ export async function waitForJob(
 
   throw new Error('Job timed out');
 }
-

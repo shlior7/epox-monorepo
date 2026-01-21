@@ -111,11 +111,13 @@ This prevents drift and ensures both apps use the same generation logic.
 **A**: Two entry points, same underlying infrastructure:
 
 **Collection Flow** (bulk-first):
+
 - Create CollectionSession → select many products → generate in bulk
 - Table/matrix view of all GenerationFlows
 - Optimized for throughput (20-500+ products)
 
 **Single GenerationFlow** (detail-first):
+
 - Create standalone GenerationFlow → select one product → detailed editing
 - Accessed from: Home page "New Generation" button OR clicking into a GenerationFlow from collection view
 - Rich editing capabilities:
@@ -126,6 +128,7 @@ This prevents drift and ensures both apps use the same generation logic.
 - Can optionally be added to a CollectionSession later
 
 **Data model**:
+
 - `generation_flow.collection_session_id` is NULLABLE
 - Standalone flows have `collection_session_id = NULL`
 
@@ -142,6 +145,7 @@ This prevents drift and ensures both apps use the same generation logic.
   4. CDN URL ready for storefront use
 
 **Storage structure**:
+
 ```text
 /{assetId}.webp        # Optimized for web (default)
 /{assetId}_original.png # Original quality (optional, for downloads)
@@ -156,6 +160,7 @@ This prevents drift and ensures both apps use the same generation logic.
 - Database: `user_favorite` junction table (user_id, entity_type, entity_id)
 
 **UX locations**:
+
 - Home page: "Recent Generations" section shows favorites first
 - Product picker: "Favorites" tab/filter
 - Collection view: Star icon on GenerationFlow cards
@@ -170,6 +175,7 @@ This prevents drift and ensures both apps use the same generation logic.
 - Database: `tag` table + junction tables
 
 **UX**:
+
 - Tag chips displayed on cards
 - Filter by tag in list views
 - Bulk tag assignment in collection view
@@ -179,6 +185,7 @@ This prevents drift and ensures both apps use the same generation logic.
 **A**: Yes, add **basic analytics** for insights:
 
 **Tracked metrics**:
+
 - Generation counts per product/flow
 - Generation success/error rates
 - Asset views (via R2 access logs or lightweight tracking)
@@ -186,11 +193,13 @@ This prevents drift and ensures both apps use the same generation logic.
 - Popular scene types/settings
 
 **Implementation**:
+
 - Store event data in `generation_event` table
 - Aggregate in background job for dashboards
 - Future: integrate with R2 analytics for CDN metrics
 
 **UX**:
+
 - Dashboard card: "Your top performing products this week"
 - Product detail: generation history & stats
 - GenerationFlow detail: performance metrics
@@ -200,31 +209,35 @@ This prevents drift and ensures both apps use the same generation logic.
 **A**: Yes, **cache analysis on the generated_asset record** to avoid re-analyzing every edit:
 
 **Problem**:
+
 - When users edit a generated asset, we analyze the image to understand its content
 - Re-analyzing on every edit is slow and wasteful (AI call takes 5-10 seconds)
 - Analysis results are stable unless the image itself changes
 
 **Solution**:
+
 - Store `asset_analysis` JSONB column on `generated_asset` table
 - Populated after first analysis (triggered by edit action)
 - Contains: detected objects, colors, lighting, composition, masks, etc.
 
 **Invalidation**:
+
 - Set `asset_analysis = NULL` when:
   - User applies an edit (mask, inpaint, filter)
   - Asset is regenerated
 - Trigger re-analysis on next edit action
 
 **Data structure**:
+
 ```typescript
 interface AssetAnalysis {
-  analyzedAt: string;           // Timestamp of analysis
-  objects: DetectedObject[];    // Products, props, furniture detected
-  colors: ColorPalette;         // Dominant colors in image
-  lighting: LightingInfo;       // Natural, artificial, direction
+  analyzedAt: string; // Timestamp of analysis
+  objects: DetectedObject[]; // Products, props, furniture detected
+  colors: ColorPalette; // Dominant colors in image
+  lighting: LightingInfo; // Natural, artificial, direction
   composition: CompositionInfo; // Rule of thirds, focal points
-  masks: AutoMask[];            // AI-detected regions for editing
-  version: string;              // Analysis model version
+  masks: AutoMask[]; // AI-detected regions for editing
+  version: string; // Analysis model version
 }
 ```
 
@@ -233,18 +246,21 @@ interface AssetAnalysis {
 **A**: **Two methods** - import from store OR upload manually:
 
 **Method 1: Import from Connected Store**
+
 - Connect store via OAuth (Shopify, WooCommerce, BigCommerce)
 - Import by: Product IDs, Category, or All
 - Products get ERP ID for bidirectional sync
 - Approved images can sync back to store
 
 **Method 2: Upload Manually**
+
 - Upload product images directly
 - Enter product details (name, category, description)
 - No store connection required
 - **Only download available** (no sync to store)
 
 **Product source stored on `product.source`**:
+
 - `'imported'` - From connected store (has `erp_id`, can sync)
 - `'uploaded'` - Manual upload (no `erp_id`, download only)
 
@@ -257,18 +273,21 @@ interface AssetAnalysis {
 | Enterprise | 1,000+ |
 
 **Import data stored** (imported products only):
+
 - `product.erp_id` - Original product ID from store (for bidirectional sync)
 - `product.erp_sku` - Store SKU
 - `product.erp_url` - Product URL in store
 - `product.store_connection_id` - Which store this came from
 
 **Bidirectional sync** (imported products only):
+
 ```
 Store → Scenergy:  Import products with ERP ID
 Scenergy → Store:  Export approved images back using ERP ID
 ```
 
 **UI behavior**:
+
 - Imported products: Show "Approve for Store" button
 - Uploaded products: Show "Download" button (no approve option)
 - Uploaded products can be linked to store later if store is connected
@@ -277,13 +296,14 @@ Scenergy → Store:  Export approved images back using ERP ID
 
 **A**: **Three analysis strategy options**:
 
-| Strategy | When | Best For |
-|----------|------|----------|
-| **On Import** | Immediately after product import | Large catalogs, consistent analysis |
-| **On Collection** | When added to a Collection Session | Smaller catalogs, on-demand |
-| **On Generate** | Just before generation | Maximum freshness, fewer upfront costs |
+| Strategy          | When                               | Best For                               |
+| ----------------- | ---------------------------------- | -------------------------------------- |
+| **On Import**     | Immediately after product import   | Large catalogs, consistent analysis    |
+| **On Collection** | When added to a Collection Session | Smaller catalogs, on-demand            |
+| **On Generate**   | Just before generation             | Maximum freshness, fewer upfront costs |
 
 **What's analyzed**:
+
 - **Product type detection**: Sofa, desk, lamp, etc.
 - **Material/texture**: Leather, wood, metal, fabric
 - **Color palette**: Primary and accent colors
@@ -292,6 +312,7 @@ Scenergy → Store:  Export approved images back using ERP ID
 - **Best room types**: Living room, bedroom, office, etc.
 
 **Stored on `product.analysis_data`** (JSONB):
+
 ```typescript
 interface ProductAnalysis {
   analyzedAt: string;
@@ -301,12 +322,13 @@ interface ProductAnalysis {
   style: string[];
   suggestedRoomTypes: string[];
   scaleHints: { width: string; height: string };
-  promptKeywords: string[];        // AI-extracted keywords for prompts
-  version: string;                 // Analysis model version
+  promptKeywords: string[]; // AI-extracted keywords for prompts
+  version: string; // Analysis model version
 }
 ```
 
 **Usage in prompt engineering**:
+
 - Auto-select appropriate room types
 - Match product colors with scene colors
 - Scale product correctly in scene
@@ -319,6 +341,7 @@ interface ProductAnalysis {
 **A**: Add **"Approved" status** for images ready to sync to connected stores:
 
 **Workflow**:
+
 1. Client connects their store (Shopify, WooCommerce) via OAuth
 2. Generated assets have `approval_status`: `pending` | `approved` | `rejected`
 3. User reviews generated images and marks them as "Approved for Store"
@@ -326,24 +349,28 @@ interface ProductAnalysis {
 5. Sync updates the product's base image URL in the store
 
 **Approval flow**:
+
 ```
 Generated → [User reviews] → Approved → [Sync job] → Live on Store
                            → Rejected (stays local)
 ```
 
 **UX locations**:
+
 - Gallery view: "Approve for Store" button (appears when store connected)
 - Bulk action: "Approve Selected" for batch approval
 - Filter: "Approved", "Pending", "Rejected" tabs
 - Store sync dashboard: View what's been synced, pending, failed
 
 **Database**:
+
 - `generated_asset.approval_status`: 'pending' | 'approved' | 'rejected'
 - `generated_asset.approved_at`: Timestamp of approval
 - `generated_asset.approved_by`: User ID who approved
 - `store_sync_log`: Track sync attempts and results
 
 **Store connection table**:
+
 - `store_connection`: Stores OAuth tokens, store type, sync settings
 
 ### Q17: How does the review and approval experience work?
@@ -351,6 +378,7 @@ Generated → [User reviews] → Approved → [Sync job] → Live on Store
 **A**: **Side-by-side review UI** for easy approval decisions:
 
 **Review Modal Layout**:
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    Review Generated Image                            │
@@ -376,27 +404,30 @@ Generated → [User reviews] → Approved → [Sync job] → Live on Store
 
 **Actions with credit costs**:
 
-| Action | Credits | Description |
-|--------|---------|-------------|
-| **Approve** | 0 | Mark as ready for store sync |
-| **Edit** | 0 | Open editor modal (mask, adjust) |
-| **Regenerate** | 1 | Generate new version with same settings |
-| **Regenerate (new settings)** | 1 | Generate with modified prompt/style |
-| **Reject** | 0 | Mark as not approved (stays in library) |
+| Action                        | Credits | Description                             |
+| ----------------------------- | ------- | --------------------------------------- |
+| **Approve**                   | 0       | Mark as ready for store sync            |
+| **Edit**                      | 0       | Open editor modal (mask, adjust)        |
+| **Regenerate**                | 1       | Generate new version with same settings |
+| **Regenerate (new settings)** | 1       | Generate with modified prompt/style     |
+| **Reject**                    | 0       | Mark as not approved (stays in library) |
 
 **Bulk review mode**:
+
 - Swipe through images with keyboard (← →)
 - Quick actions: A (approve), R (reject), E (edit)
 - Filter: Show only pending
 - Stats: "15 of 45 reviewed"
 
 **Smart comparison features**:
+
 - Slider overlay (drag to compare original vs generated)
 - Zoom sync (zoom both images together)
 - Color picker (verify product color accuracy)
 - Fullscreen mode
 
 **Credit display in UI**:
+
 ```
 ┌────────────────────────────┐
 │  Your Credits: 847/1000    │
@@ -510,18 +541,18 @@ monorepo/
 
 ### Technology Stack
 
-| Layer                      | Technology                     | Notes                                          |
-| -------------------------- | ------------------------------ | ---------------------------------------------- |
-| **Frontend**         | Next.js 16 (App Router)        | Both apps                                      |
-| **UI Library**       | shadcn/ui + Tailwind           | Consistent design system                       |
-| **State Management** | React Context + TanStack Query | Server state with React Query                  |
+| Layer                | Technology                     | Notes                                        |
+| -------------------- | ------------------------------ | -------------------------------------------- |
+| **Frontend**         | Next.js 16 (App Router)        | Both apps                                    |
+| **UI Library**       | shadcn/ui + Tailwind           | Consistent design system                     |
+| **State Management** | React Context + TanStack Query | Server state with React Query                |
 | **Authentication**   | Better Auth                    | `visualizer-auth` package                    |
 | **Database**         | PostgreSQL via Drizzle ORM     | `visualizer-db` package                      |
 | **Object Storage**   | Cloudflare R2                  | `visualizer-storage` package (S3-compatible) |
-| **Queue/Cache**      | Redis                          | Job queue + rate limiting                      |
-| **AI Provider**      | Google Gemini API              | Image generation + analysis                    |
-| **Image Search**     | Unsplash API                   | Inspiration images                             |
-| **Deployment**       | Vercel                         | Both apps independently deployed               |
+| **Queue/Cache**      | Redis                          | Job queue + rate limiting                    |
+| **AI Provider**      | Google Gemini API              | Image generation + analysis                  |
+| **Image Search**     | Unsplash API                   | Inspiration images                           |
+| **Deployment**       | Vercel                         | Both apps independently deployed             |
 
 ### Data Flow: Asset Generation
 
@@ -853,28 +884,28 @@ CREATE INDEX idx_event_created ON generation_event(created_at);
 CREATE TABLE store_connection (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id UUID NOT NULL REFERENCES clients(id),
-  
+
   -- Store details
   store_type TEXT NOT NULL,       -- 'shopify' | 'woocommerce' | 'bigcommerce'
   store_url TEXT NOT NULL,        -- https://mystore.myshopify.com
   store_name TEXT,                -- Display name
-  
+
   -- OAuth credentials (encrypted)
   access_token TEXT NOT NULL,
   refresh_token TEXT,
   token_expires_at TIMESTAMPTZ,
-  
+
   -- Sync settings
   auto_sync_enabled BOOLEAN DEFAULT FALSE,
   sync_on_approval BOOLEAN DEFAULT TRUE,
-  
+
   -- Status
   status TEXT DEFAULT 'active',   -- 'active' | 'disconnected' | 'error'
   last_sync_at TIMESTAMPTZ,
-  
+
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
+
   UNIQUE(client_id, store_type, store_url)
 );
 
@@ -884,13 +915,13 @@ CREATE TABLE store_sync_log (
   store_connection_id UUID NOT NULL REFERENCES store_connection(id),
   generated_asset_id UUID NOT NULL REFERENCES generated_asset(id),
   product_id UUID NOT NULL REFERENCES product(id),
-  
+
   -- Sync details
   action TEXT NOT NULL,           -- 'upload' | 'update' | 'delete'
   status TEXT NOT NULL,           -- 'pending' | 'success' | 'failed'
   external_image_url TEXT,        -- URL in the store (after upload)
   error_message TEXT,
-  
+
   -- Timing
   started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   completed_at TIMESTAMPTZ
@@ -1040,16 +1071,19 @@ APP_ENV=admin|client  # Determines Redis key prefix
 (See Design Log #005 for details)
 
 **Collection View**:
+
 - Table/matrix of GenerationFlows
 - Bulk actions, progress indicators
 
 **Single GenerationFlow View** (new):
+
 - Detailed editing modal
 - Regenerate with settings
 - Region masking for targeted prompts
 - Side-by-side comparison
 
 **Home Page**:
+
 - "New Generation" quick action
 - Recent & Favorite GenerationFlows section
 - Analytics dashboard cards
@@ -1079,12 +1113,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     where: eq(collectionSession.id, params.id),
   });
 
-  const [genFlow] = await db.insert(generationFlow).values({
-    collectionSessionId: collection.id,
-    clientId: collection.clientId,
-    productIds: selectedProductIds,
-    settings: flowSettings,
-  }).returning();
+  const [genFlow] = await db
+    .insert(generationFlow)
+    .values({
+      collectionSessionId: collection.id,
+      clientId: collection.clientId,
+      productIds: selectedProductIds,
+      settings: flowSettings,
+    })
+    .returning();
 
   const queue = new AssetGenerationQueue({ prefix: 'client' });
 
@@ -1097,13 +1134,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     });
 
     // Create asset record
-    const asset = await db.insert(generatedAsset).values({
-      generationFlowId: genFlow.id,
-      clientId: collection.clientId,
-      assetType: 'image',
-      jobId,
-      status: 'pending',
-    }).returning();
+    const asset = await db
+      .insert(generatedAsset)
+      .values({
+        generationFlowId: genFlow.id,
+        clientId: collection.clientId,
+        assetType: 'image',
+        jobId,
+        status: 'pending',
+      })
+      .returning();
 
     // Link asset to product(s)
     await db.insert(generatedAssetProduct).values({
@@ -1125,13 +1165,16 @@ export async function POST(req: Request) {
   const { productId, settings } = await req.json();
 
   // Standalone GenerationFlow (no collection)
-  const genFlow = await db.insert(generationFlow).values({
-    collectionSessionId: null,  // Standalone!
-    clientId: user.clientId,
-    productIds: [productId],
-    settings,
-    name: `Generation for ${product.name}`,
-  }).returning();
+  const genFlow = await db
+    .insert(generationFlow)
+    .values({
+      collectionSessionId: null, // Standalone!
+      clientId: user.clientId,
+      productIds: [productId],
+      settings,
+      name: `Generation for ${product.name}`,
+    })
+    .returning();
 
   // Same queue processing as collection flow
   const queue = new AssetGenerationQueue({ prefix: 'client' });
@@ -1162,26 +1205,21 @@ export class R2Uploader {
     });
   }
 
-  async uploadGeneratedAsset(
-    clientId: string,
-    generationFlowId: string,
-    assetId: string,
-    buffer: Buffer
-  ) {
+  async uploadGeneratedAsset(clientId: string, generationFlowId: string, assetId: string, buffer: Buffer) {
     // Optimize to WebP for CDN delivery
-    const webpBuffer = await sharp(buffer)
-      .webp({ quality: 85 })
-      .toBuffer();
+    const webpBuffer = await sharp(buffer).webp({ quality: 85 }).toBuffer();
 
     const key = `clients/${clientId}/generations/${generationFlowId}/assets/${assetId}.webp`;
 
-    await this.client.send(new PutObjectCommand({
-      Bucket: process.env.R2_BUCKET,
-      Key: key,
-      Body: webpBuffer,
-      ContentType: 'image/webp',
-      CacheControl: 'public, max-age=31536000', // 1 year cache
-    }));
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: process.env.R2_BUCKET,
+        Key: key,
+        Body: webpBuffer,
+        ContentType: 'image/webp',
+        CacheControl: 'public, max-age=31536000', // 1 year cache
+      })
+    );
 
     return `${process.env.R2_PUBLIC_URL}/${key}`;
   }
@@ -1192,13 +1230,16 @@ export class R2Uploader {
 
 ```typescript
 // When an asset can be used for multiple products (e.g., product variants)
-const asset = await db.insert(generatedAsset).values({
-  generationFlowId: genFlow.id,
-  clientId,
-  assetType: 'image',
-  assetUrl: webpUrl,
-  status: 'completed',
-}).returning();
+const asset = await db
+  .insert(generatedAsset)
+  .values({
+    generationFlowId: genFlow.id,
+    clientId,
+    assetType: 'image',
+    assetUrl: webpUrl,
+    status: 'completed',
+  })
+  .returning();
 
 // Link to multiple products
 await db.insert(generatedAssetProduct).values([
@@ -1264,18 +1305,18 @@ export function ClientProvider({ children }: { children: React.ReactNode }) {
 
 ```typescript
 // Toggle favorite on a GenerationFlow
-await db.insert(userFavorite).values({
-  userId: user.id,
-  entityType: 'generation_flow',
-  entityId: generationFlowId,
-}).onConflictDoNothing();
+await db
+  .insert(userFavorite)
+  .values({
+    userId: user.id,
+    entityType: 'generation_flow',
+    entityId: generationFlowId,
+  })
+  .onConflictDoNothing();
 
 // Query favorites
 const favorites = await db.query.userFavorite.findMany({
-  where: and(
-    eq(userFavorite.userId, user.id),
-    eq(userFavorite.entityType, 'generation_flow')
-  ),
+  where: and(eq(userFavorite.userId, user.id), eq(userFavorite.entityType, 'generation_flow')),
 });
 
 // Add tag to product
@@ -1290,10 +1331,7 @@ const productsWithTag = await db
   .select()
   .from(product)
   .innerJoin(tagAssignment, eq(tagAssignment.entityId, product.id))
-  .where(and(
-    eq(tagAssignment.tagId, 'summer-2026-tag-id'),
-    eq(tagAssignment.entityType, 'product')
-  ));
+  .where(and(eq(tagAssignment.tagId, 'summer-2026-tag-id'), eq(tagAssignment.entityType, 'product')));
 ```
 
 ### ✅ Good: Cached Asset Analysis for Editing
@@ -1314,7 +1352,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const analysis = await geminiClient.analyzeImage(asset.assetUrl);
 
   // Cache the analysis on the asset
-  await db.update(generatedAsset)
+  await db
+    .update(generatedAsset)
     .set({
       assetAnalysis: analysis,
       analysisVersion: CURRENT_ANALYSIS_VERSION,
@@ -1326,7 +1365,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
 // Invalidate analysis when asset is edited
 export async function invalidateAnalysis(assetId: string) {
-  await db.update(generatedAsset)
+  await db
+    .update(generatedAsset)
     .set({
       assetAnalysis: null,
       analysisVersion: null,
@@ -1344,7 +1384,8 @@ export async function POST(req: Request) {
   const user = await getAuthUser();
 
   // Update approval status
-  await db.update(generatedAsset)
+  await db
+    .update(generatedAsset)
     .set({
       approvalStatus: action === 'approve' ? 'approved' : 'rejected',
       approvedAt: new Date(),
@@ -1358,7 +1399,7 @@ export async function POST(req: Request) {
       where: and(
         eq(storeConnection.clientId, user.clientId),
         eq(storeConnection.syncOnApproval, true),
-        eq(storeConnection.status, 'active'),
+        eq(storeConnection.status, 'active')
       ),
     });
 
@@ -1376,10 +1417,7 @@ export async function POST(req: Request) {
 
 // Query assets by approval status
 const approvedAssets = await db.query.generatedAsset.findMany({
-  where: and(
-    eq(generatedAsset.clientId, clientId),
-    eq(generatedAsset.approvalStatus, 'approved'),
-  ),
+  where: and(eq(generatedAsset.clientId, clientId), eq(generatedAsset.approvalStatus, 'approved')),
 });
 ```
 
@@ -1507,80 +1545,65 @@ const approvedAssets = await db.query.generatedAsset.findMany({
 ## Open Questions
 
 1. **Multi-client support**: Should a single user be able to belong to multiple clients?
-
    - For MVP: Single client per user
    - Future: Support client switching (member table supports this)
 
 2. **Rate limiting**: How to prevent abuse?
-
    - Proposal: 100 generations/day per client on free tier
    - Enterprise: Unlimited or higher limits
 
 3. **Webhooks**: Should we notify clients when generation completes?
-
    - For MVP: No webhooks, just in-app notifications
    - Future: Webhook support for integrations
 
 4. **Video/3D support**: When do we add other asset types?
-
    - Not in MVP
    - asset_type column ready for 'video' | '3d_model'
    - Same generation_flow infrastructure
 
 5. **Analytics depth**: How detailed should generation analytics be?
-
    - MVP: Basic counts and success rates
    - Future: R2 access logs for CDN view tracking
    - Consider: GDPR implications of detailed tracking
 
 6. **Tag hierarchy**: Should tags support nesting/categories?
-
    - MVP: Flat tags only
    - Future: Parent-child relationships if needed
 
 7. **Favorite sync**: Should favorites sync across user devices?
-
    - Current: Stored in database, auto-syncs
    - No additional work needed
 
 8. **Asset versioning**: Should we keep history of regenerated assets?
-
    - MVP: Overwrite previous versions
    - Future: Version history with rollback
 
 9. **Analysis model upgrades**: How to handle cached analysis when AI model changes?
-
    - Track `analysis_version` on each asset
    - Background job to re-analyze when version mismatch detected
    - Or: lazy re-analysis on next edit
 
 10. **Store sync conflicts**: What if store image was updated externally?
-
     - MVP: Scenergy is source of truth (overwrite)
     - Future: Conflict detection and resolution UI
 
 11. **Bulk approval**: Should approvals trigger immediate sync or batch?
-
     - MVP: Immediate sync per asset (async via queue)
     - Future: Batch sync at scheduled times
 
 12. **Product import conflicts**: What if a product already exists when re-importing?
-
     - Proposal: Update existing product by ERP ID
     - Option: Ask user to merge or skip
 
 13. **Analysis strategy default**: Which product analysis timing is default?
-
     - Proposal: "On Collection" (balanced performance/freshness)
     - Can be configured per client in settings
 
 14. **Over-limit handling**: What happens when user tries to import more than subscription allows?
-
     - Proposal: Show limit, prompt upgrade, allow partial import
     - Don't silently fail
 
 15. **Credit rollover**: Should unused credits roll over?
-
     - MVP: No, credits expire monthly
     - Future: Consider rollover for annual plans
 

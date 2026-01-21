@@ -24,7 +24,7 @@ import { enqueueImageGeneration } from 'visualizer-ai';
 describe('Image Generation Flow - POST /api/generate-images', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Default mock implementation
     vi.mocked(enqueueImageGeneration).mockResolvedValue({
       jobId: 'job-123',

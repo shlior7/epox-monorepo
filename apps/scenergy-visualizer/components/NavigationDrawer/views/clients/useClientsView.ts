@@ -84,9 +84,7 @@ export function useClientsView(ctx: NavContext) {
             ctx.shell.resetSelections();
           }
 
-          ctx.services.toast.success(
-            ids.length === 1 ? 'Client deleted successfully' : `${ids.length} clients deleted successfully`
-          );
+          ctx.services.toast.success(ids.length === 1 ? 'Client deleted successfully' : `${ids.length} clients deleted successfully`);
 
           resetBulkState();
         } catch (error) {

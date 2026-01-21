@@ -70,13 +70,13 @@ flowchart TD
         A[Product Table<br/>Search, Filter, Sort] --> B[Select Products<br/>Checkbox + Select All]
         B --> C[Collection Preview<br/>SKU, Category, Room Type]
     end
-    
+
     subgraph step2 [Step 2: Product Analysis]
         C --> D[AI Analyzes Product Metadata<br/>No images needed]
         D --> E[Output: Configuration Settings]
         E --> F[Room Types Distribution<br/>Product Types Summary]
     end
-    
+
     subgraph step3 [Step 3: Inspiration Selection]
         F --> G[Smart Suggestions<br/>Based on analysis]
         G --> H{Choose Inspirations}
@@ -84,15 +84,13 @@ flowchart TD
         H --> I2[Unsplash Search<br/>Pre-filtered by room/style]
         H --> I3[Pinned Generated Images<br/>From previous sessions]
     end
-    
+
     subgraph step4 [Step 4: Generate]
         I1 & I2 & I3 --> J[Scene Analysis<br/>Merge inspiration images]
         J --> K[Final Config Review]
         K --> L[Generate Queue]
     end
 ```
-
-
 
 ## Step 1: Product Selection Table
 
@@ -111,8 +109,6 @@ Full-featured table UI:| Feature | Description ||---------|-------------|| **Sea
 └───┴───────┴──────────────────┴──────────┴────────────┴─────────────┘
                               [3 of 127 selected]
 ```
-
-
 
 ## Step 2: Product Analysis (Metadata-Only)
 
@@ -134,17 +130,13 @@ AI analyzes selected products WITHOUT images:**Input:**
 {
   "roomTypeDistribution": {
     "Office": 1,
-    "Living Room": 1, 
+    "Living Room": 1,
     "Bedroom": 1
   },
   "productTypes": ["Desk", "Sofa", "Bed"],
   "dominantCategory": "Furniture",
   "suggestedStyles": ["Modern", "Contemporary"],
-  "recommendedInspirationKeywords": [
-    "modern home office",
-    "contemporary living room",
-    "minimalist bedroom"
-  ]
+  "recommendedInspirationKeywords": ["modern home office", "contemporary living room", "minimalist bedroom"]
 }
 ```
 
@@ -170,6 +162,7 @@ Three sources, all informed by the product analysis:
 - Show previously generated images marked as "pinned"
 - Filter to show images matching the room types in this collection
 - "Use as inspiration" button
+
 ```javascript
 ┌─────────────────────────────────────────────────────────────────────┐
 │ Select Inspiration Images (0-5)                                     │
@@ -188,9 +181,6 @@ Three sources, all informed by the product analysis:
 │ └─────────┘ └─────────┘                                            │
 └─────────────────────────────────────────────────────────────────────┘
 ```
-
-
-
 
 ## Step 4: Generate
 
@@ -213,25 +203,23 @@ flowchart LR
     subgraph collection [Collection Level]
         A[Base FlowGenerationSettings<br/>from inspiration analysis]
     end
-    
+
     subgraph per_product [Per-Product]
         B1[Product 1: Desk]
         B2[Product 2: Sofa]
         B3[Product 3: Bed]
     end
-    
+
     subgraph final [Final Settings]
         C1[Settings + roomType: Office]
         C2[Settings + roomType: Living Room]
         C3[Settings + roomType: Bedroom]
     end
-    
+
     A --> B1 --> C1
     A --> B2 --> C2
     A --> B3 --> C3
 ```
-
-
 
 ### Example: Collection to FlowGenerationSettings
 
@@ -239,16 +227,16 @@ flowchart LR
 
 ```typescript
 const collectionBaseSettings: Partial<FlowGenerationSettings> = {
-  style: 'Modern Minimalist',           // From inspiration images
-  lighting: 'Natural Light',             // From inspiration images
-  colorScheme: 'Neutral Tones',          // From inspiration images
-  cameraAngle: 'Eye Level',              // Default
-  aspectRatio: '1:1',                    // User choice
-  surroundings: 'Moderate',              // From inspiration images
-  props: ['Plants', 'Books'],            // From inspiration images
-  varietyLevel: 5,                       // Default
-  matchProductColors: true,              // Default
-  sceneImageUrl: 'https://...',          // Primary inspiration image
+  style: 'Modern Minimalist', // From inspiration images
+  lighting: 'Natural Light', // From inspiration images
+  colorScheme: 'Neutral Tones', // From inspiration images
+  cameraAngle: 'Eye Level', // Default
+  aspectRatio: '1:1', // User choice
+  surroundings: 'Moderate', // From inspiration images
+  props: ['Plants', 'Books'], // From inspiration images
+  varietyLevel: 5, // Default
+  matchProductColors: true, // Default
+  sceneImageUrl: 'https://...', // Primary inspiration image
 };
 ```
 
@@ -258,19 +246,17 @@ const collectionBaseSettings: Partial<FlowGenerationSettings> = {
 // For "Modern Desk" product
 const deskSettings: FlowGenerationSettings = {
   ...collectionBaseSettings,
-  roomType: 'Office',                    // AI-matched from product type
+  roomType: 'Office', // AI-matched from product type
   promptText: 'Professional home office setup with the modern desk as the focal point',
 };
 
 // For "Velvet Sofa" product
 const sofaSettings: FlowGenerationSettings = {
   ...collectionBaseSettings,
-  roomType: 'Living Room',               // AI-matched from product type
+  roomType: 'Living Room', // AI-matched from product type
   promptText: 'Cozy living room with the velvet sofa as the centerpiece',
 };
 ```
-
-
 
 ## Data Model
 
@@ -280,10 +266,10 @@ interface Collection {
   clientId: string;
   name: string;
   status: 'selecting' | 'analyzing' | 'inspiring' | 'ready' | 'generating' | 'completed';
-  
+
   // Step 1: Selected Products
   selectedProductIds: string[];
-  
+
   // Step 2: Product Analysis Results
   productAnalysis?: {
     roomTypeDistribution: Record<string, number>;
@@ -294,7 +280,7 @@ interface Collection {
     // Per-product room assignments
     productRoomAssignments: Record<string, string>; // productId -> roomType
   };
-  
+
   // Step 3: Inspirations
   inspirationImages: Array<{
     id: string;
@@ -302,20 +288,20 @@ interface Collection {
     source: 'upload' | 'unsplash' | 'library';
     analysis?: SceneAnalysis;
   }>;
-  
+
   // Base settings derived from inspiration analysis
   // Uses SAME structure as existing FlowGenerationSettings
   baseSettings: Partial<FlowGenerationSettings>;
-  
+
   // Step 4: Generation Queue - each item has full FlowGenerationSettings
   generationQueue: Array<{
     productId: string;
     status: 'pending' | 'generating' | 'completed' | 'error';
-    settings: FlowGenerationSettings;  // Full settings for this product
+    settings: FlowGenerationSettings; // Full settings for this product
     resultImageId?: string;
     jobId?: string;
   }>;
-  
+
   createdAt: string;
   updatedAt: string;
 }
@@ -336,8 +322,6 @@ interface SceneAnalysis {
   mood: string;
 }
 ```
-
-
 
 ## Reusing Existing Services
 
@@ -396,14 +380,12 @@ apps/visualizer-client/
         └── unsplash-client.ts
 ```
 
-
-
 ## Shared Infrastructure
 
 Leverages existing packages:
 
 - `visualizer-auth` - User authentication
-- `visualizer-db` - Database schemas  
+- `visualizer-db` - Database schemas
 - `visualizer-storage` - S3 storage
 - Gemini for analysis and generation
 

@@ -192,9 +192,7 @@ describe('MessageRepository', () => {
       await repo.update(message.id, { parts: [{ type: 'text', content: 'V2' }] }, 1);
 
       // Update with stale version should fail
-      await expect(
-        repo.update(message.id, { parts: [{ type: 'text', content: 'V3' }] }, 1)
-      ).rejects.toThrow();
+      await expect(repo.update(message.id, { parts: [{ type: 'text', content: 'V3' }] }, 1)).rejects.toThrow();
     });
   });
 });

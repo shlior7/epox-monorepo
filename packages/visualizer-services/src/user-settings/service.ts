@@ -3,10 +3,7 @@
  * Business logic for user settings management
  */
 
-import type {
-  DefaultGenerationSettings,
-  UserSettingsData,
-} from './types';
+import type { DefaultGenerationSettings, UserSettingsData } from './types';
 import { DEFAULT_GENERATION_SETTINGS } from './types';
 import type { NotificationPreferences } from '../notification/types';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from '../notification/types';
@@ -47,10 +44,7 @@ export class UserSettingsService {
   /**
    * Update default generation settings
    */
-  async updateDefaultGenerationSettings(
-    userId: string,
-    settings: Partial<DefaultGenerationSettings>
-  ): Promise<DefaultGenerationSettings> {
+  async updateDefaultGenerationSettings(userId: string, settings: Partial<DefaultGenerationSettings>): Promise<DefaultGenerationSettings> {
     const current = await this.getSettings(userId);
 
     const updated: DefaultGenerationSettings = {
@@ -68,10 +62,7 @@ export class UserSettingsService {
   /**
    * Update notification settings
    */
-  async updateNotificationSettings(
-    userId: string,
-    settings: Partial<NotificationPreferences>
-  ): Promise<NotificationPreferences> {
+  async updateNotificationSettings(userId: string, settings: Partial<NotificationPreferences>): Promise<NotificationPreferences> {
     const current = await this.getSettings(userId);
     const currentNotif = current.notificationSettings;
 
@@ -122,5 +113,3 @@ export class UserSettingsService {
 export function createUserSettingsService(deps: UserSettingsServiceDependencies): UserSettingsService {
   return new UserSettingsService(deps);
 }
-
-

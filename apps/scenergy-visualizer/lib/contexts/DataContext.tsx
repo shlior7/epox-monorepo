@@ -81,7 +81,13 @@ interface DataContextValue extends DataContextState {
   addFlowToClientSession: (clientId: string, sessionId: string, productIds?: string[]) => Promise<Flow>;
   updateFlowInClientSession: (clientId: string, sessionId: string, flowId: string, updates: Partial<Flow>) => Promise<void>;
   deleteFlowFromClientSession: (clientId: string, sessionId: string, flowId: string) => Promise<void>;
-  addProductsToFlow: (clientId: string, sessionId: string, flowId: string, productIds: string[], baseImageIds?: { [productId: string]: string }) => Promise<void>;
+  addProductsToFlow: (
+    clientId: string,
+    sessionId: string,
+    flowId: string,
+    productIds: string[],
+    baseImageIds?: { [productId: string]: string }
+  ) => Promise<void>;
   removeProductFromFlow: (clientId: string, sessionId: string, flowId: string, productId: string) => Promise<void>;
   updateFlowSettings: (clientId: string, sessionId: string, flowId: string, settings: Partial<FlowGenerationSettings>) => Promise<void>;
 
@@ -125,9 +131,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const normalizeProduct = useCallback((product: Product): Product => {
     const legacyCategory = (product as { productType?: string }).productType;
     const normalizedCategory = normalizeCategoryValue(product.category ?? legacyCategory);
-    const normalizedsceneTypes = Array.isArray(product.sceneTypes)
-      ? Array.from(new Set(product.sceneTypes.filter(Boolean)))
-      : undefined;
+    const normalizedsceneTypes = Array.isArray(product.sceneTypes) ? Array.from(new Set(product.sceneTypes.filter(Boolean))) : undefined;
 
     return {
       ...product,
@@ -214,59 +218,62 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ===== CLIENT OPERATIONS =====
 
-  const addClient = useCallback(async (payload: CreateClientPayload): Promise<{ client: Client; credentials?: ClientUserCredentials }> => {
-    const trimmedClientId = payload.clientId.trim();
-    if (!trimmedClientId) {
-      throw new Error('Client ID is required');
-    }
-    const clientId = trimmedClientId;
-
-    const newClient: Client = {
-      id: clientId,
-      name: payload.name,
-      description: payload.description,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      products: [],
-      categories: [],
-      commerce: payload.commerce
-        ? {
-          provider: payload.commerce.provider,
-          baseUrl: payload.commerce.baseUrl,
-        }
-        : undefined,
-    };
-
-    try {
-      const response = await fetch('/api/clients/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client: newClient,
-          commerce: payload.commerce,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create client');
+  const addClient = useCallback(
+    async (payload: CreateClientPayload): Promise<{ client: Client; credentials?: ClientUserCredentials }> => {
+      const trimmedClientId = payload.clientId.trim();
+      if (!trimmedClientId) {
+        throw new Error('Client ID is required');
       }
+      const clientId = trimmedClientId;
 
-      const data = await response.json();
-      const createdClient = data.client ?? newClient;
-      const credentials = data.clientUserCredentials ?? undefined;
-      const normalizedClient = normalizeClient(createdClient);
+      const newClient: Client = {
+        id: clientId,
+        name: payload.name,
+        description: payload.description,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        products: [],
+        categories: [],
+        commerce: payload.commerce
+          ? {
+              provider: payload.commerce.provider,
+              baseUrl: payload.commerce.baseUrl,
+            }
+          : undefined,
+      };
 
-      setState((prev) => ({
-        ...prev,
-        clients: [...prev.clients, normalizedClient],
-      }));
-      return { client: normalizedClient, credentials };
-    } catch (error) {
-      console.error('Failed to add client:', error);
-      throw error;
-    }
-  }, [normalizeClient]);
+      try {
+        const response = await fetch('/api/clients/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client: newClient,
+            commerce: payload.commerce,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to create client');
+        }
+
+        const data = await response.json();
+        const createdClient = data.client ?? newClient;
+        const credentials = data.clientUserCredentials ?? undefined;
+        const normalizedClient = normalizeClient(createdClient);
+
+        setState((prev) => ({
+          ...prev,
+          clients: [...prev.clients, normalizedClient],
+        }));
+        return { client: normalizedClient, credentials };
+      } catch (error) {
+        console.error('Failed to add client:', error);
+        throw error;
+      }
+    },
+    [normalizeClient]
+  );
 
   const updateClient = useCallback(
     async (clientId: string, updates: Partial<Pick<Client, 'name' | 'description' | 'aiModelConfig'>>) => {
@@ -609,18 +616,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
         clients: prev.clients.map((c) =>
           c.id === clientId
             ? {
-              ...c,
-              products: c.products.map((p) =>
-                p.id === productId
-                  ? {
-                    ...p,
-                    sessions: p.sessions.filter((s) => s.id !== sessionId),
-                    updatedAt: new Date().toISOString(),
-                  }
-                  : p
-              ),
-              updatedAt: new Date().toISOString(),
-            }
+                ...c,
+                products: c.products.map((p) =>
+                  p.id === productId
+                    ? {
+                        ...p,
+                        sessions: p.sessions.filter((s) => s.id !== sessionId),
+                        updatedAt: new Date().toISOString(),
+                      }
+                    : p
+                ),
+                updatedAt: new Date().toISOString(),
+              }
             : c
         ),
       }));
@@ -751,11 +758,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         clients: prev.clients.map((c) =>
           c.id === clientId
             ? {
-              ...c,
-              studioSessions: (c.studioSessions ?? c.clientSessions ?? []).filter((s) => s.id !== sessionId),
-              clientSessions: (c.studioSessions ?? c.clientSessions ?? []).filter((s) => s.id !== sessionId),
-              updatedAt: new Date().toISOString(),
-            }
+                ...c,
+                studioSessions: (c.studioSessions ?? c.clientSessions ?? []).filter((s) => s.id !== sessionId),
+                clientSessions: (c.studioSessions ?? c.clientSessions ?? []).filter((s) => s.id !== sessionId),
+                updatedAt: new Date().toISOString(),
+              }
             : c
         ),
       }));
@@ -1071,23 +1078,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ===== FAVORITE OPERATIONS =====
 
-  const toggleFavoriteGeneratedImage = useCallback(
-    async (_clientId: string, _productId: string, _imageId: string, _sessionId: string) => {
-      // TODO: Implement using pinned field on generated_asset table instead
-      console.warn('toggleFavoriteGeneratedImage: Not implemented - use pinned on generated_asset');
-    },
-    []
-  );
+  const toggleFavoriteGeneratedImage = useCallback(async (_clientId: string, _productId: string, _imageId: string, _sessionId: string) => {
+    // TODO: Implement using pinned field on generated_asset table instead
+    console.warn('toggleFavoriteGeneratedImage: Not implemented - use pinned on generated_asset');
+  }, []);
 
   // ===== SCENE IMAGES OPERATIONS =====
 
-  const toggleSceneImage = useCallback(
-    async (_clientId: string, _productId: string, _imageId: string, _sessionId: string) => {
-      // TODO: Implement using pinned field on generated_asset table instead
-      console.warn('toggleSceneImage: Not implemented - use pinned on generated_asset');
-    },
-    []
-  );
+  const toggleSceneImage = useCallback(async (_clientId: string, _productId: string, _imageId: string, _sessionId: string) => {
+    // TODO: Implement using pinned field on generated_asset table instead
+    console.warn('toggleSceneImage: Not implemented - use pinned on generated_asset');
+  }, []);
 
   // ===== CLIENT SESSION MESSAGE OPERATIONS =====
 
@@ -1211,42 +1212,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ===== FLOW OPERATIONS (Scene Studio) =====
 
-  const addFlowToClientSession = useCallback(
-    async (clientId: string, sessionId: string, productIds: string[] = []): Promise<Flow> => {
-      const createdFlow = await apiClient.createFlow(clientId, sessionId, {
-        productIds,
-      });
+  const addFlowToClientSession = useCallback(async (clientId: string, sessionId: string, productIds: string[] = []): Promise<Flow> => {
+    const createdFlow = await apiClient.createFlow(clientId, sessionId, {
+      productIds,
+    });
 
-      setState((prevState) => {
-        const newClients = prevState.clients.map((client) => {
-          if (client.id !== clientId) return client;
+    setState((prevState) => {
+      const newClients = prevState.clients.map((client) => {
+        if (client.id !== clientId) return client;
 
-          const newClientSessions = (client.studioSessions ?? client.clientSessions ?? []).map((session) => {
-            if (session.id !== sessionId) return session;
-
-            return {
-              ...session,
-              flows: [...(session.flows || []), createdFlow],
-              updatedAt: new Date().toISOString(),
-            };
-          });
+        const newClientSessions = (client.studioSessions ?? client.clientSessions ?? []).map((session) => {
+          if (session.id !== sessionId) return session;
 
           return {
-            ...client,
-            studioSessions: newClientSessions,
-            clientSessions: newClientSessions,
+            ...session,
+            flows: [...(session.flows || []), createdFlow],
             updatedAt: new Date().toISOString(),
           };
         });
 
-        return { ...prevState, clients: newClients };
+        return {
+          ...client,
+          studioSessions: newClientSessions,
+          clientSessions: newClientSessions,
+          updatedAt: new Date().toISOString(),
+        };
       });
 
-      console.log(`✅ Flow ${createdFlow.id} added to client session ${sessionId}`);
-      return createdFlow;
-    },
-    []
-  );
+      return { ...prevState, clients: newClients };
+    });
+
+    console.log(`✅ Flow ${createdFlow.id} added to client session ${sessionId}`);
+    return createdFlow;
+  }, []);
 
   const updateFlowInClientSession = useCallback(
     async (clientId: string, sessionId: string, flowId: string, updates: Partial<Flow>): Promise<void> => {
@@ -1298,46 +1296,43 @@ export function DataProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const deleteFlowFromClientSession = useCallback(
-    async (clientId: string, sessionId: string, flowId: string): Promise<void> => {
-      let clientToPersist: Client | undefined;
-      let sessionToPersist: ClientSession | undefined;
+  const deleteFlowFromClientSession = useCallback(async (clientId: string, sessionId: string, flowId: string): Promise<void> => {
+    let clientToPersist: Client | undefined;
+    let sessionToPersist: ClientSession | undefined;
 
-      setState((prevState) => {
-        const newClients = prevState.clients.map((client) => {
-          if (client.id !== clientId) return client;
+    setState((prevState) => {
+      const newClients = prevState.clients.map((client) => {
+        if (client.id !== clientId) return client;
 
-          const newClientSessions = (client.studioSessions ?? client.clientSessions ?? []).map((session) => {
-            if (session.id !== sessionId) return session;
+        const newClientSessions = (client.studioSessions ?? client.clientSessions ?? []).map((session) => {
+          if (session.id !== sessionId) return session;
 
-            sessionToPersist = {
-              ...session,
-              flows: (session.flows || []).filter((flow) => flow.id !== flowId),
-              updatedAt: new Date().toISOString(),
-            };
-            return sessionToPersist;
-          });
-
-          clientToPersist = {
-            ...client,
-            studioSessions: newClientSessions,
-            clientSessions: newClientSessions,
+          sessionToPersist = {
+            ...session,
+            flows: (session.flows || []).filter((flow) => flow.id !== flowId),
             updatedAt: new Date().toISOString(),
           };
-          return clientToPersist;
+          return sessionToPersist;
         });
 
-        return { ...prevState, clients: newClients };
+        clientToPersist = {
+          ...client,
+          studioSessions: newClientSessions,
+          clientSessions: newClientSessions,
+          updatedAt: new Date().toISOString(),
+        };
+        return clientToPersist;
       });
 
-      if (clientToPersist && sessionToPersist) {
-        await apiClient.updateClientSession(clientToPersist.id, sessionToPersist);
-      }
+      return { ...prevState, clients: newClients };
+    });
 
-      console.log(`✅ Flow ${flowId} deleted from client session ${sessionId}`);
-    },
-    []
-  );
+    if (clientToPersist && sessionToPersist) {
+      await apiClient.updateClientSession(clientToPersist.id, sessionToPersist);
+    }
+
+    console.log(`✅ Flow ${flowId} deleted from client session ${sessionId}`);
+  }, []);
 
   const addProductsToFlow = useCallback(
     async (

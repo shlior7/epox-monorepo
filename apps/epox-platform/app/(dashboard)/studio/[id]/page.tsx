@@ -51,7 +51,14 @@ import type {
   SubjectAnalysis,
   VideoPromptSettings,
 } from 'visualizer-types';
-import { CAMERA_MOTION_OPTIONS, LIGHTING_PRESETS, STYLE_PRESETS, VIDEO_TYPE_OPTIONS, VIDEO_ASPECT_RATIO_OPTIONS, VIDEO_RESOLUTION_OPTIONS } from 'visualizer-types';
+import {
+  CAMERA_MOTION_OPTIONS,
+  LIGHTING_PRESETS,
+  STYLE_PRESETS,
+  VIDEO_TYPE_OPTIONS,
+  VIDEO_ASPECT_RATIO_OPTIONS,
+  VIDEO_RESOLUTION_OPTIONS,
+} from 'visualizer-types';
 
 interface StudioPageProps {
   params: Promise<{ id: string }>;
@@ -220,8 +227,14 @@ export default function StudioPage({ params }: StudioPageProps) {
   const [selectedGeneratedVideo, setSelectedGeneratedVideo] = useState<GeneratedAsset | null>(null);
 
   // UI state - multi-open accordions (support multiple open at once)
-  const [expandedSections, setExpandedSections] = useState<string[]>(['scene-style', 'output-settings']);
-  const [videoExpandedSections, setVideoExpandedSections] = useState<string[]>(['video-inputs', 'video-prompt']);
+  const [expandedSections, setExpandedSections] = useState<string[]>([
+    'scene-style',
+    'output-settings',
+  ]);
+  const [videoExpandedSections, setVideoExpandedSections] = useState<string[]>([
+    'video-inputs',
+    'video-prompt',
+  ]);
   const [showAllProductHistory, setShowAllProductHistory] = useState(false);
 
   // ===== DATA FETCHING =====
@@ -360,13 +373,16 @@ export default function StudioPage({ params }: StudioPageProps) {
   const currentAssets = activeTab === 'images' ? imageAssets : videoAssets;
 
   // Configuration object for asset cards
-  const assetConfiguration = useMemo(() => ({
-    sceneType: matchedSceneType ?? undefined,
-    stylePreset,
-    lightingPreset,
-    aspectRatio: settings.aspectRatio,
-    quality: settings.quality,
-  }), [matchedSceneType, stylePreset, lightingPreset, settings.aspectRatio, settings.quality]);
+  const assetConfiguration = useMemo(
+    () => ({
+      sceneType: matchedSceneType ?? undefined,
+      stylePreset,
+      lightingPreset,
+      aspectRatio: settings.aspectRatio,
+      quality: settings.quality,
+    }),
+    [matchedSceneType, stylePreset, lightingPreset, settings.aspectRatio, settings.quality]
+  );
 
   // ===== EFFECTS =====
 
@@ -416,9 +432,10 @@ export default function StudioPage({ params }: StudioPageProps) {
       if (s.stylePreset) setStylePreset(s.stylePreset);
       if (s.lightingPreset) setLightingPreset(s.lightingPreset);
       if (s.userPrompt) setUserPrompt(s.userPrompt);
-      if (s.aspectRatio) setSettings(prev => ({ ...prev, aspectRatio: s.aspectRatio }));
-      if (s.imageQuality) setSettings(prev => ({ ...prev, quality: s.imageQuality as '1k' | '2k' | '4k' }));
-      if (s.variantsCount) setSettings(prev => ({ ...prev, variantsCount: s.variantsCount! }));
+      if (s.aspectRatio) setSettings((prev) => ({ ...prev, aspectRatio: s.aspectRatio }));
+      if (s.imageQuality)
+        setSettings((prev) => ({ ...prev, quality: s.imageQuality as '1k' | '2k' | '4k' }));
+      if (s.variantsCount) setSettings((prev) => ({ ...prev, variantsCount: s.variantsCount! }));
       if (s.video) {
         setVideoPrompt(s.video.prompt ?? '');
         setVideoSettings({
@@ -600,10 +617,7 @@ export default function StudioPage({ params }: StudioPageProps) {
       try {
         for (const item of items) {
           try {
-            const detectedSceneType = await analyzeAndAddInspiration(
-              item.url,
-              item.sourceType
-            );
+            const detectedSceneType = await analyzeAndAddInspiration(item.url, item.sourceType);
             toast.success(`Analyzed: ${detectedSceneType} scene detected`);
           } catch (err) {
             console.error('Inspiration analysis failed:', err);
@@ -619,15 +633,15 @@ export default function StudioPage({ params }: StudioPageProps) {
   );
 
   const removeInspirationImage = (url: string) => {
-    setInspirationImages(prev => prev.filter(img => img.url !== url));
+    setInspirationImages((prev) => prev.filter((img) => img.url !== url));
 
     // Also remove from scene type groups
-    setSceneTypeInspirations(prev => {
+    setSceneTypeInspirations((prev) => {
       const updated = { ...prev };
       for (const [sceneType, data] of Object.entries(updated)) {
         updated[sceneType] = {
           ...data,
-          inspirationImages: data.inspirationImages.filter(img => img.url !== url),
+          inspirationImages: data.inspirationImages.filter((img) => img.url !== url),
         };
         // Remove empty groups
         if (updated[sceneType].inspirationImages.length === 0) {
@@ -649,14 +663,7 @@ export default function StudioPage({ params }: StudioPageProps) {
       }
     }, 600);
     return () => clearTimeout(timeoutId);
-  }, [
-    activeTab,
-    videoPrompt,
-    videoSettings,
-    videoPresetId,
-    flowData?.settings,
-    saveSettings,
-  ]);
+  }, [activeTab, videoPrompt, videoSettings, videoPresetId, flowData?.settings, saveSettings]);
 
   const persistVideoPresets = (presets: VideoPreset[]) => {
     setVideoPresets(presets);
@@ -675,9 +682,7 @@ export default function StudioPage({ params }: StudioPageProps) {
       return;
     }
     // Check for duplicate names (case-insensitive)
-    const isDuplicate = videoPresets.some(
-      (p) => p.name.toLowerCase() === name.toLowerCase()
-    );
+    const isDuplicate = videoPresets.some((p) => p.name.toLowerCase() === name.toLowerCase());
     if (isDuplicate) {
       toast.error('A preset with this name already exists');
       return;
@@ -706,10 +711,7 @@ export default function StudioPage({ params }: StudioPageProps) {
     saveSettings();
   };
 
-  const buildVideoPrompt = (
-    basePrompt: string,
-    settings: VideoPromptSettings
-  ) => {
+  const buildVideoPrompt = (basePrompt: string, settings: VideoPromptSettings) => {
     const lines = [basePrompt.trim()];
     if (settings.videoType) lines.push(`Video type: ${settings.videoType}`);
     if (settings.cameraMotion) lines.push(`Camera motion: ${settings.cameraMotion}`);
@@ -845,7 +847,8 @@ export default function StudioPage({ params }: StudioPageProps) {
         productIds: products.map((p: any) => p.id),
         prompt: prompt || undefined,
         productImageUrls: selectedBaseImageUrl ? [selectedBaseImageUrl] : undefined,
-        inspirationImageUrls: inspirationImages.length > 0 ? inspirationImages.map(img => img.url) : undefined,
+        inspirationImageUrls:
+          inspirationImages.length > 0 ? inspirationImages.map((img) => img.url) : undefined,
         settings: {
           aspectRatio: settings.aspectRatio,
           imageQuality: settings.quality.toLowerCase() as '1k' | '2k' | '4k',
@@ -857,8 +860,7 @@ export default function StudioPage({ params }: StudioPageProps) {
 
       if (result.status === 'queued' && result.jobId) {
         setImageGenerationTracker({
-          expectedCount:
-            result.expectedImageCount ?? products.length * settings.variantsCount,
+          expectedCount: result.expectedImageCount ?? products.length * settings.variantsCount,
           baselineIds: imageAssets.map((asset) => asset.id),
         });
         startGeneration(result.jobId);
@@ -1048,7 +1050,13 @@ export default function StudioPage({ params }: StudioPageProps) {
           <div className="flex items-center gap-2">
             <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-secondary">
               {primaryImageUrl ? (
-                <Image src={primaryImageUrl} alt={currentProduct?.name || ''} fill className="object-cover" unoptimized />
+                <Image
+                  src={primaryImageUrl}
+                  alt={currentProduct?.name || ''}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
               ) : (
                 <Package className="h-4 w-4 text-muted-foreground" />
               )}
@@ -1056,7 +1064,9 @@ export default function StudioPage({ params }: StudioPageProps) {
             <div>
               <h1 className="text-sm font-semibold">{currentProduct?.name}</h1>
               {products.length > 1 && (
-                <p className="text-xs text-muted-foreground">+{products.length - 1} more products</p>
+                <p className="text-xs text-muted-foreground">
+                  +{products.length - 1} more products
+                </p>
               )}
             </div>
           </div>
@@ -1151,7 +1161,13 @@ export default function StudioPage({ params }: StudioPageProps) {
                               key={idx}
                               className="group relative aspect-square h-30 w-30 shrink-0 overflow-hidden rounded-lg border border-border"
                             >
-                              <Image src={img.url} alt={`Inspiration ${idx + 1}`} fill className="object-cover" unoptimized />
+                              <Image
+                                src={img.url}
+                                alt={`Inspiration ${idx + 1}`}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
                               <button
                                 onClick={() => removeInspirationImage(img.url)}
                                 className="absolute right-0.5 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
@@ -1211,7 +1227,9 @@ export default function StudioPage({ params }: StudioPageProps) {
                           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                         >
                           {STYLE_PRESETS.map((style) => (
-                            <option key={style} value={style}>{style}</option>
+                            <option key={style} value={style}>
+                              {style}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -1228,7 +1246,9 @@ export default function StudioPage({ params }: StudioPageProps) {
                           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                         >
                           {LIGHTING_PRESETS.map((lighting) => (
-                            <option key={lighting} value={lighting}>{lighting}</option>
+                            <option key={lighting} value={lighting}>
+                              {lighting}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -1268,7 +1288,13 @@ export default function StudioPage({ params }: StudioPageProps) {
                                   : 'border-border hover:border-primary/50'
                               )}
                             >
-                              <Image src={img.url} alt="Product" fill className="object-cover" unoptimized />
+                              <Image
+                                src={img.url}
+                                alt="Product"
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
                               {selectedBaseImageId === img.id && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
                                   <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary shadow">
@@ -1289,9 +1315,18 @@ export default function StudioPage({ params }: StudioPageProps) {
                             <span className="font-medium">AI Analysis</span>
                           </div>
                           <div className="space-y-1 text-xs text-muted-foreground">
-                            <p><span className="font-medium">Subject:</span> {subjectAnalysis.subjectClassHyphenated}</p>
-                            <p><span className="font-medium">Scene Types:</span> {subjectAnalysis.nativeSceneTypes.join(', ')}</p>
-                            <p><span className="font-medium">Camera:</span> {subjectAnalysis.inputCameraAngle}</p>
+                            <p>
+                              <span className="font-medium">Subject:</span>{' '}
+                              {subjectAnalysis.subjectClassHyphenated}
+                            </p>
+                            <p>
+                              <span className="font-medium">Scene Types:</span>{' '}
+                              {subjectAnalysis.nativeSceneTypes.join(', ')}
+                            </p>
+                            <p>
+                              <span className="font-medium">Camera:</span>{' '}
+                              {subjectAnalysis.inputCameraAngle}
+                            </p>
                             {matchedSceneType && (
                               <p className="mt-2 text-green-600">
                                 <Check className="mr-1 inline h-3 w-3" />
@@ -1345,7 +1380,9 @@ export default function StudioPage({ params }: StudioPageProps) {
                         variant="outline"
                         size="sm"
                         onClick={handlePreviewPrompt}
-                        disabled={!subjectAnalysis || Object.keys(sceneTypeInspirations).length === 0}
+                        disabled={
+                          !subjectAnalysis || Object.keys(sceneTypeInspirations).length === 0
+                        }
                         className="w-full"
                       >
                         <Eye className="mr-2 h-3.5 w-3.5" />
@@ -1364,7 +1401,7 @@ export default function StudioPage({ params }: StudioPageProps) {
                               <X className="h-3 w-3" />
                             </button>
                           </div>
-                          <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                          <p className="whitespace-pre-wrap text-xs text-muted-foreground">
                             {generatedPromptPreview.substring(0, 500)}...
                           </p>
                         </div>
@@ -1399,7 +1436,9 @@ export default function StudioPage({ params }: StudioPageProps) {
                               )}
                             >
                               <span className="text-sm font-semibold">{opt.label}</span>
-                              <span className="text-[10px] text-muted-foreground">{opt.description}</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {opt.description}
+                              </span>
                             </button>
                           ))}
                         </div>
@@ -1488,7 +1527,13 @@ export default function StudioPage({ params }: StudioPageProps) {
                           >
                             {selectedBaseImageUrl ? (
                               <div className="relative aspect-square w-full overflow-hidden rounded-md">
-                                <Image src={selectedBaseImageUrl} alt="Base" fill className="object-cover" unoptimized />
+                                <Image
+                                  src={selectedBaseImageUrl}
+                                  alt="Base"
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                />
                               </div>
                             ) : (
                               <div className="flex aspect-square w-full items-center justify-center rounded-md border border-dashed border-border text-[10px] text-muted-foreground">
@@ -1510,7 +1555,13 @@ export default function StudioPage({ params }: StudioPageProps) {
                           >
                             {selectedGeneratedImage ? (
                               <div className="relative aspect-square w-full overflow-hidden rounded-md">
-                                <Image src={selectedGeneratedImage.url} alt="Generated" fill className="object-cover" unoptimized />
+                                <Image
+                                  src={selectedGeneratedImage.url}
+                                  alt="Generated"
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                />
                               </div>
                             ) : (
                               <div className="flex aspect-square w-full items-center justify-center rounded-md border border-dashed border-border text-[10px] text-muted-foreground">
@@ -1575,7 +1626,9 @@ export default function StudioPage({ params }: StudioPageProps) {
                     <div className="space-y-3">
                       <select
                         value={videoSettings.videoType ?? ''}
-                        onChange={(e) => updateVideoSettings({ videoType: e.target.value || undefined })}
+                        onChange={(e) =>
+                          updateVideoSettings({ videoType: e.target.value || undefined })
+                        }
                         onBlur={saveSettings}
                         className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                       >
@@ -1588,7 +1641,9 @@ export default function StudioPage({ params }: StudioPageProps) {
                       </select>
                       <select
                         value={videoSettings.cameraMotion ?? ''}
-                        onChange={(e) => updateVideoSettings({ cameraMotion: e.target.value || undefined })}
+                        onChange={(e) =>
+                          updateVideoSettings({ cameraMotion: e.target.value || undefined })
+                        }
                         onBlur={saveSettings}
                         className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                       >
@@ -1603,7 +1658,9 @@ export default function StudioPage({ params }: StudioPageProps) {
                         <select
                           value={videoSettings.aspectRatio ?? '16:9'}
                           onChange={(e) =>
-                            updateVideoSettings({ aspectRatio: e.target.value as VideoPromptSettings['aspectRatio'] })
+                            updateVideoSettings({
+                              aspectRatio: e.target.value as VideoPromptSettings['aspectRatio'],
+                            })
                           }
                           onBlur={saveSettings}
                           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -1617,7 +1674,9 @@ export default function StudioPage({ params }: StudioPageProps) {
                         <select
                           value={videoSettings.resolution ?? '720p'}
                           onChange={(e) =>
-                            updateVideoSettings({ resolution: e.target.value as VideoPromptSettings['resolution'] })
+                            updateVideoSettings({
+                              resolution: e.target.value as VideoPromptSettings['resolution'],
+                            })
                           }
                           onBlur={saveSettings}
                           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -1632,7 +1691,9 @@ export default function StudioPage({ params }: StudioPageProps) {
                       <select
                         value={videoSettings.sound ?? 'automatic'}
                         onChange={(e) =>
-                          updateVideoSettings({ sound: e.target.value as VideoPromptSettings['sound'] })
+                          updateVideoSettings({
+                            sound: e.target.value as VideoPromptSettings['sound'],
+                          })
                         }
                         onBlur={saveSettings}
                         className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -1793,10 +1854,7 @@ export default function StudioPage({ params }: StudioPageProps) {
           {/* Scrollable Main View */}
           <div
             ref={mainViewRef}
-            className={cn(
-              'flex-1 overflow-y-auto',
-              viewMode === 'grid' ? 'p-4' : 'p-4 md:p-6'
-            )}
+            className={cn('flex-1 overflow-y-auto', viewMode === 'grid' ? 'p-4' : 'p-4 md:p-6')}
           >
             {/* Generating State */}
             {(isGenerating || isGeneratingVideo) && (
@@ -1807,14 +1865,19 @@ export default function StudioPage({ params }: StudioPageProps) {
                     (activeTab === 'images' ? generationStatus : videoStatus) === 'retrying'
                       ? `Retrying... (Attempt ${(activeTab === 'images' ? generationRetryCount : videoRetryCount) + 1}/3)`
                       : (activeTab === 'images' ? generationStatus : videoStatus) === 'polling'
-                        ? activeTab === 'images' ? 'Building Your Scene' : 'Creating Your Video'
+                        ? activeTab === 'images'
+                          ? 'Building Your Scene'
+                          : 'Creating Your Video'
                         : 'Starting Generation'
                   }
                   label={
                     (activeTab === 'images' ? generationStatus : videoStatus) === 'retrying'
-                      ? (activeTab === 'images' ? generationError : videoError) || 'Encountered an issue, retrying...'
+                      ? (activeTab === 'images' ? generationError : videoError) ||
+                        'Encountered an issue, retrying...'
                       : (activeTab === 'images' ? effectiveImageProgress : videoProgress) > 0
-                        ? activeTab === 'images' ? 'AI is creating your visualizations' : 'AI is animating your scene'
+                        ? activeTab === 'images'
+                          ? 'AI is creating your visualizations'
+                          : 'AI is animating your scene'
                         : 'Preparing your request...'
                   }
                   type={activeTab === 'images' ? 'image' : 'video'}
@@ -1867,7 +1930,11 @@ export default function StudioPage({ params }: StudioPageProps) {
                   <div key={asset.id} id={`asset-${asset.id}`}>
                     <AssetCard
                       asset={asset}
-                      baseImage={selectedBaseImageUrl ? { url: selectedBaseImageUrl, name: currentProduct?.name } : undefined}
+                      baseImage={
+                        selectedBaseImageUrl
+                          ? { url: selectedBaseImageUrl, name: currentProduct?.name }
+                          : undefined
+                      }
                       inspirationImages={inspirationImages}
                       configuration={assetConfiguration}
                       isPinned={asset.isPinned}

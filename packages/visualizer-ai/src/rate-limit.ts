@@ -146,21 +146,11 @@ interface CounterState {
 const windowCounters = new Map<string, CounterState>();
 const dailyCounters = new Map<string, CounterState>();
 
-function getCounterState(
-  map: Map<string, CounterState>,
-  key: string,
-  limit: number,
-  windowSeconds: number
-): CounterState {
+function getCounterState(map: Map<string, CounterState>, key: string, limit: number, windowSeconds: number): CounterState {
   const now = Date.now();
   const existing = map.get(key);
 
-  if (
-    !existing ||
-    existing.resetAt <= now ||
-    existing.windowSeconds !== windowSeconds ||
-    existing.limit !== limit
-  ) {
+  if (!existing || existing.resetAt <= now || existing.windowSeconds !== windowSeconds || existing.limit !== limit) {
     const state: CounterState = {
       count: 0,
       resetAt: now + windowSeconds * 1000,
@@ -177,9 +167,7 @@ function getCounterState(
 function getLimiterState(key: string, config: RateLimitConfig) {
   const windowSeconds = config.windowSeconds ?? 60;
   const windowState = getCounterState(windowCounters, key, config.rpm, windowSeconds);
-  const dailyState = config.rpd
-    ? getCounterState(dailyCounters, `${key}:daily`, config.rpd, 24 * 60 * 60)
-    : null;
+  const dailyState = config.rpd ? getCounterState(dailyCounters, `${key}:daily`, config.rpd, 24 * 60 * 60) : null;
 
   const windowRemaining = config.rpm - windowState.count;
   const dailyRemaining = dailyState ? config.rpd! - dailyState.count : Number.POSITIVE_INFINITY;

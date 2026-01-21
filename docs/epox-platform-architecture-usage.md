@@ -1,6 +1,7 @@
 # Epox Platform Architecture and Usage Tree
 
 ## Scope
+
 - Focus: `apps/epox-platform` plus the shared packages and services it directly relies on.
 - Sources reviewed: `apps/epox-platform/app/api/*`, `apps/epox-platform/lib/services/*`,
   `apps/epox-platform/lib/security/*`, `apps/epox-platform/lib/contexts/auth-context.tsx`,
@@ -8,6 +9,7 @@
   `services/generation-worker/src/*`, `services/erp-service/src/*`, `packages/visualizer-*`.
 
 ## Usage Tree (Frontend vs Backend)
+
 ```
 apps/epox-platform (Next.js app)
   frontend (App Router UI)
@@ -52,6 +54,7 @@ services/generation-worker (background worker)
 ```
 
 ## Architecture Diagram
+
 ```mermaid
 flowchart LR
   subgraph FE [Frontend]
@@ -103,20 +106,22 @@ flowchart LR
 ```
 
 ## Package and Service Usage Map
-| Package/Service | Role | Where it is used |
-| --- | --- | --- |
-| `visualizer-db` | Data access layer (repositories + facade) | Wrapper `apps/epox-platform/lib/services/db.ts`; API routes for products, collections, generated images, dashboard, studio, jobs; auth lookup in `apps/epox-platform/lib/services/get-auth.ts`; generation queueing happens via `visualizer-ai`; background worker `services/generation-worker/src/worker.ts`. |
-| `visualizer-storage` | R2/S3 storage facade + paths | Wrapper `apps/epox-platform/lib/services/storage.ts`; `apps/epox-platform/app/api/upload/route.ts`, `apps/epox-platform/app/api/products/route.ts`, `apps/epox-platform/app/api/products/[id]/route.ts`, `apps/epox-platform/app/api/generated-images/route.ts` (delete); worker saves assets in `services/generation-worker/src/worker.ts`. |
-| `visualizer-services` | Non-AI services (quota, flow, notification, etc.) | No direct AI usage in `apps/epox-platform` after migration. |
-| `visualizer-ai` | Gemini client + generation queue facade | Used by `apps/epox-platform` AI routes and generation enqueue endpoints; used by `services/generation-worker/src/worker.ts`. |
-| `visualizer-types` | Shared domain + settings types | API route typing and presets in `apps/epox-platform/app/api/*` and studio UI pages like `apps/epox-platform/app/(dashboard)/studio/[id]/page.tsx` and `apps/epox-platform/app/(dashboard)/studio/collections/[id]/page.tsx`. |
-| `visualizer-auth` | Auth server + client hooks | `apps/epox-platform/lib/services/auth.ts`, `apps/epox-platform/lib/services/get-auth.ts`, `apps/epox-platform/lib/contexts/auth-context.tsx`. |
-| `@scenergy/erp-service` | Store connection + provider integration | `apps/epox-platform/lib/services/erp.ts`, store connection routes in `apps/epox-platform/app/api/store-connection/*`; uses `visualizer-db` for encrypted credentials. |
-| `@repo/design-system` | Shared UI system | Declared in `apps/epox-platform/package.json`; no imports found under `apps/epox-platform/`. |
-| `services/generation-worker` | Async job processor | Consumes `generation_job` created by `/api/generate-images` and `/api/generate-video`; stores assets in DB + R2. |
-| `services/supabase-service` | Supabase tooling | No direct usage in `apps/epox-platform` found. |
+
+| Package/Service              | Role                                              | Where it is used                                                                                                                                                                                                                                                                                                                             |
+| ---------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `visualizer-db`              | Data access layer (repositories + facade)         | Wrapper `apps/epox-platform/lib/services/db.ts`; API routes for products, collections, generated images, dashboard, studio, jobs; auth lookup in `apps/epox-platform/lib/services/get-auth.ts`; generation queueing happens via `visualizer-ai`; background worker `services/generation-worker/src/worker.ts`.                               |
+| `visualizer-storage`         | R2/S3 storage facade + paths                      | Wrapper `apps/epox-platform/lib/services/storage.ts`; `apps/epox-platform/app/api/upload/route.ts`, `apps/epox-platform/app/api/products/route.ts`, `apps/epox-platform/app/api/products/[id]/route.ts`, `apps/epox-platform/app/api/generated-images/route.ts` (delete); worker saves assets in `services/generation-worker/src/worker.ts`. |
+| `visualizer-services`        | Non-AI services (quota, flow, notification, etc.) | No direct AI usage in `apps/epox-platform` after migration.                                                                                                                                                                                                                                                                                  |
+| `visualizer-ai`              | Gemini client + generation queue facade           | Used by `apps/epox-platform` AI routes and generation enqueue endpoints; used by `services/generation-worker/src/worker.ts`.                                                                                                                                                                                                                 |
+| `visualizer-types`           | Shared domain + settings types                    | API route typing and presets in `apps/epox-platform/app/api/*` and studio UI pages like `apps/epox-platform/app/(dashboard)/studio/[id]/page.tsx` and `apps/epox-platform/app/(dashboard)/studio/collections/[id]/page.tsx`.                                                                                                                 |
+| `visualizer-auth`            | Auth server + client hooks                        | `apps/epox-platform/lib/services/auth.ts`, `apps/epox-platform/lib/services/get-auth.ts`, `apps/epox-platform/lib/contexts/auth-context.tsx`.                                                                                                                                                                                                |
+| `@scenergy/erp-service`      | Store connection + provider integration           | `apps/epox-platform/lib/services/erp.ts`, store connection routes in `apps/epox-platform/app/api/store-connection/*`; uses `visualizer-db` for encrypted credentials.                                                                                                                                                                        |
+| `@repo/design-system`        | Shared UI system                                  | Declared in `apps/epox-platform/package.json`; no imports found under `apps/epox-platform/`.                                                                                                                                                                                                                                                 |
+| `services/generation-worker` | Async job processor                               | Consumes `generation_job` created by `/api/generate-images` and `/api/generate-video`; stores assets in DB + R2.                                                                                                                                                                                                                             |
+| `services/supabase-service`  | Supabase tooling                                  | No direct usage in `apps/epox-platform` found.                                                                                                                                                                                                                                                                                               |
 
 ## Key Runtime Flow: Generation Jobs
+
 ```mermaid
 sequenceDiagram
   participant UI as UI
@@ -141,6 +146,7 @@ sequenceDiagram
 ```
 
 ## Production Launch Improvements and Optimizations
+
 1. Replace placeholder client IDs with real auth in CRUD routes (`/api/products`, `/api/collections`, `/api/generated-images`, `/api/dashboard`) and enforce `withSecurity` so every route is scoped by `clientId`.
 2. Move rate limiting from in-memory to shared storage (Upstash/Redis) to support multiple server instances; enable `SECURITY_ENABLE_RATE_LIMITING=true` in production.
 3. Ensure the `services/generation-worker` is deployed and monitored (health checks, job failure alerts) since `/api/generate-images` and `/api/generate-video` only enqueue work.

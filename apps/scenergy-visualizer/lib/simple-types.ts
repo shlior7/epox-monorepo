@@ -30,10 +30,9 @@ export interface VisualizerState {
   customSurroundings: string;
 }
 
-export interface GenerateVisualConfig
-  extends Omit<
-    VisualizerState,
-    'expertMode' | 'customScene' | 'customStyle' | 'customLighting' | 'customCameraAngle' | 'customSurroundings'
-  > {
+export interface GenerateVisualConfig extends Omit<
+  VisualizerState,
+  'expertMode' | 'customScene' | 'customStyle' | 'customLighting' | 'customCameraAngle' | 'customSurroundings'
+> {
   productImage: ImageData;
 }

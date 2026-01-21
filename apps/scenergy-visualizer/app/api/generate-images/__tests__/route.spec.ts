@@ -37,9 +37,7 @@ describe('POST /api/generate-images', () => {
   });
 
   it('validates required parameters', async () => {
-    const response = await POST(
-      createRequest({ productId: 'p', sessionId: 's', prompt: '', settings: {} })
-    );
+    const response = await POST(createRequest({ productId: 'p', sessionId: 's', prompt: '', settings: {} }));
     expect(response.status).toBe(400);
     const payload = await response.json();
     expect(payload.error).toBe('Missing required parameters');

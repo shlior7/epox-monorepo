@@ -177,7 +177,7 @@ export function generateCacheKey(tableName: string, query: TableQuery): string {
 
   if (query.filters && query.filters.length > 0) {
     const filterKey = query.filters
-      .map((f: { column: any; operator: any; value: any; }) => `${f.column}:${f.operator}:${JSON.stringify(f.value)}`)
+      .map((f: { column: any; operator: any; value: any }) => `${f.column}:${f.operator}:${JSON.stringify(f.value)}`)
       .sort()
       .join('|');
     keyParts.push(`filters:${filterKey}`);

@@ -8,12 +8,11 @@
 ## Critical Issues Fixed
 
 ### ❌ BEFORE: Non-Production Code
+
 ```typescript
 // BAD: Fetch ALL products, then filter in JavaScript
 const allProducts = await db.products.listWithImages(clientId);
-const filtered = allProducts.filter(p =>
-  p.name.includes(search) && p.category === category
-);
+const filtered = allProducts.filter((p) => p.name.includes(search) && p.category === category);
 filtered.sort((a, b) => a.name.localeCompare(b.name));
 const paged = filtered.slice((page - 1) * limit, page * limit);
 
@@ -27,12 +26,13 @@ const paged = filtered.slice((page - 1) * limit, page * limit);
 ```
 
 ### ✅ AFTER: Production-Ready Code
+
 ```typescript
 // GOOD: SQL-level filtering, sorting, pagination
 const conditions = [
   eq(product.clientId, clientId),
   ilike(product.name, `%${search}%`),
-  eq(product.category, category)
+  eq(product.category, category),
 ];
 
 const products = await drizzle.query.product.findMany({
@@ -58,14 +58,17 @@ const products = await drizzle.query.product.findMany({
 ### 1. Database-Level Operations ⚡
 
 **Query Execution Time:**
+
 - **Before:** O(n) - Linear with total records (5s+ with 10k products)
 - **After:** O(log n) - Logarithmic with indexed queries (<100ms with 10k products)
 
 **Memory Usage:**
+
 - **Before:** Load all records into memory (400MB+ for 10k products)
 - **After:** Load only requested page (1MB for 20 products)
 
 **Network Transfer:**
+
 - **Before:** Transfer entire dataset over network
 - **After:** Transfer only required rows
 
@@ -127,11 +130,13 @@ const products = await drizzle.query.product.findMany({
 ### 1. Return ALL Images (Not Just First) 🖼️
 
 **Before:**
+
 ```typescript
-imageUrl: p.images?.[0]?.baseUrl || '' // ❌ Only first image!
+imageUrl: p.images?.[0]?.baseUrl || ''; // ❌ Only first image!
 ```
 
 **After:**
+
 ```typescript
 images: p.images.map(img => ({
   id: img.id,
@@ -148,13 +153,15 @@ imageUrl: p.images[0] ? storage.getPublicUrl(p.images[0].r2KeyBase) : '',
 ### 2. Proper URL Generation from Storage Keys 🔗
 
 **Before:**
+
 ```typescript
-baseUrl: img.baseUrl // ❌ Property doesn't exist!
+baseUrl: img.baseUrl; // ❌ Property doesn't exist!
 ```
 
 **After:**
+
 ```typescript
-baseUrl: storage.getPublicUrl(img.r2KeyBase) // ✅ Converts R2 key to public URL
+baseUrl: storage.getPublicUrl(img.r2KeyBase); // ✅ Converts R2 key to public URL
 ```
 
 **Impact:** Images actually load from R2/S3.
@@ -195,6 +202,7 @@ const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
 ```
 
 **Why:** Prevents malicious/accidental requests like `?limit=999999` that would:
+
 - Overload database
 - Exhaust memory
 - Timeout requests
@@ -211,13 +219,14 @@ const categoriesResult = await drizzle
 
 // Extract unique room types from JSONB
 const roomTypesSet = new Set<string>();
-roomTypesResult.forEach(r => {
+roomTypesResult.forEach((r) => {
   const types = r.roomTypes as string[] | null;
-  if (types) types.forEach(t => roomTypesSet.add(t));
+  if (types) types.forEach((t) => roomTypesSet.add(t));
 });
 ```
 
 **Optimization Notes:**
+
 - These queries should be cached (Redis) for 5-10 minutes
 - Consider materialized views for large datasets
 - Consider GIN index on `roomTypes` JSONB column
@@ -226,7 +235,7 @@ roomTypesResult.forEach(r => {
 
 ```typescript
 // Current: ILIKE (case-insensitive pattern matching)
-ilike(product.name, `%${search}%`)
+ilike(product.name, `%${search}%`);
 
 // Production recommendation: Full-text search
 // Add GIN index: CREATE INDEX product_search_idx ON product
@@ -295,6 +304,7 @@ interface ProductResponse {
 ## Query Parameter Support
 
 ### Filtering
+
 - `?search=sofa` - Search in name, description, SKU (case-insensitive)
 - `?category=Furniture` - Filter by exact category
 - `?roomType=Living Room` - Filter by room type (JSONB contains)
@@ -302,6 +312,7 @@ interface ProductResponse {
 - `?analyzed=true` - Filter by analyzed status (true | false)
 
 ### Sorting
+
 - `?sort=name` - Sort by name
 - `?sort=price` - Sort by price
 - `?sort=category` - Sort by category
@@ -311,10 +322,12 @@ interface ProductResponse {
 - `?order=desc` - Descending order (default)
 
 ### Pagination
+
 - `?page=1` - Page number (1-indexed)
 - `?limit=20` - Items per page (max 100)
 
 ### Examples
+
 ```
 GET /api/products?search=chair&category=Furniture&sort=price&order=asc&page=1&limit=20
 GET /api/products?analyzed=false&source=uploaded
@@ -459,7 +472,7 @@ FROM generate_series(1, 100000) AS i;
 ```typescript
 // Prevent SQL injection via ILIKE pattern
 const sanitizedSearch = search.replace(/[%_\\]/g, '\\$&');
-ilike(product.name, `%${sanitizedSearch}%`)
+ilike(product.name, `%${sanitizedSearch}%`);
 ```
 
 ### 2. Rate Limiting (TODO)
@@ -480,10 +493,7 @@ if (rateLimitResponse) return rateLimitResponse;
 ```typescript
 // Prevent abuse
 if (search && search.length > 100) {
-  return NextResponse.json(
-    { error: 'Search query too long (max 100 chars)' },
-    { status: 400 }
-  );
+  return NextResponse.json({ error: 'Search query too long (max 100 chars)' }, { status: 400 });
 }
 ```
 
@@ -492,21 +502,23 @@ if (search && search.length > 100) {
 ## Performance Benchmarks
 
 ### Before (JavaScript Filtering)
+
 | Products | Fetch Time | Filter Time | Total Time | Memory |
-|----------|------------|-------------|------------|--------|
+| -------- | ---------- | ----------- | ---------- | ------ |
 | 100      | 50ms       | 5ms         | 55ms       | 5MB    |
 | 1,000    | 300ms      | 50ms        | 350ms      | 40MB   |
 | 10,000   | 2,500ms    | 500ms       | 3,000ms    | 400MB  |
 | 100,000  | 💥 OOM     | N/A         | CRASH      | CRASH  |
 
 ### After (SQL Filtering)
-| Products | Query Time | Total Time | Memory |
-|----------|------------|------------|--------|
-| 100      | 15ms       | 20ms       | 1MB    |
-| 1,000    | 25ms       | 30ms       | 1MB    |
-| 10,000   | 45ms       | 50ms       | 1MB    |
-| 100,000  | 80ms       | 90ms       | 1MB    |
-| 1,000,000| 150ms      | 160ms      | 1MB    |
+
+| Products  | Query Time | Total Time | Memory |
+| --------- | ---------- | ---------- | ------ |
+| 100       | 15ms       | 20ms       | 1MB    |
+| 1,000     | 25ms       | 30ms       | 1MB    |
+| 10,000    | 45ms       | 50ms       | 1MB    |
+| 100,000   | 80ms       | 90ms       | 1MB    |
+| 1,000,000 | 150ms      | 160ms      | 1MB    |
 
 **Result:** 20-30x faster, 400x less memory, scales to millions of records.
 

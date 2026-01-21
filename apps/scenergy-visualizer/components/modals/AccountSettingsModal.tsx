@@ -128,15 +128,7 @@ const styles = {
   },
 };
 
-export function AccountSettingsModal({
-  isOpen,
-  onClose,
-  onSignOut,
-  name,
-  email,
-  role,
-  organizationId,
-}: AccountSettingsModalProps) {
+export function AccountSettingsModal({ isOpen, onClose, onSignOut, name, email, role, organizationId }: AccountSettingsModalProps) {
   if (!isOpen) return null;
 
   const handleOverlayClick = (event: React.MouseEvent) => {
@@ -148,13 +140,23 @@ export function AccountSettingsModal({
   return (
     <Portal>
       <div style={styles.overlay} onClick={handleOverlayClick} data-testid={buildTestId('account-settings-modal', 'overlay')}>
-        <div style={styles.modal} onClick={(event) => event.stopPropagation()} data-testid={buildTestId('account-settings-modal', 'content')}>
+        <div
+          style={styles.modal}
+          onClick={(event) => event.stopPropagation()}
+          data-testid={buildTestId('account-settings-modal', 'content')}
+        >
           <div style={styles.header}>
             <h2 style={styles.title}>
               <Settings size={18} />
               Account Settings
             </h2>
-            <button style={styles.closeButton} onClick={onClose} aria-label="Close" type="button" data-testid={buildTestId('account-settings-modal', 'close-button')}>
+            <button
+              style={styles.closeButton}
+              onClick={onClose}
+              aria-label="Close"
+              type="button"
+              data-testid={buildTestId('account-settings-modal', 'close-button')}
+            >
               <X size={18} />
             </button>
           </div>

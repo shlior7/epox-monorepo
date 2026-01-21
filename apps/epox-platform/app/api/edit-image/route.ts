@@ -45,10 +45,7 @@ export const POST = withSecurity(
           { status: 429 }
         );
       }
-      return NextResponse.json(
-        { success: false, error: 'Internal server error' },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   }
 );

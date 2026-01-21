@@ -71,7 +71,7 @@ graph TB
         SV[scenergy-visualizer<br/>Admin Portal]
         VC[visualizer-client<br/>Client SaaS]
     end
-    
+
     subgraph shared [Shared Package]
         VS[visualizer-shared]
         VS --> Components[Reusable Components]
@@ -80,14 +80,14 @@ graph TB
         VS --> ApiClient[API Client]
         VS --> Types[App Types]
     end
-    
+
     subgraph packages [Existing Packages]
         VA[visualizer-auth]
         VD[visualizer-db]
         VST[visualizer-storage]
         VT[visualizer-types]
     end
-    
+
     SV --> VS
     VC --> VS
     VS --> VA
@@ -96,11 +96,9 @@ graph TB
     VS --> VT
 ```
 
-
-
 ## Phase 1: Create visualizer-shared Package
 
-Extract reusable code from `scenergy-visualizer` into [`packages/visualizer-shared`](packages/visualizer-shared):| Category | Files to Extract ||----------|-----------------|| **Components** | SceneStudioView/*, ChatView/*, common/*, modals/* (subset) || **Contexts** | DataContext.tsx, ModalContext.tsx, ThemeContext.tsx || **Services** | gemini/, image-generation/, image-processing/, s3/, visualization/ || **Types** | lib/types/app-types.ts || **API Client** | lib/api-client.ts (make base URL configurable) || **Hooks** | lib/hooks/* |Key changes during extraction:
+Extract reusable code from `scenergy-visualizer` into [`packages/visualizer-shared`](packages/visualizer-shared):| Category | Files to Extract ||----------|-----------------|| **Components** | SceneStudioView/_, ChatView/_, common/_, modals/_ (subset) || **Contexts** | DataContext.tsx, ModalContext.tsx, ThemeContext.tsx || **Services** | gemini/, image-generation/, image-processing/, s3/, visualization/ || **Types** | lib/types/app-types.ts || **API Client** | lib/api-client.ts (make base URL configurable) || **Hooks** | lib/hooks/\* |Key changes during extraction:
 
 - Make `apiClient` configurable with base URL injection
 - DataContext will accept an `authProvider` abstraction (admin vs user auth)
@@ -133,8 +131,6 @@ apps/visualizer-client/
 └── next.config.js
 ```
 
-
-
 ### Authentication Flow
 
 ```mermaid
@@ -143,7 +139,7 @@ sequenceDiagram
     participant App as visualizer-client
     participant Auth as Better Auth
     participant DB as visualizer-db
-    
+
     U->>App: Access /studio
     App->>Auth: Check session
     Auth->>DB: Get user + memberships
@@ -152,8 +148,6 @@ sequenceDiagram
     App->>App: Derive clientId from membership
     App->>App: Render Studio for that client
 ```
-
-
 
 ### Key Differences from scenergy-visualizer
 

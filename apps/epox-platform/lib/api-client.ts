@@ -703,7 +703,9 @@ class ApiClient {
     collectionId: string,
     options?: { assetPolicy?: 'delete_all' | 'keep_pinned_approved' }
   ): Promise<{ success: boolean; id: string }> {
-    const body = options?.assetPolicy ? JSON.stringify({ assetPolicy: options.assetPolicy }) : undefined;
+    const body = options?.assetPolicy
+      ? JSON.stringify({ assetPolicy: options.assetPolicy })
+      : undefined;
     return this.request<{ success: boolean; id: string }>(`/api/collections/${collectionId}`, {
       method: 'DELETE',
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
@@ -879,20 +881,26 @@ class ApiClient {
   }
 
   async togglePinImage(id: string): Promise<{ success: boolean; isPinned: boolean }> {
-    return this.request<{ success: boolean; isPinned: boolean }>(`/api/generated-images/${id}/pin`, {
-      method: 'POST',
-    });
+    return this.request<{ success: boolean; isPinned: boolean }>(
+      `/api/generated-images/${id}/pin`,
+      {
+        method: 'POST',
+      }
+    );
   }
 
   async updateImageApproval(
     id: string,
     status: 'pending' | 'approved' | 'rejected'
   ): Promise<{ success: boolean; approvalStatus: string }> {
-    return this.request<{ success: boolean; approvalStatus: string }>(`/api/generated-images/${id}/approval`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
+    return this.request<{ success: boolean; approvalStatus: string }>(
+      `/api/generated-images/${id}/approval`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      }
+    );
   }
 
   // Alias methods for cleaner API

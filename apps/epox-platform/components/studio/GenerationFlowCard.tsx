@@ -124,253 +124,271 @@ export function GenerationFlowCard({
     <Card
       className={cn(
         'group cursor-pointer overflow-hidden transition-all hover:ring-2 hover:ring-primary/50',
-        isGenerating && 'ring-2 ring-warning/50 animate-pulse',
+        isGenerating && 'animate-pulse ring-2 ring-warning/50',
         className
       )}
       onClick={onClick}
     >
-        {/* Product Info Header */}
-        <div className="border-b border-border bg-card/50 p-3">
-          <div className="flex items-center gap-3">
-            {/* Base Image Thumbnail with selector */}
-            <div className="relative">
+      {/* Product Info Header */}
+      <div className="border-b border-border bg-card/50 p-3">
+        <div className="flex items-center gap-3">
+          {/* Base Image Thumbnail with selector */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowBaseImageSelector(!showBaseImageSelector);
+              }}
+              className="flex h-10 w-10 items-center justify-center overflow-hidden rounded bg-secondary ring-2 ring-border transition-all hover:ring-primary"
+            >
+              {selectedBaseImage?.url ? (
+                <Image
+                  src={selectedBaseImage.url}
+                  alt="Base"
+                  width={40}
+                  height={40}
+                  className="h-full w-full rounded object-cover"
+                />
+              ) : (
+                <ImageIcon className="h-5 w-5 text-muted-foreground" />
+              )}
+              {baseImages.length > 1 && selectedBaseImage?.url && (
+                <div className="absolute inset-0 flex items-center justify-center rounded bg-black/40 opacity-0 transition-opacity hover:opacity-100">
+                  <ImageIcon className="h-4 w-4 text-white" />
+                </div>
+              )}
+            </button>
+
+            {/* Base Image Selector Dropdown */}
+            {showBaseImageSelector && baseImages.length > 1 && (
+              <div
+                className="absolute left-0 top-full z-50 mt-1 min-w-[120px] rounded-lg border border-border bg-popover p-2 shadow-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <p className="mb-2 px-1 text-xs text-muted-foreground">Select base image</p>
+                <div className="flex gap-1">
+                  {baseImages.map((img) => (
+                    <button
+                      key={img.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onChangeBaseImage?.(img.id);
+                        setShowBaseImageSelector(false);
+                      }}
+                      className={cn(
+                        'flex h-10 w-10 items-center justify-center overflow-hidden rounded ring-2 transition-all',
+                        img.id === selectedBaseImageId
+                          ? 'ring-primary'
+                          : 'ring-transparent hover:ring-primary/50'
+                      )}
+                    >
+                      <Image
+                        src={img.url}
+                        alt="Base"
+                        width={40}
+                        height={40}
+                        className="h-full w-full object-cover"
+                        unoptimized
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Product Name */}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{product.name}</p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-1">
+            {isPinned && <Pin className="h-4 w-4 text-primary" />}
+            <Badge variant={approvalConfig[approvalStatus].variant} className="text-[10px]">
+              {approvalConfig[approvalStatus].label}
+            </Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onClick={onApprove}>
+                  <Check className="mr-2 h-4 w-4 text-success" />
+                  Approve
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onReject}>
+                  <X className="mr-2 h-4 w-4 text-destructive" />
+                  Reject
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onPin}>
+                  <Pin className="mr-2 h-4 w-4" />
+                  {isPinned ? 'Unpin' : 'Pin'}
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Regenerate
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Preview / Status */}
+      {!isCompleted ? (
+        // Status placeholder when not completed
+        <div
+          className={cn(
+            'flex aspect-video flex-col items-center justify-center',
+            isGenerating ? 'bg-warning/10' : 'bg-secondary'
+          )}
+        >
+          <StatusIcon className={cn('mb-2 h-8 w-8', statusConfig[status].className)} />
+          <span
+            className={cn(
+              'text-sm',
+              isGenerating ? 'font-medium text-warning' : 'text-muted-foreground'
+            )}
+          >
+            {statusConfig[status].label}
+          </span>
+          {isGenerating && (
+            <div className="mt-2 flex items-center gap-1">
+              <div
+                className="h-1.5 w-1.5 animate-bounce rounded-full bg-warning"
+                style={{ animationDelay: '0ms' }}
+              />
+              <div
+                className="h-1.5 w-1.5 animate-bounce rounded-full bg-warning"
+                style={{ animationDelay: '150ms' }}
+              />
+              <div
+                className="h-1.5 w-1.5 animate-bounce rounded-full bg-warning"
+                style={{ animationDelay: '300ms' }}
+              />
+            </div>
+          )}
+        </div>
+      ) : currentRevision ? (
+        // Current revision preview
+        <div className="relative aspect-video bg-black/20">
+          <Image
+            src={currentRevision.imageUrl}
+            alt="Generated"
+            fill
+            className="object-cover"
+            unoptimized
+          />
+          {/* Navigation overlay */}
+          {revisions.length > 1 && (
+            <>
               <button
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setShowBaseImageSelector(!showBaseImageSelector);
+                  if (canNavigatePrev) setCurrentRevisionIndex((i) => i - 1);
                 }}
-                className="flex h-10 w-10 items-center justify-center overflow-hidden rounded bg-secondary ring-2 ring-border transition-all hover:ring-primary"
+                className={cn(
+                  'absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 transition-opacity',
+                  canNavigatePrev ? 'opacity-0 hover:bg-black/70 group-hover:opacity-100' : 'hidden'
+                )}
               >
-                {selectedBaseImage?.url ? (
-                  <Image
-                    src={selectedBaseImage.url}
-                    alt="Base"
-                    width={40}
-                    height={40}
-                    className="h-full w-full rounded object-cover"
-                  />
-                ) : (
-                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                )}
-                {baseImages.length > 1 && selectedBaseImage?.url && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded bg-black/40 opacity-0 transition-opacity hover:opacity-100">
-                    <ImageIcon className="h-4 w-4 text-white" />
-                  </div>
-                )}
+                <ChevronLeft className="h-5 w-5 text-white" />
               </button>
-
-              {/* Base Image Selector Dropdown */}
-              {showBaseImageSelector && baseImages.length > 1 && (
-                <div
-                  className="absolute left-0 top-full z-50 mt-1 min-w-[120px] rounded-lg border border-border bg-popover p-2 shadow-lg"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <p className="mb-2 px-1 text-xs text-muted-foreground">Select base image</p>
-                  <div className="flex gap-1">
-                    {baseImages.map((img) => (
-                      <button
-                        key={img.id}
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          onChangeBaseImage?.(img.id);
-                          setShowBaseImageSelector(false);
-                        }}
-                        className={cn(
-                          'flex h-10 w-10 items-center justify-center overflow-hidden rounded ring-2 transition-all',
-                          img.id === selectedBaseImageId
-                            ? 'ring-primary'
-                            : 'ring-transparent hover:ring-primary/50'
-                        )}
-                      >
-                        <Image src={img.url} alt="Base" width={40} height={40} className="h-full w-full object-cover" unoptimized />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (canNavigateNext) setCurrentRevisionIndex((i) => i + 1);
+                }}
+                className={cn(
+                  'absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 transition-opacity',
+                  canNavigateNext ? 'opacity-0 hover:bg-black/70 group-hover:opacity-100' : 'hidden'
+                )}
+              >
+                <ChevronRight className="h-5 w-5 text-white" />
+              </button>
+            </>
+          )}
+          {/* Revision counter */}
+          {revisions.length > 1 && (
+            <div className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
+              {currentRevisionIndex + 1}/{revisions.length}
             </div>
-
-            {/* Product Name */}
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{product.name}</p>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-1">
-              {isPinned && <Pin className="h-4 w-4 text-primary" />}
-              <Badge variant={approvalConfig[approvalStatus].variant} className="text-[10px]">
-                {approvalConfig[approvalStatus].label}
-              </Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
-                  <Button variant="ghost" size="icon" className="h-7 w-7">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenuItem onClick={onApprove}>
-                    <Check className="mr-2 h-4 w-4 text-success" />
-                    Approve
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onReject}>
-                    <X className="mr-2 h-4 w-4 text-destructive" />
-                    Reject
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onPin}>
-                    <Pin className="mr-2 h-4 w-4" />
-                    {isPinned ? 'Unpin' : 'Pin'}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Regenerate
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
+          )}
         </div>
+      ) : (
+        <div className="flex aspect-video items-center justify-center bg-secondary">
+          <span className="text-sm text-muted-foreground">No revisions</span>
+        </div>
+      )}
 
-        {/* Main Preview / Status */}
-        {!isCompleted ? (
-          // Status placeholder when not completed
-          <div className={cn(
-            'flex aspect-video flex-col items-center justify-center',
-            isGenerating ? 'bg-warning/10' : 'bg-secondary'
-          )}>
-            <StatusIcon className={cn('mb-2 h-8 w-8', statusConfig[status].className)} />
-            <span className={cn(
-              'text-sm',
-              isGenerating ? 'text-warning font-medium' : 'text-muted-foreground'
-            )}>
-              {statusConfig[status].label}
-            </span>
-            {isGenerating && (
-              <div className="mt-2 flex items-center gap-1">
-                <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-warning" style={{ animationDelay: '0ms' }} />
-                <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-warning" style={{ animationDelay: '150ms' }} />
-                <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-warning" style={{ animationDelay: '300ms' }} />
-              </div>
-            )}
-          </div>
-        ) : currentRevision ? (
-          // Current revision preview
-          <div className="relative aspect-video bg-black/20">
-            <Image src={currentRevision.imageUrl} alt="Generated" fill className="object-cover" unoptimized />
-            {/* Navigation overlay */}
-            {revisions.length > 1 && (
-              <>
+      {/* Horizontal Revision Gallery */}
+      {isCompleted && revisions.length > 0 && (
+        <div className="border-t border-border bg-card/30 p-2">
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {revisions.map((rev, idx) => (
+              <div key={rev.id} className="group/revision relative flex-shrink-0">
                 <button
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (canNavigatePrev) setCurrentRevisionIndex((i) => i - 1);
+                    setCurrentRevisionIndex(idx);
                   }}
                   className={cn(
-                    'absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 transition-opacity',
-                    canNavigatePrev
-                      ? 'opacity-0 hover:bg-black/70 group-hover:opacity-100'
-                      : 'hidden'
+                    'h-12 w-12 overflow-hidden rounded ring-2 transition-all',
+                    idx === currentRevisionIndex
+                      ? 'ring-primary'
+                      : 'ring-transparent hover:ring-primary/50'
                   )}
                 >
-                  <ChevronLeft className="h-5 w-5 text-white" />
+                  <Image
+                    src={rev.imageUrl}
+                    alt={`Rev ${idx + 1}`}
+                    width={48}
+                    height={48}
+                    className="h-full w-full object-cover"
+                  />
                 </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (canNavigateNext) setCurrentRevisionIndex((i) => i + 1);
-                  }}
-                  className={cn(
-                    'absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 transition-opacity',
-                    canNavigateNext
-                      ? 'opacity-0 hover:bg-black/70 group-hover:opacity-100'
-                      : 'hidden'
-                  )}
-                >
-                  <ChevronRight className="h-5 w-5 text-white" />
-                </button>
-              </>
-            )}
-            {/* Revision counter */}
-            {revisions.length > 1 && (
-              <div className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
-                {currentRevisionIndex + 1}/{revisions.length}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex aspect-video items-center justify-center bg-secondary">
-            <span className="text-sm text-muted-foreground">No revisions</span>
-          </div>
-        )}
-
-        {/* Horizontal Revision Gallery */}
-        {isCompleted && revisions.length > 0 && (
-          <div className="border-t border-border bg-card/30 p-2">
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {revisions.map((rev, idx) => (
-                <div key={rev.id} className="group/revision relative flex-shrink-0">
+                {/* Delete button - appears on hover */}
+                {onDeleteRevision && (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      setCurrentRevisionIndex(idx);
+                      onDeleteRevision(rev.id);
+                      // Adjust current index if needed
+                      if (idx <= currentRevisionIndex && currentRevisionIndex > 0) {
+                        setCurrentRevisionIndex((i) => i - 1);
+                      }
                     }}
-                    className={cn(
-                      'h-12 w-12 overflow-hidden rounded ring-2 transition-all',
-                      idx === currentRevisionIndex
-                        ? 'ring-primary'
-                        : 'ring-transparent hover:ring-primary/50'
-                    )}
+                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 shadow-sm transition-opacity group-hover/revision:opacity-100"
                   >
-                    <Image
-                      src={rev.imageUrl}
-                      alt={`Rev ${idx + 1}`}
-                      width={48}
-                      height={48}
-                      className="h-full w-full object-cover"
-                    />
+                    <Trash2 className="h-3 w-3" />
                   </button>
-                  {/* Delete button - appears on hover */}
-                  {onDeleteRevision && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onDeleteRevision(rev.id);
-                        // Adjust current index if needed
-                        if (idx <= currentRevisionIndex && currentRevisionIndex > 0) {
-                          setCurrentRevisionIndex((i) => i - 1);
-                        }
-                      }}
-                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 shadow-sm transition-opacity group-hover/revision:opacity-100"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            ))}
           </div>
-        )}
-      </Card>
-    );
+        </div>
+      )}
+    </Card>
+  );
 
   // If onClick is provided, use it directly; otherwise wrap in Link
   if (onClick) {
     return cardContent;
   }
 
-  return (
-    <Link href={`/studio/collections/${collectionId}/flow/${flowId}`}>
-      {cardContent}
-    </Link>
-  );
+  return <Link href={`/studio/collections/${collectionId}/flow/${flowId}`}>{cardContent}</Link>;
 }

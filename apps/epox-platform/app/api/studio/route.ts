@@ -31,12 +31,14 @@ export const POST = withSecurity(async (request, context) => {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: product.clientId,
-      resourceType: 'product',
-      resourceId: productId,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: product.clientId,
+        resourceType: 'product',
+        resourceId: productId,
+      })
+    ) {
       return forbiddenResponse();
     }
 
@@ -108,12 +110,14 @@ export const GET = withSecurity(async (request, context) => {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: product.clientId,
-      resourceType: 'product',
-      resourceId: productId,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: product.clientId,
+        resourceType: 'product',
+        resourceId: productId,
+      })
+    ) {
       return forbiddenResponse();
     }
 

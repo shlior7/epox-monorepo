@@ -2,7 +2,12 @@ const { withSentryConfig } = require('@sentry/nextjs');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['visualizer-types', 'visualizer-db', 'visualizer-ai', '@scenergy/erp-service'],
+  transpilePackages: [
+    'visualizer-types',
+    'visualizer-db',
+    'visualizer-ai',
+    '@scenergy/erp-service',
+  ],
   output: 'standalone',
   // Required to build with Turbopack when webpack config is present.
   turbopack: {},

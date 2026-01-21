@@ -19,9 +19,7 @@ interface ProcessAdjustmentsResponse {
   processingTimeMs?: number;
 }
 
-export async function POST(
-  request: Request
-): Promise<NextResponse<ProcessAdjustmentsResponse>> {
+export async function POST(request: Request): Promise<NextResponse<ProcessAdjustmentsResponse>> {
   const startTime = Date.now();
 
   try {
@@ -29,17 +27,11 @@ export async function POST(
 
     // Validate request
     if (!body.imageDataUrl) {
-      return NextResponse.json(
-        { success: false, error: 'Missing imageDataUrl' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Missing imageDataUrl' }, { status: 400 });
     }
 
     if (!body.adjustments) {
-      return NextResponse.json(
-        { success: false, error: 'Missing adjustments' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Missing adjustments' }, { status: 400 });
     }
 
     // Check if there are any non-default adjustments
@@ -54,10 +46,7 @@ export async function POST(
 
     // Validate data URL format
     if (!body.imageDataUrl.startsWith('data:image/')) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid image data URL format' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Invalid image data URL format' }, { status: 400 });
     }
 
     console.log('📷 Processing image adjustments...');

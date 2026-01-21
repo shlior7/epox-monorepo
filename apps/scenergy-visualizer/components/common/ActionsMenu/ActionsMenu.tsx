@@ -46,12 +46,7 @@ export function ActionsMenu({ items, isOpen, onToggle, onClose, ariaLabel = 'Mor
 
   return (
     <div className={styles.container} ref={menuRef}>
-      <button
-        onClick={onToggle}
-        className={styles.trigger}
-        aria-label={ariaLabel}
-        data-testid={buildTestId('actions-menu', 'trigger')}
-      >
+      <button onClick={onToggle} className={styles.trigger} aria-label={ariaLabel} data-testid={buildTestId('actions-menu', 'trigger')}>
         <MoreVertical size={20} />
       </button>
 

@@ -57,9 +57,9 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
   const client = getClient(clientId);
   const modelOverrides = client?.aiModelConfig
     ? {
-      imageModel: client.aiModelConfig.imageModel,
-      fallbackImageModel: client.aiModelConfig.fallbackImageModel,
-    }
+        imageModel: client.aiModelConfig.imageModel,
+        fallbackImageModel: client.aiModelConfig.fallbackImageModel,
+      }
     : undefined;
 
   // Multi-selection state
@@ -80,12 +80,14 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
   const [renameValue, setRenameValue] = useState(clientSession.name);
 
   // Uploaded scenes (local state - will persist via session storage)
-  const [uploadedScenes, setUploadedScenes] = useState<Array<{
-    id: string;
-    name: string;
-    imageUrl: string;
-    uploadedAt: string;
-  }>>([]);
+  const [uploadedScenes, setUploadedScenes] = useState<
+    Array<{
+      id: string;
+      name: string;
+      imageUrl: string;
+      uploadedAt: string;
+    }>
+  >([]);
 
   // Responsive settings panel state
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
@@ -152,46 +154,52 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
     setIsRenaming(false);
   }, [renameValue, clientSession.name, clientSession.id, clientId, updateClientSession]);
 
-  const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSaveRename();
-    } else if (e.key === 'Escape') {
-      handleCancelRename();
-    }
-  }, [handleSaveRename, handleCancelRename]);
+  const handleRenameKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        handleSaveRename();
+      } else if (e.key === 'Escape') {
+        handleCancelRename();
+      }
+    },
+    [handleSaveRename, handleCancelRename]
+  );
 
   // Handle flow click with multi-selection support
-  const handleFlowSelect = useCallback((flowId: string, event?: React.MouseEvent) => {
-    const flowIndex = flows.findIndex((f) => f.id === flowId);
+  const handleFlowSelect = useCallback(
+    (flowId: string, event?: React.MouseEvent) => {
+      const flowIndex = flows.findIndex((f) => f.id === flowId);
 
-    if (event?.metaKey || event?.ctrlKey) {
-      // Cmd/Ctrl+click: toggle selection
-      setSelectedFlowIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(flowId)) {
-          next.delete(flowId);
-        } else {
-          next.add(flowId);
-        }
-        return next;
-      });
-      setLastSelectedIndex(flowIndex);
-    } else if (event?.shiftKey && lastSelectedIndex !== null) {
-      // Shift+click: range selection
-      const start = Math.min(lastSelectedIndex, flowIndex);
-      const end = Math.max(lastSelectedIndex, flowIndex);
-      const rangeFlowIds = flows.slice(start, end + 1).map((f) => f.id);
-      setSelectedFlowIds((prev) => {
-        const next = new Set(prev);
-        rangeFlowIds.forEach((id) => next.add(id));
-        return next;
-      });
-    } else {
-      // Regular click: single selection
-      setSelectedFlowIds(new Set([flowId]));
-      setLastSelectedIndex(flowIndex);
-    }
-  }, [flows, lastSelectedIndex]);
+      if (event?.metaKey || event?.ctrlKey) {
+        // Cmd/Ctrl+click: toggle selection
+        setSelectedFlowIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(flowId)) {
+            next.delete(flowId);
+          } else {
+            next.add(flowId);
+          }
+          return next;
+        });
+        setLastSelectedIndex(flowIndex);
+      } else if (event?.shiftKey && lastSelectedIndex !== null) {
+        // Shift+click: range selection
+        const start = Math.min(lastSelectedIndex, flowIndex);
+        const end = Math.max(lastSelectedIndex, flowIndex);
+        const rangeFlowIds = flows.slice(start, end + 1).map((f) => f.id);
+        setSelectedFlowIds((prev) => {
+          const next = new Set(prev);
+          rangeFlowIds.forEach((id) => next.add(id));
+          return next;
+        });
+      } else {
+        // Regular click: single selection
+        setSelectedFlowIds(new Set([flowId]));
+        setLastSelectedIndex(flowIndex);
+      }
+    },
+    [flows, lastSelectedIndex]
+  );
 
   // Select all flows
   const handleSelectAll = useCallback(() => {
@@ -289,9 +297,7 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
 
   const handleBatchExecuteFlows = useCallback(
     async (targetFlows: Flow[]) => {
-      const executableFlows = targetFlows.filter(
-        (flow) => flow.productIds.length > 0 && flow.status !== 'generating'
-      );
+      const executableFlows = targetFlows.filter((flow) => flow.productIds.length > 0 && flow.status !== 'generating');
 
       if (executableFlows.length === 0) {
         console.log('⚠️ No flows ready to execute');
@@ -314,9 +320,7 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
 
       try {
         await Promise.all(
-          flowEntries.map(({ flow }) =>
-            updateFlowInClientSession(clientId, clientSession.id, flow.id, { status: 'generating' })
-          )
+          flowEntries.map(({ flow }) => updateFlowInClientSession(clientId, clientSession.id, flow.id, { status: 'generating' }))
         );
 
         const requests = flowEntries.map(({ flow, prompt, productImageIds, flowModelOverrides, flowProducts }) => {
@@ -375,9 +379,7 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
       } catch (error) {
         console.error('Failed to execute flows:', error);
         await Promise.all(
-          flowEntries.map(({ flow }) =>
-            updateFlowInClientSession(clientId, clientSession.id, flow.id, { status: 'error' })
-          )
+          flowEntries.map(({ flow }) => updateFlowInClientSession(clientId, clientSession.id, flow.id, { status: 'error' }))
         );
       }
     },
@@ -401,11 +403,7 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
 
       try {
         // Update all selected flows
-        await Promise.all(
-          Array.from(selectedFlowIds).map((flowId) =>
-            updateFlowSettings(clientId, clientSession.id, flowId, settings)
-          )
-        );
+        await Promise.all(Array.from(selectedFlowIds).map((flowId) => updateFlowSettings(clientId, clientSession.id, flowId, settings)));
       } catch (error) {
         console.error('Failed to update flow settings:', error);
       }
@@ -446,7 +444,9 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
               // Don't duplicate if the prompt already starts with the shared text
               const newPrompt = existingPrompt.startsWith(sharedPrompt)
                 ? existingPrompt
-                : sharedPrompt ? `${sharedPrompt}\n\n${existingPrompt}`.trim() : existingPrompt;
+                : sharedPrompt
+                  ? `${sharedPrompt}\n\n${existingPrompt}`.trim()
+                  : existingPrompt;
               await updateFlowSettings(clientId, clientSession.id, flowId, { promptText: newPrompt });
             }
           })
@@ -463,7 +463,7 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
     (sceneImageUrl: string, sceneName?: string) => {
       handleUpdateSettings({
         sceneImageUrl: sceneImageUrl || undefined,
-        scene: sceneName || (sceneImageUrl ? 'Custom Scene' : undefined)
+        scene: sceneName || (sceneImageUrl ? 'Custom Scene' : undefined),
       });
     },
     [handleUpdateSettings]
@@ -483,12 +483,9 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
 
   // Check if an image is favorited for a product
   // TODO: Implement using pinned field on generated_asset
-  const checkIsFavorite = useCallback(
-    (_imageId: string, _productId: string): boolean => {
-      return false; // Favorites now tracked via pinned on generated_asset
-    },
-    []
-  );
+  const checkIsFavorite = useCallback((_imageId: string, _productId: string): boolean => {
+    return false; // Favorites now tracked via pinned on generated_asset
+  }, []);
 
   // Handle toggling scene for a generated image
   const handleToggleScene = useCallback(
@@ -504,12 +501,9 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
 
   // Check if an image is a scene for a product
   // TODO: Implement using pinned field on generated_asset
-  const checkIsScene = useCallback(
-    (_imageId: string, _productId: string): boolean => {
-      return false; // Scenes now tracked via pinned on generated_asset
-    },
-    []
-  );
+  const checkIsScene = useCallback((_imageId: string, _productId: string): boolean => {
+    return false; // Scenes now tracked via pinned on generated_asset
+  }, []);
 
   // Handle uploading a scene image
   const handleUploadScene = useCallback(
@@ -537,9 +531,8 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
         }
 
         const data = await response.json();
-        const imageUrl = data.imageUrl || S3Service.getImageUrl(
-          S3Service.S3Paths.getClientSessionMediaFilePath(clientId, clientSession.id, fileName)
-        );
+        const imageUrl =
+          data.imageUrl || S3Service.getImageUrl(S3Service.S3Paths.getClientSessionMediaFilePath(clientId, clientSession.id, fileName));
 
         // Add to local state
         setUploadedScenes((prev) => [
@@ -734,18 +727,12 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
 
         // If dropped on a selected flow, apply to all selected flows
         // Otherwise, just apply to the target flow
-        const flowIdsToUpdate = isTargetSelected
-          ? Array.from(selectedFlowIds)
-          : [targetFlowId];
+        const flowIdsToUpdate = isTargetSelected ? Array.from(selectedFlowIds) : [targetFlowId];
 
         console.log(`🔄 Applying ${config.type} config to ${flowIdsToUpdate.length} flow(s)`);
 
         // Apply the settings to all target flows
-        await Promise.all(
-          flowIdsToUpdate.map((flowId) =>
-            updateFlowSettings(clientId, clientSession.id, flowId, config.settings)
-          )
-        );
+        await Promise.all(flowIdsToUpdate.map((flowId) => updateFlowSettings(clientId, clientSession.id, flowId, config.settings)));
 
         console.log('✅ Config applied successfully');
       } catch (error) {
@@ -769,34 +756,26 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
 
       try {
         // Add product to target flow with selected base image
-        await addProductsToFlow(
-          clientId,
-          clientSession.id,
-          targetFlowId,
-          [product.productId],
-          { [product.productId]: product.imageId }
-        );
+        await addProductsToFlow(clientId, clientSession.id, targetFlowId, [product.productId], { [product.productId]: product.imageId });
 
         // If dragged from another flow, remove it from source flow (background)
         if (isMovingBetweenFlows) {
           // Don't await - let it happen in background since UI already updated
-          removeProductFromFlow(
-            clientId,
-            clientSession.id,
-            product.sourceFlowId!,
-            product.productId
-          ).then(() => {
-            console.log(`✅ Product moved from flow ${product.sourceFlowId} to ${targetFlowId}`);
-          }).catch((err) => {
-            console.error('Failed to remove product from source flow:', err);
-          }).finally(() => {
-            // Clear optimistic state once server confirms
-            setMovingProducts((prev) => {
-              const next = new Set(prev);
-              next.delete(`${product.sourceFlowId}:${product.productId}`);
-              return next;
+          removeProductFromFlow(clientId, clientSession.id, product.sourceFlowId!, product.productId)
+            .then(() => {
+              console.log(`✅ Product moved from flow ${product.sourceFlowId} to ${targetFlowId}`);
+            })
+            .catch((err) => {
+              console.error('Failed to remove product from source flow:', err);
+            })
+            .finally(() => {
+              // Clear optimistic state once server confirms
+              setMovingProducts((prev) => {
+                const next = new Set(prev);
+                next.delete(`${product.sourceFlowId}:${product.productId}`);
+                return next;
+              });
             });
-          });
         } else {
           console.log(`✅ Product added to flow ${targetFlowId}`);
         }
@@ -865,7 +844,9 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
 
       try {
         const newFlow = await addFlowToClientSession(clientId, clientSession.id);
-        await addProductsToFlow(clientId, clientSession.id, newFlow.id, [productData.productId], { [productData.productId]: productData.imageId });
+        await addProductsToFlow(clientId, clientSession.id, newFlow.id, [productData.productId], {
+          [productData.productId]: productData.imageId,
+        });
         console.log(`✅ Created new flow with product ${productData.productId}`);
       } catch (error) {
         console.error(`Failed to create flow for product:`, error);
@@ -916,20 +897,18 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
   const debugFlow = debugFlowId ? flows.find((f) => f.id === debugFlowId) : null;
   const debugFlowProducts = debugFlow ? products.filter((p) => debugFlow.productIds.includes(p.id)) : [];
   const debugBasePrompt = debugFlow ? buildPromptFromSettings(debugFlowProducts, debugFlow.settings) : '';
-  const debugSystemPrompt = debugFlow
-    ? buildSystemImageGenerationPrompt(debugBasePrompt, debugFlow.settings)
-    : '';
+  const debugSystemPrompt = debugFlow ? buildSystemImageGenerationPrompt(debugBasePrompt, debugFlow.settings) : '';
   const debugProductImages = debugFlow
-    ? debugFlowProducts.map((product) => {
-      const selectedImageId = debugFlow.selectedBaseImages[product.id];
-      const imageId = selectedImageId || product.productImageIds[0];
-      return {
-        url: imageId
-          ? S3Service.getImageUrl(S3Service.S3Paths.getProductImageBasePath(clientId, product.id, imageId))
-          : '',
-        name: product.name,
-      };
-    }).filter((img) => img.url)
+    ? debugFlowProducts
+        .map((product) => {
+          const selectedImageId = debugFlow.selectedBaseImages[product.id];
+          const imageId = selectedImageId || product.productImageIds[0];
+          return {
+            url: imageId ? S3Service.getImageUrl(S3Service.S3Paths.getProductImageBasePath(clientId, product.id, imageId)) : '',
+            name: product.name,
+          };
+        })
+        .filter((img) => img.url)
     : [];
 
   const allSelected = flows.length > 0 && selectedFlowIds.size === flows.length;
@@ -937,9 +916,7 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
   // Handle executing all flows at once
   const handleExecuteAll = useCallback(async () => {
     // Get all flows that have products and aren't currently generating
-    const executableFlows = flows.filter(
-      (f) => f.productIds.length > 0 && f.status !== 'generating'
-    );
+    const executableFlows = flows.filter((f) => f.productIds.length > 0 && f.status !== 'generating');
 
     if (executableFlows.length === 0) {
       console.log('⚠️ No flows ready to execute');
@@ -954,9 +931,7 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
   // Handle executing selected flows from settings panel
   const handleExecuteSelectedFlows = useCallback(async () => {
     // Get selected flows that have products and aren't currently generating
-    const executableFlows = selectedFlows.filter(
-      (f) => f.productIds.length > 0 && f.status !== 'generating'
-    );
+    const executableFlows = selectedFlows.filter((f) => f.productIds.length > 0 && f.status !== 'generating');
 
     if (executableFlows.length === 0) {
       console.log('⚠️ No selected flows ready to execute');
@@ -973,9 +948,7 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
 
   // Check if any flows are currently generating
   const isAnyGenerating = flows.some((f) => f.status === 'generating');
-  const executableFlowsCount = flows.filter(
-    (f) => f.productIds.length > 0 && f.status !== 'generating'
-  ).length;
+  const executableFlowsCount = flows.filter((f) => f.productIds.length > 0 && f.status !== 'generating').length;
 
   return (
     <div className={styles.studioLayout}>
@@ -1007,32 +980,17 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
                     onBlur={handleSaveRename}
                     autoFocus
                   />
-                  <button
-                    className={styles.titleButton}
-                    onClick={handleSaveRename}
-                    type="button"
-                    title="Save"
-                  >
+                  <button className={styles.titleButton} onClick={handleSaveRename} type="button" title="Save">
                     <Check style={{ width: 16, height: 16 }} />
                   </button>
-                  <button
-                    className={styles.titleButton}
-                    onClick={handleCancelRename}
-                    type="button"
-                    title="Cancel"
-                  >
+                  <button className={styles.titleButton} onClick={handleCancelRename} type="button" title="Cancel">
                     <X style={{ width: 16, height: 16 }} />
                   </button>
                 </>
               ) : (
                 <>
                   <h1 className={styles.title}>{clientSession.name}</h1>
-                  <button
-                    className={styles.titleButton}
-                    onClick={handleStartRename}
-                    type="button"
-                    title="Rename"
-                  >
+                  <button className={styles.titleButton} onClick={handleStartRename} type="button" title="Rename">
                     <Pencil style={{ width: 16, height: 16 }} />
                   </button>
                 </>
@@ -1048,15 +1006,13 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
               <div className={styles.headerRight}>
                 <button
                   className={styles.iconButton}
-                  title={allSelected ? "Deselect all" : "Select all"}
+                  title={allSelected ? 'Deselect all' : 'Select all'}
                   type="button"
                   onClick={handleSelectAll}
                 >
                   {allSelected ? <CheckSquare style={{ width: 20, height: 20 }} /> : <Square style={{ width: 20, height: 20 }} />}
                 </button>
-                <p className={styles.subtitle}>
-                  {allSelected ? "Deselect all" : "Select all"}
-                </p>
+                <p className={styles.subtitle}>{allSelected ? 'Deselect all' : 'Select all'}</p>
               </div>
             )}
             {/* Settings panel button - mobile/tablet only, in header */}
@@ -1074,11 +1030,7 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
         </header>
 
         {/* Flows Container */}
-        <div
-          className={styles.flowsContainer}
-          onDragOver={handleContainerDragOver}
-          onDrop={handleContainerDrop}
-        >
+        <div className={styles.flowsContainer} onDragOver={handleContainerDragOver} onDrop={handleContainerDrop}>
           {flows.length === 0 ? (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>
@@ -1086,7 +1038,8 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
               </div>
               <h2 className={styles.emptyTitle}>No flows yet</h2>
               <p className={styles.emptyText}>
-                Create your first flow to start generating product visualizations. Each flow can contain multiple products and unique settings.
+                Create your first flow to start generating product visualizations. Each flow can contain multiple products and unique
+                settings.
               </p>
               <button className={styles.addFlowButton} onClick={handleAddFlow} type="button" style={{ marginTop: 16 }}>
                 <Plus />
@@ -1165,12 +1118,7 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
         />
 
         {/* Assistant FAB */}
-        <button
-          className={styles.assistantFab}
-          onClick={() => setAssistantOpen(true)}
-          type="button"
-          title="Open Flow Assistant"
-        >
+        <button className={styles.assistantFab} onClick={() => setAssistantOpen(true)} type="button" title="Open Flow Assistant">
           <MessageCircle style={{ width: 24, height: 24 }} />
         </button>
 
@@ -1231,8 +1179,6 @@ export function SceneStudioView({ clientId, clientSession, products, onImageClic
         onToggleFavorite={handleToggleFavorite}
         onToggleScene={handleToggleScene}
       />
-
-
 
       {/* Debug Prompt Modal */}
       <DebugPromptModal

@@ -10,36 +10,35 @@ import * as schema from './schema/index';
 // Lazy initialization of the database client
 let _db: ReturnType<typeof createDrizzleClient> | null = null;
 let _pool: Pool | null = null;
-let _wsConfigured = false;
 
 /**
- * Configure WebSocket for Neon in Node.js environment
- * Uses 'ws' package for WebSocket support since Node.js doesn't have native WebSocket
+ * Configure WebSocket for Neon in Node.js environment.
+ * This must be called before any database operations in Node.js.
  */
-function configureWebSocket() {
-  if (_wsConfigured) return;
-  _wsConfigured = true;
-
+export async function configureWebSocket(): Promise<void> {
   const isNode = typeof process !== 'undefined' && process.versions?.node;
 
   if (isNode && !neonConfig.webSocketConstructor) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const ws = require('ws');
-      neonConfig.webSocketConstructor = ws.default || ws;
-    } catch {
-      // ws not available, will use native WebSocket if available
+      // Use dynamic import for ESM compatibility
+      const ws = await import('ws');
+      neonConfig.webSocketConstructor = ws.default as unknown as typeof WebSocket;
+    } catch (err) {
+      // ws not available, check for global WebSocket
       const globalAny = globalThis as Record<string, unknown>;
       if (globalAny.WebSocket) {
         neonConfig.webSocketConstructor = globalAny.WebSocket as typeof WebSocket;
+      } else {
+        console.warn(
+          '[visualizer-db] WebSocket configuration failed. Install "ws" package for Node.js support.',
+          err instanceof Error ? err.message : String(err)
+        );
       }
     }
   }
 }
 
 function createPool() {
-  configureWebSocket();
-
   const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {

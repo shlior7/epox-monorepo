@@ -13,6 +13,7 @@
 The Scenergy team needs a comprehensive **admin platform** to manage the entire Scenergy Visualizer ecosystem. This will replace the current `scenergy-visualizer` app (which was initially client-facing) with a robust back-office dashboard.
 
 The admin platform will provide:
+
 - **Full visibility** into all clients, users, generations, and platform activity
 - **Operational control** over credits, payments, and client settings
 - **Debugging tools** for generation jobs, prompts, and error investigation
@@ -24,12 +25,14 @@ This is a "one-stop shop" for the Scenergy team to manage everything about the p
 ## Problem
 
 Currently, `scenergy-visualizer` is a client-facing admin portal with:
+
 - Multi-client management (URL pattern: `/[clientId]/...`)
 - Admin authentication (`adminUser` table)
 - Full access to all client data
 - Direct manipulation of products, images, and settings
 
 We need to transform this into a dedicated admin platform that:
+
 1. Provides a **dashboard** with platform-wide metrics and health
 2. Enables **client management** with full CRUD operations
 3. Supports **generation debugging** with prompt history and job monitoring
@@ -41,6 +44,7 @@ We need to transform this into a dedicated admin platform that:
 ## Questions and Answers
 
 ### Q1: Should this be a new app or rewrite the existing one?
+
 **A**: **Rewrite** `scenergy-visualizer` as the admin platform:
 
 - The current app already has admin auth infrastructure
@@ -49,13 +53,14 @@ We need to transform this into a dedicated admin platform that:
 - Cleaner separation: admin app vs client app
 
 ### Q2: What's the admin role hierarchy?
+
 **A**: Three-tier role system:
 
-| Role | Capabilities |
-|------|-------------|
+| Role          | Capabilities                                         |
+| ------------- | ---------------------------------------------------- |
 | `super_admin` | Full platform access + manage other admins + billing |
-| `admin` | Full CRUD on clients/users/credits, view audit logs |
-| `viewer` | Read-only access to all data, no mutations |
+| `admin`       | Full CRUD on clients/users/credits, view audit logs  |
+| `viewer`      | Read-only access to all data, no mutations           |
 
 ```typescript
 type AdminRole = 'super_admin' | 'admin' | 'viewer';
@@ -64,13 +69,14 @@ interface AdminUser {
   id: string;
   email: string;
   passwordHash: string;
-  role: AdminRole;  // NEW FIELD
+  role: AdminRole; // NEW FIELD
   createdAt: Date;
   updatedAt: Date;
 }
 ```
 
 ### Q3: How do admins generate images without using client credits?
+
 **A**: **Admin-only generation mode**:
 
 - Admins generate into a separate "admin space"
@@ -81,69 +87,78 @@ interface AdminUser {
 ```typescript
 interface GeneratedAsset {
   // ... existing fields
-  isAdminGenerated: boolean;           // NEW: true for admin generations
+  isAdminGenerated: boolean; // NEW: true for admin generations
   transferredToClientId: string | null; // NEW: target client after transfer
-  transferredAt: Date | null;           // NEW: when transferred
+  transferredAt: Date | null; // NEW: when transferred
 }
 ```
 
 **Transfer flow**:
+
 1. Admin generates image (goes to admin space)
 2. Admin clicks "Transfer to Client"
 3. Select target client from dropdown
 4. Asset moves to client's gallery with `transferredToClientId` set
 
 ### Q4: What metrics should the dashboard show?
+
 **A**: Key platform health indicators:
 
 **Real-time metrics**:
+
 - Active jobs (generating right now)
 - Jobs in queue (pending)
 - Error rate (last 24 hours)
 
 **Aggregate metrics**:
+
 - Total clients
 - Total users (across all clients)
 - Generations today / this week / this month
 - Storage usage (R2)
 
 **Top performers**:
+
 - Top 5 clients by generation count (last 30 days)
 - Most active users
 
 **Recent activity**:
+
 - Latest 10 admin actions (from audit log)
 - Latest 10 generation completions
 
 ### Q5: How do we handle credit management?
+
 **A**: **Credit balance system** with full transaction history:
 
 **Credit Balance** (per client):
+
 ```typescript
 interface CreditBalance {
   id: string;
   clientId: string;
-  balance: number;      // Current credit count
-  version: number;      // Optimistic locking
+  balance: number; // Current credit count
+  version: number; // Optimistic locking
   createdAt: Date;
   updatedAt: Date;
 }
 ```
 
 **Credit Transaction** (audit trail):
+
 ```typescript
 interface CreditTransaction {
   id: string;
   clientId: string;
-  amount: number;           // +positive for credit, -negative for debit
-  balanceAfter: number;     // Balance after this transaction
+  amount: number; // +positive for credit, -negative for debit
+  balanceAfter: number; // Balance after this transaction
   type: 'purchase' | 'grant' | 'usage' | 'refund' | 'adjustment';
   description: string | null;
 
   // References
-  generatedAssetId: string | null;  // For 'usage' type
-  paymentTransactionId: string | null;  // For 'purchase' type
-  adminUserId: string | null;  // Who performed this action
+  generatedAssetId: string | null; // For 'usage' type
+  paymentTransactionId: string | null; // For 'purchase' type
+  adminUserId: string | null; // Who performed this action
 
   metadata: Record<string, unknown>;
   createdAt: Date;
@@ -151,24 +166,26 @@ interface CreditTransaction {
 ```
 
 **Admin actions**:
+
 - **View balance**: See current credits for any client
 - **Grant credits**: Add credits with reason (e.g., "Beta tester reward")
 - **Adjust balance**: Correct errors with explanation
 - **View history**: Full transaction log with filters
 
 ### Q6: What should the audit log capture?
+
 **A**: **All mutations** with before/after state:
 
 ```typescript
 interface AuditLog {
   id: string;
   adminUserId: string;
-  action: string;        // e.g., 'client.create', 'credit.grant', 'user.delete'
-  entityType: string;    // e.g., 'client', 'user', 'credit_balance'
+  action: string; // e.g., 'client.create', 'credit.grant', 'user.delete'
+  entityType: string; // e.g., 'client', 'user', 'credit_balance'
   entityId: string;
 
-  previousState: Record<string, unknown> | null;  // State before change
-  newState: Record<string, unknown> | null;       // State after change
+  previousState: Record<string, unknown> | null; // State before change
+  newState: Record<string, unknown> | null; // State after change
 
   ipAddress: string | null;
   userAgent: string | null;
@@ -178,6 +195,7 @@ interface AuditLog {
 ```
 
 **Audit actions** (examples):
+
 - `client.create` / `client.update` / `client.delete`
 - `user.invite` / `user.update` / `user.delete`
 - `credit.grant` / `credit.adjust` / `credit.refund`
@@ -186,18 +204,22 @@ interface AuditLog {
 - `job.regenerate` / `job.cancel`
 
 **Sensitive data exclusion**:
+
 - Passwords, tokens, and credentials are NEVER logged
 - Sanitize before storing
 
 ### Q7: How do we debug generation jobs?
+
 **A**: **Job debugger** with full visibility:
 
 **Job list view**:
+
 - Active jobs (currently generating)
 - Recent jobs (completed/failed in last 24h)
 - Filterable by client, status, date
 
 **Job detail view**:
+
 ```typescript
 interface JobDebugInfo {
   // Identity
@@ -207,13 +229,13 @@ interface JobDebugInfo {
 
   // Request
   products: ProductSummary[];
-  prompt: string;              // Full compiled prompt
+  prompt: string; // Full compiled prompt
   settings: GenerationFlowSettings;
   inspirationImages: string[];
 
   // Execution
   status: 'pending' | 'generating' | 'completed' | 'error';
-  progress: number;            // 0-100
+  progress: number; // 0-100
   startedAt: Date | null;
   completedAt: Date | null;
   durationMs: number | null;
@@ -233,14 +255,17 @@ interface JobDebugInfo {
 ```
 
 **Admin actions**:
+
 - **View full prompt**: See exactly what was sent to Gemini
 - **Regenerate**: Retry the job with same settings
 - **View error stack**: Full error details for debugging
 
 ### Q8: How do admins browse all generated images?
+
 **A**: **Global image browser** with powerful filters:
 
 **Filters**:
+
 - Client (dropdown)
 - Date range (picker)
 - Status (pending, approved, rejected)
@@ -248,6 +273,7 @@ interface JobDebugInfo {
 - Has errors (yes/no)
 
 **Image card shows**:
+
 - Thumbnail
 - Client name
 - Product(s) in image
@@ -255,6 +281,7 @@ interface JobDebugInfo {
 - Approval status badge
 
 **Actions per image**:
+
 - View full size
 - View prompt/settings
 - Transfer to client (if admin-generated)
@@ -262,9 +289,11 @@ interface JobDebugInfo {
 - Delete
 
 ### Q9: How do we handle client detail views?
+
 **A**: **Tabbed interface** for each client:
 
 **Tabs**:
+
 1. **Overview**: Stats, recent activity, quick actions
 2. **Users**: Members table, pending invitations, add user
 3. **Products**: Product grid with counts
@@ -274,6 +303,7 @@ interface JobDebugInfo {
 7. **Credits**: Balance, transaction history, grant button
 
 **Overview tab content**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
 │ Acme Furniture Co.                              [Edit] [Delete] │
@@ -303,19 +333,23 @@ interface JobDebugInfo {
 ```
 
 ### Q10: What's the user management approach?
+
 **A**: Two views for user management:
 
 **Global users view** (`/admin/users`):
+
 - All users across all clients
 - Shows: Email, Name, Clients (count), Last active
 - Click to see user detail with all client memberships
 
 **Client users view** (`/admin/clients/[id]/users`):
+
 - Users for specific client only
 - Shows: Email, Name, Role, Status, Joined date
 - Actions: Change role, Remove from client, Resend invite
 
 **User detail**:
+
 ```typescript
 interface UserAdminView {
   id: string;
@@ -437,6 +471,7 @@ graph TB
 **Purpose**: Platform health overview and quick navigation
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  Dashboard  Clients  Users  Generations  Credits  Settings  │
@@ -488,6 +523,7 @@ graph TB
 ```
 
 **Components**:
+
 - `StatCard` - Metric display with optional trend indicator
 - `ActiveJobsList` - Live job progress (polls every 2s)
 - `TopClientsChart` - Horizontal bar chart
@@ -495,6 +531,7 @@ graph TB
 - `SystemHealth` - Service status indicators
 
 **State**:
+
 ```typescript
 interface DashboardState {
   stats: {
@@ -519,6 +556,7 @@ interface DashboardState {
 ```
 
 **Data Requirements**:
+
 - `GET /api/admin/dashboard` - Returns all dashboard data
 - Active jobs polled separately every 2s during active generation
 
@@ -531,6 +569,7 @@ interface DashboardState {
 **Purpose**: Browse, search, and manage all clients
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  Dashboard  Clients  Users  Generations  Credits  Settings  │
@@ -566,12 +605,14 @@ interface DashboardState {
 | Status | Active (●) / Inactive (○) based on 7-day activity |
 
 **Row actions** (on hover/menu):
+
 - View details
 - Edit settings
 - Grant credits
 - Delete (with confirmation)
 
 **Components**:
+
 - `DataTable` - Sortable, filterable table
 - `SearchBar` - Full-text search
 - `FilterDropdown` - Status/plan filters
@@ -587,6 +628,7 @@ interface DashboardState {
 **Purpose**: Deep dive into single client with tabbed navigation
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  Dashboard  Clients  Users  Generations  Credits  Settings  │
@@ -608,34 +650,40 @@ interface DashboardState {
 **Tabs**:
 
 **Overview Tab**:
+
 - Stats cards (products, sessions, generations, credits)
 - Store connection status
 - Recent activity for this client
 - Quick actions (Grant credits, Add user, etc.)
 
 **Users Tab**:
+
 - Members table with role, status, joined date
 - Pending invitations
 - Actions: Change role, Remove, Resend invite
 - "+ Invite User" button
 
 **Products Tab**:
+
 - Product grid with thumbnails
 - Filter by source (imported/uploaded), category
 - Click product to view details
 - Import products button
 
 **Sessions Tab**:
+
 - Collection sessions list
 - Status, product count, generation count
 - Click to view session details
 
 **Generations Tab**:
+
 - All generated assets for this client
 - Grid view with filters
 - Same as global browser but client-scoped
 
 **Settings Tab**:
+
 - Client info (name, slug, description)
 - AI model configuration
 - Store connection management
@@ -650,6 +698,7 @@ interface DashboardState {
 **Purpose**: Browse ALL generated images across platform
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  Dashboard  Clients  Users  Generations  Credits  Settings  │
@@ -679,6 +728,7 @@ interface DashboardState {
 ```
 
 **Image card actions** (click to expand):
+
 - View full size
 - View prompt & settings
 - Approve / Reject
@@ -686,6 +736,7 @@ interface DashboardState {
 - Delete
 
 **Components**:
+
 - `ImageGrid` - Responsive masonry grid
 - `ImageCard` - Thumbnail with metadata
 - `ImageDetailModal` - Full view with actions
@@ -701,6 +752,7 @@ interface DashboardState {
 **Purpose**: Monitor and debug generation jobs
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  Dashboard  Clients  Users  Generations  Credits  Settings  │
@@ -730,6 +782,7 @@ interface DashboardState {
 ```
 
 **Job Detail View** (`/admin/generations/jobs/[jobId]`):
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Job: job_abc123                               [Regenerate] [Cancel]│
@@ -773,6 +826,7 @@ interface DashboardState {
 ```
 
 **Error detail** (for failed jobs):
+
 ```text
 │  Error                                                              │
 │  ┌─────────────────────────────────────────────────────────────┐   │
@@ -794,6 +848,7 @@ interface DashboardState {
 **Purpose**: View and manage client credit balances
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  Dashboard  Clients  Users  Generations  Credits  Settings  │
@@ -822,6 +877,7 @@ interface DashboardState {
 ```
 
 **Grant Credits Modal**:
+
 ```text
 ┌─────────────────────────────────────────────┐
 │ Grant Credits                        [×]    │
@@ -847,6 +903,7 @@ interface DashboardState {
 ```
 
 **Transactions View** (`/admin/credits/transactions`):
+
 - All transactions across all clients
 - Filters: Client, Type, Date range
 - Columns: Date, Client, Type, Amount, Balance After, Admin, Description
@@ -860,6 +917,7 @@ interface DashboardState {
 **Purpose**: View all admin actions for accountability
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  Dashboard  Clients  Users  Generations  Credits  Settings  │
@@ -891,6 +949,7 @@ interface DashboardState {
 ```
 
 **Audit Detail Modal**:
+
 - Full before/after JSON diff
 - IP address and user agent
 - Timestamp with timezone
@@ -903,6 +962,7 @@ interface DashboardState {
 ### New Tables
 
 #### `credit_balance`
+
 ```sql
 CREATE TABLE credit_balance (
   id TEXT PRIMARY KEY,
@@ -918,6 +978,7 @@ CREATE INDEX credit_balance_client_id_idx ON credit_balance(client_id);
 ```
 
 #### `credit_transaction`
+
 ```sql
 CREATE TABLE credit_transaction (
   id TEXT PRIMARY KEY,
@@ -939,6 +1000,7 @@ CREATE INDEX credit_transaction_type_idx ON credit_transaction(type);
 ```
 
 #### `audit_log`
+
 ```sql
 CREATE TABLE audit_log (
   id TEXT PRIMARY KEY,
@@ -963,12 +1025,14 @@ CREATE INDEX audit_log_created_at_idx ON audit_log(created_at);
 ### Schema Modifications
 
 #### Extend `admin_user`
+
 ```sql
 ALTER TABLE admin_user ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'
   CHECK (role IN ('super_admin', 'admin', 'viewer'));
 ```
 
 #### Extend `generated_asset`
+
 ```sql
 ALTER TABLE generated_asset ADD COLUMN is_admin_generated BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE generated_asset ADD COLUMN transferred_to_client_id TEXT REFERENCES client(id) ON DELETE SET NULL;
@@ -983,12 +1047,14 @@ CREATE INDEX generated_asset_admin_generated_idx ON generated_asset(is_admin_gen
 ## API Endpoints
 
 ### Dashboard
+
 ```
 GET /api/admin/dashboard
   Response: { stats, activeJobs, topClients, recentActivity, systemHealth }
 ```
 
 ### Clients
+
 ```
 GET    /api/admin/clients                  # List clients (paginated)
 POST   /api/admin/clients                  # Create client
@@ -1008,6 +1074,7 @@ GET    /api/admin/clients/[id]/credits/transactions # Transaction history
 ```
 
 ### Users
+
 ```
 GET    /api/admin/users                    # List all users
 GET    /api/admin/users/[id]               # Get user detail
@@ -1016,6 +1083,7 @@ DELETE /api/admin/users/[id]               # Delete user
 ```
 
 ### Generations
+
 ```
 GET    /api/admin/generations              # List all assets (paginated)
 GET    /api/admin/generations/[id]         # Get asset detail
@@ -1032,18 +1100,21 @@ POST   /api/admin/generate                 # Admin-only generation
 ```
 
 ### Credits
+
 ```
 GET    /api/admin/credits                  # All client balances
 GET    /api/admin/credits/transactions     # All transactions
 ```
 
 ### Audit
+
 ```
 GET    /api/admin/audit                    # Audit log (paginated)
 GET    /api/admin/audit/[id]               # Audit entry detail
 ```
 
 ### Settings
+
 ```
 GET    /api/admin/settings                 # Platform settings
 PATCH  /api/admin/settings                 # Update settings
@@ -1121,6 +1192,7 @@ components/admin/
 ## Implementation Plan
 
 ### Phase 1: Foundation (1-2 weeks)
+
 - [ ] Create admin layout with sidebar navigation
 - [ ] Build dashboard with basic stats
 - [ ] Implement clients list with pagination/filtering
@@ -1129,6 +1201,7 @@ components/admin/
 - [ ] Build credit management UI (view, edit, grant)
 
 **Files to create/modify**:
+
 - `app/admin/layout.tsx` - New admin layout
 - `app/admin/dashboard/page.tsx` - Dashboard
 - `app/admin/clients/page.tsx` - Clients list
@@ -1138,41 +1211,48 @@ components/admin/
 - `packages/visualizer-db/src/repositories/credits.ts` - New repos
 
 ### Phase 2: Generation Debugging (1 week)
+
 - [ ] Build global image browser
 - [ ] Create job queue view with live polling
 - [ ] Implement job detail with prompt debugging
 - [ ] Add regenerate functionality
 
 **Files to create/modify**:
+
 - `app/admin/generations/page.tsx` - Image browser
 - `app/admin/generations/jobs/page.tsx` - Job queue
 - `app/admin/generations/jobs/[jobId]/page.tsx` - Job detail
 - `components/admin/Generations/` - Components
 
 ### Phase 3: User Management (1 week)
+
 - [ ] Build users list (cross-client)
 - [ ] Add user detail view
 - [ ] Implement member management per client
 - [ ] Create invitation system
 
 **Files to create/modify**:
+
 - `app/admin/users/page.tsx`
 - `app/admin/users/[userId]/page.tsx`
 - `app/admin/clients/[clientId]/users/page.tsx`
 
 ### Phase 4: Audit & Security (3-5 days)
+
 - [ ] Create audit log table
 - [ ] Implement audit logging middleware
 - [ ] Build audit log viewer
 - [ ] Add admin role system
 
 **Files to create/modify**:
+
 - `packages/visualizer-db/src/schema/audit.ts`
 - `lib/middleware/audit-logger.ts`
 - `app/admin/settings/audit/page.tsx`
 - `app/admin/settings/admins/page.tsx`
 
 ### Phase 5: Payments Integration (1 week)
+
 - [ ] Integrate Stripe dashboard data
 - [ ] Build payments view
 - [ ] Link payments to credit purchases

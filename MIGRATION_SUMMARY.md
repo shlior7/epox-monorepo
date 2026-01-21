@@ -9,17 +9,20 @@ Successfully implemented shared architecture for the visualizer platform, enabli
 ### Phase 1-3: Database Schema Migration ✅
 
 **Renamed Tables:**
+
 - `studio_session` → `collection_session`
 - `flow` → `generation_flow`
 - `generated_image` → `generated_asset`
 
 **Added Columns:**
+
 - `is_favorite` (boolean) to products and generation flows
 - `asset_type` (image|video|3d_model) to generated assets
 - Approval workflow fields: `approval_status`, `approved_by`, `approved_at`
 - Enhanced metadata fields for products and assets
 
 **New Tables:**
+
 - `generated_asset_product` - Many-to-many junction table
 - `tag` - Client-scoped tags for organization
 - `tag_assignment` - Polymorphic tag assignments
@@ -29,39 +32,46 @@ Successfully implemented shared architecture for the visualizer platform, enabli
 - `generation_event` - Analytics tracking for generations
 
 **Removed:**
+
 - All legacy aliases (no backward compatibility as requested)
 - Old repository files (studio-sessions.ts, flows.ts, generated-images.ts)
 
 ### Phase 4: Repository Layer ✅
 
 **New Repositories:**
+
 - `CollectionSessionRepository` - Multi-product collection management
 - `GenerationFlowRepository` - Generation workflow management
 - `GeneratedAssetRepository` - Asset management with approval workflow
 
 **Updated Repositories:**
+
 - `ProductRepository` - Added new fields (isFavorite, source, erpId, etc.)
 - `MessageRepository` - Updated to use collectionSessionId
 - `FavoriteImageRepository` - Simplified interface
 - `ClientRepository` - Updated from OrganizationRepository
 
 **Database Facade:**
+
 - Updated [facade.ts](packages/visualizer-db/src/facade.ts) with new repository names
 - `db.collectionSessions`, `db.generationFlows`, `db.generatedAssets`
 
 ### Phase 5: Types Package ✅
 
 **Completely Rewrote:**
+
 - [domain.ts](packages/visualizer-types/src/domain.ts) - All domain entities
 - [database.ts](packages/visualizer-types/src/database.ts) - Create/Update DTOs
 
 **New Types:**
+
 - `CollectionSession`, `GenerationFlow`, `GeneratedAsset`
 - `Tag`, `TagAssignment`, `UserFavorite`
 - `StoreConnection`, `StoreSyncLog`, `GenerationEvent`
 - `AssetType`, `AssetStatus`, `ApprovalStatus`, `AssetAnalysis`
 
 **Removed:**
+
 - All legacy type aliases per user request
 
 ### Phase 6: Shared Services Package ✅
@@ -69,6 +79,7 @@ Successfully implemented shared architecture for the visualizer platform, enabli
 **Created New Package:** `visualizer-services`
 
 **Extracted Services:**
+
 - **GeminiService** - AI image generation and editing
   - Image generation with Gemini 2.5 Flash and Gemini 3 Pro
   - Image editing and manipulation
@@ -88,6 +99,7 @@ Successfully implemented shared architecture for the visualizer platform, enabli
   - Cost optimization defaults
 
 **Infrastructure:**
+
 - Configuration injection (no global config)
 - Lazy singleton pattern for services
 - Comprehensive TypeScript types
@@ -100,6 +112,7 @@ Successfully implemented shared architecture for the visualizer platform, enabli
 **Status:** Admin app (`scenergy-visualizer`) builds successfully with new shared architecture
 
 **Build Results:**
+
 - ✅ TypeScript compilation passes
 - ✅ All 53 routes compile correctly
 - ✅ No breaking changes detected
@@ -107,6 +120,7 @@ Successfully implemented shared architecture for the visualizer platform, enabli
 ### Phase 8: Documentation ✅
 
 **Created Documentation:**
+
 1. [packages/visualizer-services/README.md](packages/visualizer-services/README.md)
    - Service usage examples
    - API reference
@@ -168,6 +182,7 @@ These remain in individual apps as they're infrastructure-specific:
 ### 1. No Backward Compatibility
 
 Per user request, all legacy aliases were removed:
+
 - Cleaner codebase
 - Explicit naming (collection_session vs studio_session)
 - Prevents confusion between old and new conventions
@@ -175,6 +190,7 @@ Per user request, all legacy aliases were removed:
 ### 2. Configuration Injection
 
 Services accept configuration rather than reading global state:
+
 - Testability
 - Flexibility for different apps
 - No hidden dependencies
@@ -182,6 +198,7 @@ Services accept configuration rather than reading global state:
 ### 3. Repository Pattern
 
 All data access through typed repositories:
+
 - Type safety
 - Consistent API
 - Transaction support
@@ -190,6 +207,7 @@ All data access through typed repositories:
 ### 4. Service Extraction Strategy
 
 Extracted core business logic while keeping infrastructure in apps:
+
 - **Extracted:** AI services, domain logic, utilities
 - **App-Specific:** Queues, storage integration, prompt building
 - Rationale: Infrastructure is deployment-specific
@@ -203,6 +221,7 @@ Extracted core business logic while keeping infrastructure in apps:
 ### 2. Queue Implementation
 
 Image generation queues remain app-specific because they depend on:
+
 - Redis/Upstash client
 - R2 storage service
 - App-specific prompt templates
@@ -212,6 +231,7 @@ New apps should implement their own queue based on the reference implementation 
 ### 3. ERP Service
 
 The ERP service (packages/erp-service) uses Neon encrypted credentials and requires:
+
 - `STORE_CREDENTIALS_KEY` environment variable
 - Database migration for encrypted storage
 - UI workflow for connecting stores (app-specific)
@@ -224,6 +244,7 @@ The ERP service (packages/erp-service) uses Neon encrypted credentials and requi
    - Set up environment variables
 
 2. **Bootstrap New App**
+
    ```bash
    # Create new app directory
    mkdir -p apps/your-app
@@ -258,6 +279,7 @@ The ERP service (packages/erp-service) uses Neon encrypted credentials and requi
 ## Testing Verification
 
 All shared packages pass typecheck:
+
 - ✅ visualizer-db
 - ✅ visualizer-types
 - ✅ visualizer-auth
@@ -265,6 +287,7 @@ All shared packages pass typecheck:
 - ✅ visualizer-services (new)
 
 Admin app builds successfully:
+
 - ✅ scenergy-visualizer compiles
 - ✅ No breaking changes
 - ✅ All routes functional
@@ -333,6 +356,7 @@ STORE_CREDENTIALS_KEY=encryption-key
 The visualizer platform now has a solid foundation of shared packages that enable rapid development of new client apps while maintaining consistency and type safety across the ecosystem.
 
 New apps can leverage:
+
 - Battle-tested data access layer
 - AI-powered generation services
 - Authentication and authorization

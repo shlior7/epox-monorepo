@@ -2,10 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { ChevronDown, Image, Wand2 } from 'lucide-react';
-import {
-  AVAILABLE_IMAGE_MODELS,
-  type ModelTask,
-} from 'visualizer-ai/client';
+import { AVAILABLE_IMAGE_MODELS, type ModelTask } from 'visualizer-ai/client';
 import styles from './ModelSelector.module.scss';
 
 export interface ModelSelectorContext {
@@ -53,9 +50,7 @@ export function ModelSelector({
         // Further filter by reference count limit
         if (context.referenceImageCount) {
           models = models.filter(
-            (m) =>
-              !m.capabilities.maxReferenceImages ||
-              m.capabilities.maxReferenceImages >= context.referenceImageCount!
+            (m) => !m.capabilities.maxReferenceImages || m.capabilities.maxReferenceImages >= context.referenceImageCount!
           );
         }
       }
@@ -80,8 +75,7 @@ export function ModelSelector({
     availableModels[0];
 
   // Check if selected model is not in filtered list (user override scenario)
-  const isModelOverridden =
-    selectedModel && !availableModels.find((m) => m.id === selectedModel.id);
+  const isModelOverridden = selectedModel && !availableModels.find((m) => m.id === selectedModel.id);
 
   return (
     <div className={styles.container}>
@@ -133,9 +127,7 @@ export function ModelSelector({
 
           {/* Warning if model doesn't support current context */}
           {isModelOverridden && context?.hasReferenceImages && (
-            <div className={styles.warning}>
-              This model doesn&apos;t support reference images. Your references will be ignored.
-            </div>
+            <div className={styles.warning}>This model doesn&apos;t support reference images. Your references will be ignored.</div>
           )}
         </div>
       )}

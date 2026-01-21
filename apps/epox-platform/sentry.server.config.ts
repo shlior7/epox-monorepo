@@ -18,12 +18,7 @@ Sentry.init({
   tracesSampleRate: 0.1,
 
   // Ignore expected errors that don't need alerting
-  ignoreErrors: [
-    'User cancelled upload',
-    'Network request aborted',
-    'ECONNRESET',
-    'ETIMEDOUT',
-  ],
+  ignoreErrors: ['User cancelled upload', 'Network request aborted', 'ECONNRESET', 'ETIMEDOUT'],
 
   // Don't send PII
   sendDefaultPii: false,

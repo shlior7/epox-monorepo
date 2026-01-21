@@ -29,11 +29,7 @@ export class UserSettingsRepository extends BaseRepository<UserSettings> {
   }
 
   async getByUserId(userId: string): Promise<UserSettings | null> {
-    const rows = await this.drizzle
-      .select()
-      .from(userSettings)
-      .where(eq(userSettings.userId, userId))
-      .limit(1);
+    const rows = await this.drizzle.select().from(userSettings).where(eq(userSettings.userId, userId)).limit(1);
 
     return rows[0] ? this.mapToEntity(rows[0]) : null;
   }
@@ -77,19 +73,12 @@ export class UserSettingsRepository extends BaseRepository<UserSettings> {
       updatePayload.notificationSettings = data.notificationSettings;
     }
 
-    const [updated] = await this.drizzle
-      .update(userSettings)
-      .set(updatePayload)
-      .where(eq(userSettings.id, existing.id))
-      .returning();
+    const [updated] = await this.drizzle.update(userSettings).set(updatePayload).where(eq(userSettings.id, existing.id)).returning();
 
     return this.mapToEntity(updated);
   }
 
-  async updateNotificationSettings(
-    userId: string,
-    settings: Partial<NotificationSettings>
-  ): Promise<UserSettings> {
+  async updateNotificationSettings(userId: string, settings: Partial<NotificationSettings>): Promise<UserSettings> {
     const existing = await this.getOrCreate(userId);
     const currentSettings = existing.notificationSettings ?? DEFAULT_NOTIFICATION_SETTINGS;
 
@@ -102,10 +91,7 @@ export class UserSettingsRepository extends BaseRepository<UserSettings> {
     return this.update(userId, { notificationSettings: merged });
   }
 
-  async updateDefaultGenerationSettings(
-    userId: string,
-    settings: Partial<DefaultGenerationSettings>
-  ): Promise<UserSettings> {
+  async updateDefaultGenerationSettings(userId: string, settings: Partial<DefaultGenerationSettings>): Promise<UserSettings> {
     const existing = await this.getOrCreate(userId);
     const currentSettings = existing.defaultGenerationSettings ?? DEFAULT_GENERATION_DEFAULTS;
 
@@ -117,5 +103,3 @@ export class UserSettingsRepository extends BaseRepository<UserSettings> {
     return this.update(userId, { defaultGenerationSettings: merged });
   }
 }
-
-

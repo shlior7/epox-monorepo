@@ -4,23 +4,24 @@ import type { DatabaseFacade, StoreConnectionRow, StoreConnectionInfo } from 'vi
 import type { ProviderType } from '../providers';
 
 // Mock database facade
-const createMockDb = (): DatabaseFacade => ({
-  storeConnections: {
-    upsert: vi.fn(),
-    getByClientId: vi.fn(),
-    getInfoByClientId: vi.fn(),
-    updateStatusByClientId: vi.fn(),
-    updateLastSync: vi.fn(),
-    deleteByClientId: vi.fn(),
-    getEncryptedCredentials: vi.fn((row) => ({
-      ciphertext: row.credentialsCiphertext,
-      iv: row.credentialsIv,
-      tag: row.credentialsTag,
-      keyId: row.credentialsKeyId,
-      fingerprint: row.credentialsFingerprint,
-    })),
-  },
-} as unknown as DatabaseFacade);
+const createMockDb = (): DatabaseFacade =>
+  ({
+    storeConnections: {
+      upsert: vi.fn(),
+      getByClientId: vi.fn(),
+      getInfoByClientId: vi.fn(),
+      updateStatusByClientId: vi.fn(),
+      updateLastSync: vi.fn(),
+      deleteByClientId: vi.fn(),
+      getEncryptedCredentials: vi.fn((row) => ({
+        ciphertext: row.credentialsCiphertext,
+        iv: row.credentialsIv,
+        tag: row.credentialsTag,
+        keyId: row.credentialsKeyId,
+        fingerprint: row.credentialsFingerprint,
+      })),
+    },
+  }) as unknown as DatabaseFacade;
 
 describe('StoreService', () => {
   let service: StoreService;
@@ -293,4 +294,3 @@ describe('StoreService', () => {
     });
   });
 });
-

@@ -24,9 +24,6 @@ export async function POST(request: Request): Promise<NextResponse<EditImageResp
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     console.error('❌ Image editing failed:', error);
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed to edit image' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Failed to edit image' }, { status: 500 });
   }
 }

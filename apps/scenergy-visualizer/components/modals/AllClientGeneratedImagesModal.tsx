@@ -210,12 +210,7 @@ const styles = {
   },
 };
 
-export function AllClientGeneratedImagesModal({
-  isOpen,
-  client,
-  onClose,
-  onToggleFavorite,
-}: AllClientGeneratedImagesModalProps) {
+export function AllClientGeneratedImagesModal({ isOpen, client, onClose, onToggleFavorite }: AllClientGeneratedImagesModalProps) {
   const [selectedImageUrl, setSelectedImageUrl] = useState<ImageProps['src'] | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('product');
   const [filterBy, setFilterBy] = useState<FilterOption>('all');
@@ -237,9 +232,7 @@ export function AllClientGeneratedImagesModal({
               const imagePart = part as ImageMessagePart;
               if (imagePart.imageIds && imagePart.imageIds.length > 0) {
                 for (const imageId of imagePart.imageIds) {
-                  const imageUrl = S3Service.getImageUrl(
-                    S3Service.S3Paths.getMediaFilePath(client.id, product.id, session.id, imageId)
-                  );
+                  const imageUrl = S3Service.getImageUrl(S3Service.S3Paths.getMediaFilePath(client.id, product.id, session.id, imageId));
                   images.push({
                     imageId,
                     sessionId: session.id,
@@ -263,7 +256,7 @@ export function AllClientGeneratedImagesModal({
   // Filter images
   const filteredImages = useMemo(() => {
     if (filterBy === 'favorites') {
-      return allImages.filter(img => img.isFavorite);
+      return allImages.filter((img) => img.isFavorite);
     }
     return allImages;
   }, [allImages, filterBy]);
@@ -337,7 +330,7 @@ export function AllClientGeneratedImagesModal({
   };
 
   const toggleProductCollapse = (productId: string) => {
-    setCollapsedProducts(prev => {
+    setCollapsedProducts((prev) => {
       const next = new Set(prev);
       if (next.has(productId)) {
         next.delete(productId);
@@ -391,10 +384,7 @@ export function AllClientGeneratedImagesModal({
           aria-label={img.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
           data-testid={buildTestId('all-images-modal', 'favorite-button', img.imageId)}
         >
-          <Star
-            size={18}
-            fill={img.isFavorite ? 'currentColor' : 'none'}
-          />
+          <Star size={18} fill={img.isFavorite ? 'currentColor' : 'none'} />
         </button>
         <button
           onClick={(e) => handleDownload(img, e)}
@@ -405,32 +395,21 @@ export function AllClientGeneratedImagesModal({
           <Download size={18} />
         </button>
       </div>
-      {showProductLabel && (
-        <div style={styles.productLabel}>
-          {img.productName}
-        </div>
-      )}
+      {showProductLabel && <div style={styles.productLabel}>{img.productName}</div>}
     </div>
   );
 
-  const totalFavorites = allImages.filter(img => img.isFavorite).length;
+  const totalFavorites = allImages.filter((img) => img.isFavorite).length;
 
   return (
-    <div
-      style={styles.overlay}
-      onClick={handleOverlayClick}
-      data-testid={buildTestId('all-images-modal', 'overlay')}
-    >
-      <div
-        style={styles.modal}
-        onClick={(e) => e.stopPropagation()}
-        data-testid={buildTestId('all-images-modal', 'content')}
-      >
+    <div style={styles.overlay} onClick={handleOverlayClick} data-testid={buildTestId('all-images-modal', 'overlay')}>
+      <div style={styles.modal} onClick={(e) => e.stopPropagation()} data-testid={buildTestId('all-images-modal', 'content')}>
         <div style={styles.header}>
           <div style={styles.headerLeft}>
             <div style={styles.title}>All Generated Images</div>
             <div style={styles.subtitle}>
-              {client.name} • {allImages.length} total image{allImages.length !== 1 ? 's' : ''} • {totalFavorites} favorite{totalFavorites !== 1 ? 's' : ''}
+              {client.name} • {allImages.length} total image{allImages.length !== 1 ? 's' : ''} • {totalFavorites} favorite
+              {totalFavorites !== 1 ? 's' : ''}
             </div>
           </div>
           <div style={styles.controls}>
@@ -443,12 +422,7 @@ export function AllClientGeneratedImagesModal({
               <option value="all">All Images</option>
               <option value="favorites">Favorites Only</option>
             </select>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              style={styles.select}
-              aria-label="Sort images"
-            >
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)} style={styles.select} aria-label="Sort images">
               <option value="product">By Product</option>
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
@@ -470,14 +444,12 @@ export function AllClientGeneratedImagesModal({
           {sortedImages.length === 0 ? (
             <div style={styles.emptyState}>
               <p>No generated images yet.</p>
-              <p style={{ fontSize: '14px', marginTop: '8px' }}>
-                Generate images in a session to see them here.
-              </p>
+              <p style={{ fontSize: '14px', marginTop: '8px' }}>Generate images in a session to see them here.</p>
             </div>
           ) : sortBy === 'product' && groupedByProduct ? (
             // Grouped by product view
             Object.entries(groupedByProduct).map(([productId, images]) => {
-              const product = client.products.find(p => p.id === productId);
+              const product = client.products.find((p) => p.id === productId);
               const isCollapsed = collapsedProducts.has(productId);
 
               return (
@@ -492,29 +464,19 @@ export function AllClientGeneratedImagesModal({
                     <span style={styles.productName}>{product?.name || 'Unknown Product'}</span>
                     <span style={styles.productCount}>{images.length} images</span>
                   </div>
-                  {!isCollapsed && (
-                    <div style={styles.gallery}>
-                      {images.map(img => renderImageCard(img, false))}
-                    </div>
-                  )}
+                  {!isCollapsed && <div style={styles.gallery}>{images.map((img) => renderImageCard(img, false))}</div>}
                 </div>
               );
             })
           ) : (
             // Flat list view (sorted by date)
-            <div style={styles.gallery}>
-              {sortedImages.map(img => renderImageCard(img, true))}
-            </div>
+            <div style={styles.gallery}>{sortedImages.map((img) => renderImageCard(img, true))}</div>
           )}
         </div>
       </div>
 
       {/* Full-size Image Modal */}
-      <ImageModal
-        isOpen={selectedImageUrl !== null}
-        imageUrl={selectedImageUrl}
-        onClose={() => setSelectedImageUrl(null)}
-      />
+      <ImageModal isOpen={selectedImageUrl !== null} imageUrl={selectedImageUrl} onClose={() => setSelectedImageUrl(null)} />
     </div>
   );
 }

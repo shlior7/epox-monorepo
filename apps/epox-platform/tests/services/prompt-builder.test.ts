@@ -141,7 +141,11 @@ describe('Prompt Builder', () => {
         custom: [],
       };
 
-      const result = buildFullGenerationPrompt('Lamp', tags, 'warm golden hour lighting with soft shadows');
+      const result = buildFullGenerationPrompt(
+        'Lamp',
+        tags,
+        'warm golden hour lighting with soft shadows'
+      );
 
       expect(result).toContain('Style reference: warm golden hour lighting with soft shadows');
     });
@@ -303,4 +307,3 @@ describe('Prompt Builder', () => {
     });
   });
 });
-

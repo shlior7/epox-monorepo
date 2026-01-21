@@ -155,7 +155,9 @@ export default function DashboardPage() {
       <>
         <PageHeader title="Dashboard" description="Welcome back!" />
         <div className="p-8 text-center">
-          <p className="text-destructive">{error instanceof Error ? error.message : 'Failed to load dashboard'}</p>
+          <p className="text-destructive">
+            {error instanceof Error ? error.message : 'Failed to load dashboard'}
+          </p>
           <Button className="mt-4" onClick={() => window.location.reload()}>
             Retry
           </Button>
@@ -390,7 +392,9 @@ export default function DashboardPage() {
                 {filteredProducts.map((product) => {
                   const isSelected = selectedProduct?.id === product.id;
                   const imageUrl =
-                    product.images?.[0]?.previewUrl || product.images?.[0]?.baseUrl || product.imageUrl;
+                    product.images?.[0]?.previewUrl ||
+                    product.images?.[0]?.baseUrl ||
+                    product.imageUrl;
 
                   return (
                     <button
@@ -405,12 +409,7 @@ export default function DashboardPage() {
                     >
                       <div className="relative mb-2 aspect-square overflow-hidden rounded-md bg-secondary">
                         {imageUrl ? (
-                          <Image
-                            src={imageUrl}
-                            alt={product.name}
-                            fill
-                            className="object-cover"
-                          />
+                          <Image src={imageUrl} alt={product.name} fill className="object-cover" />
                         ) : (
                           <div className="flex h-full items-center justify-center">
                             <Package className="h-8 w-8 text-muted-foreground" />

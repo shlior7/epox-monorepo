@@ -19,12 +19,7 @@ interface ThumbnailNavProps {
   className?: string;
 }
 
-export function ThumbnailNav({
-  items,
-  onItemClick,
-  activeId,
-  className,
-}: ThumbnailNavProps) {
+export function ThumbnailNav({ items, onItemClick, activeId, className }: ThumbnailNavProps) {
   const navRef = useRef<HTMLDivElement>(null);
 
   const handleItemClick = useCallback(
@@ -42,7 +37,7 @@ export function ThumbnailNav({
     <div
       ref={navRef}
       className={cn(
-        'flex w-16 flex-col gap-2 overflow-y-auto py-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border',
+        'scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border flex w-16 flex-col gap-2 overflow-y-auto py-2',
         className
       )}
     >
@@ -120,7 +115,7 @@ export function ProductThumbnailNav({
   return (
     <div
       className={cn(
-        'flex w-20 flex-col gap-2 overflow-y-auto py-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border',
+        'scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border flex w-20 flex-col gap-2 overflow-y-auto py-2',
         className
       )}
     >
@@ -130,9 +125,7 @@ export function ProductThumbnailNav({
           onClick={() => onItemClick(item.id)}
           className={cn(
             'group relative mx-auto flex w-16 flex-col items-center gap-1 rounded-lg p-1 transition-all',
-            activeId === item.id
-              ? 'bg-primary/10'
-              : 'hover:bg-muted/50'
+            activeId === item.id ? 'bg-primary/10' : 'hover:bg-muted/50'
           )}
           title={item.name}
         >

@@ -23,12 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { InspirationImage } from 'visualizer-types';
 
@@ -110,11 +105,7 @@ interface InspirationStackProps {
   size?: 'xs' | 'sm' | 'md';
 }
 
-export function InspirationStack({
-  images,
-  maxVisible = 3,
-  size = 'sm',
-}: InspirationStackProps) {
+export function InspirationStack({ images, maxVisible = 3, size = 'sm' }: InspirationStackProps) {
   if (images.length === 0) return null;
 
   const visibleImages = images.slice(0, maxVisible);
@@ -203,9 +194,7 @@ export function ConfigBadges({ configuration, maxVisible = 2 }: ConfigBadgesProp
             <TooltipContent side="bottom">
               <div className="space-y-1 text-xs">
                 {configuration.stylePreset && <p>Style: {configuration.stylePreset}</p>}
-                {configuration.lightingPreset && (
-                  <p>Lighting: {configuration.lightingPreset}</p>
-                )}
+                {configuration.lightingPreset && <p>Lighting: {configuration.lightingPreset}</p>}
                 {configuration.aspectRatio && <p>Aspect: {configuration.aspectRatio}</p>}
               </div>
             </TooltipContent>
@@ -278,9 +267,7 @@ export function AssetActionBar({
           onClick={onPin}
         >
           <Pin className="h-3.5 w-3.5" />
-          {showLabels && (
-            <span className="text-xs">{isPinned ? 'Pinned' : 'Pin'}</span>
-          )}
+          {showLabels && <span className="text-xs">{isPinned ? 'Pinned' : 'Pin'}</span>}
         </Button>
 
         <Button
@@ -290,17 +277,10 @@ export function AssetActionBar({
           onClick={onApprove}
         >
           <Check className="h-3.5 w-3.5" />
-          {showLabels && (
-            <span className="text-xs">{isApproved ? 'Approved' : 'Approve'}</span>
-          )}
+          {showLabels && <span className="text-xs">{isApproved ? 'Approved' : 'Approve'}</span>}
         </Button>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 gap-1.5"
-          onClick={onDownload}
-        >
+        <Button variant="ghost" size="sm" className="h-8 gap-1.5" onClick={onDownload}>
           <Download className="h-3.5 w-3.5" />
           {showLabels && <span className="text-xs">Download</span>}
         </Button>
@@ -582,8 +562,6 @@ interface AssetCardFooterProps {
 
 export function AssetCardFooter({ children, className }: AssetCardFooterProps) {
   return (
-    <div className={cn('border-t border-border bg-card px-2 py-2', className)}>
-      {children}
-    </div>
+    <div className={cn('border-t border-border bg-card px-2 py-2', className)}>{children}</div>
   );
 }

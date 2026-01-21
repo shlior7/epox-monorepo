@@ -177,9 +177,10 @@ export function weeklyUsageSummaryEmail(payload: WeeklyUsageSummaryPayload): { s
 
   const usagePercent = Math.round((payload.generationsUsed / payload.generationsLimit) * 100);
 
-  const topProductsHtml = payload.topProducts.length > 0
-    ? `<ul>${payload.topProducts.map(p => `<li>${p.name}: ${p.count} generations</li>`).join('')}</ul>`
-    : '<p>No products generated this week.</p>';
+  const topProductsHtml =
+    payload.topProducts.length > 0
+      ? `<ul>${payload.topProducts.map((p) => `<li>${p.name}: ${p.count} generations</li>`).join('')}</ul>`
+      : '<p>No products generated this week.</p>';
 
   const html = wrapTemplate(`
     <h1>Weekly Summary</h1>
@@ -208,12 +209,10 @@ ${payload.weekStartDate} to ${payload.weekEndDate}
 Generations Used: ${payload.generationsUsed} of ${payload.generationsLimit} (${usagePercent}%)
 
 Top Products:
-${payload.topProducts.map(p => `- ${p.name}: ${p.count} generations`).join('\n')}
+${payload.topProducts.map((p) => `- ${p.name}: ${p.count} generations`).join('\n')}
 
 View dashboard: ${payload.dashboardUrl}
   `.trim();
 
   return { subject, html, text };
 }
-
-

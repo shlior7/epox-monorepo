@@ -987,12 +987,11 @@
 
 ## Document Info
 
-| Field | Value |
-|-------|-------|
-| Created | 2026-01-12 |
-| Version | 1.0 |
-| Slides | 21 |
+| Field   | Value                                |
+| ------- | ------------------------------------ |
+| Created | 2026-01-12                           |
+| Version | 1.0                                  |
+| Slides  | 21                                   |
 | Related | 000-product-requirements-overview.md |
 
-*This slideshow is a visual companion to the Product Requirements Document. For detailed specifications, see the design logs in this folder.*
-
+_This slideshow is a visual companion to the Product Requirements Document. For detailed specifications, see the design logs in this folder._

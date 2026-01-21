@@ -96,4 +96,3 @@ export function getBullBoardRouter(config: BullBoardConfig): Router {
   const { serverAdapter } = createBullBoardApp(config);
   return serverAdapter.getRouter();
 }
-

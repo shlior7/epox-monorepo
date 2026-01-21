@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import { useSession, useUser, useOrganization } from '@/lib/services/auth';
+import { useSession, useUser, useOrganization, authClient } from '@/lib/services/auth';
 
 // ===== Types =====
 
@@ -37,6 +37,10 @@ export interface AuthContextValue {
 
   // Actions
   signOut: () => Promise<void>;
+
+  // Organization management
+  setActiveOrganization: (organizationId: string) => Promise<void>;
+  refetchOrganization: () => Promise<void>;
 }
 
 // ===== Context =====
@@ -83,9 +87,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isLoadingUser: sessionData.isPending,
       isLoadingClient: orgData.isPending === true,
       session: sessionData.data,
+
+      // Sign out
       signOut: async () => {
-        // TODO: Implement sign out via authClient
+        await authClient.signOut();
         window.location.href = '/login';
+      },
+
+      setActiveOrganization: async (organizationId: string) => {
+        // Use Better Auth's client-side API if available
+        const orgClient = authClient as any;
+        if (typeof orgClient.organization?.setActive === 'function') {
+          await orgClient.organization.setActive({ organizationId });
+        }
+
+        // Refetch to update context
+        if (orgData.refetch) {
+          await orgData.refetch();
+        }
+      },
+
+      refetchOrganization: async () => {
+        if (orgData.refetch) {
+          await orgData.refetch();
+        }
       },
     };
   }, [sessionData, userData, orgData]);
@@ -117,7 +142,9 @@ export function useRequiredClientId(): string {
   }
 
   if (!clientId) {
-    throw new Error('No client ID available - user may not be authenticated or assigned to a client');
+    throw new Error(
+      'No client ID available - user may not be authenticated or assigned to a client'
+    );
   }
 
   return clientId;
@@ -137,4 +164,3 @@ export function useClientId(): string {
 
   return clientId ?? 'test-client';
 }
-

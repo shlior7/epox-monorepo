@@ -193,7 +193,9 @@ function ProductsPageContent() {
             </div>
           ) : error ? (
             <div className="py-12 text-center">
-              <p className="mb-4 text-destructive">{error instanceof Error ? error.message : 'Failed to load products'}</p>
+              <p className="mb-4 text-destructive">
+                {error instanceof Error ? error.message : 'Failed to load products'}
+              </p>
               <Button variant="outline" onClick={() => window.location.reload()}>
                 Retry
               </Button>
@@ -207,7 +209,9 @@ function ProductsPageContent() {
                       <th className="p-4 text-left font-medium text-muted-foreground">Product</th>
                       <th className="p-4 text-left font-medium text-muted-foreground">SKU</th>
                       <th className="p-4 text-left font-medium text-muted-foreground">Category</th>
-                      <th className="p-4 text-left font-medium text-muted-foreground">Room Types</th>
+                      <th className="p-4 text-left font-medium text-muted-foreground">
+                        Room Types
+                      </th>
                       <th className="p-4 text-left font-medium text-muted-foreground">Source</th>
                       <th className="p-4 text-right font-medium text-muted-foreground">Actions</th>
                     </tr>
@@ -246,7 +250,9 @@ function ProductsPageContent() {
                               </div>
                             </div>
                           </td>
-                          <td className="p-4 font-mono text-sm text-muted-foreground">{product.sku}</td>
+                          <td className="p-4 font-mono text-sm text-muted-foreground">
+                            {product.sku}
+                          </td>
                           <td className="p-4">
                             <Badge variant="secondary">{product.category}</Badge>
                           </td>
@@ -275,7 +281,10 @@ function ProductsPageContent() {
                             </Badge>
                           </td>
                           <td className="p-4">
-                            <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                            <div
+                              className="flex items-center justify-end gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <Button
                                 variant="ghost"
                                 size="icon"

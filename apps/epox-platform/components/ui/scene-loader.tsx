@@ -275,9 +275,7 @@ export function SceneLoader({
               style={{ width: `${Math.max(5, progress)}%` }}
             />
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {Math.round(progress)}% complete
-          </p>
+          <p className="mt-2 text-xs text-muted-foreground">{Math.round(progress)}% complete</p>
         </div>
       </div>
 

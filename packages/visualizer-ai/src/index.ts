@@ -89,13 +89,7 @@ export type {
 } from './product-analysis';
 
 // Generation Queue Facade
-export {
-  enqueueImageGeneration,
-  enqueueVideoGeneration,
-  enqueueImageEdit,
-  getJobStatus,
-  getJobsByFlow,
-} from './generation-queue';
+export { enqueueImageGeneration, enqueueVideoGeneration, enqueueImageEdit, getJobStatus, getJobsByFlow } from './generation-queue';
 export type { EnqueueImageResult, EnqueueVideoResult, JobStatusResult } from './generation-queue';
 export type {
   ImageGenerationPayload,

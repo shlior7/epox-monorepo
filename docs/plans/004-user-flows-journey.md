@@ -11,6 +11,7 @@
 ## Background
 
 The `visualizer-client` platform is a SaaS studio for non-technical users to generate AI-powered product visualizations at scale. The user experience must be:
+
 - **Intuitive** - Minimal learning curve, progressive disclosure
 - **Guided** - Clear steps, smart defaults, helpful feedback
 - **Forgiving** - Easy error recovery, undo actions, clear error messages
@@ -21,6 +22,7 @@ This design log maps out the complete user journey from first login to managing 
 ## Problem
 
 We need to design user flows that:
+
 1. **Onboard new users** efficiently (invitation → first session in <5 minutes)
 2. **Guide bulk generation** through a multi-step wizard without overwhelming users
 3. **Handle errors gracefully** (network failures, AI errors, quota limits)
@@ -30,39 +32,51 @@ We need to design user flows that:
 ## Questions and Answers
 
 ### Q1: Should onboarding be separate from session creation, or combined?
+
 **A**: Combined, but with smart defaults:
+
 - Skip product selection if client has <20 products (auto-select all)
 - Skip inspiration if user wants quick test (use defaults)
 - Progressive: "Create First Session" → "Create Session" (different CTAs)
 
 ### Q2: How do we handle users who abandon mid-flow?
+
 **A**: Auto-save drafts:
+
 - StudioSession status: `draft` → saves progress automatically
 - User can return to `/sessions/[id]/edit` to resume
 - Show "Resume Draft" card on dashboard
 - Auto-delete drafts older than 7 days
 
 ### Q3: What happens if AI analysis fails?
+
 **A**: Graceful degradation:
+
 - Step 2 (Analyze): If AI fails → use metadata-only fallback
 - Step 3 (Inspiration): If scene analysis fails → allow manual settings
 - Step 4 (Generate): If product generation fails → mark flow as error, continue queue
 
 ### Q4: Should users see generation progress in real-time or just get notified?
+
 **A**: Hybrid approach:
+
 - Real-time: If user stays on results page (polling every 5s)
 - Notification: Browser notification when user switches tabs
 - Email: Optional summary email when flow completes
 
 ### Q5: How do we prevent accidental deletions?
+
 **A**: Multiple safeguards:
+
 - Soft-delete with 30-day recovery window
 - Confirmation modal for destructive actions
 - "Undo" toast notification for 10 seconds
 - Separate "Trash" view to review deleted items
 
 ### Q6: Should the 4-step wizard be separate pages or a single page with tabs?
+
 **A**: Separate pages with URL state:
+
 - `/sessions/new/select` → `/analyze` → `/inspire` → `/generate`
 - Back/forward browser navigation works
 - Can bookmark/share specific step
@@ -109,9 +123,11 @@ graph TB
 ## Flow 1: Onboarding Flow
 
 ### Overview
+
 From invitation email to first studio session created.
 
 ### User Story
+
 > "As a new user, I want to quickly understand the platform and generate my first product images without feeling overwhelmed."
 
 ### Flow Diagram
@@ -164,9 +180,11 @@ sequenceDiagram
 ### Step-by-Step Breakdown
 
 #### Step 1: Invitation Email
+
 **Trigger**: Admin invites user from scenergy-visualizer
 
 **Email Content**:
+
 ```text
 Subject: You've been invited to Epox Visualizer
 
@@ -181,53 +199,62 @@ This invitation expires in 7 days.
 ```
 
 **Email Data**:
+
 - `invitationToken` - Validates signup (signed JWT)
 - `email` - Pre-fills signup form
 - `clientId` - Associates user with client
 - `invitedBy` - Tracks who sent invite
 
 #### Step 2: Signup Page
+
 **URL**: `/signup?token={invitationToken}`
 
 **Page State**:
+
 ```typescript
 interface SignupPageState {
   token: string;
-  email: string;           // Pre-filled from token
-  clientName: string;      // Decoded from token
-  inviterName: string;     // Decoded from token
+  email: string; // Pre-filled from token
+  clientName: string; // Decoded from token
+  inviterName: string; // Decoded from token
   loading: boolean;
   error: string | null;
 }
 ```
 
 **Form Fields**:
+
 - Email (read-only, pre-filled)
 - Full Name (required)
 - Password (required, min 8 chars)
 - Confirm Password (required, must match)
 
 **Validation**:
+
 - ✅ Token is valid and not expired
 - ✅ Password meets requirements
 - ✅ Passwords match
 - ✅ Email not already registered
 
 **Success Actions**:
+
 1. Create user record
 2. Update member status: `invited` → `active`
 3. Create session
 4. Redirect to `/` (dashboard)
 
 **Error States**:
+
 - Invalid/expired token → Show "Contact admin for new invitation"
 - Email already exists → Show "Account exists, try logging in"
 - Network error → Show retry button
 
 #### Step 3: Dashboard (First-Time User)
+
 **URL**: `/`
 
 **Empty State UI**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │  Welcome to Epox Visualizer!                          │
@@ -248,11 +275,13 @@ Your Products (15)
 ```
 
 **Navigation Options**:
+
 - Primary CTA: "Create Your First Session" (large, prominent)
 - Secondary: "View Products" (link)
 - Secondary: "Account Settings" (top-right)
 
 #### Step 4-7: Studio Session Creation Wizard
+
 See **Flow 2: Main Studio Session Creation Flow** below
 
 ---
@@ -260,9 +289,11 @@ See **Flow 2: Main Studio Session Creation Flow** below
 ## Flow 2: Main Studio Session Creation Flow
 
 ### Overview
+
 4-step wizard for bulk product visualization generation.
 
 ### User Story
+
 > "As a user, I want to select multiple products, let AI analyze them, choose inspiration images, and generate hundreds of product visualizations with minimal manual configuration."
 
 ### Wizard Navigation
@@ -286,6 +317,7 @@ graph LR
 ```
 
 **Progress Indicator** (shown on all steps):
+
 ```text
 ┌──────────────────────────────────────────────────────┐
 │  ① Select  ──  ② Analyze  ──  ③ Inspire  ──  ④ Generate │
@@ -301,8 +333,8 @@ interface StudioSession {
   id: string;
   clientId: string;
   name: string;
-  productIds: string[];  // Selected products
-  selectedBaseImages: Record<string, string>;  // productId → baseImageUrl
+  productIds: string[]; // Selected products
+  selectedBaseImages: Record<string, string>; // productId → baseImageUrl
   status: 'draft' | 'configured' | 'active' | 'archived';
   createdAt: Date;
   updatedAt: Date;
@@ -312,7 +344,7 @@ interface StudioSession {
 interface Flow {
   id: string;
   studioSessionId: string;
-  productIds: string[];  // Can be subset or all from session
+  productIds: string[]; // Can be subset or all from session
   status: 'empty' | 'configured' | 'generating' | 'completed' | 'error';
   settings: FlowGenerationSettings;
   createdAt: Date;
@@ -323,11 +355,11 @@ interface Flow {
 interface GeneratedImage {
   id: string;
   flowId: string;
-  r2Key: string;  // R2 storage path
-  productIds: string[];  // Products featured in this image
+  r2Key: string; // R2 storage path
+  productIds: string[]; // Products featured in this image
   status: 'pending' | 'generating' | 'completed' | 'error';
-  settings: FlowGenerationSettings;  // Snapshot of settings used
-  jobId: string | null;  // Redis job ID (transient)
+  settings: FlowGenerationSettings; // Snapshot of settings used
+  jobId: string | null; // Redis job ID (transient)
   errorMessage: string | null;
   pinned: boolean;
   deletedAt: Date | null;
@@ -347,19 +379,19 @@ interface FlowGenerationSettings {
   props: string[];
   sceneImageUrl: string;
   aspectRatio: '1:1' | '16:9' | '9:16';
-  varietyLevel: number;  // 1-10
+  varietyLevel: number; // 1-10
   matchProductColors: boolean;
   roomType: string;
   cameraAngle: string;
-  promptText: string;  // Generated from promptTags
+  promptText: string; // Generated from promptTags
 }
 
 interface PromptTags {
-  roomType: string[];     // ["living room", "office"]
-  mood: string[];         // ["cozy", "minimalist"]
-  lighting: string[];     // ["natural", "warm"]
-  style: string[];        // ["scandinavian", "modern"]
-  custom: string[];       // User-defined custom tags
+  roomType: string[]; // ["living room", "office"]
+  mood: string[]; // ["cozy", "minimalist"]
+  lighting: string[]; // ["natural", "warm"]
+  style: string[]; // ["scandinavian", "modern"]
+  custom: string[]; // User-defined custom tags
 }
 ```
 
@@ -368,6 +400,7 @@ interface PromptTags {
 **URL**: `/sessions/new/select`
 
 **Page Layout**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Create New Studio Session                             │
@@ -390,6 +423,7 @@ interface PromptTags {
 ```
 
 **Features**:
+
 - **Search**: Free-text across name, SKU, description
 - **Filters**: Category, Room Type, Tags, Date Added
 - **Sort**: Name, SKU, Category, Date (asc/desc)
@@ -401,6 +435,7 @@ interface PromptTags {
 - **Validation**: Must select at least 1 product
 
 **State Management**:
+
 ```typescript
 interface SelectProductsState {
   searchQuery: string;
@@ -420,20 +455,23 @@ interface SelectProductsState {
 ```
 
 **Actions**:
+
 - "Next: Analyze →" - Creates StudioSession draft, navigates to Step 2
 - "Cancel" - Returns to dashboard (draft saved if any products selected)
 
 **Smart Behaviors**:
+
 - If client has <20 products → Auto-select all by default
 - If user previously created sessions → Pre-select same category
 - Save draft every 30 seconds (auto-save indicator)
 
 **API Call**:
+
 ```typescript
 // POST /api/studio-sessions
 const session = await createStudioSession({
   productIds: selectedProductIds,
-  status: 'draft'
+  status: 'draft',
 });
 ```
 
@@ -442,6 +480,7 @@ const session = await createStudioSession({
 **URL**: `/sessions/[sessionId]/analyze`
 
 **Flow**:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -463,6 +502,7 @@ sequenceDiagram
 ```
 
 **Loading State**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Step 2 of 4: Analyzing Your Products                  │
@@ -478,6 +518,7 @@ sequenceDiagram
 ```
 
 **Results Display with Q&A Form (Prompt Tags)**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Step 2 of 4: Analysis Results + Style Your Generation │
@@ -513,6 +554,7 @@ sequenceDiagram
 ```
 
 **Q&A Form Behavior**:
+
 - AI suggests initial tags based on product analysis
 - User clicks tag bubbles to toggle on/off (✓ = selected)
 - User can add custom tags with [+ Add] button
@@ -529,39 +571,39 @@ sequenceDiagram
 | Custom | (user-defined) | Specific requests like "high ceilings" |
 
 **Prompt Generation**:
+
 ```typescript
 function buildPromptFromTags(tags: PromptTags): string {
   return [
     ...tags.roomType,
     ...tags.mood,
-    ...tags.lighting.map(l => `${l} lighting`),
-    ...tags.style.map(s => `${s} style`),
+    ...tags.lighting.map((l) => `${l} lighting`),
+    ...tags.style.map((s) => `${s} style`),
     ...tags.custom,
-  ].filter(Boolean).join(", ");
+  ]
+    .filter(Boolean)
+    .join(', ');
 }
 // Result: "living room, office, cozy, minimalist, natural lighting, scandinavian style, high ceilings, wooden floors"
 ```
 
 **Analysis Data Structure**:
+
 ```typescript
 interface ProductAnalysisResult {
   roomTypeDistribution: {
     Office: 1;
-    "Living Room": 1;
+    'Living Room': 1;
     Bedroom: 1;
   };
-  productTypes: ["Desk", "Sofa", "Bed"];
-  dominantCategory: "Furniture";
-  suggestedStyles: ["Modern", "Contemporary", "Minimalist"];
-  recommendedInspirationKeywords: [
-    "modern home office",
-    "contemporary living room",
-    "minimalist bedroom"
-  ];
+  productTypes: ['Desk', 'Sofa', 'Bed'];
+  dominantCategory: 'Furniture';
+  suggestedStyles: ['Modern', 'Contemporary', 'Minimalist'];
+  recommendedInspirationKeywords: ['modern home office', 'contemporary living room', 'minimalist bedroom'];
   productRoomAssignments: {
-    "product-1-id": "Office";
-    "product-2-id": "Living Room";
-    "product-3-id": "Bedroom";
+    'product-1-id': 'Office';
+    'product-2-id': 'Living Room';
+    'product-3-id': 'Bedroom';
   };
   analyzedAt: Date;
 }
@@ -569,6 +611,7 @@ interface ProductAnalysisResult {
 
 **Error Handling**:
 If AI analysis fails:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ ⚠️  AI Analysis Unavailable                            │
@@ -585,6 +628,7 @@ If AI analysis fails:
 **URL**: `/sessions/[sessionId]/inspire`
 
 **Page Layout**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Step 3 of 4: Choose Inspiration Images                │
@@ -618,6 +662,7 @@ If AI analysis fails:
 #### Tab 1: Upload
 
 **Features**:
+
 - Drag & drop zone (supports multi-file)
 - Click to browse
 - Image preview with remove button
@@ -627,6 +672,7 @@ If AI analysis fails:
 - Auto-compress if >5MB
 
 **Upload Flow**:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -650,6 +696,7 @@ sequenceDiagram
 ```
 
 **Error States**:
+
 - File too large: "Image must be under 10MB. Try compressing it first."
 - Wrong format: "Only JPG, PNG, and WebP images are supported."
 - Too many files: "You can select up to 5 inspiration images."
@@ -658,6 +705,7 @@ sequenceDiagram
 #### Tab 2: Unsplash
 
 **Features**:
+
 - Pre-populated search from Step 2 analysis
 - Search by keyword
 - Infinite scroll
@@ -666,16 +714,14 @@ sequenceDiagram
 - Attribution shown (Unsplash requires it)
 
 **Search Suggestions** (from analysis):
+
 ```typescript
 // From Step 2: recommendedInspirationKeywords
-const suggestions = [
-  "modern home office",
-  "contemporary living room",
-  "minimalist bedroom"
-];
+const suggestions = ['modern home office', 'contemporary living room', 'minimalist bedroom'];
 ```
 
 **UI**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Search Unsplash                                        │
@@ -696,6 +742,7 @@ const suggestions = [
 ```
 
 **API Integration**:
+
 ```typescript
 // GET /api/unsplash/search?q={query}
 interface UnsplashSearchResponse {
@@ -720,6 +767,7 @@ interface UnsplashSearchResponse {
 #### Tab 3: My Library
 
 **Features**:
+
 - Show previously generated images marked as "pinned"
 - Filter by room type (from Step 2 analysis)
 - Grid view with checkboxes
@@ -727,6 +775,7 @@ interface UnsplashSearchResponse {
 - Only show images from current client
 
 **UI**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Your Pinned Images                                     │
@@ -748,6 +797,7 @@ interface UnsplashSearchResponse {
 ```
 
 **Query**:
+
 ```sql
 SELECT * FROM generated_images
 WHERE flow_id IN (
@@ -764,6 +814,7 @@ ORDER BY created_at DESC;
 ```
 
 **Smart Filtering**:
+
 ```typescript
 // If Step 2 detected "Office, Living Room, Bedroom"
 // Show filter chips: [All] [Office] [Living Room] [Bedroom]
@@ -775,6 +826,7 @@ const relevantRoomTypes = Object.keys(analysis.roomTypeDistribution);
 **URL**: `/sessions/[sessionId]/generate`
 
 **Page Layout** (Review & Confirm):
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Step 4 of 4: Ready to Generate                        │
@@ -798,6 +850,7 @@ const relevantRoomTypes = Object.keys(analysis.roomTypeDistribution);
 ```
 
 **Advanced Settings** (collapsed by default):
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Advanced Settings                                      │
@@ -812,6 +865,7 @@ const relevantRoomTypes = Object.keys(analysis.roomTypeDistribution);
 ```
 
 **Generation Flow**:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -845,6 +899,7 @@ sequenceDiagram
 ```
 
 **What Happens on "Generate"**:
+
 1. **Create Flow**: New Flow record linked to StudioSession
 2. **Merge Scene Analyses**: Combine all inspiration image analyses
 3. **Build Base Settings**: Create `FlowGenerationSettings` template
@@ -855,13 +910,14 @@ sequenceDiagram
 8. **Navigate**: Redirect to results page
 
 **Flow Creation**:
+
 ```typescript
 // POST /api/studio-sessions/[sessionId]/flows
 const flow = await createFlow({
   studioSessionId: session.id,
-  productIds: session.productIds,  // All products from session
+  productIds: session.productIds, // All products from session
   status: 'configured',
-  settings: mergeInspirationAnalyses(inspirationImages)
+  settings: mergeInspirationAnalyses(inspirationImages),
 });
 
 // Update session status
@@ -869,6 +925,7 @@ await updateStudioSession(session.id, { status: 'active' });
 ```
 
 **Base Settings Construction**:
+
 ```typescript
 // Merge 2 inspiration images into unified settings
 const baseSettings: FlowGenerationSettings = {
@@ -893,6 +950,7 @@ const baseSettings: FlowGenerationSettings = {
 ```
 
 **Per-Product Final Settings**:
+
 ```typescript
 // For "Modern Desk" (productId: desk-1)
 const deskImageSettings: FlowGenerationSettings = {
@@ -907,11 +965,12 @@ const generatedImage = await createGeneratedImage({
   productIds: ['desk-1'],
   settings: deskImageSettings,
   status: 'pending',
-  r2Key: `clients/${clientId}/sessions/${sessionId}/media/${imageId}.jpg`
+  r2Key: `clients/${clientId}/sessions/${sessionId}/media/${imageId}.jpg`,
 });
 ```
 
 **R2 Storage Path**:
+
 ```text
 r2://epox-visualizer/
   clients/
@@ -929,6 +988,7 @@ r2://epox-visualizer/
 ## Flow 3: Asset Management Flow
 
 ### Overview
+
 Viewing, filtering, downloading, pinning, and deleting generated images.
 
 ### Results Gallery Page
@@ -936,6 +996,7 @@ Viewing, filtering, downloading, pinning, and deleting generated images.
 **URL**: `/sessions/[sessionId]/flows/[flowId]/results`
 
 **Page Layout**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ ← Back to Sessions                                     │
@@ -969,15 +1030,14 @@ Viewing, filtering, downloading, pinning, and deleting generated images.
 ### Real-Time Progress Updates
 
 **Polling Strategy**:
+
 ```typescript
 // Poll every 5 seconds while status is 'generating'
 const { data: images } = useQuery({
   queryKey: ['generated-images', flowId],
   queryFn: () => fetchFlowImages(flowId),
   refetchInterval: (data) => {
-    const hasGenerating = data?.some(
-      image => ['pending', 'generating'].includes(image.status)
-    );
+    const hasGenerating = data?.some((image) => ['pending', 'generating'].includes(image.status));
     return hasGenerating ? 5000 : false; // 5s or stop polling
   },
 });
@@ -999,6 +1059,7 @@ stateDiagram-v2
 **UI States**:
 
 1. **Pending**:
+
 ```text
 ┌──────────────┐
 │ ⏳ Pending   │
@@ -1008,6 +1069,7 @@ stateDiagram-v2
 ```
 
 2. **Generating**:
+
 ```text
 ┌──────────────┐
 │ ⚙️ Generating │
@@ -1017,6 +1079,7 @@ stateDiagram-v2
 ```
 
 3. **Completed**:
+
 ```text
 ┌──────────────┐
 │ ✓            │
@@ -1027,6 +1090,7 @@ stateDiagram-v2
 ```
 
 4. **Error**:
+
 ```text
 ┌──────────────┐
 │ ⚠️ Failed     │
@@ -1039,6 +1103,7 @@ stateDiagram-v2
 ### Flow Status Updates
 
 **Flow Status Progression**:
+
 ```typescript
 type FlowStatus = 'empty' | 'configured' | 'generating' | 'completed' | 'error';
 
@@ -1050,16 +1115,15 @@ type FlowStatus = 'empty' | 'configured' | 'generating' | 'completed' | 'error';
 ```
 
 **Auto-Update Flow Status**:
+
 ```typescript
 // After each GeneratedImage status change
 async function updateFlowStatus(flowId: string) {
   const images = await getFlowImages(flowId);
 
-  const allCompleted = images.every(img => img.status === 'completed');
-  const anyError = images.some(img => img.status === 'error');
-  const anyGenerating = images.some(img =>
-    ['pending', 'generating'].includes(img.status)
-  );
+  const allCompleted = images.every((img) => img.status === 'completed');
+  const anyError = images.some((img) => img.status === 'error');
+  const anyGenerating = images.some((img) => ['pending', 'generating'].includes(img.status));
 
   let flowStatus: FlowStatus;
   if (allCompleted && !anyError) {
@@ -1081,6 +1145,7 @@ async function updateFlowStatus(flowId: string) {
 #### 1. Download Single Image
 
 **Flow**:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -1097,6 +1162,7 @@ sequenceDiagram
 ```
 
 **Filename Format**:
+
 ```text
 {product-name}_{room-type}_{timestamp}.jpg
 Examples:
@@ -1107,6 +1173,7 @@ Examples:
 #### 2. Download All (Bulk)
 
 **Flow**:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -1139,6 +1206,7 @@ sequenceDiagram
 ```
 
 **Download Modal**:
+
 ```text
 ┌────────────────────────────────────────┐
 │ Preparing Your Download                │
@@ -1154,6 +1222,7 @@ sequenceDiagram
 ```
 
 **Success State**:
+
 ```text
 ┌────────────────────────────────────────┐
 │ Download Ready! ✓                      │
@@ -1169,6 +1238,7 @@ sequenceDiagram
 #### 3. Pin for Reuse
 
 **Action**:
+
 ```typescript
 // Toggle pin status
 async function togglePin(imageId: string) {
@@ -1178,19 +1248,14 @@ async function togglePin(imageId: string) {
   });
 
   // Optimistic update
-  queryClient.setQueryData(['images'], (old) =>
-    old.map(image =>
-      image.id === imageId
-        ? { ...image, pinned: true }
-        : image
-    )
-  );
+  queryClient.setQueryData(['images'], (old) => old.map((image) => (image.id === imageId ? { ...image, pinned: true } : image)));
 
   toast.success('Pinned! You can now use this as inspiration.');
 }
 ```
 
 **UI Feedback**:
+
 ```text
 Before:
 [📌 Pin]
@@ -1205,6 +1270,7 @@ Hover (to unpin):
 #### 4. Regenerate with Different Settings
 
 **Flow**:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -1225,6 +1291,7 @@ sequenceDiagram
 ```
 
 **Regenerate Modal**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Regenerate "Modern Desk"                      ✕        │
@@ -1251,6 +1318,7 @@ sequenceDiagram
 ```
 
 **What Happens**:
+
 1. Create new `GeneratedImage` record
 2. Copy settings from original, apply user changes
 3. Enqueue new generation job
@@ -1260,6 +1328,7 @@ sequenceDiagram
 #### 5. Delete Image
 
 **Confirmation Modal**:
+
 ```text
 ┌────────────────────────────────────────┐
 │ Delete "Modern Desk"?                  │
@@ -1272,6 +1341,7 @@ sequenceDiagram
 ```
 
 **Action**:
+
 ```typescript
 async function deleteImage(imageId: string) {
   await fetch(`/api/generated-images/${imageId}`, {
@@ -1282,20 +1352,18 @@ async function deleteImage(imageId: string) {
   // Image removed from gallery immediately
   // R2 object marked for deletion after 30 days
 
-  toast.success(
-    'Deleted. Undo?',
-    {
-      action: {
-        label: 'Undo',
-        onClick: () => undoDelete(imageId),
-      },
-      duration: 10000, // 10 seconds to undo
-    }
-  );
+  toast.success('Deleted. Undo?', {
+    action: {
+      label: 'Undo',
+      onClick: () => undoDelete(imageId),
+    },
+    duration: 10000, // 10 seconds to undo
+  });
 }
 ```
 
 **Undo Flow**:
+
 ```typescript
 async function undoDelete(imageId: string) {
   await fetch(`/api/generated-images/${imageId}/restore`, {
@@ -1308,6 +1376,7 @@ async function undoDelete(imageId: string) {
 ```
 
 **Trash View** (future enhancement):
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Trash                                                  │
@@ -1332,18 +1401,21 @@ async function undoDelete(imageId: string) {
 ### Filtering & Sorting
 
 **Filters**:
+
 - Room Type (Office, Living Room, Bedroom, etc.)
 - Status (All, Completed, Generating, Failed)
 - Pinned (Show only pinned)
 - Date Range (Last 7 days, Last 30 days, Custom)
 
 **Sort Options**:
+
 - Recent (newest first)
 - Oldest
 - Product Name (A-Z)
 - Room Type
 
 **Filter State**:
+
 ```typescript
 interface GalleryFilters {
   roomTypes: string[];
@@ -1363,6 +1435,7 @@ interface GalleryFilters {
 ## Flow 4: Error Handling Flows
 
 ### Overview
+
 Graceful error handling at every step of the journey.
 
 ### Error Categories
@@ -1389,11 +1462,13 @@ graph TB
 ### 1. Network Errors
 
 **Scenarios**:
+
 - API request fails (timeout, 500 error, network offline)
 - File upload interrupted
 - WebSocket/polling disconnected
 
 **Handling**:
+
 ```typescript
 // Automatic retry with exponential backoff
 const { data, error, refetch } = useQuery({
@@ -1416,6 +1491,7 @@ if (error) {
 ```
 
 **UI Example**:
+
 ```text
 ┌────────────────────────────────────────┐
 │ ⚠️ Connection Error                    │
@@ -1430,11 +1506,13 @@ if (error) {
 ### 2. Authentication Errors
 
 **Scenarios**:
+
 - Session expired
 - Invalid token
 - User logged out in another tab
 
 **Handling**:
+
 ```typescript
 // Middleware catches 401 responses
 if (response.status === 401) {
@@ -1449,6 +1527,7 @@ if (response.status === 401) {
 ```
 
 **Modal Approach** (less disruptive):
+
 ```text
 ┌────────────────────────────────────────┐
 │ Session Expired                        │
@@ -1463,11 +1542,13 @@ if (response.status === 401) {
 ### 3. Validation Errors
 
 **Scenarios**:
+
 - Step 1: No products selected
 - Step 3: No inspiration images selected
 - Step 4: Invalid settings
 
 **Handling**:
+
 ```typescript
 // Inline validation
 interface FormErrors {
@@ -1489,6 +1570,7 @@ if (selectedProductIds.length > 100) {
 ```
 
 **UI Feedback**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Step 1: Select Products                               │
@@ -1504,12 +1586,14 @@ if (selectedProductIds.length > 100) {
 ### 4. AI Generation Errors
 
 **Scenarios**:
+
 - Gemini API error
 - Content policy violation
 - Timeout (>2 minutes)
 - Invalid product image
 
 **Per-Image Error Handling**:
+
 ```typescript
 interface GeneratedImage {
   status: 'error';
@@ -1519,6 +1603,7 @@ interface GeneratedImage {
 ```
 
 **Error Card UI**:
+
 ```text
 ┌──────────────┐
 │ ⚠️ Failed     │
@@ -1534,6 +1619,7 @@ interface GeneratedImage {
 ```
 
 **Error Details Modal**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Generation Error Details                      ✕        │
@@ -1559,6 +1645,7 @@ interface GeneratedImage {
 ```
 
 **Auto-Retry Logic**:
+
 ```typescript
 // For transient errors (timeout, rate limit), auto-retry
 if (error.code === 'TIMEOUT' || error.code === 'RATE_LIMIT') {
@@ -1572,6 +1659,7 @@ if (error.code === 'TIMEOUT' || error.code === 'RATE_LIMIT') {
 ```
 
 **Batch Error Summary**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Flow #1: "Modern Furniture Set"                       │
@@ -1588,11 +1676,13 @@ if (error.code === 'TIMEOUT' || error.code === 'RATE_LIMIT') {
 ### 5. Quota/Limit Errors
 
 **Scenarios**:
+
 - Monthly generation limit reached
 - Storage limit exceeded
 - Rate limit hit (too many requests)
 
 **Quota Error UI**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Monthly Limit Reached                                  │
@@ -1613,6 +1703,7 @@ if (error.code === 'TIMEOUT' || error.code === 'RATE_LIMIT') {
 ```
 
 **Rate Limit (Temporary)**:
+
 ```text
 ┌────────────────────────────────────────┐
 │ ⚠️ Slow Down                            │
@@ -1625,6 +1716,7 @@ if (error.code === 'TIMEOUT' || error.code === 'RATE_LIMIT') {
 ```
 
 **Proactive Quota Warning** (before hitting limit):
+
 ```text
 ┌────────────────────────────────────────┐
 │ ℹ️  Approaching Monthly Limit           │
@@ -1638,12 +1730,14 @@ if (error.code === 'TIMEOUT' || error.code === 'RATE_LIMIT') {
 ### 6. System Errors
 
 **Scenarios**:
+
 - Database connection lost
 - R2 upload failed
 - Redis queue unavailable
 - Unknown server error (500)
 
 **Generic Error Page**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │                    ⚠️ Something Went Wrong              │
@@ -1662,6 +1756,7 @@ if (error.code === 'TIMEOUT' || error.code === 'RATE_LIMIT') {
 ```
 
 **Error Reporting** (to logging service):
+
 ```typescript
 // Automatically log to Sentry/LogRocket
 function handleError(error: Error, context: ErrorContext) {
@@ -1684,6 +1779,7 @@ function handleError(error: Error, context: ErrorContext) {
 ## Flow 5: Settings Flow
 
 ### Overview
+
 User account and client settings management.
 
 ### Settings Navigation
@@ -1691,6 +1787,7 @@ User account and client settings management.
 **URL**: `/settings`
 
 **Tab Structure**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Settings                                               │
@@ -1708,6 +1805,7 @@ User account and client settings management.
 **URL**: `/settings/profile`
 
 **Fields**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Profile Settings                                       │
@@ -1737,6 +1835,7 @@ User account and client settings management.
 ```
 
 **Actions**:
+
 - Update name → PATCH `/api/user/profile`
 - Change email → Requires verification
 - Upload photo → POST `/api/user/photo` → R2
@@ -1746,6 +1845,7 @@ User account and client settings management.
 **URL**: `/settings/notifications`
 
 **Preferences**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Notification Settings                                  │
@@ -1768,6 +1868,7 @@ User account and client settings management.
 ```
 
 **Settings Object**:
+
 ```typescript
 interface NotificationSettings {
   email: {
@@ -1791,6 +1892,7 @@ interface NotificationSettings {
 **Purpose**: Pre-fill wizard settings for faster session creation
 
 **Settings**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Default Generation Settings                            │
@@ -1818,6 +1920,7 @@ interface NotificationSettings {
 ```
 
 **Data Structure**:
+
 ```typescript
 interface DefaultGenerationSettings {
   aspectRatio: '1:1' | '16:9' | '9:16';
@@ -1832,6 +1935,7 @@ interface DefaultGenerationSettings {
 **URL**: `/settings/account`
 
 **Sections**:
+
 ```text
 ┌────────────────────────────────────────────────────────┐
 │ Account Settings                                       │
@@ -1859,6 +1963,7 @@ interface DefaultGenerationSettings {
 ```
 
 **Change Password Flow**:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -1880,6 +1985,7 @@ sequenceDiagram
 ```
 
 **Delete Account Flow**:
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -1905,6 +2011,7 @@ sequenceDiagram
 ## Implementation Plan
 
 ### Phase 1: Onboarding (Week 1)
+
 1. Create invitation email template
 2. Build signup page with token validation
 3. Implement dashboard empty state
@@ -1912,6 +2019,7 @@ sequenceDiagram
 5. Test invitation → signup → dashboard flow
 
 ### Phase 2: Session Wizard - Step 1 (Week 2)
+
 1. Build product table component
 2. Implement search, filter, sort
 3. Add multi-select with checkboxes
@@ -1919,6 +2027,7 @@ sequenceDiagram
 5. Add "Next" navigation
 
 ### Phase 3: Session Wizard - Step 2 (Week 2)
+
 1. Implement product analysis API
 2. Build loading state UI
 3. Create results display component
@@ -1926,6 +2035,7 @@ sequenceDiagram
 5. Test analysis flow
 
 ### Phase 4: Session Wizard - Step 3 (Week 3)
+
 1. Build inspiration picker tabs
 2. Implement upload functionality (R2)
 3. Integrate Unsplash API
@@ -1933,6 +2043,7 @@ sequenceDiagram
 5. Add scene analysis
 
 ### Phase 5: Session Wizard - Step 4 (Week 3)
+
 1. Build review/confirm page
 2. Implement advanced settings (collapsible)
 3. Create Flow creation logic
@@ -1941,6 +2052,7 @@ sequenceDiagram
 6. Test end-to-end wizard
 
 ### Phase 6: Results Gallery (Week 4)
+
 1. Build gallery grid layout
 2. Implement real-time polling
 3. Add filter and sort controls
@@ -1949,6 +2061,7 @@ sequenceDiagram
 6. Implement Flow status auto-update
 
 ### Phase 7: Asset Actions (Week 4)
+
 1. Implement single download (R2 signed URLs)
 2. Build bulk download (ZIP from R2)
 3. Add pin/unpin functionality
@@ -1956,6 +2069,7 @@ sequenceDiagram
 5. Implement soft-delete + undo
 
 ### Phase 8: Error Handling (Week 5)
+
 1. Add network error handling
 2. Implement auth error redirects
 3. Build validation feedback
@@ -1964,6 +2078,7 @@ sequenceDiagram
 6. Implement Flow error status handling
 
 ### Phase 9: Settings (Week 5)
+
 1. Build settings layout with tabs
 2. Implement profile settings
 3. Add notification preferences
@@ -1971,6 +2086,7 @@ sequenceDiagram
 5. Build account management
 
 ### Phase 10: Polish & Testing (Week 6)
+
 1. Add loading skeletons
 2. Implement optimistic updates
 3. Add success animations
@@ -2019,22 +2135,14 @@ function ProgressIndicator({ steps }: { steps: WizardStep[] }) {
 // Update UI immediately, rollback on error
 async function pinImage(imageId: string) {
   // Optimistic update
-  queryClient.setQueryData(['images'], (old) =>
-    old.map(image =>
-      image.id === imageId ? { ...image, pinned: true } : image
-    )
-  );
+  queryClient.setQueryData(['images'], (old) => old.map((image) => (image.id === imageId ? { ...image, pinned: true } : image)));
 
   try {
     await api.updateImage(imageId, { pinned: true });
     toast.success('Pinned!');
   } catch (error) {
     // Rollback
-    queryClient.setQueryData(['images'], (old) =>
-      old.map(image =>
-        image.id === imageId ? { ...image, pinned: false } : image
-      )
-    );
+    queryClient.setQueryData(['images'], (old) => old.map((image) => (image.id === imageId ? { ...image, pinned: false } : image)));
     toast.error('Failed to pin. Try again.');
   }
 }
@@ -2113,8 +2221,10 @@ function ProductList() {
 ## Trade-offs
 
 ### Multi-Page Wizard vs. Single-Page Tabs
+
 **Chosen**: Multi-page wizard (separate URLs)
 **Rationale**:
+
 - ✅ Back/forward navigation works
 - ✅ Can bookmark specific step
 - ✅ Clearer mental model (linear progress)
@@ -2123,8 +2233,10 @@ function ProductList() {
 - ❌ Page transitions (mitigated with loading states)
 
 ### Real-Time Polling vs. WebSockets
+
 **Chosen**: Polling (5-second interval)
 **Rationale**:
+
 - ✅ Simpler implementation
 - ✅ Works with serverless (Vercel)
 - ✅ No connection management
@@ -2133,8 +2245,10 @@ function ProductList() {
 - ❌ Slight delay in updates (5s max)
 
 ### Auto-Save Drafts vs. Manual Save
+
 **Chosen**: Auto-save every 30 seconds
 **Rationale**:
+
 - ✅ Never lose progress
 - ✅ Can resume if browser crashes
 - ✅ Less cognitive load (no save button)
@@ -2142,8 +2256,10 @@ function ProductList() {
 - ❌ Need conflict resolution if editing from multiple tabs
 
 ### Soft-Delete vs. Hard-Delete
+
 **Chosen**: Soft-delete with 30-day recovery
 **Rationale**:
+
 - ✅ Prevents accidental data loss
 - ✅ Can undo within 10 seconds (toast)
 - ✅ 30-day recovery window
@@ -2151,16 +2267,20 @@ function ProductList() {
 - ❌ Database grows (mitigated by cron cleanup)
 
 ### Inline Errors vs. Error Page
+
 **Chosen**: Hybrid (inline for validation, page for system errors)
 **Rationale**:
+
 - ✅ Inline: Immediate feedback, doesn't break flow
 - ✅ Page: Clear for catastrophic errors
 - ✅ Context-appropriate
 - ❌ Need to design both patterns
 
 ### StudioSession → Flow Relationship
+
 **Chosen**: One-to-many (session can have multiple flows)
 **Rationale**:
+
 - ✅ Allows iterating on settings without recreating session
 - ✅ Clean separation: session = products + inspirations, flow = generation run
 - ✅ Can track generation history per session
@@ -2200,6 +2320,7 @@ function ProductList() {
 ## Flow 5: Store Management Flow (NEW - 2026-01-18)
 
 ### Overview
+
 Manage store connection, view sync status, and control which images appear in the connected store.
 
 ### Store Management Page
@@ -2257,6 +2378,7 @@ Manage store connection, view sync status, and control which images appear in th
 ```
 
 ### Sync Tracking Logic
+
 - **Platform-synced images**: Track in `synced_asset` table with `store_image_id`
 - **Pre-existing images**: Not tracked - cannot be removed by platform
 - **Remove from Store**: Only enabled for images where `synced_asset` exists
@@ -2267,11 +2389,13 @@ Manage store connection, view sync status, and control which images appear in th
 ## Flow 6: CSV Import Flow (NEW - 2026-01-18)
 
 ### Overview
+
 Import products in bulk via CSV file upload.
 
 ### CSV Import Wizard
 
 **Step 1: Upload CSV**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ IMPORT PRODUCTS FROM CSV                                                     │
@@ -2292,6 +2416,7 @@ Import products in bulk via CSV file upload.
 ```
 
 **Step 2: Column Mapping**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ MAP COLUMNS                                                                  │
@@ -2321,6 +2446,7 @@ Import products in bulk via CSV file upload.
 ```
 
 **Step 3: Validation & Import**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ VALIDATION RESULTS                                                           │
@@ -2350,11 +2476,13 @@ Import products in bulk via CSV file upload.
 ## Flow 7: Onboarding with Sample Data (NEW - 2026-01-18)
 
 ### Overview
+
 First-time users see sample data and an interactive tour to learn the platform.
 
 ### Onboarding Journey
 
 **Step 1: Welcome Screen (after signup)**
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                                                                              │
@@ -2375,6 +2503,7 @@ First-time users see sample data and an interactive tour to learn the platform.
 **Step 2: Interactive Tour (using driver.js or react-joyride)**
 
 Tour stops:
+
 1. **Dashboard** - "Here's your home base. See stats, recent work, and quick actions."
 2. **Products Library** - "Your product catalog lives here. Import from store or upload manually."
 3. **Create Collection** - "Start a new generation project by selecting products."
@@ -2383,12 +2512,14 @@ Tour stops:
 6. **Settings** - "Manage your account, credits, and preferences."
 
 **Sample Data Included:**
+
 - 5 sample products with professional images
 - 1 sample collection with all 5 products
 - Pre-generated images in 3 different styles
 - Shows complete workflow example
 
 **Behavior:**
+
 - Sample data flagged with `is_sample = true`
 - "Hide Samples" toggle in library views
 - Can delete sample data at any time
@@ -2399,6 +2530,7 @@ Tour stops:
 ## Flow 8: Presets & Auto-Remember Flow (NEW - 2026-01-18)
 
 ### Overview
+
 Save generation settings as presets and auto-load remembered settings.
 
 ### Save Preset Flow
@@ -2430,6 +2562,7 @@ Save generation settings as presets and auto-load remembered settings.
 ### Auto-Remember Behavior
 
 When opening studio:
+
 1. Check `settings_memory` for matching context
 2. Priority: Product > Collection > Category > Scene Type
 3. If found, auto-load settings and show toast:

@@ -40,11 +40,7 @@ export function ChatHeader({
               <span className={scssStyles.multiSelectInfo}>
                 {selectedImagesCount} image{selectedImagesCount !== 1 ? 's' : ''} selected
               </span>
-              <button
-                onClick={onSelectAll}
-                className={scssStyles.selectAllButton}
-                data-testid={buildTestId('chat-header', 'select-all')}
-              >
+              <button onClick={onSelectAll} className={scssStyles.selectAllButton} data-testid={buildTestId('chat-header', 'select-all')}>
                 Select All
               </button>
             </div>

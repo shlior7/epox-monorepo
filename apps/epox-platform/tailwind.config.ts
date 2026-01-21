@@ -79,7 +79,7 @@ const config: Config = {
           300: '#a3a3a3', // Secondary text
           200: '#d4d4d4', // Primary text
           100: '#e5e5e5', // Bright text
-          50: '#f5f5f5',  // White-ish
+          50: '#f5f5f5', // White-ish
         },
         // Legacy charcoal alias
         charcoal: {

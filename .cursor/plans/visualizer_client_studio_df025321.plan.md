@@ -66,31 +66,29 @@ flowchart TD
         A[Filter Products] --> B[Select by Category/Room Type]
         B --> C[Preview Collection<br/>20-500 products]
     end
-    
+
     subgraph step2 [Step 2: Set the Scene]
         D[Upload Reference Images<br/>0-5 images] --> E[AI Scene Analysis]
         E --> F[Extract: Colors, Style,<br/>Environment, Materials]
         F --> G[Merged Scene Summary]
     end
-    
+
     subgraph step3 [Step 3: Configure]
         G --> H[Auto-Generated Settings]
         H --> I[User Review/Tweak<br/>Optional overrides]
     end
-    
+
     subgraph step4 [Step 4: Generate]
         I --> J[Smart Room Assignment<br/>Metadata + AI]
         J --> K[Generation Queue<br/>20-500+ products]
         K --> L[Progress Dashboard]
         L --> M[Review & Refine]
     end
-    
+
     step1 --> step2
     step2 --> step3
     step3 --> step4
 ```
-
-
 
 ## Scene Analysis Pipeline
 
@@ -101,21 +99,19 @@ sequenceDiagram
     participant U as User
     participant App as Client App
     participant AI as Gemini AI
-    
+
     U->>App: Upload 1-5 reference images
-    
+
     loop Each Image
         App->>AI: Analyze single image
         AI-->>App: Scene attributes:<br/>- Indoor/Outdoor<br/>- Room type hints<br/>- Color palette<br/>- Materials (floor, walls)<br/>- Lighting mood<br/>- Style (modern, rustic, etc.)
     end
-    
+
     App->>AI: Merge all analyses
     AI-->>App: Unified scene config:<br/>- Primary environment<br/>- Color scheme<br/>- Material preferences<br/>- Style keywords
-    
+
     App->>U: Show scene summary card<br/>with editable attributes
 ```
-
-
 
 ## Smart Product-to-Room Matching
 
@@ -166,8 +162,6 @@ apps/visualizer-client/
     └── types/collection.ts
 ```
 
-
-
 ## Data Model
 
 ```typescript
@@ -176,32 +170,32 @@ interface Collection {
   clientId: string;
   name: string;
   status: 'draft' | 'analyzing' | 'ready' | 'generating' | 'completed';
-  
+
   // Step 1: Products
   productFilter: {
     categories?: string[];
     roomTypes?: string[];
-    productIds?: string[];  // Or explicit selection
+    productIds?: string[]; // Or explicit selection
   };
   productCount: number;
-  
+
   // Step 2: Reference Images
   referenceImages: Array<{
     id: string;
     url: string;
     analysis?: SceneAnalysis;
   }>;
-  
+
   // Step 3: Merged Scene Config
   sceneConfig: {
     environment: 'indoor' | 'outdoor' | 'mixed';
     colorPalette: string[];
     style: string[];
-    materials: { floor?: string; walls?: string; };
+    materials: { floor?: string; walls?: string };
     lighting: string;
     customPromptPrefix?: string;
   };
-  
+
   // Step 4: Generation
   generationQueue: Array<{
     productId: string;
@@ -209,13 +203,11 @@ interface Collection {
     status: 'pending' | 'generating' | 'completed' | 'error';
     resultImageId?: string;
   }>;
-  
+
   createdAt: string;
   updatedAt: string;
 }
 ```
-
-
 
 ## Key UX Principles
 

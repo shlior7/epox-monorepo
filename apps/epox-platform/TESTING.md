@@ -3,6 +3,7 @@
 ## Overview
 
 Comprehensive test suite for epox-platform covering:
+
 - **CRUD operations** for Products and Collections
 - **Collection flows and studio sessions** (create/list/update)
 - **Image generation flow** with queue service integration
@@ -16,6 +17,7 @@ Comprehensive test suite for epox-platform covering:
 ## Setup
 
 Install dependencies:
+
 ```bash
 yarn install
 ```
@@ -64,6 +66,7 @@ tests/
 ### Products API Tests (`tests/api/products.test.ts`)
 
 **GET /api/products**
+
 - ✅ Returns empty list when no products exist
 - ✅ Validates pagination parameters (page, limit)
 - ✅ Filters by category
@@ -72,6 +75,7 @@ tests/
 - ✅ SQL-level filtering and sorting
 
 **POST /api/products**
+
 - ✅ Creates product with valid data
 - ✅ Rejects empty name
 - ✅ Rejects name longer than 255 characters
@@ -80,23 +84,27 @@ tests/
 - ✅ Validates all input fields
 
 **GET /api/products/[id]**
+
 - ✅ Returns product with ALL images and proper URLs
 - ✅ Returns 404 for non-existent product
 - ✅ Includes analysis data if product is analyzed
 
 **PATCH /api/products/[id]**
+
 - ✅ Updates product name
 - ✅ Validates name (non-empty, max 255 chars)
 - ✅ Returns 404 for non-existent product
 - ✅ Only updates provided fields
 
 **DELETE /api/products/[id]**
+
 - ✅ Deletes existing product
 - ✅ Returns 404 for non-existent product
 
 ### Collections API Tests (`tests/api/collections.test.ts`)
 
 **GET /api/collections**
+
 - ✅ Returns empty list when no collections exist
 - ✅ Validates pagination parameters
 - ✅ Filters by status (draft/generating/completed)
@@ -104,6 +112,7 @@ tests/
 - ✅ Sorts by name, productCount, or recent
 
 **POST /api/collections**
+
 - ✅ Creates collection with valid data
 - ✅ Rejects empty name
 - ✅ Rejects name longer than 255 characters
@@ -112,11 +121,13 @@ tests/
 - ✅ Rejects non-string productIds elements
 
 **GET /api/collections/[id]**
+
 - ✅ Returns collection with stats (generatedCount, totalImages)
 - ✅ Uses SQL COUNT for asset aggregation
 - ✅ Returns 404 for non-existent collection
 
 **PATCH /api/collections/[id]**
+
 - ✅ Updates collection name
 - ✅ Updates collection status
 - ✅ Validates status (draft/generating/completed only)
@@ -124,12 +135,14 @@ tests/
 - ✅ Only updates provided fields
 
 **DELETE /api/collections/[id]**
+
 - ✅ Deletes existing collection
 - ✅ Returns 404 for non-existent collection
 
 ### Image Generation Flow Tests (`tests/api/generate-images.test.ts`)
 
 **POST /api/generate-images**
+
 - ✅ Creates generation jobs for multiple products
 - ✅ Validates required fields (sessionId, productIds)
 - ✅ Validates productIds is non-empty array
@@ -144,6 +157,7 @@ tests/
 ### Video Generation Flow Tests (`tests/api/generate-video.test.ts`)
 
 **POST /api/generate-video**
+
 - ✅ Validates required fields (sessionId, productId, sourceImageUrl, prompt)
 - ✅ Creates video generation job with settings + inspiration
 - ✅ Supports urgent priority
@@ -175,12 +189,14 @@ tests/
 ### Storage Integration Tests (`tests/integration/storage.test.ts`)
 
 **Storage Public URLs**
+
 - ✅ Generates public URL for stored file
 - ✅ Handles paths with different formats
 - ✅ Returns consistent URLs for same key
 - ✅ Provides storage path helpers
 
 **Path Helpers**
+
 - ✅ Generates product image paths
 - ✅ Generates generated image paths
 - ✅ Generates session flow image paths
@@ -236,6 +252,7 @@ yarn test:coverage
 ```
 
 Coverage reports are generated in:
+
 - `coverage/index.html` - HTML report
 - `coverage/coverage-final.json` - JSON report
 
@@ -313,14 +330,17 @@ describe('Feature Name', () => {
 ## Troubleshooting
 
 **Tests fail with "Module not found"**
+
 - Run `yarn install` to ensure all dependencies are installed
 - Check that paths in `vitest.config.ts` are correct
 
 **Tests timeout**
+
 - Increase timeout in vitest.config.ts: `testTimeout: 10000`
 - Check for missing `await` in async tests
 
 **Coverage is low**
+
 - Add more test cases for uncovered code paths
 - Check `coverage/index.html` for detailed report
 

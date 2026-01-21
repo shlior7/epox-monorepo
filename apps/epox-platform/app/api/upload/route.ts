@@ -37,10 +37,16 @@ export const POST = withUploadSecurity(async (request, context) => {
     }
 
     // Determine file extension
-    const extension = file.type === 'image/jpeg' ? 'jpg' :
-                     file.type === 'image/png' ? 'png' :
-                     file.type === 'image/webp' ? 'webp' :
-                     file.type === 'image/gif' ? 'gif' : 'jpg';
+    const extension =
+      file.type === 'image/jpeg'
+        ? 'jpg'
+        : file.type === 'image/png'
+          ? 'png'
+          : file.type === 'image/webp'
+            ? 'webp'
+            : file.type === 'image/gif'
+              ? 'gif'
+              : 'jpg';
 
     // Generate asset ID
     const assetId = `upload_${Date.now()}`;
@@ -58,12 +64,7 @@ export const POST = withUploadSecurity(async (request, context) => {
       storageKey = storagePaths.collectionAsset(clientId, collectionId, assetId, extension);
     } else {
       // Generic inspiration or temporary upload
-      storageKey = storagePaths.inspirationImage(
-        clientId,
-        'temp',
-        assetId,
-        extension
-      );
+      storageKey = storagePaths.inspirationImage(clientId, 'temp', assetId, extension);
     }
 
     console.log(`📤 Uploading file: ${storageKey}`);
@@ -83,7 +84,9 @@ export const POST = withUploadSecurity(async (request, context) => {
         sortOrder,
       });
 
-      console.log(`✅ Created product image record: ${productImageRecord.id} for product ${productId}`);
+      console.log(
+        `✅ Created product image record: ${productImageRecord.id} for product ${productId}`
+      );
 
       // Run Subject Scanner on first product image (primary image)
       // This pre-computes the product's subject analysis for prompt engineering
@@ -104,7 +107,9 @@ export const POST = withUploadSecurity(async (request, context) => {
             analyzedAt: new Date().toISOString(),
             productType: subjectAnalysis.subjectClassHyphenated.replace(/-/g, ' '),
             materials: subjectAnalysis.materialTags ?? existingAnalysis?.materials ?? [],
-            colors: existingAnalysis?.colors ?? { primary: subjectAnalysis.dominantColors?.[0] ?? 'neutral' },
+            colors: existingAnalysis?.colors ?? {
+              primary: subjectAnalysis.dominantColors?.[0] ?? 'neutral',
+            },
             style: existingAnalysis?.style ?? [],
             sceneTypes: subjectAnalysis.nativeSceneTypes,
             scaleHints: existingAnalysis?.scaleHints ?? { width: 'medium', height: 'medium' },

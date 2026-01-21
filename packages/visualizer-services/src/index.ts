@@ -54,20 +54,9 @@ export type {
 } from './flow-orchestration';
 
 export { QuotaService, createQuotaService, PLAN_LIMITS } from './quota';
-export type {
-  QuotaServiceDependencies,
-  PlanType,
-  PlanLimits,
-  QuotaStatus,
-  QuotaCheckResult,
-} from './quota';
+export type { QuotaServiceDependencies, PlanType, PlanLimits, QuotaStatus, QuotaCheckResult } from './quota';
 
-export {
-  NotificationService,
-  getNotificationService,
-  resetNotificationService,
-  DEFAULT_NOTIFICATION_PREFERENCES,
-} from './notification';
+export { NotificationService, getNotificationService, resetNotificationService, DEFAULT_NOTIFICATION_PREFERENCES } from './notification';
 export type {
   NotificationServiceConfig,
   NotificationType,
@@ -78,8 +67,4 @@ export type {
 } from './notification';
 
 export { UserSettingsService, createUserSettingsService, DEFAULT_GENERATION_SETTINGS } from './user-settings';
-export type {
-  UserSettingsServiceDependencies,
-  DefaultGenerationSettings,
-  UserSettingsData,
-} from './user-settings';
+export type { UserSettingsServiceDependencies, DefaultGenerationSettings, UserSettingsData } from './user-settings';

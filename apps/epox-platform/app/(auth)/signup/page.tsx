@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { authClient } from '@/lib/services/auth';
+import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { authClient } from '@/lib/services/auth';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -63,7 +63,8 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      // 1. Create user account with Better Auth
+      // Create user account with Better Auth
+      // Organization is auto-created via database hook
       const { data, error } = await authClient.signUp.email({
         name: formData.name,
         email: formData.email,
@@ -82,22 +83,9 @@ export default function SignupPage() {
         return;
       }
 
-      // 2. Create client (organization) for this user
-      const clientResponse = await fetch('/api/onboarding/create-client', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientName: `${formData.name}'s Workspace`,
-        }),
-      });
-
-      if (!clientResponse.ok) {
-        toast.error('Failed to create workspace');
-        setIsLoading(false);
-        return;
-      }
-
       toast.success('Account created successfully!');
+
+      // Redirect to dashboard
       router.push('/dashboard');
     } catch (error) {
       console.error('Signup error:', error);

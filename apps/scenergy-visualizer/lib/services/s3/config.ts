@@ -24,12 +24,10 @@ export function resolveS3Bucket(): string {
   const primary = pickEnv('S3_BUCKET_NAME', 'NEXT_PUBLIC_S3_BUCKET_NAME', 'NEXT_PUBLIC_R2_BUCKET');
   const test = pickEnv('TESTING_S3_BUCKET_NAME', 'NEXT_PUBLIC_TESTING_S3_BUCKET_NAME');
 
-  const bucket = useTestBucket ? test ?? primary : primary ?? test;
+  const bucket = useTestBucket ? (test ?? primary) : (primary ?? test);
 
   if (!bucket) {
-    throw new Error(
-      'S3 bucket not configured. Set S3_BUCKET or NEXT_PUBLIC_S3_BUCKET_NAME / NEXT_PUBLIC_TESTING_S3_BUCKET_NAME.'
-    );
+    throw new Error('S3 bucket not configured. Set S3_BUCKET or NEXT_PUBLIC_S3_BUCKET_NAME / NEXT_PUBLIC_TESTING_S3_BUCKET_NAME.');
   }
 
   return bucket;

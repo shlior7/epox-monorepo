@@ -60,5 +60,3 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   },
   frequency: 'realtime',
 };
-
-

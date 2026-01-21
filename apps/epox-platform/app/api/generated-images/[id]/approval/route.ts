@@ -41,12 +41,14 @@ export const POST = withSecurity(async (request, context, { params }) => {
     }
 
     // Verify ownership
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: asset.clientId,
-      resourceType: 'generated-image',
-      resourceId: id,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: asset.clientId,
+        resourceType: 'generated-image',
+        resourceId: id,
+      })
+    ) {
       return forbiddenResponse();
     }
 

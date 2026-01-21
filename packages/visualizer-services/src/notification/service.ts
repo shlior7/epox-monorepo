@@ -3,12 +3,7 @@
  * Handles sending notifications via various channels
  */
 
-import type {
-  NotificationType,
-  NotificationPayload,
-  BrowserNotificationPayload,
-  NotificationPreferences,
-} from './types';
+import type { NotificationType, NotificationPayload, BrowserNotificationPayload, NotificationPreferences } from './types';
 import { DEFAULT_NOTIFICATION_PREFERENCES } from './types';
 
 export interface NotificationServiceConfig {
@@ -40,20 +35,18 @@ export class NotificationService {
 
     switch (type) {
       case 'generation_completed':
-        return channel === 'email'
-          ? preferences.email.generationCompleted
-          : preferences.browser.generationCompleted;
+        return channel === 'email' ? preferences.email.generationCompleted : preferences.browser.generationCompleted;
       case 'generation_failed':
-        return channel === 'email'
-          ? preferences.email.generationFailed
-          : true; // Always show failures in browser
+        return channel === 'email' ? preferences.email.generationFailed : true; // Always show failures in browser
       case 'quota_warning':
       case 'quota_limit_reached':
-        return channel === 'browser'
-          ? preferences.browser.lowQuotaWarning
-          : true; // Always email quota issues
-      case "invitation_received": { throw new Error('Not implemented yet: "invitation_received" case') }
-      case "system": { throw new Error('Not implemented yet: "system" case') }
+        return channel === 'browser' ? preferences.browser.lowQuotaWarning : true; // Always email quota issues
+      case 'invitation_received': {
+        throw new Error('Not implemented yet: "invitation_received" case');
+      }
+      case 'system': {
+        throw new Error('Not implemented yet: "system" case');
+      }
       default:
         return true;
     }
@@ -72,9 +65,7 @@ export class NotificationService {
         url: payload.actionUrl,
         ...payload.metadata,
       },
-      actions: payload.actionUrl
-        ? [{ action: 'open', title: payload.actionLabel ?? 'View' }]
-        : undefined,
+      actions: payload.actionUrl ? [{ action: 'open', title: payload.actionLabel ?? 'View' }] : undefined,
     };
   }
 
@@ -140,13 +131,11 @@ let _notificationService: NotificationService | null = null;
 
 export function getNotificationService(): NotificationService {
   _notificationService ??= new NotificationService({
-      appUrl: (process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL) ?? 'http://localhost:3000',
-    });
+    appUrl: process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? 'http://localhost:3000',
+  });
   return _notificationService;
 }
 
 export function resetNotificationService(): void {
   _notificationService = null;
 }
-
-

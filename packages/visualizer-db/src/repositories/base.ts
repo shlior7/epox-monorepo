@@ -17,9 +17,7 @@ type DrizzleTable = PgTableWithColumns<any>;
  */
 function getTableName(table: DrizzleTable): string {
   // Drizzle tables have a Symbol for the table name
-  const tableSymbol = Object.getOwnPropertySymbols(table).find(
-    (s) => s.description === 'drizzle:Name'
-  );
+  const tableSymbol = Object.getOwnPropertySymbols(table).find((s) => s.description === 'drizzle:Name');
   if (tableSymbol) {
     return (table as any)[tableSymbol] as string;
   }

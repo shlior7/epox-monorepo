@@ -12,9 +12,7 @@ let _pool: Pool | null = null;
 let _testDb: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
 export function getTestConnectionString(): string {
-  return (
-    process.env.DATABASE_URL || 'postgresql://test:test@localhost:5434/visualizer_test'
-  );
+  return process.env.DATABASE_URL || 'postgresql://test:test@localhost:5434/visualizer_test';
 }
 
 export function getTestPool(): Pool {

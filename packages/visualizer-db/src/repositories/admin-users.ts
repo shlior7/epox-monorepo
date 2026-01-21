@@ -56,12 +56,7 @@ export class AdminUserRepository {
     return rows[0] ? this.mapToEntity(rows[0]) : null;
   }
 
-  async createSession(
-    adminUserId: string,
-    expiresAt: Date,
-    ipAddress?: string,
-    userAgent?: string
-  ): Promise<AdminSession> {
+  async createSession(adminUserId: string, expiresAt: Date, ipAddress?: string, userAgent?: string): Promise<AdminSession> {
     const id = uuidv4();
     const token = uuidv4();
     const now = new Date();

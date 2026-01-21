@@ -1,7 +1,7 @@
 /**
  * Flow Orchestration Service
  * Coordinates flow creation, settings building, and image generation triggering
- * 
+ *
  * NOTE: This service is being updated to work with the new FlowGenerationSettings structure.
  * The new structure uses inspiration images with Vision Scanner analysis and Art Director
  * for prompt construction.
@@ -11,10 +11,7 @@ import type { FlowGenerationSettings, StylePreset, LightingPreset } from 'visual
 import { DEFAULT_FLOW_SETTINGS } from 'visualizer-types';
 import { getInspirationService } from '../inspiration';
 import type { MergedInspirationSettings } from '../inspiration/types';
-import type {
-  CreateFlowRequest,
-  PerProductSettings
-} from './types';
+import type { CreateFlowRequest, PerProductSettings } from './types';
 
 export interface FlowOrchestrationServiceConfig {
   defaultSettings?: Partial<FlowGenerationSettings>;
@@ -41,14 +38,16 @@ export class FlowOrchestrationService {
 
     const settings: FlowGenerationSettings = {
       ...DEFAULT_FLOW_SETTINGS,
-      
+
       // Scene Style (Section 1)
-      inspirationImages: inspirationSettings.primaryImageUrl 
-        ? [{
-            url: inspirationSettings.primaryImageUrl,
-            addedAt: new Date().toISOString(),
-            sourceType: 'upload' as const,
-          }]
+      inspirationImages: inspirationSettings.primaryImageUrl
+        ? [
+            {
+              url: inspirationSettings.primaryImageUrl,
+              addedAt: new Date().toISOString(),
+              sourceType: 'upload' as const,
+            },
+          ]
         : [],
       stylePreset,
       lightingPreset,
@@ -71,21 +70,21 @@ export class FlowOrchestrationService {
    */
   private mapToStylePreset(style?: string): StylePreset {
     if (!style) return 'Modern Minimalist';
-    
+
     const styleMap: Record<string, StylePreset> = {
       'Modern Minimalist': 'Modern Minimalist',
-      'Scandinavian': 'Scandinavian',
-      'Industrial': 'Industrial',
+      Scandinavian: 'Scandinavian',
+      Industrial: 'Industrial',
       'Industrial Loft': 'Industrial',
-      'Bohemian': 'Bohemian',
+      Bohemian: 'Bohemian',
       'Bohemian Chic': 'Bohemian',
       'Mid-Century': 'Mid-Century',
       'Mid-Century Modern': 'Mid-Century',
-      'Rustic': 'Rustic',
+      Rustic: 'Rustic',
       'Rustic / Natural': 'Rustic',
-      'Coastal': 'Coastal',
+      Coastal: 'Coastal',
       'Coastal / Mediterranean': 'Coastal',
-      'Luxurious': 'Luxurious',
+      Luxurious: 'Luxurious',
       'Luxury / Premium': 'Luxurious',
       'Studio Clean': 'Studio Clean',
     };
@@ -98,7 +97,7 @@ export class FlowOrchestrationService {
    */
   private mapToLightingPreset(lighting?: string): LightingPreset {
     if (!lighting) return 'Studio Soft Light';
-    
+
     const lightingMap: Record<string, LightingPreset> = {
       'Natural Daylight': 'Natural Daylight',
       'Studio Soft Light': 'Studio Soft Light',
@@ -155,15 +154,10 @@ export class FlowOrchestrationService {
   } {
     // Merge inspiration analyses
     const inspirationService = getInspirationService();
-    const mergedSettings = inspirationService.mergeInspirationAnalyses(
-      request.inspirationImages
-    );
+    const mergedSettings = inspirationService.mergeInspirationAnalyses(request.inspirationImages);
 
     // Build base settings
-    const baseSettings = this.buildBaseSettings(
-      mergedSettings,
-      request.advancedSettings
-    );
+    const baseSettings = this.buildBaseSettings(mergedSettings, request.advancedSettings);
 
     // Build per-product settings
     const productSettings: PerProductSettings[] = [];
@@ -176,16 +170,10 @@ export class FlowOrchestrationService {
       const baseImageId = request.selectedBaseImages[productId] ?? '';
 
       // Get product name from analysis
-      const productAnalysis = request.productAnalysis.products.find(p => p.productId === productId);
+      const productAnalysis = request.productAnalysis.products.find((p) => p.productId === productId);
       const productName = productAnalysis?.productType ?? 'Product';
 
-      const perProduct = this.buildPerProductSettings(
-        productId,
-        productName,
-        sceneType,
-        baseImageId,
-        baseSettings
-      );
+      const perProduct = this.buildPerProductSettings(productId, productName, sceneType, baseImageId, baseSettings);
 
       productSettings.push(perProduct);
     }

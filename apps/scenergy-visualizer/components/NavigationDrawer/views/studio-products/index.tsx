@@ -62,14 +62,11 @@ export function StudioProductsView({ ctx }: { ctx: NavContext }) {
     [model.isMultiSelectMode, model.selectedProductIds, getSelectedProductsDragData]
   );
 
-  const handleImageDragStart = useCallback(
-    (e: React.DragEvent, productId: string, imageId: string) => {
-      const dragData: ProductDragData = { productId, imageId };
-      e.dataTransfer.setData('application/x-product', JSON.stringify(dragData));
-      e.dataTransfer.effectAllowed = 'copy';
-    },
-    []
-  );
+  const handleImageDragStart = useCallback((e: React.DragEvent, productId: string, imageId: string) => {
+    const dragData: ProductDragData = { productId, imageId };
+    e.dataTransfer.setData('application/x-product', JSON.stringify(dragData));
+    e.dataTransfer.effectAllowed = 'copy';
+  }, []);
 
   if (!model.client) {
     return <EmptyState message="Select a client to view products." onAdd={ctx.callbacks.onAddClient} addLabel="Add Client" />;
@@ -115,11 +112,7 @@ export function StudioProductsView({ ctx }: { ctx: NavContext }) {
               </option>
             ))}
           </select>
-          <select
-            value={model.sortBy}
-            onChange={(e) => setSortBy(e.target.value as typeof model.sortBy)}
-            className={styles.filterSelect}
-          >
+          <select value={model.sortBy} onChange={(e) => setSortBy(e.target.value as typeof model.sortBy)} className={styles.filterSelect}>
             {SORT_OPTIONS.map(({ value, label }) => (
               <option key={value} value={value}>
                 {label}
@@ -151,59 +144,55 @@ export function StudioProductsView({ ctx }: { ctx: NavContext }) {
         </div>
       ) : (
         <div className={styles.productsList}>
-          {model.sortBy === 'category' ? (
-            // Grouped by category
-            model.productsByCategory.map(({ category, products }) => (
-              <div key={category} className={styles.productTypeGroup}>
-                <div className={styles.productTypeHeader}>{getCategoryLabel(category)}</div>
-                {products.map((product, index) => (
-                  <ProductPanelItem
-                    key={product.id}
-                    product={product}
-                    clientId={model.client!.id}
-                    isExpanded={model.expandedProductIds.has(product.id)}
-                    isSelected={model.selectedProductIds.has(product.id)}
-                    isMultiSelectMode={model.isMultiSelectMode}
-                    onToggleExpand={() => toggleProductExpanded(product.id)}
-                    onToggleSelect={() => toggleProductSelection(product.id)}
-                    onDragStart={handleProductDragStart}
-                    onImageDragStart={handleImageDragStart}
-                    getImageUrl={getProductImageUrl}
-                    focusedIndex={focusedIndex}
-                    itemIndex={index}
-                    listItemRefs={listItemRefs}
-                  />
-                ))}
-              </div>
-            ))
-          ) : (
-            // Flat list
-            model.products.map((product, index) => (
-              <ProductPanelItem
-                key={product.id}
-                product={product}
-                clientId={model.client!.id}
-                isExpanded={model.expandedProductIds.has(product.id)}
-                isSelected={model.selectedProductIds.has(product.id)}
-                isMultiSelectMode={model.isMultiSelectMode}
-                onToggleExpand={() => toggleProductExpanded(product.id)}
-                onToggleSelect={() => toggleProductSelection(product.id)}
-                onDragStart={handleProductDragStart}
-                onImageDragStart={handleImageDragStart}
-                getImageUrl={getProductImageUrl}
-                focusedIndex={focusedIndex}
-                itemIndex={index}
-                listItemRefs={listItemRefs}
-              />
-            ))
-          )}
+          {model.sortBy === 'category'
+            ? // Grouped by category
+              model.productsByCategory.map(({ category, products }) => (
+                <div key={category} className={styles.productTypeGroup}>
+                  <div className={styles.productTypeHeader}>{getCategoryLabel(category)}</div>
+                  {products.map((product, index) => (
+                    <ProductPanelItem
+                      key={product.id}
+                      product={product}
+                      clientId={model.client!.id}
+                      isExpanded={model.expandedProductIds.has(product.id)}
+                      isSelected={model.selectedProductIds.has(product.id)}
+                      isMultiSelectMode={model.isMultiSelectMode}
+                      onToggleExpand={() => toggleProductExpanded(product.id)}
+                      onToggleSelect={() => toggleProductSelection(product.id)}
+                      onDragStart={handleProductDragStart}
+                      onImageDragStart={handleImageDragStart}
+                      getImageUrl={getProductImageUrl}
+                      focusedIndex={focusedIndex}
+                      itemIndex={index}
+                      listItemRefs={listItemRefs}
+                    />
+                  ))}
+                </div>
+              ))
+            : // Flat list
+              model.products.map((product, index) => (
+                <ProductPanelItem
+                  key={product.id}
+                  product={product}
+                  clientId={model.client!.id}
+                  isExpanded={model.expandedProductIds.has(product.id)}
+                  isSelected={model.selectedProductIds.has(product.id)}
+                  isMultiSelectMode={model.isMultiSelectMode}
+                  onToggleExpand={() => toggleProductExpanded(product.id)}
+                  onToggleSelect={() => toggleProductSelection(product.id)}
+                  onDragStart={handleProductDragStart}
+                  onImageDragStart={handleImageDragStart}
+                  getImageUrl={getProductImageUrl}
+                  focusedIndex={focusedIndex}
+                  itemIndex={index}
+                  listItemRefs={listItemRefs}
+                />
+              ))}
         </div>
       )}
 
       {/* Drag hint */}
-      <div className={styles.dragHint}>
-        Drag products to the studio to create flows
-      </div>
+      <div className={styles.dragHint}>Drag products to the studio to create flows</div>
     </div>
   );
 }

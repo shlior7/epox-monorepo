@@ -65,12 +65,14 @@ export const PATCH = withSecurity(async (request, context, { params }) => {
     }
 
     // Verify ownership
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: flow.clientId,
-      resourceType: 'generation-flow',
-      resourceId: flowId,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: flow.clientId,
+        resourceType: 'generation-flow',
+        resourceId: flowId,
+      })
+    ) {
       return forbiddenResponse();
     }
 
@@ -148,12 +150,14 @@ export const GET = withSecurity(async (request, context, { params }) => {
     }
 
     // Verify ownership
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: flow.clientId,
-      resourceType: 'generation-flow',
-      resourceId: flowId,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: flow.clientId,
+        resourceType: 'generation-flow',
+        resourceId: flowId,
+      })
+    ) {
       return forbiddenResponse();
     }
 

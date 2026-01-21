@@ -3,11 +3,7 @@ export { storagePaths } from './paths';
 export type { PresignedUrl, UploadOptions, StorageObject, StorageFacade } from './types';
 
 // Download service
-export {
-  DownloadService,
-  getDownloadService,
-  resetDownloadService,
-} from './download/index';
+export { DownloadService, getDownloadService, resetDownloadService } from './download/index';
 export type {
   DownloadServiceConfig,
   DownloadJob,

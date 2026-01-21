@@ -285,9 +285,7 @@ export function AddProductModal({ isOpen, onClose, onProductAdded }: AddProductM
                     <p className="font-medium">
                       {isDragging ? 'Drop images here' : 'Drag images here or click to browse'}
                     </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      PNG, JPG up to 10MB each
-                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">PNG, JPG up to 10MB each</p>
                   </div>
                 </div>
               </div>
@@ -458,10 +456,7 @@ export function AddProductModal({ isOpen, onClose, onProductAdded }: AddProductM
               <Button variant="ghost" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button
-                onClick={() => setStep('details')}
-                disabled={!canProceedToDetails}
-              >
+              <Button onClick={() => setStep('details')} disabled={!canProceedToDetails}>
                 Continue
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -496,4 +491,3 @@ export function AddProductModal({ isOpen, onClose, onProductAdded }: AddProductM
     </Dialog>
   );
 }
-

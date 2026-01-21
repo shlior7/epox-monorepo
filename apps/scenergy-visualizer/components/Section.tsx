@@ -17,7 +17,7 @@ export function Section({ title, description, action, children }: PropsWithChild
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
-        backdropFilter: 'blur(12px)'
+        backdropFilter: 'blur(12px)',
       }}
     >
       <header
@@ -26,15 +26,13 @@ export function Section({ title, description, action, children }: PropsWithChild
           flexWrap: 'wrap',
           gap: '12px',
           alignItems: 'flex-start',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
         }}
       >
         <div>
           <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>{title}</h2>
           {description ? (
-            <p style={{ marginTop: '6px', marginBottom: 0, color: 'rgba(226, 232, 240, 0.8)', fontSize: '0.95rem' }}>
-              {description}
-            </p>
+            <p style={{ marginTop: '6px', marginBottom: 0, color: 'rgba(226, 232, 240, 0.8)', fontSize: '0.95rem' }}>{description}</p>
           ) : null}
         </div>
         {action ? <div>{action}</div> : null}

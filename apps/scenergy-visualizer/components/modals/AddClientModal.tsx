@@ -171,13 +171,13 @@ export function AddClientModal({ isOpen, onClose, onClientAdded }: AddClientModa
         commerce:
           provider === 'woocommerce'
             ? {
-              provider,
-              baseUrl: storeUrl.trim(),
-              credentials: {
-                consumerKey: consumerKey.trim(),
-                consumerSecret: consumerSecret.trim(),
-              },
-            }
+                provider,
+                baseUrl: storeUrl.trim(),
+                credentials: {
+                  consumerKey: consumerKey.trim(),
+                  consumerSecret: consumerSecret.trim(),
+                },
+              }
             : undefined,
       };
 

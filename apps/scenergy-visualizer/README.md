@@ -34,16 +34,16 @@ Scenergy Visualizer enables teams to generate AI product visualizations at scale
 
 ### Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Framework | Next.js 16 (App Router) |
-| Language | TypeScript 5.7 |
-| UI | React 19, Radix UI, SCSS Modules |
-| State | React Context (DataContext) |
-| Storage | AWS S3 (or local filesystem) |
-| AI | Google Gemini (gemini-2.5-flash-image) |
-| Queue | In-memory + Redis (Upstash) |
-| 3D | Babylon.js (GLB rendering) |
+| Layer     | Technology                             |
+| --------- | -------------------------------------- |
+| Framework | Next.js 16 (App Router)                |
+| Language  | TypeScript 5.7                         |
+| UI        | React 19, Radix UI, SCSS Modules       |
+| State     | React Context (DataContext)            |
+| Storage   | AWS S3 (or local filesystem)           |
+| AI        | Google Gemini (gemini-2.5-flash-image) |
+| Queue     | In-memory + Redis (Upstash)            |
+| 3D        | Babylon.js (GLB rendering)             |
 
 ### Directory Structure
 
@@ -171,7 +171,7 @@ interface FavoriteImage {
 
 interface Message {
   id: string;
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   parts: MessagePart[];
   timestamp: string;
   inspirationImageId?: string;
@@ -179,9 +179,9 @@ interface Message {
 }
 
 interface ImageMessagePart {
-  type: "image";
+  type: 'image';
   imageIds: string[];
-  status: "pending" | "generating" | "completed" | "error";
+  status: 'pending' | 'generating' | 'completed' | 'error';
   progress?: number;
   metadata?: {
     prompt: string;
@@ -234,15 +234,15 @@ s3://{bucket}/
 
 ### File Formats
 
-| File | Format | Purpose |
-|------|--------|---------|
-| `client.json` | JSON | Full client tree with products and sessions |
-| `product.json` | JSON | Product metadata and favorite images |
-| `chat.json` | JSON | Array of session messages |
-| Base images | PNG | Original uploaded product images |
-| Previews | JPEG | Compressed thumbnails for fast loading |
-| Generated | JPEG | AI-generated visualization images |
-| Models | GLB | 3D product models |
+| File           | Format | Purpose                                     |
+| -------------- | ------ | ------------------------------------------- |
+| `client.json`  | JSON   | Full client tree with products and sessions |
+| `product.json` | JSON   | Product metadata and favorite images        |
+| `chat.json`    | JSON   | Array of session messages                   |
+| Base images    | PNG    | Original uploaded product images            |
+| Previews       | JPEG   | Compressed thumbnails for fast loading      |
+| Generated      | JPEG   | AI-generated visualization images           |
+| Models         | GLB    | 3D product models                           |
 
 ### Path Generation
 
@@ -264,18 +264,21 @@ getSessionMediaPath(...)                   // .../sessions/{sessionId}/media/
 ### Core Features
 
 #### AI Image Generation
+
 - **Gemini Integration**: Uses `gemini-2.5-flash-image` for high-quality generation
 - **Product Analysis**: Extracts materials, colors, and style from product images
 - **Multimodal Prompts**: Combines product images with inspiration references
 - **Variant Generation**: Create multiple variations per prompt
 
 #### Chat-Based Workflow
+
 - **Conversational Interface**: Iterative generation through chat
 - **Prompt Builder**: Configure scene, style, lighting, camera, props, mood
 - **Real-time Status**: Progress tracking with 15-second polling
 - **Base Image Selection**: Choose which product image to reference
 
 #### Session Management
+
 - **Single-Product Sessions**: Focused generation per product
 - **Multi-Product Sessions**: Bulk generation across products
 - **Message History**: Persistent chat with all generated images
@@ -284,35 +287,41 @@ getSessionMediaPath(...)                   // .../sessions/{sessionId}/media/
 ### Advanced Features
 
 #### Favorites System
+
 - Star any generated image from any session
 - Favorites stored per product with session reference
 - Browse favorites in gallery modal
 - Batch download favorite images
 
 #### Bulk Operations
+
 - Multi-select products for batch generation
 - Multi-select images for batch actions
 - Bulk favorite/unfavorite
 - Bulk download as ZIP
 
 #### Multi-Product Sessions (Client Sessions)
+
 - Generate images for multiple products with same prompt
 - Each product uses its own base image
 - Independent job tracking per product
 - Results organized by product in chat
 
 #### Navigation & Organization
+
 - Hierarchical sidebar: Clients → Products → Sessions
 - Multi-select toolbar for bulk actions
 - Settings pages at client and product levels
 - Quick navigation between sessions
 
 #### 3D Model Support
+
 - Upload GLB files for products
 - Babylon.js-powered rendering
 - Use 3D renders as base images
 
 #### Local Development Mode
+
 - Filesystem-based S3 mock (`NEXT_PUBLIC_S3_DRIVER=fs`)
 - Auto-cleanup of temporary files
 - No AWS credentials needed for testing
@@ -349,6 +358,7 @@ UPSTASH_REDIS_REST_TOKEN=your_redis_token
 ### 2. Get API Keys
 
 #### Google AI Studio
+
 1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
 2. Create a new API key
 3. Add to `.env.local` as `GOOGLE_AI_STUDIO_API_KEY`
@@ -382,38 +392,38 @@ Each process gets an isolated folder, auto-cleaned on exit. Set `S3_FS_DISABLE_C
 
 ### Visualization
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/api/visualization` | Queue a generation job |
-| GET | `/api/visualization/[jobId]` | Poll job status |
+| Method | Endpoint                     | Purpose                |
+| ------ | ---------------------------- | ---------------------- |
+| POST   | `/api/visualization`         | Queue a generation job |
+| GET    | `/api/visualization/[jobId]` | Poll job status        |
 
 ### Image Generation
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/api/generate-images` | Single-product generation |
-| GET | `/api/generate-images/[jobId]` | Poll generation status |
-| POST | `/api/batch-generate-images` | Multi-product batch generation |
+| Method | Endpoint                       | Purpose                        |
+| ------ | ------------------------------ | ------------------------------ |
+| POST   | `/api/generate-images`         | Single-product generation      |
+| GET    | `/api/generate-images/[jobId]` | Poll generation status         |
+| POST   | `/api/batch-generate-images`   | Multi-product batch generation |
 
 ### File Operations
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/api/upload` | Upload files (temp storage) |
-| POST | `/api/download-image` | Download from S3 |
-| POST | `/api/process-glb` | Validate GLB models |
+| Method | Endpoint              | Purpose                     |
+| ------ | --------------------- | --------------------------- |
+| POST   | `/api/upload`         | Upload files (temp storage) |
+| POST   | `/api/download-image` | Download from S3            |
+| POST   | `/api/process-glb`    | Validate GLB models         |
 
 ### Client/Product/Session CRUD
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/api/clients` | List all clients |
-| POST | `/api/clients/create` | Create client |
-| GET/PUT/DELETE | `/api/clients/[clientId]` | Client operations |
-| POST | `/api/clients/[clientId]/products` | Add product |
-| DELETE | `/api/clients/[clientId]/products/[productId]` | Delete product |
-| POST/PUT | `/api/clients/[clientId]/products/[productId]/sessions` | Session operations |
-| POST | `/api/clients/[clientId]/sessions` | Create client session |
+| Method         | Endpoint                                                | Purpose               |
+| -------------- | ------------------------------------------------------- | --------------------- |
+| GET            | `/api/clients`                                          | List all clients      |
+| POST           | `/api/clients/create`                                   | Create client         |
+| GET/PUT/DELETE | `/api/clients/[clientId]`                               | Client operations     |
+| POST           | `/api/clients/[clientId]/products`                      | Add product           |
+| DELETE         | `/api/clients/[clientId]/products/[productId]`          | Delete product        |
+| POST/PUT       | `/api/clients/[clientId]/products/[productId]/sessions` | Session operations    |
+| POST           | `/api/clients/[clientId]/sessions`                      | Create client session |
 
 ---
 
@@ -476,8 +486,8 @@ Edit `lib/constants.ts`:
 
 ```typescript
 export const scenePresets = {
-  'Studio': ['Studio Set', 'Product Podium', 'Infinity Curve'],
-  'Outdoor': ['Natural Garden', 'Urban Street', 'Beach Setting'],
+  Studio: ['Studio Set', 'Product Podium', 'Infinity Curve'],
+  Outdoor: ['Natural Garden', 'Urban Street', 'Beach Setting'],
 };
 ```
 
@@ -549,20 +559,24 @@ NEXT_PUBLIC_LOCAL_S3_DIR=.test-s3
 ### Common Issues
 
 #### "API key not found"
+
 - Verify `.env.local` exists with valid keys
 - Restart dev server after changes
 
 #### "Generation failed"
+
 - Check Gemini API quotas
 - Verify network connectivity
 - Review error in job status response
 
 #### "S3 access denied"
+
 - Verify AWS credentials
 - Check bucket permissions
 - Ensure region matches
 
 #### "Job stuck in pending"
+
 - Check Redis connection (if using)
 - Verify background worker is running
 - Check server logs for errors

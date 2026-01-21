@@ -43,5 +43,3 @@ export interface PromptBuilderContext {
   promptTags?: PromptTags;
   customPrompt?: string;
 }
-
-

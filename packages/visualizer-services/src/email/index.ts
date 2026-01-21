@@ -10,12 +10,4 @@ export type {
   PasswordResetEmailPayload,
   WeeklyUsageSummaryPayload,
 } from './types';
-export {
-  invitationEmail,
-  generationCompletedEmail,
-  generationFailedEmail,
-  passwordResetEmail,
-  weeklyUsageSummaryEmail,
-} from './templates';
-
-
+export { invitationEmail, generationCompletedEmail, generationFailedEmail, passwordResetEmail, weeklyUsageSummaryEmail } from './templates';

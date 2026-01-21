@@ -2,15 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import {
-  ImageIcon,
-  Package,
-  Tag,
-  SlidersHorizontal,
-  Plus,
-  X,
-  Layers,
-} from 'lucide-react';
+import { ImageIcon, Package, Tag, SlidersHorizontal, Plus, X, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -109,7 +101,9 @@ export function FlowGenerateConfigPanel({
   const allEffectiveTags = [...new Set([...collectionTags, ...sceneTypeTags, ...flowTags])];
 
   return (
-    <aside className={cn('flex w-80 flex-col overflow-hidden border-l border-border bg-card', className)}>
+    <aside
+      className={cn('flex w-80 flex-col overflow-hidden border-l border-border bg-card', className)}
+    >
       {/* Header */}
       <div className="border-b border-border px-4 py-3">
         <h3 className="font-semibold">Generation Settings</h3>
@@ -118,7 +112,11 @@ export function FlowGenerateConfigPanel({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
-        <Accordion type="multiple" defaultValue={['base-image', 'tags', 'specifications']} className="px-4">
+        <Accordion
+          type="multiple"
+          defaultValue={['base-image', 'tags', 'specifications']}
+          className="px-4"
+        >
           {/* Base Image Section */}
           <AccordionItem value="base-image">
             <AccordionTrigger>
@@ -210,11 +208,7 @@ export function FlowGenerateConfigPanel({
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {collectionTags.map((tag) => (
-                      <Badge
-                        key={`col-${tag}`}
-                        variant="outline"
-                        className="bg-muted/30 text-xs"
-                      >
+                      <Badge key={`col-${tag}`} variant="outline" className="bg-muted/30 text-xs">
                         {tag}
                       </Badge>
                     ))}
@@ -249,9 +243,7 @@ export function FlowGenerateConfigPanel({
               <div>
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <Tag className="h-3 w-3 text-primary" />
-                  <span className="text-xs uppercase text-muted-foreground">
-                    Flow Tags
-                  </span>
+                  <span className="text-xs uppercase text-muted-foreground">Flow Tags</span>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {flowTags.map((tag) => (
@@ -344,4 +336,3 @@ export function FlowGenerateConfigPanel({
     </aside>
   );
 }
-

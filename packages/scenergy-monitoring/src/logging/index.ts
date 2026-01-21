@@ -81,12 +81,7 @@ export class Logger {
   /**
    * Internal log method
    */
-  private log(
-    level: LogLevel,
-    message: string,
-    context?: LogContext,
-    error?: Error
-  ): void {
+  private log(level: LogLevel, message: string, context?: LogContext, error?: Error): void {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
@@ -140,11 +135,7 @@ export function createLogger(service: string, context?: LogContext): Logger {
 /**
  * Quick structured log function
  */
-export function structuredLog(
-  level: LogLevel,
-  message: string,
-  context?: LogContext
-): void {
+export function structuredLog(level: LogLevel, message: string, context?: LogContext): void {
   const entry = {
     timestamp: new Date().toISOString(),
     level,
@@ -169,4 +160,3 @@ export function structuredLog(
       break;
   }
 }
-

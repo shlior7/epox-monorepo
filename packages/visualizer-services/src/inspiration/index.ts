@@ -8,5 +8,3 @@ export type {
   UnsplashSearchResult,
   MergedInspirationSettings,
 } from './types';
-
-

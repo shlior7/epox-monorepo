@@ -109,9 +109,4 @@ const MinimalAccordionContent = React.forwardRef<
 ));
 MinimalAccordionContent.displayName = 'MinimalAccordionContent';
 
-export {
-  MinimalAccordion,
-  MinimalAccordionItem,
-  MinimalAccordionTrigger,
-  MinimalAccordionContent,
-};
+export { MinimalAccordion, MinimalAccordionItem, MinimalAccordionTrigger, MinimalAccordionContent };

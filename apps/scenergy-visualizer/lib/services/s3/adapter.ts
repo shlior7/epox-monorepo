@@ -23,10 +23,7 @@ export interface UploadLike {
 
 const DRIVER = (process.env.NEXT_PUBLIC_S3_DRIVER ?? 'aws').toLowerCase();
 const ENDPOINT =
-  process.env.S3_ENDPOINT ??
-  process.env.NEXT_PUBLIC_S3_ENDPOINT ??
-  process.env.R2_ENDPOINT ??
-  process.env.NEXT_PUBLIC_R2_ENDPOINT;
+  process.env.S3_ENDPOINT ?? process.env.NEXT_PUBLIC_S3_ENDPOINT ?? process.env.R2_ENDPOINT ?? process.env.NEXT_PUBLIC_R2_ENDPOINT;
 const isFsDriver = DRIVER === 'fs';
 
 let resolvedFsRoot: string | null = null;
@@ -285,19 +282,14 @@ function createAwsClient(): S3Like {
     config.endpoint = normalizedEndpoint;
     config.forcePathStyle = true;
     const preferR2 = isR2Endpoint || hasR2Config();
-    const r2AccessKeyId =
-      process.env.R2_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_R2_ACCESS_KEY_ID;
-    const r2SecretAccessKey =
-      process.env.R2_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_R2_SECRET_ACCESS_KEY;
-    const awsAccessKeyId =
-      process.env.AWS_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID;
-    const awsSecretAccessKey =
-      process.env.AWS_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY;
+    const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_R2_ACCESS_KEY_ID;
+    const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_R2_SECRET_ACCESS_KEY;
+    const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID;
+    const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY;
 
     config.credentials = {
       accessKeyId: (preferR2 ? r2AccessKeyId || awsAccessKeyId : awsAccessKeyId || r2AccessKeyId) || 'minio',
-      secretAccessKey:
-        (preferR2 ? r2SecretAccessKey || awsSecretAccessKey : awsSecretAccessKey || r2SecretAccessKey) || 'minio123',
+      secretAccessKey: (preferR2 ? r2SecretAccessKey || awsSecretAccessKey : awsSecretAccessKey || r2SecretAccessKey) || 'minio123',
     };
   }
 
@@ -330,10 +322,10 @@ function normalizeEndpoint(endpoint: string): string {
 function hasR2Config(): boolean {
   return Boolean(
     process.env.R2_ENDPOINT ||
-      process.env.NEXT_PUBLIC_R2_ENDPOINT ||
-      process.env.R2_BUCKET ||
-      process.env.NEXT_PUBLIC_R2_BUCKET ||
-      process.env.R2_ACCESS_KEY_ID ||
-      process.env.NEXT_PUBLIC_R2_ACCESS_KEY_ID
+    process.env.NEXT_PUBLIC_R2_ENDPOINT ||
+    process.env.R2_BUCKET ||
+    process.env.NEXT_PUBLIC_R2_BUCKET ||
+    process.env.R2_ACCESS_KEY_ID ||
+    process.env.NEXT_PUBLIC_R2_ACCESS_KEY_ID
   );
 }

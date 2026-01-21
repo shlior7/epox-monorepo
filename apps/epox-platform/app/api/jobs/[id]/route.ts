@@ -33,12 +33,14 @@ export const GET = withSecurity(async (request, context, { params }) => {
     }
 
     // Verify ownership
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: job.clientId,
-      resourceType: 'job',
-      resourceId: id,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: job.clientId,
+        resourceType: 'job',
+        resourceId: id,
+      })
+    ) {
       return forbiddenResponse();
     }
 

@@ -15,7 +15,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,7 @@ import {
   Package,
   Play,
   Sparkles,
-  Trash2
+  Trash2,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -55,7 +55,9 @@ export default function CollectionDetailPage({ params }: CollectionDetailPagePro
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [activeTab, setActiveTab] = useState('products');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deleteAssetPolicy, setDeleteAssetPolicy] = useState<'delete_all' | 'keep_pinned_approved'>('keep_pinned_approved');
+  const [deleteAssetPolicy, setDeleteAssetPolicy] = useState<'delete_all' | 'keep_pinned_approved'>(
+    'keep_pinned_approved'
+  );
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState('');
 
@@ -277,7 +279,11 @@ export default function CollectionDetailPage({ params }: CollectionDetailPagePro
                 <CardTitle className="text-base">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button className="w-full justify-start" variant="outline" onClick={handleOpenStudio}>
+                <Button
+                  className="w-full justify-start"
+                  variant="outline"
+                  onClick={handleOpenStudio}
+                >
                   <Sparkles className="mr-2 h-4 w-4" />
                   Open Generation Studio
                 </Button>
@@ -377,7 +383,9 @@ export default function CollectionDetailPage({ params }: CollectionDetailPagePro
                               <p className="truncate font-medium">{product.name}</p>
                               <p className="text-sm text-muted-foreground">{product.category}</p>
                             </div>
-                            <Badge variant="secondary">{(product.sceneTypes ?? product.sceneTypes)?.[0] || 'General'}</Badge>
+                            <Badge variant="secondary">
+                              {(product.sceneTypes ?? product.sceneTypes)?.[0] || 'General'}
+                            </Badge>
                           </div>
                         </Link>
                       );
@@ -402,20 +410,28 @@ export default function CollectionDetailPage({ params }: CollectionDetailPagePro
           </DialogHeader>
           <RadioGroup
             value={deleteAssetPolicy}
-            onValueChange={(value) => setDeleteAssetPolicy(value as 'delete_all' | 'keep_pinned_approved')}
+            onValueChange={(value) =>
+              setDeleteAssetPolicy(value as 'delete_all' | 'keep_pinned_approved')
+            }
             className="space-y-3"
           >
             <div className="flex items-start gap-3 rounded-lg border border-border p-3">
               <RadioGroupItem id="delete-collection-assets" value="delete_all" className="mt-0.5" />
               <div className="space-y-1">
-                <Label htmlFor="delete-collection-assets">Remove all assets in this collection</Label>
+                <Label htmlFor="delete-collection-assets">
+                  Remove all assets in this collection
+                </Label>
                 <p className="text-xs text-muted-foreground">
                   Deletes every generated asset owned by this collection.
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-3 rounded-lg border border-border p-3">
-              <RadioGroupItem id="keep-collection-assets" value="keep_pinned_approved" className="mt-0.5" />
+              <RadioGroupItem
+                id="keep-collection-assets"
+                value="keep_pinned_approved"
+                className="mt-0.5"
+              />
               <div className="space-y-1">
                 <Label htmlFor="keep-collection-assets">Keep pinned and approved assets</Label>
                 <p className="text-xs text-muted-foreground">

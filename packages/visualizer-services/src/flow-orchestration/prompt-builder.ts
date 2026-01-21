@@ -21,11 +21,11 @@ export function buildPromptFromTags(tags: PromptTags): string {
   }
 
   if (tags.lighting.length > 0) {
-    parts.push(...tags.lighting.map(l => `${l} lighting`));
+    parts.push(...tags.lighting.map((l) => `${l} lighting`));
   }
 
   if (tags.style.length > 0) {
-    parts.push(...tags.style.map(s => `${s} style`));
+    parts.push(...tags.style.map((s) => `${s} style`));
   }
 
   if (tags.custom.length > 0) {
@@ -76,11 +76,7 @@ export function buildPromptFromContext(context: PromptBuilderContext): string {
 /**
  * Generate prompt variations for variety
  */
-export function generatePromptVariations(
-  basePrompt: string,
-  varietyLevel: number,
-  count: number = 3
-): string[] {
+export function generatePromptVariations(basePrompt: string, varietyLevel: number, count: number = 3): string[] {
   // If variety level is low, return the same prompt
   if (varietyLevel < 30) {
     return Array(count).fill(basePrompt);
@@ -103,5 +99,3 @@ export function generatePromptVariations(
 
   return variations.slice(0, count);
 }
-
-

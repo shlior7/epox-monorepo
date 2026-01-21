@@ -138,9 +138,7 @@ export function useClientSessionsView(ctx: NavContext) {
           await Promise.all(sessionIds.map((sessionId) => ctx.services.data.deleteClientSession(client.id, sessionId)));
 
           ctx.services.toast.success(
-            sessionIds.length === 1
-              ? 'Studio session deleted successfully'
-              : `${sessionIds.length} studio sessions deleted successfully`
+            sessionIds.length === 1 ? 'Studio session deleted successfully' : `${sessionIds.length} studio sessions deleted successfully`
           );
 
           ctx.shell.events.emit(CLIENT_SESSIONS_EVENTS.CANCEL_MODES);
@@ -150,7 +148,16 @@ export function useClientSessionsView(ctx: NavContext) {
         }
       },
     });
-  }, [client, selectedForDelete, ctx.services.confirm, ctx.services.data, ctx.services.router, ctx.services.toast, ctx.shell, ctx.selection.clientSessionId]);
+  }, [
+    client,
+    selectedForDelete,
+    ctx.services.confirm,
+    ctx.services.data,
+    ctx.services.router,
+    ctx.services.toast,
+    ctx.shell,
+    ctx.selection.clientSessionId,
+  ]);
 
   const model: ClientSessionsViewModel = useMemo(
     () => ({

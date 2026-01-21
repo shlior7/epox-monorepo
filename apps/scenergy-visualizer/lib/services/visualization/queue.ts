@@ -39,7 +39,7 @@ export class VisualizationQueue {
       session: null,
       error: null,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
     // Save job to Redis with TTL
@@ -68,7 +68,7 @@ export class VisualizationQueue {
     do {
       const result: [string | number, string[]] = await redis.scan(cursor, {
         match: `${this.REDIS_PREFIX}*`,
-        count: 100
+        count: 100,
       });
 
       cursor = result[0];
@@ -95,7 +95,7 @@ export class VisualizationQueue {
     const updatedJob = {
       ...job,
       ...updates,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     await redis.set(this.getJobKey(jobId), JSON.stringify(updatedJob), { ex: this.JOB_TTL });
@@ -112,12 +112,12 @@ export class VisualizationQueue {
       const session = await this.service.generateVisualization(job.request);
       await this.updateJob(jobId, {
         session,
-        status: 'completed'
+        status: 'completed',
       });
     } catch (error) {
       await this.updateJob(jobId, {
         status: 'error',
-        error: error instanceof Error ? error.message : 'Generation failed'
+        error: error instanceof Error ? error.message : 'Generation failed',
       });
     }
   }

@@ -20,10 +20,8 @@ export const generationEvent = pgTable(
     clientId: text('client_id')
       .notNull()
       .references(() => client.id, { onDelete: 'cascade' }),
-    generationFlowId: text('generation_flow_id')
-      .references(() => generationFlow.id, { onDelete: 'set null' }),
-    productId: text('product_id')
-      .references(() => product.id, { onDelete: 'set null' }),
+    generationFlowId: text('generation_flow_id').references(() => generationFlow.id, { onDelete: 'set null' }),
+    productId: text('product_id').references(() => product.id, { onDelete: 'set null' }),
     eventType: text('event_type').$type<GenerationEventType>().notNull(),
     metadata: jsonb('metadata').$type<Record<string, unknown>>(),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),

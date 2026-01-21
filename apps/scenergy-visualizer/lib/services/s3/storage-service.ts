@@ -17,10 +17,7 @@ function resolvePublicBaseUrl(bucket: string): string {
     return process.env.NEXT_PUBLIC_LOCAL_STORAGE_URL ?? '/api/local-s3';
   }
 
-  const publicUrl =
-    process.env.R2_PUBLIC_URL ??
-    process.env.NEXT_PUBLIC_STORAGE_PUBLIC_URL ??
-    process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+  const publicUrl = process.env.R2_PUBLIC_URL ?? process.env.NEXT_PUBLIC_STORAGE_PUBLIC_URL ?? process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
 
   if (publicUrl) {
     return publicUrl.replace(/\/+$/, '');
@@ -45,7 +42,6 @@ async function readFileArrayBuffer(file: File | Blob): Promise<ArrayBuffer> {
 
   throw new Error('Unable to read file contents');
 }
-
 
 /**
  * Upload a file to S3

@@ -1,15 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  Store,
-  ArrowRight,
-  ArrowLeft,
-  Globe,
-  Loader2,
-  ShieldCheck,
-  Sparkles,
-} from 'lucide-react';
+import { Store, ArrowRight, ArrowLeft, Globe, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -140,10 +132,7 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
                   <Card
                     key={store.type}
                     hover
-                    className={cn(
-                      'cursor-pointer border-2 p-4 transition-all',
-                      store.color
-                    )}
+                    className={cn('cursor-pointer border-2 p-4 transition-all', store.color)}
                     onClick={() => handleSelectStore(store.type)}
                   >
                     <div className="flex items-center gap-4">
@@ -168,7 +157,8 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
                   <div>
                     <p className="text-sm font-medium">Secure Connection</p>
                     <p className="text-xs text-muted-foreground">
-                      Your credentials are encrypted and we only request read-only access to your products.
+                      Your credentials are encrypted and we only request read-only access to your
+                      products.
                     </p>
                   </div>
                 </div>
@@ -212,8 +202,8 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
                     <div>
                       <p className="text-sm font-medium">One-Click Authorization</p>
                       <p className="text-xs text-muted-foreground">
-                        You&apos;ll be redirected to {selectedStoreInfo?.name} to securely authorize access.
-                        No need to manually create API keys!
+                        You&apos;ll be redirected to {selectedStoreInfo?.name} to securely authorize
+                        access. No need to manually create API keys!
                       </p>
                     </div>
                   </div>
@@ -237,9 +227,7 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
               <Button variant="ghost" onClick={handleClose}>
                 Cancel
               </Button>
-              <div className="text-xs text-muted-foreground">
-                More platforms coming soon
-              </div>
+              <div className="text-xs text-muted-foreground">More platforms coming soon</div>
             </>
           ) : (
             <>
@@ -247,11 +235,7 @@ export function ConnectStoreModal({ isOpen, onClose, onStoreConnected }: Connect
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              <Button
-                variant="glow"
-                onClick={handleConnect}
-                disabled={!canConnect || isConnecting}
-              >
+              <Button variant="glow" onClick={handleConnect} disabled={!canConnect || isConnecting}>
                 {isConnecting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

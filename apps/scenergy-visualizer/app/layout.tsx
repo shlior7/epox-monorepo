@@ -13,10 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Visuals AI - Product Visualizer</title>
-        <meta
-          name="description"
-          content="Your creative partner for generating stunning product visuals with AI-powered scene design."
-        />
+        <meta name="description" content="Your creative partner for generating stunning product visuals with AI-powered scene design." />
         {/* Inline script to prevent flash of wrong theme */}
         <script
           dangerouslySetInnerHTML={{

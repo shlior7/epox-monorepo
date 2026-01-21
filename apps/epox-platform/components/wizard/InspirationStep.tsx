@@ -18,7 +18,9 @@ interface InspirationStepProps {
   selectedImages: string[];
   onImagesChange: (images: string[]) => void;
   selectedItems?: Array<{ url: string; sourceType: InspirationSourceType }>;
-  onSelectedItemsChange?: (items: Array<{ url: string; sourceType: InspirationSourceType }>) => void;
+  onSelectedItemsChange?: (
+    items: Array<{ url: string; sourceType: InspirationSourceType }>
+  ) => void;
 }
 
 interface ExploreImage {
@@ -53,15 +55,17 @@ export function InspirationStep({
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedSources, setSelectedSources] = useState<Record<string, InspirationSourceType>>(() => {
-    const initial: Record<string, InspirationSourceType> = {};
-    if (selectedItems) {
-      for (const item of selectedItems) {
-        initial[item.url] = item.sourceType;
+  const [selectedSources, setSelectedSources] = useState<Record<string, InspirationSourceType>>(
+    () => {
+      const initial: Record<string, InspirationSourceType> = {};
+      if (selectedItems) {
+        for (const item of selectedItems) {
+          initial[item.url] = item.sourceType;
+        }
       }
+      return initial;
     }
-    return initial;
-  });
+  );
 
   useEffect(() => {
     if (!selectedItems) return;
@@ -259,7 +263,13 @@ export function InspirationStep({
                 key={url}
                 className="group relative h-24 w-32 shrink-0 overflow-hidden rounded-lg"
               >
-                <Image src={url} alt="Selected inspiration" fill className="object-cover" unoptimized />
+                <Image
+                  src={url}
+                  alt="Selected inspiration"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
                 <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/40" />
                 <button
                   onClick={() => removeImage(url)}
@@ -410,7 +420,7 @@ export function InspirationStep({
                   return (
                     <button
                       key={image.id}
-                  onClick={() => handleImageSelect(image.url, 'unsplash')}
+                      onClick={() => handleImageSelect(image.url, 'unsplash')}
                       disabled={!canSelect && !isSelected}
                       className={cn(
                         'relative aspect-[4/3] overflow-hidden rounded-lg transition-all',
@@ -468,7 +478,7 @@ export function InspirationStep({
                 return (
                   <button
                     key={image.id}
-                  onClick={() => handleImageSelect(image.url, 'library')}
+                    onClick={() => handleImageSelect(image.url, 'library')}
                     disabled={!canSelect && !isSelected}
                     className={cn(
                       'relative aspect-[4/3] overflow-hidden rounded-lg transition-all',

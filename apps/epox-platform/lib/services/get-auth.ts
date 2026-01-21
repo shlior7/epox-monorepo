@@ -33,7 +33,7 @@ const DEV_FALLBACK_CLIENT_ID = 'test-client';
 export async function getServerAuth(request: Request): Promise<ServerAuthInfo | null> {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
-    
+
     if (!session?.user) {
       return null;
     }
@@ -41,7 +41,7 @@ export async function getServerAuth(request: Request): Promise<ServerAuthInfo | 
     // Get the user's active organization (client)
     // The organization ID is the client ID in our data model
     const activeOrg = await getActiveOrganization(session.user.id);
-    
+
     if (!activeOrg) {
       return null;
     }
@@ -113,7 +113,7 @@ async function getActiveOrganization(userId: string): Promise<{ id: string; name
   try {
     // Try to get the member's client through the members table
     const members = await db.members.listByUser(userId);
-    
+
     if (members.length === 0) {
       return null;
     }
@@ -121,7 +121,7 @@ async function getActiveOrganization(userId: string): Promise<{ id: string; name
     // Get the first client the user is a member of
     const firstMember = members[0];
     const client = await db.clients.getById(firstMember.clientId);
-    
+
     if (!client) {
       return null;
     }

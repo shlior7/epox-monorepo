@@ -13,10 +13,7 @@ export const GET = withPublicSecurity(async (request, context) => {
 
     if (!UNSPLASH_ACCESS_KEY) {
       console.error('UNSPLASH_ACCESS_KEY not configured');
-      return NextResponse.json(
-        { error: 'Unsplash API not configured' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Unsplash API not configured' }, { status: 500 });
     }
 
     // Call the Unsplash API
@@ -61,4 +58,3 @@ export const GET = withPublicSecurity(async (request, context) => {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 });
-

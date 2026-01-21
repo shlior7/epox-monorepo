@@ -50,7 +50,9 @@ body {
   background: var(--color-background);
   color: var(--color-text-primary);
   height: 100vh;
-  transition: background-color var(--transition-normal), color var(--transition-normal);
+  transition:
+    background-color var(--transition-normal),
+    color var(--transition-normal);
 }
 
 body {

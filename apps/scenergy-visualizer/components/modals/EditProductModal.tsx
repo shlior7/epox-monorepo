@@ -210,133 +210,133 @@ export function EditProductModal({ isOpen, onClose, productInfo }: EditProductMo
     <Portal>
       <div style={styles.overlay} onClick={() => closeModal()} data-testid={buildTestId('edit-product-modal', 'overlay')}>
         <div style={styles.content} onClick={(e) => e.stopPropagation()} data-testid={buildTestId('edit-product-modal', 'content')}>
-        <form onSubmit={handleSubmit}>
-          <div style={styles.header}>
-            <h2 style={styles.title}>Edit Product</h2>
-            <button
-              type="button"
-              onClick={() => closeModal()}
-              style={{ ...commonStyles.button.icon, color: colors.slate[400] }}
-              data-testid={buildTestId('edit-product-modal', 'close-button')}
-            >
-              <X style={{ width: '20px', height: '20px' }} />
-            </button>
-          </div>
-          <div style={styles.body}>
-            <div>
-              <label style={styles.label}>Product Images</label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageSelect}
-                style={{ display: 'none' }}
-                data-testid={buildTestId('edit-product-modal', 'file-input')}
-              />
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                style={styles.uploadZone}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = colors.indigo[500])}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = colors.slate[600])}
-                data-testid={buildTestId('edit-product-modal', 'upload-zone')}
+          <form onSubmit={handleSubmit}>
+            <div style={styles.header}>
+              <h2 style={styles.title}>Edit Product</h2>
+              <button
+                type="button"
+                onClick={() => closeModal()}
+                style={{ ...commonStyles.button.icon, color: colors.slate[400] }}
+                data-testid={buildTestId('edit-product-modal', 'close-button')}
               >
-                <div style={{ color: colors.slate[400], display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  <Upload style={{ width: '32px', height: '32px' }} />
-                  <span>Upload new images</span>
+                <X style={{ width: '20px', height: '20px' }} />
+              </button>
+            </div>
+            <div style={styles.body}>
+              <div>
+                <label style={styles.label}>Product Images</label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageSelect}
+                  style={{ display: 'none' }}
+                  data-testid={buildTestId('edit-product-modal', 'file-input')}
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  style={styles.uploadZone}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = colors.indigo[500])}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = colors.slate[600])}
+                  data-testid={buildTestId('edit-product-modal', 'upload-zone')}
+                >
+                  <div style={{ color: colors.slate[400], display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <Upload style={{ width: '32px', height: '32px' }} />
+                    <span>Upload new images</span>
+                  </div>
                 </div>
+                {imagePreviews.length > 0 && (
+                  <div style={styles.imageGrid}>
+                    {imagePreviews.map((preview, index) => {
+                      const imageItem = productImages[index];
+                      const isExistingImage = typeof imageItem === 'string';
+                      return (
+                        <div key={index} style={styles.imageContainer}>
+                          <img
+                            src={preview}
+                            alt="Product Preview"
+                            style={{ ...styles.imagePreview, cursor: isExistingImage ? 'pointer' : 'default' }}
+                            onClick={() => {
+                              if (isExistingImage && productInfo) {
+                                setImageModalUrl(preview);
+                                setImageModalInfo({ clientId: productInfo.clientId, productId: productInfo.productId, imageId: imageItem });
+                              }
+                            }}
+                            data-testid={buildTestId('edit-product-modal', 'image-preview', index)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            style={styles.removeImageButton}
+                            data-testid={buildTestId('edit-product-modal', 'remove-image-button', index)}
+                          >
+                            <X style={{ width: '12px', height: '12px' }} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              {imagePreviews.length > 0 && (
-                <div style={styles.imageGrid}>
-                  {imagePreviews.map((preview, index) => {
-                    const imageItem = productImages[index];
-                    const isExistingImage = typeof imageItem === 'string';
-                    return (
-                      <div key={index} style={styles.imageContainer}>
-                        <img
-                          src={preview}
-                          alt="Product Preview"
-                          style={{ ...styles.imagePreview, cursor: isExistingImage ? 'pointer' : 'default' }}
-                          onClick={() => {
-                            if (isExistingImage && productInfo) {
-                              setImageModalUrl(preview);
-                              setImageModalInfo({ clientId: productInfo.clientId, productId: productInfo.productId, imageId: imageItem });
-                            }
-                          }}
-                          data-testid={buildTestId('edit-product-modal', 'image-preview', index)}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          style={styles.removeImageButton}
-                          data-testid={buildTestId('edit-product-modal', 'remove-image-button', index)}
-                        >
-                          <X style={{ width: '12px', height: '12px' }} />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <div>
+                <label htmlFor="productName" style={styles.label}>
+                  Product Name
+                </label>
+                <input
+                  id="productName"
+                  type="text"
+                  value={productName}
+                  onChange={(e) => setProductName(e.target.value)}
+                  style={commonStyles.input.base}
+                  placeholder="e.g., Ergonomic Office Chair"
+                  required
+                  data-testid={buildTestId('edit-product-modal', 'name-input')}
+                />
+              </div>
+              <div>
+                <label htmlFor="productDescription" style={styles.label}>
+                  Description (Optional)
+                </label>
+                <textarea
+                  id="productDescription"
+                  value={productDescription}
+                  onChange={(e) => setProductDescription(e.target.value)}
+                  style={commonStyles.input.textarea}
+                  rows={3}
+                  placeholder="Describe the product..."
+                  data-testid={buildTestId('edit-product-modal', 'description-input')}
+                />
+              </div>
             </div>
-            <div>
-              <label htmlFor="productName" style={styles.label}>
-                Product Name
-              </label>
-              <input
-                id="productName"
-                type="text"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                style={commonStyles.input.base}
-                placeholder="e.g., Ergonomic Office Chair"
-                required
-                data-testid={buildTestId('edit-product-modal', 'name-input')}
-              />
+            <div style={styles.footer}>
+              {error && <p style={{ color: colors.red[600], fontSize: '14px', marginRight: 'auto' }}>{error}</p>}
+              <button
+                type="button"
+                onClick={() => closeModal()}
+                style={commonStyles.button.secondary}
+                data-testid={buildTestId('edit-product-modal', 'cancel-button')}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                style={commonStyles.button.primary}
+                disabled={isSaving}
+                data-testid={buildTestId('edit-product-modal', 'save-button')}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 style={{ width: '20px', height: '20px', animation: 'spin 1s linear infinite' }} />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </button>
             </div>
-            <div>
-              <label htmlFor="productDescription" style={styles.label}>
-                Description (Optional)
-              </label>
-              <textarea
-                id="productDescription"
-                value={productDescription}
-                onChange={(e) => setProductDescription(e.target.value)}
-                style={commonStyles.input.textarea}
-                rows={3}
-                placeholder="Describe the product..."
-                data-testid={buildTestId('edit-product-modal', 'description-input')}
-              />
-            </div>
-          </div>
-          <div style={styles.footer}>
-            {error && <p style={{ color: colors.red[600], fontSize: '14px', marginRight: 'auto' }}>{error}</p>}
-            <button
-              type="button"
-              onClick={() => closeModal()}
-              style={commonStyles.button.secondary}
-              data-testid={buildTestId('edit-product-modal', 'cancel-button')}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              style={commonStyles.button.primary}
-              disabled={isSaving}
-              data-testid={buildTestId('edit-product-modal', 'save-button')}
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 style={{ width: '20px', height: '20px', animation: 'spin 1s linear infinite' }} />
-                  Saving...
-                </>
-              ) : (
-                'Save Changes'
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
 
         {/* Image Modal for viewing */}
         <ImageModal

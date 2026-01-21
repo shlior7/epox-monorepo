@@ -5,6 +5,7 @@ This directory contains security regression tests that verify all critical vulne
 ## Purpose
 
 These tests ensure that:
+
 1. All API routes require proper authentication
 2. Ownership verification prevents cross-client data access
 3. Error messages don't leak sensitive information

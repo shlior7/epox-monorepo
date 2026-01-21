@@ -68,10 +68,7 @@ function arraysEqual(a: string[] | undefined, b: string[] | undefined): boolean 
   return a.every((val, idx) => val === b[idx]);
 }
 
-function getMixedArrayValue(
-  flows: Flow[],
-  getter: (settings: FlowGenerationSettings) => string[] | undefined
-): string[] | 'mixed' {
+function getMixedArrayValue(flows: Flow[], getter: (settings: FlowGenerationSettings) => string[] | undefined): string[] | 'mixed' {
   if (flows.length === 0) return 'mixed';
   if (flows.length === 1) return getter(flows[0].settings) || [];
 
@@ -90,12 +87,7 @@ function InfoTooltip({ text }: { text: string }) {
         </span>
       </Tooltip.Trigger>
       <Tooltip.Portal>
-        <Tooltip.Content
-          className={styles.tooltipContent}
-          side="top"
-          align="center"
-          sideOffset={8}
-        >
+        <Tooltip.Content className={styles.tooltipContent} side="top" align="center" sideOffset={8}>
           {text}
           <Tooltip.Arrow className={styles.tooltipArrow} />
         </Tooltip.Content>
@@ -125,9 +117,7 @@ function TagInput({
 
   const filteredSuggestions = useMemo(() => {
     if (!inputValue.trim()) return suggestions.filter((s) => !tags.includes(s));
-    return suggestions.filter(
-      (s) => s.toLowerCase().includes(inputValue.toLowerCase()) && !tags.includes(s)
-    );
+    return suggestions.filter((s) => s.toLowerCase().includes(inputValue.toLowerCase()) && !tags.includes(s));
   }, [inputValue, suggestions, tags]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -290,9 +280,8 @@ export function FlowSettingsPanel({
       promptText: getMixedValue(selectedFlows, (s) => s.promptText),
       imageModel: getMixedValue(selectedFlows, (s) => s.imageModel),
       imageQuality: getMixedValue(selectedFlows, (s) => s.imageQuality),
-      postAdjustments: selectedFlows.length === 1
-        ? selectedFlows[0].settings.postAdjustments || DEFAULT_POST_ADJUSTMENTS
-        : 'mixed' as const,
+      postAdjustments:
+        selectedFlows.length === 1 ? selectedFlows[0].settings.postAdjustments || DEFAULT_POST_ADJUSTMENTS : ('mixed' as const),
     };
   }, [selectedFlows, hasSelection]);
 
@@ -324,16 +313,11 @@ export function FlowSettingsPanel({
   };
 
   // Render helper for select with mixed state
-  const renderSelect = (
-    label: string,
-    field: keyof FlowGenerationSettings,
-    options: string[],
-    value: MixedValue
-  ) => (
+  const renderSelect = (label: string, field: keyof FlowGenerationSettings, options: string[], value: MixedValue) => (
     <div className={styles.settingsSection}>
       <label className={styles.settingsLabel}>{label}</label>
       <select
-        value={value === 'mixed' ? '' : (value || '')}
+        value={value === 'mixed' ? '' : value || ''}
         onChange={(e) => handleChange(field, e.target.value === '' ? undefined : e.target.value)}
         className={clsx(styles.settingsSelect, { [styles.mixedValue]: value === 'mixed' })}
       >
@@ -342,9 +326,7 @@ export function FlowSettingsPanel({
             Mixed values
           </option>
         )}
-        {value !== 'mixed' && (
-          <option value="">----</option>
-        )}
+        {value !== 'mixed' && <option value="">----</option>}
         {options.map((opt) => (
           <option key={opt} value={opt}>
             {opt}
@@ -358,11 +340,7 @@ export function FlowSettingsPanel({
   const renderToggle = (label: string, field: keyof FlowGenerationSettings, value: MixedBoolean) => (
     <div className={styles.toggleItem}>
       <span className={styles.toggleLabel}>{label}</span>
-      <button
-        type="button"
-        onClick={() => handleChange(field, value === 'mixed' ? true : !value)}
-        className={styles.toggleButton}
-      >
+      <button type="button" onClick={() => handleChange(field, value === 'mixed' ? true : !value)} className={styles.toggleButton}>
         {value === 'mixed' ? (
           <div className={styles.mixedToggle}>—</div>
         ) : value ? (
@@ -379,11 +357,7 @@ export function FlowSettingsPanel({
       <div className={clsx(styles.settingsPanel, className)}>
         <div className={styles.settingsPanelHeader}>
           <h3 className={styles.settingsPanelTitle}>
-            {!hasSelection
-              ? 'Settings'
-              : isMultiSelect
-                ? `${selectedFlows.length} Flows Selected`
-                : 'Flow Settings'}
+            {!hasSelection ? 'Settings' : isMultiSelect ? `${selectedFlows.length} Flows Selected` : 'Flow Settings'}
           </h3>
         </div>
 
@@ -392,17 +366,11 @@ export function FlowSettingsPanel({
             <div className={styles.noSelectionState}>
               <Layers style={{ width: 48, height: 48, color: 'var(--color-slate-500)' }} />
               <p>Select a flow to edit its settings</p>
-              <p className={styles.noSelectionHint}>
-                Tip: Use Cmd+click or Shift+click to select multiple flows
-              </p>
+              <p className={styles.noSelectionHint}>Tip: Use Cmd+click or Shift+click to select multiple flows</p>
             </div>
           ) : (
             <div className={styles.accordionScrollArea}>
-              <Accordion.Root
-                type="multiple"
-                defaultValue={['scene']}
-                className={styles.accordionRoot}
-              >
+              <Accordion.Root type="multiple" defaultValue={['scene']} className={styles.accordionRoot}>
                 {/* Section 1: Scene */}
                 <Accordion.Item value="scene" className={styles.accordionItem}>
                   <Accordion.Header className={styles.accordionHeader}>
@@ -433,15 +401,10 @@ export function FlowSettingsPanel({
                           ) : mixedSettings?.sceneImageUrl ? (
                             <>
                               <div className={styles.scenePreviewThumbnail}>
-                                <img
-                                  src={mixedSettings.sceneImageUrl as string}
-                                  alt={(mixedSettings.scene as string) || 'Scene'}
-                                />
+                                <img src={mixedSettings.sceneImageUrl as string} alt={(mixedSettings.scene as string) || 'Scene'} />
                               </div>
                               <div className={styles.scenePreviewInfo}>
-                                <span className={styles.scenePreviewText}>
-                                  {(mixedSettings.scene as string) || 'Custom Scene'}
-                                </span>
+                                <span className={styles.scenePreviewText}>{(mixedSettings.scene as string) || 'Custom Scene'}</span>
                                 <span className={styles.scenePreviewAction}>Change</span>
                               </div>
                             </>
@@ -460,42 +423,41 @@ export function FlowSettingsPanel({
                       </div>
 
                       {/* Analyze Scene Button */}
-                      {mixedSettings?.sceneImageUrl &&
-                        mixedSettings.sceneImageUrl !== 'mixed' &&
-                        !isMultiSelect && (
-                          <div className={styles.settingsSection}>
-                            <label className={styles.settingsLabel}>
-                              AI Analysis
-                              <InfoTooltip text={'Analyze the backdrop image\nDetect room type, style, lighting, and other settings.\n then apply this to the relevant settings panel options'} />
-                            </label>
-                            <button
-                              type="button"
-                              onClick={handleAnalyzeScene}
-                              disabled={isAnalyzing}
-                              className={styles.analyzeSceneButton}
-                            >
-                              {isAnalyzing ? (
-                                <>
-                                  <Loader2 className={styles.spinIcon} style={{ width: 14, height: 14 }} />
-                                  <span>Analyzing...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Sparkles style={{ width: 14, height: 14 }} />
-                                  <span>Analyze Scene</span>
-                                </>
-                              )}
-                            </button>
-                            {analyzeError && <p className={styles.analyzeError}>{analyzeError}</p>}
-                          </div>
-                        )}
+                      {mixedSettings?.sceneImageUrl && mixedSettings.sceneImageUrl !== 'mixed' && !isMultiSelect && (
+                        <div className={styles.settingsSection}>
+                          <label className={styles.settingsLabel}>
+                            AI Analysis
+                            <InfoTooltip
+                              text={
+                                'Analyze the backdrop image\nDetect room type, style, lighting, and other settings.\n then apply this to the relevant settings panel options'
+                              }
+                            />
+                          </label>
+                          <button type="button" onClick={handleAnalyzeScene} disabled={isAnalyzing} className={styles.analyzeSceneButton}>
+                            {isAnalyzing ? (
+                              <>
+                                <Loader2 className={styles.spinIcon} style={{ width: 14, height: 14 }} />
+                                <span>Analyzing...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles style={{ width: 14, height: 14 }} />
+                                <span>Analyze Scene</span>
+                              </>
+                            )}
+                          </button>
+                          {analyzeError && <p className={styles.analyzeError}>{analyzeError}</p>}
+                        </div>
+                      )}
 
                       {/* Interpretation Slider */}
                       <div className={styles.settingsSection}>
                         <div className={styles.settingsLabelRow}>
                           <label className={styles.settingsLabel}>
                             Interpretation
-                            <InfoTooltip text={'How closely to follow the backdrop scene.\nLower = more faithful\n Higher = more creative.'} />
+                            <InfoTooltip
+                              text={'How closely to follow the backdrop scene.\nLower = more faithful\n Higher = more creative.'}
+                            />
                           </label>
                           <span className={styles.settingsValue}>
                             {mixedSettings?.varietyLevel === 'mixed' ? 'Mixed' : mixedSettings?.varietyLevel}
@@ -513,16 +475,8 @@ export function FlowSettingsPanel({
 
                       {/* Toggle Options */}
                       <div className={styles.toggleGrid}>
-                        {renderToggle(
-                          'Match Colors',
-                          'matchProductColors',
-                          mixedSettings?.matchProductColors as MixedBoolean
-                        )}
-                        {renderToggle(
-                          'Accessories',
-                          'includeAccessories',
-                          mixedSettings?.includeAccessories as MixedBoolean
-                        )}
+                        {renderToggle('Match Colors', 'matchProductColors', mixedSettings?.matchProductColors as MixedBoolean)}
+                        {renderToggle('Accessories', 'includeAccessories', mixedSettings?.includeAccessories as MixedBoolean)}
                       </div>
                     </div>
                   </Accordion.Content>
@@ -542,44 +496,17 @@ export function FlowSettingsPanel({
                   <Accordion.Content className={styles.accordionContent}>
                     <div className={styles.accordionContentInner}>
                       {renderSelect('Room Type', 'sceneType', SCENE_TYPES, mixedSettings?.sceneType as MixedValue)}
-                      {renderSelect(
-                        'Aesthetic Style',
-                        'style',
-                        STYLE_OPTIONS,
-                        mixedSettings?.style as MixedValue
-                      )}
-                      {renderSelect(
-                        'Lighting',
-                        'lighting',
-                        LIGHTING_OPTIONS,
-                        mixedSettings?.lighting as MixedValue
-                      )}
-                      {renderSelect(
-                        'Camera Angle',
-                        'cameraAngle',
-                        CAMERA_ANGLES,
-                        mixedSettings?.cameraAngle as MixedValue
-                      )}
-                      {renderSelect(
-                        'Surroundings',
-                        'surroundings',
-                        SURROUNDING_OPTIONS,
-                        mixedSettings?.surroundings as MixedValue
-                      )}
-                      {renderSelect(
-                        'Color Palette',
-                        'colorScheme',
-                        COLOR_SCHEMES,
-                        mixedSettings?.colorScheme as MixedValue
-                      )}
+                      {renderSelect('Aesthetic Style', 'style', STYLE_OPTIONS, mixedSettings?.style as MixedValue)}
+                      {renderSelect('Lighting', 'lighting', LIGHTING_OPTIONS, mixedSettings?.lighting as MixedValue)}
+                      {renderSelect('Camera Angle', 'cameraAngle', CAMERA_ANGLES, mixedSettings?.cameraAngle as MixedValue)}
+                      {renderSelect('Surroundings', 'surroundings', SURROUNDING_OPTIONS, mixedSettings?.surroundings as MixedValue)}
+                      {renderSelect('Color Palette', 'colorScheme', COLOR_SCHEMES, mixedSettings?.colorScheme as MixedValue)}
 
                       {/* Staging Elements - Tag Input */}
                       <div className={styles.settingsSection}>
                         <label className={styles.settingsLabel}>
                           Staging Elements
-                          {mixedSettings?.props === 'mixed' && (
-                            <span className={styles.mixedLabel}> (Mixed)</span>
-                          )}
+                          {mixedSettings?.props === 'mixed' && <span className={styles.mixedLabel}> (Mixed)</span>}
                         </label>
                         <TagInput
                           tags={mixedSettings?.props === 'mixed' ? [] : mixedSettings?.props || []}
@@ -610,9 +537,7 @@ export function FlowSettingsPanel({
                       <div className={styles.settingsSection}>
                         <label className={styles.settingsLabel}>
                           Aspect Ratio
-                          {mixedSettings?.aspectRatio === 'mixed' && (
-                            <span className={styles.mixedLabel}> (Mixed)</span>
-                          )}
+                          {mixedSettings?.aspectRatio === 'mixed' && <span className={styles.mixedLabel}> (Mixed)</span>}
                         </label>
                         <div className={styles.aspectRatioGrid}>
                           {ASPECT_RATIOS.map((ratio) => (
@@ -634,9 +559,7 @@ export function FlowSettingsPanel({
                       <div className={styles.settingsSection}>
                         <label className={styles.settingsLabel}>
                           Image Quality
-                          {mixedSettings?.imageQuality === 'mixed' && (
-                            <span className={styles.mixedLabel}> (Mixed)</span>
-                          )}
+                          {mixedSettings?.imageQuality === 'mixed' && <span className={styles.mixedLabel}> (Mixed)</span>}
                         </label>
                         <div className={styles.qualityGrid}>
                           {IMAGE_QUALITY_OPTIONS.map((quality) => (
@@ -674,9 +597,7 @@ export function FlowSettingsPanel({
                       {mixedSettings?.postAdjustments === 'mixed' ? (
                         <div className={styles.mixedStateMessage}>
                           <p>Post adjustments vary across selected flows.</p>
-                          <p className={styles.mixedStateHint}>
-                            Select a single flow to edit post adjustments.
-                          </p>
+                          <p className={styles.mixedStateHint}>Select a single flow to edit post adjustments.</p>
                         </div>
                       ) : (
                         <PostAdjustmentsPanel
@@ -696,9 +617,7 @@ export function FlowSettingsPanel({
                 <div className={styles.settingsSection}>
                   <ModelSelector
                     selectedModelId={
-                      mixedSettings?.imageModel === 'mixed'
-                        ? AI_MODELS.IMAGE
-                        : (mixedSettings?.imageModel as string) || AI_MODELS.IMAGE
+                      mixedSettings?.imageModel === 'mixed' ? AI_MODELS.IMAGE : (mixedSettings?.imageModel as string) || AI_MODELS.IMAGE
                     }
                     onModelChange={(modelId) => handleChange('imageModel', modelId)}
                     label="Generation Model"
@@ -710,9 +629,7 @@ export function FlowSettingsPanel({
 
                 {/* Custom Prompt */}
                 <div className={styles.settingsSection}>
-                  <label className={styles.settingsLabel}>
-                    {isMultiSelect ? 'Shared Prompt Prefix' : 'Custom Instructions'}
-                  </label>
+                  <label className={styles.settingsLabel}>{isMultiSelect ? 'Shared Prompt Prefix' : 'Custom Instructions'}</label>
                   {isMultiSelect ? (
                     <>
                       <textarea
@@ -726,8 +643,7 @@ export function FlowSettingsPanel({
                         }}
                       />
                       <p className={styles.settingsHint}>
-                        This will be added as a prefix to the prompt of all {selectedFlows.length}{' '}
-                        selected flows.
+                        This will be added as a prefix to the prompt of all {selectedFlows.length} selected flows.
                       </p>
                     </>
                   ) : (
@@ -747,12 +663,7 @@ export function FlowSettingsPanel({
         {/* Footer with Execute Button */}
         {hasSelection && onExecuteFlows && (
           <div className={styles.settingsPanelFooter}>
-            <button
-              type="button"
-              onClick={onExecuteFlows}
-              disabled={isExecuting}
-              className={styles.executeAllButton}
-            >
+            <button type="button" onClick={onExecuteFlows} disabled={isExecuting} className={styles.executeAllButton}>
               {isExecuting ? (
                 <>
                   <Loader2 className={styles.spinIcon} />
@@ -761,9 +672,7 @@ export function FlowSettingsPanel({
               ) : (
                 <>
                   <Play />
-                  <span>
-                    Generate {selectedFlows.length > 1 ? `${selectedFlows.length} Flows` : 'Flow'}
-                  </span>
+                  <span>Generate {selectedFlows.length > 1 ? `${selectedFlows.length} Flows` : 'Flow'}</span>
                 </>
               )}
             </button>

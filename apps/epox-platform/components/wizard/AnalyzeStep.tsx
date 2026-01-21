@@ -217,7 +217,9 @@ export function AnalyzeStep({
     // CRITICAL: Prevent duplicate calls (both from React Strict Mode and user actions)
     // This prevents duplicate database inserts
     if (isCreating || creationAttempted.current) {
-      console.log('⚠️ Collection creation already in progress or completed, skipping duplicate call');
+      console.log(
+        '⚠️ Collection creation already in progress or completed, skipping duplicate call'
+      );
       return;
     }
 
@@ -300,7 +302,8 @@ export function AnalyzeStep({
           <h2 className="text-gradient-gold mb-3 text-2xl font-bold">Analyzing Your Selection</h2>
           <p className="mx-auto mb-8 max-w-md text-muted-foreground">
             AI is analyzing your {selectedProductIds.length} products
-            {inspirationImages.length > 0 && ` and ${inspirationImages.length} inspiration images`}{' '}
+            {inspirationImages.length > 0 &&
+              ` and ${inspirationImages.length} inspiration images`}{' '}
             to prepare the best generation settings...
           </p>
 
@@ -396,12 +399,7 @@ export function AnalyzeStep({
 
         {/* Navigation */}
         <div className="flex justify-end">
-          <Button
-            variant="glow"
-            size="lg"
-            onClick={handleNextQuestion}
-            disabled={!canProceed}
-          >
+          <Button variant="glow" size="lg" onClick={handleNextQuestion} disabled={!canProceed}>
             {currentQuestionIndex < questions.length - 1 ? (
               <>
                 Next Question
@@ -460,4 +458,3 @@ export function AnalyzeStep({
   // Fallback (shouldn't reach here)
   return null;
 }
-

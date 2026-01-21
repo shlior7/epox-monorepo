@@ -9,7 +9,9 @@ import { InspirationStep } from '../wizard';
 interface InspirationImageModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (items: Array<{ url: string; sourceType: InspirationSourceType }>) => Promise<void> | void;
+  onSubmit: (
+    items: Array<{ url: string; sourceType: InspirationSourceType }>
+  ) => Promise<void> | void;
   existingImages?: InspirationImage[];
   isProcessing?: boolean;
 }
@@ -26,7 +28,10 @@ export function InspirationImageModal({
     Array<{ url: string; sourceType: InspirationSourceType }>
   >([]);
 
-  const existingUrlSet = useMemo(() => new Set(existingImages.map((img) => img.url)), [existingImages]);
+  const existingUrlSet = useMemo(
+    () => new Set(existingImages.map((img) => img.url)),
+    [existingImages]
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -60,9 +65,7 @@ export function InspirationImageModal({
           />
         </div>
         <div className="flex items-center justify-between border-t border-border bg-card/80 px-6 py-4">
-          <p className="text-xs text-muted-foreground">
-            {selectedImages.length} selected
-          </p>
+          <p className="text-xs text-muted-foreground">{selectedImages.length} selected</p>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={onClose}>
               Cancel

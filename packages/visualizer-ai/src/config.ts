@@ -89,4 +89,3 @@ export function validateApiKeys(config: AIServiceConfig) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }
 }
-

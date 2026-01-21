@@ -72,19 +72,11 @@ export function DebugPromptModal({
 
   return (
     <Portal>
-      <div
-        className={styles.debugModalOverlay}
-        onClick={handleOverlayClick}
-        style={{ zIndex: Z_INDEX.MODAL }}
-      >
+      <div className={styles.debugModalOverlay} onClick={handleOverlayClick} style={{ zIndex: Z_INDEX.MODAL }}>
         <div className={styles.debugModal}>
           <div className={styles.debugModalHeader}>
             <h2 className={styles.debugModalTitle}>Debug: LLM Input Preview</h2>
-            <button
-              onClick={onClose}
-              className={styles.iconButton}
-              type="button"
-            >
+            <button onClick={onClose} className={styles.iconButton} type="button">
               <X style={{ width: 20, height: 20 }} />
             </button>
           </div>
@@ -132,16 +124,10 @@ export function DebugPromptModal({
               <div className={styles.debugSectionHeader}>
                 <div className={styles.debugPromptHeader}>
                   <h3 className={styles.debugSectionTitle}>Final Prompt</h3>
-                  {isCustomPrompt && (
-                    <span className={styles.customPromptBadge}>Custom prompt active</span>
-                  )}
+                  {isCustomPrompt && <span className={styles.customPromptBadge}>Custom prompt active</span>}
                 </div>
                 <div className={styles.debugPromptActions}>
-                  <button
-                    onClick={handleCopyPrompt}
-                    className={styles.copyButton}
-                    type="button"
-                  >
+                  <button onClick={handleCopyPrompt} className={styles.copyButton} type="button">
                     {copied ? (
                       <>
                         <Check style={{ width: 14, height: 14 }} />
@@ -154,12 +140,7 @@ export function DebugPromptModal({
                       </>
                     )}
                   </button>
-                  <button
-                    onClick={handleSaveCustomPrompt}
-                    className={styles.debugActionButton}
-                    type="button"
-                    disabled={!canSave}
-                  >
+                  <button onClick={handleSaveCustomPrompt} className={styles.debugActionButton} type="button" disabled={!canSave}>
                     Save custom prompt
                   </button>
                   <button

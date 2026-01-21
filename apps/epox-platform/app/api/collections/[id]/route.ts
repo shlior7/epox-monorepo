@@ -101,12 +101,14 @@ export const PATCH = withSecurity(async (request, context, { params }) => {
     }
 
     // Verify ownership
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: collection.clientId,
-      resourceType: 'collection',
-      resourceId: id,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: collection.clientId,
+        resourceType: 'collection',
+        resourceId: id,
+      })
+    ) {
       return forbiddenResponse();
     }
 
@@ -204,7 +206,8 @@ export const DELETE = withSecurity(async (request, context, { params }) => {
       );
     }
 
-    const effectivePolicy = (assetPolicy ?? 'keep_pinned_approved') as (typeof validPolicies)[number];
+    const effectivePolicy = (assetPolicy ??
+      'keep_pinned_approved') as (typeof validPolicies)[number];
 
     // Fetch collection first to verify existence
     const collection = await db.collectionSessions.getById(id);
@@ -214,12 +217,14 @@ export const DELETE = withSecurity(async (request, context, { params }) => {
     }
 
     // Verify ownership
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: collection.clientId,
-      resourceType: 'collection',
-      resourceId: id,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: collection.clientId,
+        resourceType: 'collection',
+        resourceId: id,
+      })
+    ) {
       return forbiddenResponse();
     }
 

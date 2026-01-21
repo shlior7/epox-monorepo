@@ -23,7 +23,10 @@ import { NextRequest } from 'next/server';
 import { POST as generateImages } from '@/app/api/collections/[id]/generate/route';
 import { GET as getFlows, POST as createFlow } from '@/app/api/collections/[id]/flows/route';
 import { GET as getStudioSessions, POST as createStudioSession } from '@/app/api/studio/route';
-import { GET as getStudioSettings, PATCH as updateStudioSettings } from '@/app/api/studio/[id]/settings/route';
+import {
+  GET as getStudioSettings,
+  PATCH as updateStudioSettings,
+} from '@/app/api/studio/[id]/settings/route';
 import { GET as getJobStatus } from '@/app/api/jobs/[id]/route';
 import { GET as searchUnsplash } from '@/app/api/explore/search/route';
 import { GET as getStoreStatus } from '@/app/api/store-connection/status/route';
@@ -283,7 +286,9 @@ describe('Security Regression Tests - Authentication Requirements', () => {
     it('should reject unauthenticated GET requests to /api/studio/[id]/settings', async () => {
       const request = new NextRequest('http://localhost:3000/api/studio/flow-1/settings');
 
-      const response = await getStudioSettings(request, { params: Promise.resolve({ id: 'flow-1' }) });
+      const response = await getStudioSettings(request, {
+        params: Promise.resolve({ id: 'flow-1' }),
+      });
       const data = await response.json();
 
       expect(response.status).toBe(401);
@@ -308,7 +313,9 @@ describe('Security Regression Tests - Authentication Requirements', () => {
         body: JSON.stringify({ settings: { aspectRatio: '16:9' } }),
       });
 
-      const response = await updateStudioSettings(request, { params: Promise.resolve({ id: 'flow-1' }) });
+      const response = await updateStudioSettings(request, {
+        params: Promise.resolve({ id: 'flow-1' }),
+      });
 
       expect(response.status).toBe(403);
     });
@@ -385,7 +392,9 @@ describe('Security Regression Tests - Error Handling', () => {
   it('should not expose raw error messages to clients', async () => {
     // Force an error in the database layer
     vi.mocked(db.collectionSessions.getById).mockRejectedValue(
-      new Error('Database connection failed: Connection timeout on host db.internal.example.com:5432')
+      new Error(
+        'Database connection failed: Connection timeout on host db.internal.example.com:5432'
+      )
     );
 
     const request = new NextRequest('http://localhost:3000/api/collections/coll-1/flows', {
@@ -411,7 +420,9 @@ describe('Security Regression Tests - Error Handling', () => {
       headers: { 'x-test-client-id': 'client-1' },
     });
 
-    const response = await getStudioSettings(request, { params: Promise.resolve({ id: 'flow-1' }) });
+    const response = await getStudioSettings(request, {
+      params: Promise.resolve({ id: 'flow-1' }),
+    });
     const data = await response.json();
 
     // Should not expose stack traces

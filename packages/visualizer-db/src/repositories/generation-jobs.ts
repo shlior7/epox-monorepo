@@ -1,6 +1,14 @@
 import { and, desc, eq, lte, sql } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
-import { generationJob, type JobStatus, type JobType, type ImageGenerationPayload, type ImageEditPayload, type VideoGenerationPayload, type JobResult } from '../schema/jobs';
+import {
+  generationJob,
+  type JobStatus,
+  type JobType,
+  type ImageGenerationPayload,
+  type ImageEditPayload,
+  type VideoGenerationPayload,
+  type JobResult,
+} from '../schema/jobs';
 import { BaseRepository } from './base';
 
 // ============================================================================
@@ -86,7 +94,6 @@ export class GenerationJobRepository extends BaseRepository<GenerationJob> {
     };
   }
 
-
   /**
    * Create a new job
    */
@@ -148,11 +155,7 @@ export class GenerationJobRepository extends BaseRepository<GenerationJob> {
    * Update job status and progress
    */
   async updateStatus(id: string, data: GenerationJobUpdate): Promise<GenerationJob> {
-    const [updated] = await this.drizzle
-      .update(generationJob)
-      .set(data)
-      .where(eq(generationJob.id, id))
-      .returning();
+    const [updated] = await this.drizzle.update(generationJob).set(data).where(eq(generationJob.id, id)).returning();
 
     return this.mapToEntity(updated);
   }
@@ -306,12 +309,7 @@ export class GenerationJobRepository extends BaseRepository<GenerationJob> {
 
     const result = await this.drizzle
       .delete(generationJob)
-      .where(
-        and(
-          sql`${generationJob.status} IN ('completed', 'failed')`,
-          lte(generationJob.completedAt, cutoff)
-        )
-      )
+      .where(and(sql`${generationJob.status} IN ('completed', 'failed')`, lte(generationJob.completedAt, cutoff)))
       .returning({ id: generationJob.id });
 
     return result.length;

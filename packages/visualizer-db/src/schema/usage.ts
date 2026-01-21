@@ -73,12 +73,7 @@ export const quotaLimitRelations = relations(quotaLimit, ({ one }) => ({
 // ===== AI COST TRACKING =====
 // Tracks detailed cost per AI operation for billing and monitoring
 
-export type AIOperationType =
-  | 'image_generation'
-  | 'image_edit'
-  | 'video_generation'
-  | 'vision_analysis'
-  | 'product_analysis';
+export type AIOperationType = 'image_generation' | 'image_edit' | 'video_generation' | 'vision_analysis' | 'product_analysis';
 
 export const aiCostTracking = pgTable(
   'ai_cost_tracking',
@@ -122,4 +117,3 @@ export const aiCostTrackingRelations = relations(aiCostTracking, ({ one }) => ({
     references: [user.id],
   }),
 }));
-

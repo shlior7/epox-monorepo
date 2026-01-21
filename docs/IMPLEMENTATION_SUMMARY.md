@@ -13,12 +13,14 @@ Implemented critical infrastructure improvements to address resilience, observab
 **Problem:** In-memory rate limiting doesn't work across multiple serverless instances, causing quota overruns.
 
 **Solution:**
+
 - Created `rate-limit-redis.ts` with atomic Redis operations (INCR + EXPIRE)
 - Hybrid approach: Redis in production, in-memory fallback for development
 - Automatic failover if Redis unavailable
 - Sliding window algorithm with configurable limits
 
 **Files Changed:**
+
 - [packages/visualizer-ai/src/rate-limit-redis.ts](packages/visualizer-ai/src/rate-limit-redis.ts) - New distributed rate limiter
 - [packages/visualizer-ai/src/rate-limit.ts](packages/visualizer-ai/src/rate-limit.ts) - Updated to use Redis when available
 - [packages/visualizer-ai/src/index.ts](packages/visualizer-ai/src/index.ts) - Export Redis initialization
@@ -26,6 +28,7 @@ Implemented critical infrastructure improvements to address resilience, observab
 - [apps/epox-platform/lib/services/ai-init.ts](apps/epox-platform/lib/services/ai-init.ts) - Initialize on startup
 
 **Usage:**
+
 ```typescript
 // Automatic - initialized on app startup via instrumentation.ts
 // In production, replace in-memory Redis with real client:
@@ -40,6 +43,7 @@ export const redis = new Redis(process.env.REDIS_URL);
 **Problem:** No observability - can't track costs, detect issues, or trace requests.
 
 **Solution:**
+
 - Created `logger.ts` with structured JSON logging
 - Request ID tracking across operations
 - Sentry integration for error tracking
@@ -47,10 +51,12 @@ export const redis = new Redis(process.env.REDIS_URL);
 - Development-friendly console output with emojis
 
 **Files Changed:**
+
 - [packages/visualizer-ai/src/logger.ts](packages/visualizer-ai/src/logger.ts) - New Logger class
 - [apps/epox-platform/lib/services/ai-init.ts](apps/epox-platform/lib/services/ai-init.ts) - Sentry initialization
 
 **Usage:**
+
 ```typescript
 import { createLogger } from 'visualizer-ai';
 
@@ -66,6 +72,7 @@ logger.aiOperation('image_generation', {
 ```
 
 **Environment Variables:**
+
 - `SENTRY_DSN` - Enable Sentry error tracking
 - `NODE_ENV` - Controls log format (pretty vs JSON)
 
@@ -76,15 +83,18 @@ logger.aiOperation('image_generation', {
 **Problem:** Fixed 5-second polling wastes API calls and increases costs.
 
 **Solution:**
+
 - Replaced fixed polling with exponential backoff
 - Starts at 2s, increases 1.5x each time, caps at 30s
 - Reduces API calls by ~50% for typical video generation
 - Added logging to track poll count and duration
 
 **Files Changed:**
+
 - [packages/visualizer-ai/src/gemini-service.ts](packages/visualizer-ai/src/gemini-service.ts) - Updated `generateVideo()` method
 
 **Polling Pattern:**
+
 ```
 Poll #1: 2s wait
 Poll #2: 3s wait
@@ -103,18 +113,21 @@ Poll #8+: 30s wait (capped)
 **Problem:** Can't track costs per tenant for billing, quotas, or abuse detection.
 
 **Solution:**
+
 - Created `ai_cost_tracking` table with detailed operation logging
 - Repository pattern for cost queries and summaries
 - Helper `trackAIOperation()` wrapper for easy integration
 - Automatic request ID correlation with logs
 
 **Files Changed:**
+
 - [packages/visualizer-db/src/schema/usage.ts](packages/visualizer-db/src/schema/usage.ts) - New `ai_cost_tracking` table
 - [packages/visualizer-db/src/repositories/ai-cost-tracking.ts](packages/visualizer-db/src/repositories/ai-cost-tracking.ts) - Cost tracking repository
 - [packages/visualizer-ai/src/cost-tracker.ts](packages/visualizer-ai/src/cost-tracker.ts) - Cost tracking helper
 - [apps/epox-platform/lib/services/ai-init.ts](apps/epox-platform/lib/services/ai-init.ts) - Initialize on startup
 
 **Database Schema:**
+
 ```sql
 CREATE TABLE ai_cost_tracking (
   id TEXT PRIMARY KEY,
@@ -139,20 +152,18 @@ CREATE TABLE ai_cost_tracking (
 ```
 
 **Usage:**
+
 ```typescript
 import { trackAIOperation, getCostTracker } from 'visualizer-ai';
 
 // Wrap AI operations with cost tracking
-const result = await trackAIOperation(
-  () => geminiService.generateImages(request),
-  {
-    clientId: 'client_123',
-    operationType: 'image_generation',
-    model: 'gemini-2.5-flash-image',
-    estimatedCostUsd: 0.04,
-    imageCount: 1,
-  }
-);
+const result = await trackAIOperation(() => geminiService.generateImages(request), {
+  clientId: 'client_123',
+  operationType: 'image_generation',
+  model: 'gemini-2.5-flash-image',
+  estimatedCostUsd: 0.04,
+  imageCount: 1,
+});
 
 // Query costs
 const summary = await getCostTracker().getCostSummary('client_123', {
@@ -183,6 +194,7 @@ export async function register() {
 ```
 
 **Enabled in:** [apps/epox-platform/next.config.js](apps/epox-platform/next.config.js)
+
 ```javascript
 experimental: {
   instrumentationHook: true,
@@ -219,18 +231,19 @@ export const redis = new Redis(process.env.REDIS_URL, {
 ```
 
 **Environment Variables:**
+
 - `REDIS_URL` - Redis connection string (e.g., `redis://localhost:6379`)
 
 ---
 
 ## 🎯 Benefits
 
-| Feature | Impact | Metrics |
-|---------|--------|---------|
-| Distributed Rate Limiting | Multi-instance safety | Prevents quota overruns in serverless |
-| Structured Logging | Observability | Request tracing, error tracking, debugging |
-| Exponential Backoff | Cost reduction | ~50% fewer API calls for video polling |
-| Cost Tracking | Billing accuracy | Per-client/tenant cost attribution |
+| Feature                   | Impact                | Metrics                                    |
+| ------------------------- | --------------------- | ------------------------------------------ |
+| Distributed Rate Limiting | Multi-instance safety | Prevents quota overruns in serverless      |
+| Structured Logging        | Observability         | Request tracing, error tracking, debugging |
+| Exponential Backoff       | Cost reduction        | ~50% fewer API calls for video polling     |
+| Cost Tracking             | Billing accuracy      | Per-client/tenant cost attribution         |
 
 ---
 
@@ -260,6 +273,7 @@ From the architecture review:
 To verify the implementation:
 
 1. **Rate Limiting:**
+
    ```bash
    # Start app and make concurrent requests
    yarn workspace epox-platform dev
@@ -267,6 +281,7 @@ To verify the implementation:
    ```
 
 2. **Logging:**
+
    ```bash
    # Check logs show request IDs and structured format
    # In production: Check Better Stack for JSON logs
@@ -274,6 +289,7 @@ To verify the implementation:
    ```
 
 3. **Video Polling:**
+
    ```bash
    # Generate a video and observe console logs
    # Should see: "Video still processing... (poll #N, next check in Xs)"

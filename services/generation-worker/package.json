@@ -12,16 +12,19 @@
   },
   "dependencies": {
     "@logtail/pino": "^0.5.0",
+    "@neondatabase/serverless": "^0.10.4",
     "@sentry/node": "^8.47.0",
     "drizzle-orm": "^0.38.3",
     "pino": "^9.6.0",
     "visualizer-ai": "1.0.0",
     "visualizer-db": "1.0.0",
     "visualizer-storage": "1.0.0",
-    "visualizer-types": "1.0.0"
+    "visualizer-types": "1.0.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/node": "^24.1.0",
+    "@types/ws": "^8.5.13",
     "pino-pretty": "^11.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.2"

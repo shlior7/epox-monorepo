@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Settings2 } from 'lucide-react';
-import {
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import type { GeneratedAsset } from '@/lib/api-client';
 import type { InspirationImage } from 'visualizer-types';
@@ -82,11 +80,7 @@ export function AssetCard({
         {/* Config and Status */}
         <div className="ml-auto flex items-center gap-2">
           <ConfigBadges configuration={configuration} />
-          <StatusBadges
-            isPinned={isPinned}
-            isApproved={isApproved}
-            isRejected={isRejected}
-          />
+          <StatusBadges isPinned={isPinned} isApproved={isApproved} isRejected={isRejected} />
         </div>
       </AssetCardHeader>
 

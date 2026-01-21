@@ -30,7 +30,7 @@ import {
   List,
   Loader2,
   Package,
-  Pin
+  Pin,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -233,15 +233,9 @@ export default function AssetsPage() {
                         }}
                       />
                     ) : viewMode === 'grid' ? (
-                      <AssetGrid
-                        assets={filteredAssets}
-                        onSelect={setSelectedAsset}
-                      />
+                      <AssetGrid assets={filteredAssets} onSelect={setSelectedAsset} />
                     ) : (
-                      <AssetList
-                        assets={filteredAssets}
-                        onSelect={setSelectedAsset}
-                      />
+                      <AssetList assets={filteredAssets} onSelect={setSelectedAsset} />
                     )}
                   </TabsContent>
 
@@ -255,61 +249,63 @@ export default function AssetsPage() {
                       />
                     ) : (
                       <div className="space-y-8">
-                        {Object.values(assetsByProduct).map(({ product, assets: productAssets }) => (
-                          <div key={product.id}>
-                            <div className="mb-3 flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-secondary">
-                                  {product.imageUrl ? (
-                                    <Image
-                                      src={product.imageUrl}
-                                      alt={product.name}
-                                      fill
-                                      className="object-cover"
-                                    />
-                                  ) : (
-                                    <div className="flex h-full items-center justify-center">
-                                      <Package className="h-5 w-5 text-muted-foreground" />
-                                    </div>
-                                  )}
+                        {Object.values(assetsByProduct).map(
+                          ({ product, assets: productAssets }) => (
+                            <div key={product.id}>
+                              <div className="mb-3 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-secondary">
+                                    {product.imageUrl ? (
+                                      <Image
+                                        src={product.imageUrl}
+                                        alt={product.name}
+                                        fill
+                                        className="object-cover"
+                                      />
+                                    ) : (
+                                      <div className="flex h-full items-center justify-center">
+                                        <Package className="h-5 w-5 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <Link
+                                      href={`/products/${product.id}`}
+                                      className="font-medium hover:underline"
+                                    >
+                                      {product.name}
+                                    </Link>
+                                    <p className="text-xs text-muted-foreground">
+                                      {productAssets.length} assets
+                                    </p>
+                                  </div>
                                 </div>
-                                <div>
+                                <Link href={`/products/${product.id}`}>
+                                  <Button variant="ghost" size="sm">
+                                    View Product
+                                  </Button>
+                                </Link>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6">
+                                {productAssets.slice(0, 6).map((asset: GeneratedAsset) => (
+                                  <AssetThumbnail
+                                    key={asset.id}
+                                    asset={asset}
+                                    onClick={() => setSelectedAsset(asset)}
+                                  />
+                                ))}
+                                {productAssets.length > 6 && (
                                   <Link
                                     href={`/products/${product.id}`}
-                                    className="font-medium hover:underline"
+                                    className="flex aspect-square items-center justify-center rounded-lg border border-dashed text-muted-foreground transition-colors hover:bg-muted/50"
                                   >
-                                    {product.name}
+                                    +{productAssets.length - 6} more
                                   </Link>
-                                  <p className="text-xs text-muted-foreground">
-                                    {productAssets.length} assets
-                                  </p>
-                                </div>
+                                )}
                               </div>
-                              <Link href={`/products/${product.id}`}>
-                                <Button variant="ghost" size="sm">
-                                  View Product
-                                </Button>
-                              </Link>
                             </div>
-                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6">
-                              {productAssets.slice(0, 6).map((asset: GeneratedAsset) => (
-                                <AssetThumbnail
-                                  key={asset.id}
-                                  asset={asset}
-                                  onClick={() => setSelectedAsset(asset)}
-                                />
-                              ))}
-                              {productAssets.length > 6 && (
-                                <Link
-                                  href={`/products/${product.id}`}
-                                  className="flex aspect-square items-center justify-center rounded-lg border border-dashed text-muted-foreground transition-colors hover:bg-muted/50"
-                                >
-                                  +{productAssets.length - 6} more
-                                </Link>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                          )
+                        )}
                       </div>
                     )}
                   </TabsContent>
@@ -548,19 +544,18 @@ function AssetList({
   );
 }
 
-function AssetThumbnail({
-  asset,
-  onClick,
-}: {
-  asset: GeneratedAsset;
-  onClick: () => void;
-}) {
+function AssetThumbnail({ asset, onClick }: { asset: GeneratedAsset; onClick: () => void }) {
   return (
     <div
       className="group relative aspect-square cursor-pointer overflow-hidden rounded-lg"
       onClick={onClick}
     >
-      <Image src={asset.url} alt="" fill className="object-cover transition-transform group-hover:scale-105" />
+      <Image
+        src={asset.url}
+        alt=""
+        fill
+        className="object-cover transition-transform group-hover:scale-105"
+      />
       {/* Status indicators */}
       <div className="absolute left-1.5 top-1.5 flex items-center gap-1">
         {asset.isPinned && (
@@ -584,4 +579,3 @@ function AssetThumbnail({
     </div>
   );
 }
-

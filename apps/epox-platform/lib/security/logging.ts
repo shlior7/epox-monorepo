@@ -47,7 +47,10 @@ export function logSecurityEvent(type: SecurityEventType, data: Record<string, u
   const sanitizedData = sanitizeLogData(data);
 
   // Log via Pino (sends to Better Stack in production)
-  logger.warn({ event: 'security', securityEventType: type, ...sanitizedData }, `Security: ${type}`);
+  logger.warn(
+    { event: 'security', securityEventType: type, ...sanitizedData },
+    `Security: ${type}`
+  );
 }
 
 /**
@@ -103,7 +106,10 @@ export function logSecurityAlert(type: SecurityEventType, data: Record<string, u
   const sanitizedData = sanitizeLogData(data);
 
   // Log via Pino
-  logger.error({ event: 'security_alert', securityEventType: type, ...sanitizedData }, `Security Alert: ${type}`);
+  logger.error(
+    { event: 'security_alert', securityEventType: type, ...sanitizedData },
+    `Security Alert: ${type}`
+  );
 
   // Report high-severity events to Sentry
   if (HIGH_SEVERITY_EVENTS.includes(type)) {

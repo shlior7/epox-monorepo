@@ -166,9 +166,10 @@ describe('Collection Flows API - POST /api/collections/[id]/flows', () => {
     vi.mocked(db.generationFlows.listByCollectionSession).mockResolvedValue([
       { id: 'flow-1', productIds: ['prod-1'] },
     ] as any);
-    vi.mocked(db.products.getById).mockResolvedValue(
-      { id: 'prod-2', sceneTypes: ['Living Room'] } as any
-    );
+    vi.mocked(db.products.getById).mockResolvedValue({
+      id: 'prod-2',
+      sceneTypes: ['Living Room'],
+    } as any);
     vi.mocked(db.generationFlows.create).mockResolvedValue({ id: 'flow-2' } as any);
 
     const request = new NextRequest('http://localhost:3000/api/collections/coll-1/flows', {
@@ -180,7 +181,8 @@ describe('Collection Flows API - POST /api/collections/[id]/flows', () => {
 
     expect(response.status).toBe(200);
     expect(db.generationFlows.create).toHaveBeenCalledTimes(1);
-    expect(db.generationFlows.create).toHaveBeenCalledWith('client-1',
+    expect(db.generationFlows.create).toHaveBeenCalledWith(
+      'client-1',
       expect.objectContaining({
         productIds: ['prod-2'],
         settings: expect.objectContaining({

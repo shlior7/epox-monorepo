@@ -4,12 +4,7 @@
  */
 
 import sharp from 'sharp';
-import type {
-  PostAdjustments,
-  LightAdjustments,
-  ColorAdjustments,
-  EffectsAdjustments,
-} from '@/lib/types/app-types';
+import type { PostAdjustments, LightAdjustments, ColorAdjustments, EffectsAdjustments } from '@/lib/types/app-types';
 import { temperatureToRGB } from '@/lib/services/image-processing/adjustment-math';
 
 interface RawImageData {
@@ -21,10 +16,7 @@ interface RawImageData {
  * Apply full adjustment stack to image
  * Returns base64 data URL
  */
-export async function applyAdjustments(
-  imageDataUrl: string,
-  adjustments: PostAdjustments
-): Promise<string> {
+export async function applyAdjustments(imageDataUrl: string, adjustments: PostAdjustments): Promise<string> {
   console.log('🎨 Starting image processing with Sharp...');
   const startTime = Date.now();
 
@@ -70,14 +62,7 @@ async function applyLightAdjustments(
   const { exposure, contrast, highlights, shadows, whites, blacks } = light;
 
   // Skip if no light adjustments
-  if (
-    exposure === 0 &&
-    contrast === 0 &&
-    highlights === 0 &&
-    shadows === 0 &&
-    whites === 0 &&
-    blacks === 0
-  ) {
+  if (exposure === 0 && contrast === 0 && highlights === 0 && shadows === 0 && whites === 0 && blacks === 0) {
     return pipeline;
   }
 
@@ -91,7 +76,7 @@ async function applyLightAdjustments(
   // Contrast: S-curve via linear transformation
   // At +100: 3x contrast, at -100: flat gray
   if (contrast !== 0) {
-    const contrastFactor = contrast >= 0 ? 1 + (contrast / 50) : 1 + (contrast / 100);
+    const contrastFactor = contrast >= 0 ? 1 + contrast / 50 : 1 + contrast / 100;
     pipeline = pipeline.linear(contrastFactor, (1 - contrastFactor) * 128);
   }
 
@@ -166,10 +151,7 @@ async function applyColorAdjustments(
 /**
  * Apply effects (texture, clarity, sharpness)
  */
-async function applyEffects(
-  pipeline: sharp.Sharp,
-  effects: EffectsAdjustments
-): Promise<sharp.Sharp> {
+async function applyEffects(pipeline: sharp.Sharp, effects: EffectsAdjustments): Promise<sharp.Sharp> {
   const { texture, clarity, sharpness } = effects;
 
   // Skip if no effects
@@ -335,8 +317,6 @@ function bufferToDataUrl(buffer: Buffer, mimeType: string): string {
 export function hasAdjustments(adjustments: PostAdjustments): boolean {
   const { light, color, effects } = adjustments;
   return (
-    Object.values(light).some((v) => v !== 0) ||
-    Object.values(color).some((v) => v !== 0) ||
-    Object.values(effects).some((v) => v !== 0)
+    Object.values(light).some((v) => v !== 0) || Object.values(color).some((v) => v !== 0) || Object.values(effects).some((v) => v !== 0)
   );
 }

@@ -94,18 +94,12 @@ export function ProductAssetCard({
       {/* Header */}
       <AssetCardHeader>
         {/* Product Thumbnail */}
-        <ImageThumbnail
-          src={product.thumbnailUrl || ''}
-          alt={product.name}
-          size="md"
-        />
+        <ImageThumbnail src={product.thumbnailUrl || ''} alt={product.name} size="md" />
 
         {/* Product Name */}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{product.name}</p>
-          {product.sku && (
-            <p className="truncate text-xs text-muted-foreground">{product.sku}</p>
-          )}
+          {product.sku && <p className="truncate text-xs text-muted-foreground">{product.sku}</p>}
         </div>
 
         {/* Config and Status */}
@@ -155,9 +149,7 @@ export function ProductAssetCard({
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">No images yet</p>
-              <p className="text-xs text-muted-foreground">
-                Generate images for this product
-              </p>
+              <p className="text-xs text-muted-foreground">Generate images for this product</p>
             </div>
             {onGenerate && (
               <Button size="sm" onClick={onGenerate} className="mt-2">
@@ -191,12 +183,7 @@ export function ProductAssetCard({
           />
         ) : (
           <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={onOpenStudio}
-            >
+            <Button variant="ghost" size="sm" className="h-8 gap-1.5" onClick={onOpenStudio}>
               <Settings2 className="h-3.5 w-3.5" />
               <span className="text-xs">Open Studio</span>
             </Button>

@@ -13,12 +13,14 @@ The visualizer platform is built as a monorepo with shared packages that provide
 Database access using Drizzle ORM with Neon PostgreSQL.
 
 **Key Features:**
+
 - Repository pattern for type-safe data access
 - Transaction support
 - Optimistic locking for concurrent updates
 - Schema migrations
 
 **Usage:**
+
 ```typescript
 import { db } from 'visualizer-db';
 
@@ -35,6 +37,7 @@ await db.transaction(async (tx) => {
 ```
 
 **Available Repositories:**
+
 - `clients` - Client management
 - `products` - Product catalog
 - `generationFlows` - Generation workflows
@@ -45,6 +48,7 @@ await db.transaction(async (tx) => {
 - `favoriteImages` - User favorites
 
 **Environment Required:**
+
 ```bash
 DATABASE_URL=postgresql://user:pass@host/db
 ```
@@ -54,11 +58,18 @@ DATABASE_URL=postgresql://user:pass@host/db
 Shared TypeScript types for domain entities and DTOs.
 
 **Key Exports:**
+
 ```typescript
 import type {
-  Client, Product, GenerationFlow, GeneratedAsset,
-  CollectionSession, Message,
-  ClientCreate, ProductCreate, GenerationFlowCreate
+  Client,
+  Product,
+  GenerationFlow,
+  GeneratedAsset,
+  CollectionSession,
+  Message,
+  ClientCreate,
+  ProductCreate,
+  GenerationFlowCreate,
 } from 'visualizer-types';
 ```
 
@@ -67,12 +78,14 @@ import type {
 Auth.js (NextAuth.js) integration with multi-tenancy support.
 
 **Features:**
+
 - Email/password authentication
 - Multi-tenant client isolation
 - Session management
 - Protected API routes
 
 **Usage:**
+
 ```typescript
 import { auth, signIn, signOut } from 'visualizer-auth';
 
@@ -95,6 +108,7 @@ function MyComponent() {
 ```
 
 **Environment Required:**
+
 ```bash
 AUTH_SECRET=your-secret-key
 AUTH_URL=http://localhost:3000
@@ -107,12 +121,14 @@ AUTH_URL=http://localhost:3000
 Cloudflare R2 (S3-compatible) storage with filesystem adapter for local development.
 
 **Features:**
+
 - R2/S3 upload and download
 - Filesystem adapter for local dev
 - Pre-signed URLs for secure access
 - Path utilities for consistent key naming
 
 **Usage:**
+
 ```typescript
 import { uploadFile, downloadFile, getSignedUrl } from 'visualizer-storage';
 
@@ -127,6 +143,7 @@ const url = await getSignedUrl('clients/123/products/456/image.jpg');
 ```
 
 **Environment Required:**
+
 ```bash
 # For R2
 R2_ACCOUNT_ID=your-account-id
@@ -144,11 +161,13 @@ NEXT_PUBLIC_LOCAL_S3_DIR=./.local-s3
 AI-powered services for image generation, analysis, and visualization.
 
 **Key Services:**
+
 - **GeminiService**: Image generation and editing with Google Gemini
 - **VisualizationService**: Product visualization orchestration
 - **Smart Model Selection**: Auto-select best AI model for task
 
 **Usage:**
+
 ```typescript
 import { getGeminiService, selectBestModel } from 'visualizer-services';
 
@@ -170,6 +189,7 @@ const edited = await gemini.editImage({
 ```
 
 **Environment Required:**
+
 ```bash
 GOOGLE_AI_STUDIO_API_KEY=your-api-key
 # Or for Vertex AI
@@ -258,10 +278,7 @@ export { auth, signIn, signOut } from 'visualizer-auth';
 import { db } from 'visualizer-db';
 import { auth } from '@/lib/auth';
 
-export async function GET(
-  request: Request,
-  { params }: { params: { clientId: string } }
-) {
+export async function GET(request: Request, { params }: { params: { clientId: string } }) {
   const session = await auth();
   if (!session) {
     return new Response('Unauthorized', { status: 401 });
@@ -291,7 +308,7 @@ export async function POST(request: Request) {
   });
 
   // Save to storage
-  const blob = await fetch(response.images[0].url).then(r => r.blob());
+  const blob = await fetch(response.images[0].url).then((r) => r.blob());
   const key = `clients/${clientId}/generated/${Date.now()}.jpg`;
   await uploadFile(key, blob);
 

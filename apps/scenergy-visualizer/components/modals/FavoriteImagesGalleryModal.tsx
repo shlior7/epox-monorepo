@@ -358,9 +358,7 @@ export function FavoriteImagesGalleryModal({
                       onSafeClick={(url) => {
                         // Use a smaller optimized version as preview while full image loads
                         // Construct Next.js optimized URL for preview (smaller size)
-                        const previewSrc = typeof url === 'string'
-                          ? `/_next/image?url=${encodeURIComponent(url)}&w=640&q=75`
-                          : url;
+                        const previewSrc = typeof url === 'string' ? `/_next/image?url=${encodeURIComponent(url)}&w=640&q=75` : url;
                         setPreviewImageUrl(previewSrc);
                         setProductImageModalUrl(url);
                       }}
@@ -493,14 +491,9 @@ export function FavoriteImagesGalleryModal({
             setDeleteConfirmId(null);
           }}
         >
-          <div
-            style={styles.deleteConfirmModal}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div style={styles.deleteConfirmModal} onClick={(e) => e.stopPropagation()}>
             <h3 style={styles.deleteConfirmTitle}>Delete Image</h3>
-            <p style={styles.deleteConfirmText}>
-              Are you sure you want to delete this image? This action cannot be undone.
-            </p>
+            <p style={styles.deleteConfirmText}>Are you sure you want to delete this image? This action cannot be undone.</p>
             <div style={styles.deleteConfirmActions}>
               <button
                 style={styles.cancelButton}

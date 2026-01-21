@@ -164,9 +164,11 @@ export function SignInModal({ isOpen, onClose, onSignedIn }: SignInModalProps) {
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
-      const signIn = (authClient as typeof authClient & {
-        signIn?: { email?: (payload: { email: string; password: string; rememberMe?: boolean }) => Promise<any> };
-      }).signIn?.email;
+      const signIn = (
+        authClient as typeof authClient & {
+          signIn?: { email?: (payload: { email: string; password: string; rememberMe?: boolean }) => Promise<any> };
+        }
+      ).signIn?.email;
 
       if (!signIn) {
         throw new Error('Auth client is not configured for email sign-in.');
@@ -203,7 +205,13 @@ export function SignInModal({ isOpen, onClose, onSignedIn }: SignInModalProps) {
               <LogIn size={18} />
               Sign In
             </h2>
-            <button style={styles.closeButton} onClick={() => handleClose()} aria-label="Close" type="button" data-testid={buildTestId('sign-in-modal', 'close-button')}>
+            <button
+              style={styles.closeButton}
+              onClick={() => handleClose()}
+              aria-label="Close"
+              type="button"
+              data-testid={buildTestId('sign-in-modal', 'close-button')}
+            >
               <X size={18} />
             </button>
           </div>

@@ -25,7 +25,9 @@
   gap: 0.75rem;
   padding: 1rem 1.25rem;
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.2);
   animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: auto;
   min-height: 56px;

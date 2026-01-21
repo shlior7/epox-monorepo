@@ -13,35 +13,37 @@ import { logJobStarted } from '@/lib/logger';
 const validateImageUrlField = (val: string) => isValidUrl(val, { allowDataUrls: true });
 
 // Zod schema for request validation
-const GenerateVideoRequestSchema = z.object({
-  sessionId: z.string().min(1, 'sessionId is required'),
-  productId: z.string().min(1, 'productId is required'),
-  sourceImageUrl: z.string().min(1, 'sourceImageUrl is required').refine(validateImageUrlField, {
-    message: 'sourceImageUrl must be a valid http/https URL or data URL',
-  }),
-  prompt: z
-    .string()
-    .min(1, 'prompt is required')
-    .transform((s) => s.trim()),
-  inspirationImageUrl: z.string().optional(),
-  inspirationNote: z.string().optional(),
-  settings: z
-    .object({
-      aspectRatio: z.enum(['16:9', '9:16']).optional(),
-      resolution: z.enum(['720p', '1080p']).optional(),
-      model: z.string().optional(),
-    })
-    .optional(),
-  urgent: z.boolean().optional(),
-}).superRefine((data, ctx) => {
-  if (data.inspirationImageUrl) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['inspirationImageUrl'],
-      message: 'Video generation accepts a single source image. Remove inspirationImageUrl.',
-    });
-  }
-});
+const GenerateVideoRequestSchema = z
+  .object({
+    sessionId: z.string().min(1, 'sessionId is required'),
+    productId: z.string().min(1, 'productId is required'),
+    sourceImageUrl: z.string().min(1, 'sourceImageUrl is required').refine(validateImageUrlField, {
+      message: 'sourceImageUrl must be a valid http/https URL or data URL',
+    }),
+    prompt: z
+      .string()
+      .min(1, 'prompt is required')
+      .transform((s) => s.trim()),
+    inspirationImageUrl: z.string().optional(),
+    inspirationNote: z.string().optional(),
+    settings: z
+      .object({
+        aspectRatio: z.enum(['16:9', '9:16']).optional(),
+        resolution: z.enum(['720p', '1080p']).optional(),
+        model: z.string().optional(),
+      })
+      .optional(),
+    urgent: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.inspirationImageUrl) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['inspirationImageUrl'],
+        message: 'Video generation accepts a single source image. Remove inspirationImageUrl.',
+      });
+    }
+  });
 
 type GenerateVideoRequest = z.infer<typeof GenerateVideoRequestSchema>;
 
@@ -79,15 +81,7 @@ export const POST = withGenerationSecurity(async (request, context) => {
   }
 
   const body: GenerateVideoRequest = parseResult.data;
-  const {
-    sessionId,
-    productId,
-    sourceImageUrl,
-    prompt,
-    inspirationNote,
-    settings,
-    urgent,
-  } = body;
+  const { sessionId, productId, sourceImageUrl, prompt, inspirationNote, settings, urgent } = body;
 
   const { jobId } = await enqueueVideoGeneration(
     clientId,

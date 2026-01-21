@@ -218,9 +218,10 @@ export const normalizeImageInput = async (input: string): Promise<{ mimeType: st
       webp: 'image/webp',
     };
     mimeType = mimeTypes[extension || ''] || 'image/jpeg';
-    console.warn(`⚠️ normalizeImageInput: Corrected MIME type from '${response.headers.get('content-type')}' to '${mimeType}' for URL '${input.substring(0, 100)}...'`);
+    console.warn(
+      `⚠️ normalizeImageInput: Corrected MIME type from '${response.headers.get('content-type')}' to '${mimeType}' for URL '${input.substring(0, 100)}...'`
+    );
   }
 
   return { mimeType, base64Data };
 };
-

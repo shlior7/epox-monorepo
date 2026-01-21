@@ -3,6 +3,7 @@
 ## Background
 
 The current studio UI has:
+
 - Single product studio (`/studio/[id]`) with left config panel, center preview, bottom history gallery
 - Collection studio (`/studio/collections/[id]`) with config panel and grid/list of GenerationFlowCards
 - History displayed as horizontal thumbnail strip at the bottom
@@ -22,6 +23,7 @@ User wants a redesign inspired by Kling AI interface to improve the viewing and 
 ### 1. Gen Flow Page (Single Product Studio)
 
 **Main View - Scrollable Asset List:**
+
 - Replace single image preview with vertical scrollable list of all generated images/videos
 - Each image/video in the list has:
   - **Header**: Shows thumbnail of base image + inspiration image + configuration summary
@@ -29,21 +31,25 @@ User wants a redesign inspired by Kling AI interface to improve the viewing and 
   - **Footer**: Action bar with Pin, Approve, Download, Delete buttons
 
 **Right Thumbnail Nav:**
+
 - Vertical list of thumbnails on far right
 - Clicking thumbnail scrolls main view to that asset
 - No "selected" state needed - just navigation
 - Compact, minimal design
 
 **View Toggle:**
+
 - Toggle between "List View" (scrollable cards) and "Grid View" (gallery grid)
 - Grid view shows all images in masonry/grid layout
 
 **Config Panel:**
+
 - Stays the same (left side, collapsible)
 
 ### 2. Collection Page List View
 
 **Main View - Product-Centric Scrollable List:**
+
 - Each product shows as a large card in scrollable main view
 - Card shows:
   - **Header**: Product thumbnail, product name, configuration info
@@ -51,10 +57,12 @@ User wants a redesign inspired by Kling AI interface to improve the viewing and 
   - **Footer**: Pin, Approve, Download actions
 
 **Right Product Nav:**
+
 - Vertical list of product thumbnails on right
 - Clicking scrolls to that product in main view
 
 **Grid View:**
+
 - Stays the same as current GenerationFlowCard grid
 
 ---
@@ -115,6 +123,7 @@ interface AssetCardProps {
 ```
 
 **Structure:**
+
 - Header: 40-48px height, shows base image thumbnail (24x24), inspiration thumbnails, config badges
 - Content: Full-width generated image/video, aspect ratio preserved
 - Footer: 40-48px height, action buttons spaced evenly
@@ -137,6 +146,7 @@ interface ThumbnailNavProps {
 ```
 
 **Structure:**
+
 - Fixed width (60-80px)
 - Vertical scroll for overflow
 - Thumbnails 48x48 rounded
@@ -161,6 +171,7 @@ interface ProductAssetCardProps {
 ```
 
 **Structure:**
+
 - Header: Product thumbnail + name + config
 - Content: Current revision image with left/right chevron overlays
 - Footer: Actions + revision counter (1/5)
@@ -228,11 +239,11 @@ interface ProductAssetCardProps {
 
 ## Trade-offs
 
-| Approach | Pros | Cons |
-|----------|------|------|
+| Approach             | Pros                      | Cons                                |
+| -------------------- | ------------------------- | ----------------------------------- |
 | Scroll-to navigation | Natural, familiar pattern | Requires scroll position management |
-| Modal for full view | Clean separation | Extra click, breaks flow |
-| Inline expansion | Quick access | Can be jarring, layout shifts |
+| Modal for full view  | Clean separation          | Extra click, breaks flow            |
+| Inline expansion     | Quick access              | Can be jarring, layout shifts       |
 
 **Decision:** Use scroll-to navigation for consistency with Kling AI reference.
 
@@ -241,6 +252,7 @@ interface ProductAssetCardProps {
 ## Examples
 
 ### ✅ Good: Asset Card Header
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │ 🖼️ [Base] 🎨 [Insp1] [Insp2]  │ Living Room • Modern • 2K │
@@ -248,6 +260,7 @@ interface ProductAssetCardProps {
 ```
 
 ### ❌ Bad: Cluttered Header
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │ Base: product.jpg | Inspiration: scene1.jpg, scene2.jpg,    │
@@ -257,6 +270,7 @@ interface ProductAssetCardProps {
 ```
 
 ### ✅ Good: Footer Actions
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  📌 Pin    │   ✓ Approve    │   ⬇ Download   │   ⋯ More   │
@@ -267,13 +281,13 @@ interface ProductAssetCardProps {
 
 ## File Changes Summary
 
-| File | Change Type |
-|------|-------------|
-| `components/studio/AssetCard.tsx` | **NEW** |
-| `components/studio/ThumbnailNav.tsx` | **NEW** |
-| `components/studio/ProductAssetCard.tsx` | **NEW** |
-| `components/studio/index.ts` | MODIFY (exports) |
-| `app/(dashboard)/studio/[id]/page.tsx` | MODIFY (major) |
+| File                                               | Change Type            |
+| -------------------------------------------------- | ---------------------- |
+| `components/studio/AssetCard.tsx`                  | **NEW**                |
+| `components/studio/ThumbnailNav.tsx`               | **NEW**                |
+| `components/studio/ProductAssetCard.tsx`           | **NEW**                |
+| `components/studio/index.ts`                       | MODIFY (exports)       |
+| `app/(dashboard)/studio/[id]/page.tsx`             | MODIFY (major)         |
 | `app/(dashboard)/studio/collections/[id]/page.tsx` | MODIFY (add list view) |
 
 ---
@@ -351,6 +365,7 @@ graph TD
 ### Phase 2: Single Product Studio ✅
 
 Updated `/studio/[id]/page.tsx`:
+
 - Added view mode toggle (list/grid) in header
 - Replaced center preview + bottom history with scrollable main view
 - List view: Vertical scrollable `AssetCard` list
@@ -362,6 +377,7 @@ Updated `/studio/[id]/page.tsx`:
 ### Phase 3: Collection Studio List View ✅
 
 Updated `/studio/collections/[id]/page.tsx`:
+
 - Matrix view unchanged (uses `GenerationFlowCard`)
 - List view now uses `ProductAssetCard` with gallery navigation
 - Added `ProductThumbnailNav` on right for product navigation
@@ -370,10 +386,12 @@ Updated `/studio/collections/[id]/page.tsx`:
 ### API Changes
 
 Added to `api-client.ts`:
+
 - `togglePinImage(id)` - Toggle pin status
 - `updateImageApproval(id, status)` - Update approval status
 
 Created new routes:
+
 - `POST /api/generated-images/[id]/pin` - Toggle pin
 - `POST /api/generated-images/[id]/approval` - Update approval
 
@@ -385,15 +403,15 @@ Created new routes:
 
 ### Files Changed
 
-| File | Change |
-|------|--------|
-| `components/studio/shared.tsx` | NEW - Shared utility components |
-| `components/studio/AssetCard.tsx` | NEW - Asset card component |
-| `components/studio/ThumbnailNav.tsx` | NEW - Thumbnail navigation |
-| `components/studio/ProductAssetCard.tsx` | NEW - Product asset card |
-| `components/studio/index.ts` | MODIFIED - Added exports |
-| `app/(dashboard)/studio/[id]/page.tsx` | MODIFIED - New layout |
-| `app/(dashboard)/studio/collections/[id]/page.tsx` | MODIFIED - List view |
-| `app/api/generated-images/[id]/pin/route.ts` | NEW - Pin API |
-| `app/api/generated-images/[id]/approval/route.ts` | NEW - Approval API |
-| `lib/api-client.ts` | MODIFIED - Added pin/approval methods |
+| File                                               | Change                                |
+| -------------------------------------------------- | ------------------------------------- |
+| `components/studio/shared.tsx`                     | NEW - Shared utility components       |
+| `components/studio/AssetCard.tsx`                  | NEW - Asset card component            |
+| `components/studio/ThumbnailNav.tsx`               | NEW - Thumbnail navigation            |
+| `components/studio/ProductAssetCard.tsx`           | NEW - Product asset card              |
+| `components/studio/index.ts`                       | MODIFIED - Added exports              |
+| `app/(dashboard)/studio/[id]/page.tsx`             | MODIFIED - New layout                 |
+| `app/(dashboard)/studio/collections/[id]/page.tsx` | MODIFIED - List view                  |
+| `app/api/generated-images/[id]/pin/route.ts`       | NEW - Pin API                         |
+| `app/api/generated-images/[id]/approval/route.ts`  | NEW - Approval API                    |
+| `lib/api-client.ts`                                | MODIFIED - Added pin/approval methods |

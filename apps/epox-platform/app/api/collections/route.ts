@@ -138,33 +138,21 @@ export const POST = withSecurity(async (request, context) => {
     }
 
     if (name.length > 255) {
-      return NextResponse.json(
-        { error: 'Name must be 255 characters or less' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Name must be 255 characters or less' }, { status: 400 });
     }
 
     // Validate productIds
     if (!Array.isArray(productIds) || productIds.length === 0) {
-      return NextResponse.json(
-        { error: 'productIds must be a non-empty array' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'productIds must be a non-empty array' }, { status: 400 });
     }
 
     if (!productIds.every((id) => typeof id === 'string')) {
-      return NextResponse.json(
-        { error: 'All productIds must be strings' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'All productIds must be strings' }, { status: 400 });
     }
 
     // Validate inspirationImages if provided
     if (inspirationImages !== undefined && typeof inspirationImages !== 'object') {
-      return NextResponse.json(
-        { error: 'inspirationImages must be an object' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'inspirationImages must be an object' }, { status: 400 });
     }
 
     // Convert wizard inspiration images format to settings format
@@ -179,14 +167,15 @@ export const POST = withSecurity(async (request, context) => {
       : [];
 
     // Build collection settings
-    const collectionSettings: FlowGenerationSettings | undefined = inspirationImagesArray.length > 0
-      ? {
-          inspirationImages: inspirationImagesArray,
-          aspectRatio: '1:1',
-          imageQuality: '2k' as import('visualizer-types').ImageQuality,
-          variantsCount: 1,
-        }
-      : undefined;
+    const collectionSettings: FlowGenerationSettings | undefined =
+      inspirationImagesArray.length > 0
+        ? {
+            inspirationImages: inspirationImagesArray,
+            aspectRatio: '1:1',
+            imageQuality: '2k' as import('visualizer-types').ImageQuality,
+            variantsCount: 1,
+          }
+        : undefined;
 
     // Create collection in database
     const collection = await db.collectionSessions.create(clientId, {
@@ -213,13 +202,17 @@ export const POST = withSecurity(async (request, context) => {
           },
         });
         createdFlows.push(flow);
-        console.log(`✅ Created generation flow ${flow.id} for product ${productId} in collection ${collection.id}`);
+        console.log(
+          `✅ Created generation flow ${flow.id} for product ${productId} in collection ${collection.id}`
+        );
       } catch (error) {
         console.error(`❌ Failed to create flow for product ${productId}:`, error);
       }
     }
 
-    console.log(`✅ Created collection ${collection.id} with ${createdFlows.length} generation flows`);
+    console.log(
+      `✅ Created collection ${collection.id} with ${createdFlows.length} generation flows`
+    );
 
     // Map to frontend format
     const responseCollection = {

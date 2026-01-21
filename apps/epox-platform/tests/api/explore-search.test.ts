@@ -41,9 +41,7 @@ describe('Explore Search API - GET /api/explore/search', () => {
     const search = await loadSearchHandler();
 
     const fetchMock = vi.mocked(fetch);
-    fetchMock.mockResolvedValueOnce(
-      new Response('Unauthorized', { status: 401 })
-    );
+    fetchMock.mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }));
 
     const request = new NextRequest('http://localhost:3000/api/explore/search?q=room');
     const response = await search(request);

@@ -70,10 +70,7 @@ export const redis = {
     return getRedisClient().expire(key, ttlSeconds);
   },
 
-  async scan(
-    cursor: string | number,
-    options: { match?: string; count?: number } = {}
-  ): Promise<[number, string[]]> {
+  async scan(cursor: string | number, options: { match?: string; count?: number } = {}): Promise<[number, string[]]> {
     const client = getRedisClient();
     const numCursor = typeof cursor === 'string' ? parseInt(cursor, 10) : cursor;
     let result: [string, string[]];

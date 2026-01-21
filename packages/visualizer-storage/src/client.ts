@@ -41,10 +41,7 @@ export function getStorageAdapter(): StorageAdapter {
 
   // Check if R2 environment variables are set
   const hasR2Config = Boolean(
-    process.env.R2_ENDPOINT &&
-    process.env.R2_ACCESS_KEY_ID &&
-    process.env.R2_SECRET_ACCESS_KEY &&
-    process.env.R2_BUCKET
+    process.env.R2_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET
   );
 
   // During build time or if R2 config is missing, fall back to filesystem adapter

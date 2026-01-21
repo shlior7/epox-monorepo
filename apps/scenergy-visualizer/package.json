@@ -19,6 +19,7 @@
     "test:visual:debug": "playwright test --debug",
     "test:visual:ui": "playwright test --ui",
     "test:visual:update": "playwright test --update-snapshots",
+    "test:seed": "NODE_OPTIONS='--experimental-websocket' tsx __tests__/setup/seed-test-data.ts",
     "fart": "fart dev --skip-build --dev-command 'yarn dev:test'"
   },
   "dependencies": {

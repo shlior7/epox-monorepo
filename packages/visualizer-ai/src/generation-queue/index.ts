@@ -7,14 +7,7 @@
 
 import { getDb } from 'visualizer-db';
 import { GenerationJobRepository } from 'visualizer-db/repositories/generation-jobs';
-import type {
-  ImageGenerationPayload,
-  ImageEditPayload,
-  VideoGenerationPayload,
-  JobResult,
-  JobStatus,
-  JobType,
-} from 'visualizer-db/schema';
+import type { ImageGenerationPayload, ImageEditPayload, VideoGenerationPayload, JobResult, JobStatus, JobType } from 'visualizer-db/schema';
 
 let jobs: GenerationJobRepository | null = null;
 

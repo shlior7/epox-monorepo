@@ -32,12 +32,14 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
     }
 
     // Verify ownership
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: collection.clientId,
-      resourceType: 'collection',
-      resourceId: collectionId,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: collection.clientId,
+        resourceType: 'collection',
+        resourceId: collectionId,
+      })
+    ) {
       return forbiddenResponse();
     }
 
@@ -91,9 +93,7 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
     }
 
     // Get product image URLs for generation
-    const products = await Promise.all(
-      productIdsToGenerate.map((id) => db.products.getById(id))
-    );
+    const products = await Promise.all(productIdsToGenerate.map((id) => db.products.getById(id)));
     const productImages = await Promise.all(
       productIdsToGenerate.map((productId) => db.productImages.list(productId))
     );
@@ -115,8 +115,7 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
     }
 
     // Get inspiration image URLs from settings
-    const inspirationImageUrls =
-      mergedSettings.inspirationImages?.map((img) => img.url) || [];
+    const inspirationImageUrls = mergedSettings.inspirationImages?.map((img) => img.url) || [];
 
     // Create a single generation job for all products
     // Use the first flow ID as the session ID (for job tracking)

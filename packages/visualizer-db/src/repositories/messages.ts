@@ -48,8 +48,7 @@ export class MessageRepository extends BaseRepository<Message> {
       return [];
     }
 
-    const condition =
-      type === 'chat' ? inArray(message.chatSessionId, sessionIds) : inArray(message.collectionSessionId, sessionIds);
+    const condition = type === 'chat' ? inArray(message.chatSessionId, sessionIds) : inArray(message.collectionSessionId, sessionIds);
     const rows = await this.drizzle.select().from(message).where(condition).orderBy(asc(message.createdAt));
     return rows.map((row) => this.mapToEntity(row));
   }

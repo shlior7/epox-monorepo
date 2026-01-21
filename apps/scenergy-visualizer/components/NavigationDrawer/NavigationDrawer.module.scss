@@ -129,7 +129,9 @@
   font-size: vars.font-size('sm');
   color: vars.semantic-color('text-inverse');
   background-color: vars.semantic-color('accent');
-  transition: background-color var(--transition-fast), transform var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast);
   border: none;
 
   &:hover:not(:disabled) {
@@ -224,7 +226,9 @@
   background-color: transparent;
   border: none;
   text-align: left;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 
   &:hover {
     background-color: vars.semantic-color('surface-strong');
@@ -247,7 +251,10 @@
   padding: 12px 14px;
   min-height: 44px;
   border-radius: vars.radius('md');
-  transition: background-color var(--transition-fast), color var(--transition-fast), transform 0.2s ease;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    transform 0.2s ease;
   position: relative;
   background-color: transparent;
   color: vars.semantic-color('text-subtle');
@@ -437,7 +444,6 @@
   margin: 8px 0;
 }
 
-
 .footer {
   padding: vars.spacing('md');
   background-color: vars.semantic-color('primary-soft-stronger');
@@ -461,7 +467,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast);
 }
 
 .checkboxSelected {
@@ -594,7 +602,6 @@
 }
 
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;
@@ -677,7 +684,9 @@
   color: vars.semantic-color('text-primary');
   font-size: vars.font-size('sm');
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 
   &::placeholder {
     color: vars.semantic-color('text-muted');
@@ -748,7 +757,9 @@
   padding: vars.spacing('sm');
   border-radius: vars.radius('md');
   background-color: transparent;
-  transition: background-color 0.2s, transform 0.2s;
+  transition:
+    background-color 0.2s,
+    transform 0.2s;
   cursor: grab;
 
   &:hover {
@@ -806,7 +817,9 @@
   cursor: grab;
   flex-shrink: 0;
   border: 1px solid vars.semantic-color('border-soft');
-  transition: border-color 0.2s, transform 0.2s;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
 
   &:hover {
     border-color: vars.semantic-color('accent');
@@ -837,7 +850,9 @@
   font-size: vars.font-size('xs');
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 
   &:hover {
     background-color: vars.semantic-color('accent-soft');
@@ -856,7 +871,9 @@
   border: none;
   color: vars.semantic-color('text-muted');
   cursor: pointer;
-  transition: color 0.2s, background-color 0.2s;
+  transition:
+    color 0.2s,
+    background-color 0.2s;
 
   &:hover {
     background-color: vars.semantic-color('surface-muted');
@@ -880,7 +897,9 @@
   overflow: hidden;
   cursor: grab;
   border: 2px solid transparent;
-  transition: border-color 0.2s, transform 0.2s;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
 
   &:hover {
     border-color: vars.semantic-color('accent');

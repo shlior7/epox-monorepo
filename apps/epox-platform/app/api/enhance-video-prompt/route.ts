@@ -27,54 +27,59 @@ interface EnhanceVideoPromptResponse {
 
 // ===== MAIN HANDLER =====
 
-export const POST = withSecurity(async (request): Promise<NextResponse<EnhanceVideoPromptResponse>> => {
-  const body: EnhanceVideoPromptRequest = await request.json();
+export const POST = withSecurity(
+  async (request): Promise<NextResponse<EnhanceVideoPromptResponse>> => {
+    const body: EnhanceVideoPromptRequest = await request.json();
 
-  const { videoType, settings, userPrompt, sourceImageUrl } = body;
+    const { videoType, settings, userPrompt, sourceImageUrl } = body;
 
-  if (!sourceImageUrl) {
-    return NextResponse.json({ success: false, error: 'Missing sourceImageUrl' }, { status: 400 });
-  }
-
-  try {
-    const geminiService = getGeminiService();
-    const enhancedPrompt = await geminiService.enhanceVideoPrompt(
-      sourceImageUrl,
-      videoType,
-      settings,
-      userPrompt
-    );
-
-    return NextResponse.json({
-      success: true,
-      enhancedPrompt,
-    });
-  } catch (error) {
-    console.error('Video prompt enhancement error:', error);
-
-    // Handle rate limiting errors with 503 Service Unavailable
-    if (error instanceof RateLimitError) {
+    if (!sourceImageUrl) {
       return NextResponse.json(
-        {
-          success: false,
-          error: `Service temporarily busy. Please try again in ${error.retryAfter} seconds.`,
-          retryAfter: error.retryAfter,
-        },
-        {
-          status: 503,
-          headers: {
-            'Retry-After': error.retryAfter.toString(),
-          },
-        }
+        { success: false, error: 'Missing sourceImageUrl' },
+        { status: 400 }
       );
     }
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to enhance video prompt',
-      },
-      { status: 500 }
-    );
+    try {
+      const geminiService = getGeminiService();
+      const enhancedPrompt = await geminiService.enhanceVideoPrompt(
+        sourceImageUrl,
+        videoType,
+        settings,
+        userPrompt
+      );
+
+      return NextResponse.json({
+        success: true,
+        enhancedPrompt,
+      });
+    } catch (error) {
+      console.error('Video prompt enhancement error:', error);
+
+      // Handle rate limiting errors with 503 Service Unavailable
+      if (error instanceof RateLimitError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Service temporarily busy. Please try again in ${error.retryAfter} seconds.`,
+            retryAfter: error.retryAfter,
+          },
+          {
+            status: 503,
+            headers: {
+              'Retry-After': error.retryAfter.toString(),
+            },
+          }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to enhance video prompt',
+        },
+        { status: 500 }
+      );
+    }
   }
-});
+);

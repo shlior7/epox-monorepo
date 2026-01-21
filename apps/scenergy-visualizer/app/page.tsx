@@ -16,7 +16,6 @@ const styles = {
 };
 
 export default function HomePage() {
-
   // Show welcome view - no auto-redirect
   // User must explicitly select a client to proceed
   return (

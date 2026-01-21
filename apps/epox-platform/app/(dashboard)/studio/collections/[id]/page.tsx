@@ -63,7 +63,12 @@ import type {
   VisionAnalysisResult,
   VideoPromptSettings,
 } from 'visualizer-types';
-import { CAMERA_MOTION_OPTIONS, STYLE_PRESETS, LIGHTING_PRESETS, VIDEO_TYPE_OPTIONS } from 'visualizer-types';
+import {
+  CAMERA_MOTION_OPTIONS,
+  STYLE_PRESETS,
+  LIGHTING_PRESETS,
+  VIDEO_TYPE_OPTIONS,
+} from 'visualizer-types';
 
 type ViewMode = 'matrix' | 'list';
 
@@ -110,9 +115,15 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showConfigPanel, setShowConfigPanel] = useState(true);
-  const [expandedSections, setExpandedSections] = useState<string[]>(['scene-style', 'output-settings']);
+  const [expandedSections, setExpandedSections] = useState<string[]>([
+    'scene-style',
+    'output-settings',
+  ]);
   const [activeTab, setActiveTab] = useState<StudioTab>('images');
-  const [videoExpandedSections, setVideoExpandedSections] = useState<string[]>(['video-inputs', 'video-prompt']);
+  const [videoExpandedSections, setVideoExpandedSections] = useState<string[]>([
+    'video-inputs',
+    'video-prompt',
+  ]);
 
   // List view state
   const mainListRef = useRef<HTMLDivElement>(null);
@@ -188,13 +199,15 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     if (collection?.settings) {
       const s = collection.settings;
       if (s.inspirationImages) setInspirationImages(s.inspirationImages);
-      if (s.sceneTypeInspirations) setSceneTypeInspirations(s.sceneTypeInspirations as unknown as SceneTypeInspirationMap);
+      if (s.sceneTypeInspirations)
+        setSceneTypeInspirations(s.sceneTypeInspirations as unknown as SceneTypeInspirationMap);
       if (s.stylePreset) setStylePreset(s.stylePreset as StylePreset);
       if (s.lightingPreset) setLightingPreset(s.lightingPreset as LightingPreset);
       if (s.userPrompt) setUserPrompt(s.userPrompt);
       if (s.aspectRatio) setOutputSettings((prev) => ({ ...prev, aspectRatio: s.aspectRatio! }));
       if (s.imageQuality) setOutputSettings((prev) => ({ ...prev, quality: s.imageQuality! }));
-      if (s.variantsCount) setOutputSettings((prev) => ({ ...prev, variantsCount: s.variantsCount! }));
+      if (s.variantsCount)
+        setOutputSettings((prev) => ({ ...prev, variantsCount: s.variantsCount! }));
       if (s.video) {
         setVideoPrompt(s.video.prompt ?? '');
         setVideoSettings({
@@ -330,7 +343,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
 
   const readyToGenerateFlows = useMemo(() => {
     // Include pending, completed, and error flows - anything not currently generating
-    return generationFlows.filter((flow) => flow.baseImages.length > 0 && flow.status !== 'generating');
+    return generationFlows.filter(
+      (flow) => flow.baseImages.length > 0 && flow.status !== 'generating'
+    );
   }, [generationFlows]);
 
   const videoPromptSourceUrl = useMemo(() => {
@@ -434,19 +449,22 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       };
       const settings = {
         inspirationImages,
-        sceneTypeInspirations: sceneTypeInspirations as unknown as Record<string, {
-          inspirationImages: Array<{
-            url: string;
-            thumbnailUrl?: string;
-            tags?: string[];
-            addedAt: string;
-            sourceType: 'upload' | 'library' | 'stock' | 'unsplash';
-          }>;
-          mergedAnalysis: {
-            json: Record<string, unknown>;
-            promptText: string;
-          };
-        }>,
+        sceneTypeInspirations: sceneTypeInspirations as unknown as Record<
+          string,
+          {
+            inspirationImages: Array<{
+              url: string;
+              thumbnailUrl?: string;
+              tags?: string[];
+              addedAt: string;
+              sourceType: 'upload' | 'library' | 'stock' | 'unsplash';
+            }>;
+            mergedAnalysis: {
+              json: Record<string, unknown>;
+              promptText: string;
+            };
+          }
+        >,
         stylePreset,
         lightingPreset,
         userPrompt,
@@ -520,10 +538,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     setVideoPresetId(preset.id);
   };
 
-  const buildVideoPrompt = (
-    basePrompt: string,
-    settings: VideoPromptSettings
-  ) => {
+  const buildVideoPrompt = (basePrompt: string, settings: VideoPromptSettings) => {
     const lines = [basePrompt.trim()];
     if (settings.videoType) lines.push(`Video type: ${settings.videoType}`);
     if (settings.cameraMotion) lines.push(`Camera motion: ${settings.cameraMotion}`);
@@ -714,7 +729,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
           fulfilledJobs.push(result.value);
         } else {
           const flowName = readyToGenerateFlows[index]?.product.name || `Flow ${index}`;
-          errors.push(`${flowName}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`);
+          errors.push(
+            `${flowName}: ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`
+          );
         }
       });
 
@@ -813,10 +830,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       try {
         for (const item of items) {
           try {
-            const detectedSceneType = await analyzeAndAddInspiration(
-              item.url,
-              item.sourceType
-            );
+            const detectedSceneType = await analyzeAndAddInspiration(item.url, item.sourceType);
             toast.success(`Analyzed: ${detectedSceneType} scene detected`);
           } catch (err) {
             console.error('Inspiration analysis failed:', err);
@@ -995,7 +1009,11 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
             <Button
               variant="glow"
               onClick={() => generateAllMutation.mutate()}
-              disabled={readyToGenerateFlows.length === 0 || generateAllMutation.isPending || isGenerationInProgress}
+              disabled={
+                readyToGenerateFlows.length === 0 ||
+                generateAllMutation.isPending ||
+                isGenerationInProgress
+              }
             >
               {generateAllMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1102,7 +1120,10 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                           <p className="mb-2 text-xs text-muted-foreground">Inspiration Images</p>
                           <div className="flex flex-wrap gap-2">
                             {inspirationImages.map((img, idx) => (
-                              <div key={idx} className="group relative aspect-square h-16 w-16 overflow-hidden rounded-lg border">
+                              <div
+                                key={idx}
+                                className="group relative aspect-square h-16 w-16 overflow-hidden rounded-lg border"
+                              >
                                 <Image
                                   src={img.url}
                                   alt={`Inspiration ${idx + 1}`}
@@ -1136,7 +1157,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                         {/* Detected Scene Types */}
                         {Object.keys(sceneTypeGroups).length > 0 && (
                           <div>
-                            <p className="mb-2 text-xs text-muted-foreground">Detected Scene Types</p>
+                            <p className="mb-2 text-xs text-muted-foreground">
+                              Detected Scene Types
+                            </p>
                             <div className="flex flex-wrap gap-1">
                               {Object.entries(sceneTypeGroups).map(([sceneType, count]) => (
                                 <Badge key={sceneType} variant="outline" className="text-xs">
@@ -1150,7 +1173,10 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                         {/* Style Preset */}
                         <div>
                           <p className="mb-1.5 text-xs text-muted-foreground">Style</p>
-                          <Select value={stylePreset} onValueChange={(v) => setStylePreset(v as StylePreset)}>
+                          <Select
+                            value={stylePreset}
+                            onValueChange={(v) => setStylePreset(v as StylePreset)}
+                          >
                             <SelectTrigger className="h-9">
                               <SelectValue />
                             </SelectTrigger>
@@ -1167,7 +1193,10 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                         {/* Lighting Preset */}
                         <div>
                           <p className="mb-1.5 text-xs text-muted-foreground">Lighting</p>
-                          <Select value={lightingPreset} onValueChange={(v) => setLightingPreset(v as LightingPreset)}>
+                          <Select
+                            value={lightingPreset}
+                            onValueChange={(v) => setLightingPreset(v as LightingPreset)}
+                          >
                             <SelectTrigger className="h-9">
                               <SelectValue />
                             </SelectTrigger>
@@ -1224,7 +1253,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                             {QUALITY_OPTIONS.map((opt) => (
                               <button
                                 key={opt.value}
-                                onClick={() => setOutputSettings((prev) => ({ ...prev, quality: opt.value }))}
+                                onClick={() =>
+                                  setOutputSettings((prev) => ({ ...prev, quality: opt.value }))
+                                }
                                 className={cn(
                                   'flex flex-1 flex-col items-center rounded-lg border p-2 transition-colors',
                                   outputSettings.quality === opt.value
@@ -1233,7 +1264,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                                 )}
                               >
                                 <span className="text-sm font-semibold">{opt.label}</span>
-                                <span className="text-[10px] text-muted-foreground">{opt.description}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {opt.description}
+                                </span>
                               </button>
                             ))}
                           </div>
@@ -1246,7 +1279,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                             {ASPECT_OPTIONS.map((opt) => (
                               <button
                                 key={opt.value}
-                                onClick={() => setOutputSettings((prev) => ({ ...prev, aspectRatio: opt.value }))}
+                                onClick={() =>
+                                  setOutputSettings((prev) => ({ ...prev, aspectRatio: opt.value }))
+                                }
                                 className={cn(
                                   'flex flex-1 flex-col items-center rounded-lg border py-2 text-xs transition-colors',
                                   outputSettings.aspectRatio === opt.value
@@ -1270,7 +1305,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                             {[1, 2, 4].map((n) => (
                               <button
                                 key={n}
-                                onClick={() => setOutputSettings((prev) => ({ ...prev, variantsCount: n }))}
+                                onClick={() =>
+                                  setOutputSettings((prev) => ({ ...prev, variantsCount: n }))
+                                }
                                 className={cn(
                                   'flex-1 rounded-md border py-1 text-sm transition-colors',
                                   outputSettings.variantsCount === n
@@ -1349,7 +1386,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                         </Select>
                         <Select
                           value={videoSettings.cameraMotion ?? ''}
-                          onValueChange={(v) => updateVideoSettings({ cameraMotion: v || undefined })}
+                          onValueChange={(v) =>
+                            updateVideoSettings({ cameraMotion: v || undefined })
+                          }
                         >
                           <SelectTrigger className="h-9">
                             <SelectValue placeholder="Camera motion" />
@@ -1364,7 +1403,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                         </Select>
                         <Select
                           value={videoSettings.sound ?? 'automatic'}
-                          onValueChange={(v) => updateVideoSettings({ sound: v as VideoPromptSettings['sound'] })}
+                          onValueChange={(v) =>
+                            updateVideoSettings({ sound: v as VideoPromptSettings['sound'] })
+                          }
                         >
                           <SelectTrigger className="h-9">
                             <SelectValue placeholder="Sound" />
@@ -1398,7 +1439,11 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                   size="lg"
                   className="w-full"
                   onClick={() => generateAllMutation.mutate()}
-                  disabled={readyToGenerateFlows.length === 0 || generateAllMutation.isPending || isGenerationInProgress}
+                  disabled={
+                    readyToGenerateFlows.length === 0 ||
+                    generateAllMutation.isPending ||
+                    isGenerationInProgress
+                  }
                 >
                   {generateAllMutation.isPending || isGenerationInProgress ? (
                     <>
@@ -1418,7 +1463,11 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                   size="lg"
                   className="w-full"
                   onClick={() => generateVideosMutation.mutate()}
-                  disabled={readyToGenerateFlows.length === 0 || generateVideosMutation.isPending || isGenerationInProgress}
+                  disabled={
+                    readyToGenerateFlows.length === 0 ||
+                    generateVideosMutation.isPending ||
+                    isGenerationInProgress
+                  }
                 >
                   {generateVideosMutation.isPending || isGenerationInProgress ? (
                     <>
@@ -1487,10 +1536,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
             {/* Scrollable Main View */}
             <div
               ref={mainListRef}
-              className={cn(
-                'flex-1 overflow-y-auto p-8',
-                viewMode === 'list' && 'p-4 md:p-6'
-              )}
+              className={cn('flex-1 overflow-y-auto p-8', viewMode === 'list' && 'p-4 md:p-6')}
             >
               {filteredFlows.length > 0 ? (
                 viewMode === 'matrix' ? (
@@ -1517,11 +1563,17 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                         isPinned={flow.isPinned}
                         sceneType={flow.sceneType}
                         onChangeBaseImage={(imageId) => {
-                          setSelectedBaseImages((prev) => ({ ...prev, [flow.product.id]: imageId }));
+                          setSelectedBaseImages((prev) => ({
+                            ...prev,
+                            [flow.product.id]: imageId,
+                          }));
                         }}
                         onDeleteRevision={handleDeleteRevision}
                         onClick={() => handleProductClick(flow.product.id, flow.realFlowId)}
-                        className={cn('animate-fade-in cursor-pointer opacity-0', `stagger-${Math.min(index + 1, 6)}`)}
+                        className={cn(
+                          'animate-fade-in cursor-pointer opacity-0',
+                          `stagger-${Math.min(index + 1, 6)}`
+                        )}
                       />
                     ))}
                   </div>
@@ -1576,7 +1628,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                   description="Add products to start generating images."
                   action={{
                     label: 'Add Products',
-                    onClick: () => { },
+                    onClick: () => {},
                   }}
                 />
               )}

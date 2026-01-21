@@ -11,6 +11,12 @@
     "test:coverage": "vitest run --coverage",
     "test:security": "vitest run tests/security --reporter=verbose",
     "test:security:watch": "vitest tests/security",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:headed": "playwright test --headed",
+    "test:seed": "NODE_OPTIONS='--experimental-websocket' tsx --env-file=.env.local __tests__/setup/seed-test-data.ts",
+    "test:delete-client": "tsx __tests__/setup/delete-test-client.ts",
     "lint": "oxlint --fix",
     "lint:check": "oxlint",
     "format": "prettier --write .",
@@ -64,11 +70,13 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@types/node": "^24.1.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitest/coverage-v8": "^3.2.4",
     "autoprefixer": "^10.4.16",
+    "dotenv": "^17.2.3",
     "oxlint": "^0.16.0",
     "pino-pretty": "^11.0.0",
     "postcss": "^8.4.32",
@@ -76,6 +84,7 @@
     "prettier-plugin-tailwindcss": "^0.6.0",
     "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.2",
     "vitest": "^3.2.4"
   }

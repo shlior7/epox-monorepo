@@ -29,15 +29,11 @@ export function restoreConsole() {
 
 // Helper to wait for async operations
 export function waitFor(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Helper to wait for a condition to be true
-export async function waitForCondition(
-  condition: () => boolean,
-  timeout: number = 5000,
-  interval: number = 50
-): Promise<void> {
+export async function waitForCondition(condition: () => boolean, timeout: number = 5000, interval: number = 50): Promise<void> {
   const startTime = Date.now();
   while (!condition()) {
     if (Date.now() - startTime > timeout) {
@@ -67,4 +63,3 @@ export async function runOnlyPendingTimers() {
 export async function runAllTimers() {
   await vi.runAllTimersAsync();
 }
-

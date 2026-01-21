@@ -3,13 +3,7 @@
  * Handles inspiration image uploads, Unsplash integration, and scene analysis
  */
 
-import type {
-  InspirationImage,
-  SceneAnalysisResult,
-  UnsplashSearchParams,
-  UnsplashSearchResult,
-  MergedInspirationSettings,
-} from './types';
+import type { InspirationImage, SceneAnalysisResult, UnsplashSearchParams, UnsplashSearchResult, MergedInspirationSettings } from './types';
 
 export interface InspirationServiceConfig {
   unsplashAccessKey?: string;
@@ -38,7 +32,7 @@ export class InspirationService {
 
     const response = await fetch(url.toString(), {
       headers: {
-        'Authorization': `Client-ID ${this.unsplashAccessKey}`,
+        Authorization: `Client-ID ${this.unsplashAccessKey}`,
       },
     });
 
@@ -58,11 +52,13 @@ export class InspirationService {
    * Track download for Unsplash (required by their API guidelines)
    */
   async trackUnsplashDownload(downloadLocation: string): Promise<void> {
-    if (!this.unsplashAccessKey) {return;}
+    if (!this.unsplashAccessKey) {
+      return;
+    }
 
     await fetch(downloadLocation, {
       headers: {
-        'Authorization': `Client-ID ${this.unsplashAccessKey}`,
+        Authorization: `Client-ID ${this.unsplashAccessKey}`,
       },
     });
   }
@@ -93,9 +89,7 @@ export class InspirationService {
   /**
    * Merge analyses from multiple inspiration images into unified settings
    */
-  mergeInspirationAnalyses(
-    inspirations: InspirationImage[]
-  ): MergedInspirationSettings {
+  mergeInspirationAnalyses(inspirations: InspirationImage[]): MergedInspirationSettings {
     if (inspirations.length === 0) {
       return {
         style: 'Modern Minimalist',
@@ -145,10 +139,7 @@ export class InspirationService {
   /**
    * Generate suggested search queries based on product analysis
    */
-  generateSearchSuggestions(
-    sceneTypes: string[],
-    styles: string[]
-  ): string[] {
+  generateSearchSuggestions(sceneTypes: string[], styles: string[]): string[] {
     const suggestions: string[] = [];
 
     for (const room of sceneTypes.slice(0, 3)) {
@@ -171,13 +162,11 @@ let _inspirationService: InspirationService | null = null;
 
 export function getInspirationService(): InspirationService {
   _inspirationService ??= new InspirationService({
-      unsplashAccessKey: process.env.UNSPLASH_ACCESS_KEY,
-    });
+    unsplashAccessKey: process.env.UNSPLASH_ACCESS_KEY,
+  });
   return _inspirationService;
 }
 
 export function resetInspirationService(): void {
   _inspirationService = null;
 }
-
-

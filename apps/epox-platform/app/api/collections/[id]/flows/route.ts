@@ -25,12 +25,14 @@ export const GET = withSecurity(async (request, context, { params }) => {
     }
 
     // Verify ownership
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: collection.clientId,
-      resourceType: 'collection',
-      resourceId: collectionId,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: collection.clientId,
+        resourceType: 'collection',
+        resourceId: collectionId,
+      })
+    ) {
       return forbiddenResponse();
     }
 
@@ -39,9 +41,8 @@ export const GET = withSecurity(async (request, context, { params }) => {
 
     // Get all flow IDs to batch fetch generated assets
     const flowIds = flows.map((f) => f.id);
-    const allGeneratedAssets = flowIds.length > 0 
-      ? await db.generatedAssets.listByGenerationFlowIds(flowIds)
-      : [];
+    const allGeneratedAssets =
+      flowIds.length > 0 ? await db.generatedAssets.listByGenerationFlowIds(flowIds) : [];
 
     // Group assets by flow ID
     const assetsByFlowId = new Map<string, typeof allGeneratedAssets>();
@@ -124,12 +125,14 @@ export const POST = withSecurity(async (request, context, { params }) => {
     }
 
     // Verify ownership
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: collection.clientId,
-      resourceType: 'collection',
-      resourceId: collectionId,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: collection.clientId,
+        resourceType: 'collection',
+        resourceId: collectionId,
+      })
+    ) {
       return forbiddenResponse();
     }
 
@@ -194,7 +197,9 @@ export const POST = withSecurity(async (request, context, { params }) => {
         settings: flowSettings,
       });
 
-      console.log(`✅ Created flow ${flow.id} for product ${productId} (scene: ${matchedSceneType || 'default'})`);
+      console.log(
+        `✅ Created flow ${flow.id} for product ${productId} (scene: ${matchedSceneType || 'default'})`
+      );
       newFlows.push({ flowId: flow.id, productId });
     }
 

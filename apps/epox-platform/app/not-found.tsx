@@ -24,8 +24,11 @@ export default function NotFound() {
 
         {/* Actions */}
         <div className="flex items-center justify-center gap-3">
-          <Button asChild variant="outline" >
-            <Link href="javascript:history.back()" className="inline-flex items-center justify-center gap-2">
+          <Button asChild variant="outline">
+            <Link
+              href="javascript:history.back()"
+              className="inline-flex items-center justify-center gap-2"
+            >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Go Back
             </Link>

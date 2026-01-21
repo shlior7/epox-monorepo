@@ -64,10 +64,7 @@ function getRateLimitTier(): RateLimitTier {
 /**
  * Get rate limit value with environment override support
  */
-function getRateLimitValue(
-  configKey: 'imageGeneration' | 'batch' | 'polling',
-  envKey: string
-): number {
+function getRateLimitValue(configKey: 'imageGeneration' | 'batch' | 'polling', envKey: string): number {
   // Check for explicit override first
   const override = process.env[envKey];
   if (override) {

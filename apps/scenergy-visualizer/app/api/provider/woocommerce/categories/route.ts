@@ -35,14 +35,12 @@ export async function POST(request: Request): Promise<NextResponse<FetchCategori
     const storeService = createStoreService(db);
     const providerCategories = await storeService.getCategories(clientId);
 
-    const categories: WooCommerceCategory[] = providerCategories.map(
-      (cat: ProviderCategory) => ({
-        id: typeof cat.id === 'string' ? parseInt(cat.id, 10) : cat.id,
-        name: cat.name,
-        slug: cat.slug,
-        count: cat.count || 0,
-      })
-    );
+    const categories: WooCommerceCategory[] = providerCategories.map((cat: ProviderCategory) => ({
+      id: typeof cat.id === 'string' ? parseInt(cat.id, 10) : cat.id,
+      name: cat.name,
+      slug: cat.slug,
+      count: cat.count || 0,
+    }));
 
     console.log(`✅ Fetched ${categories.length} categories from WooCommerce`);
 

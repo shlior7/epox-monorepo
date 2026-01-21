@@ -73,11 +73,7 @@ export const GET = withSecurity(async (request, context, { params }) => {
 
     if (includeAssets) {
       // Query assets where productIds array contains this product ID
-      const productAssets = await db.generatedAssets.listByProductId(
-        clientId,
-        id,
-        100
-      );
+      const productAssets = await db.generatedAssets.listByProductId(clientId, id, 100);
 
       response.generatedAssets = productAssets.map((asset) => ({
         id: asset.id,
@@ -98,11 +94,7 @@ export const GET = withSecurity(async (request, context, { params }) => {
     }
 
     // Query collections that contain this product
-    const productCollections = await db.collectionSessions.listByProductId(
-      clientId,
-      id,
-      20
-    );
+    const productCollections = await db.collectionSessions.listByProductId(clientId, id, 20);
 
     response.collections = productCollections.map((c) => ({
       id: c.id,
@@ -137,12 +129,14 @@ export const PATCH = withSecurity(async (request, context, { params }) => {
     }
 
     // Verify ownership
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: product.clientId,
-      resourceType: 'product',
-      resourceId: id,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: product.clientId,
+        resourceType: 'product',
+        resourceId: id,
+      })
+    ) {
       return forbiddenResponse();
     }
 
@@ -230,12 +224,14 @@ export const DELETE = withSecurity(async (request, context, { params }) => {
     }
 
     // Verify ownership
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: product.clientId,
-      resourceType: 'product',
-      resourceId: id,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: product.clientId,
+        resourceType: 'product',
+        resourceId: id,
+      })
+    ) {
       return forbiddenResponse();
     }
 

@@ -11,6 +11,7 @@
 ## Background
 
 The `visualizer-client` platform requires a complete UI/UX design covering every screen and component in the flow-based bulk generation workflow. This design must:
+
 - Support non-technical users generating 20-500+ products per studio session
 - Provide a progressive, wizard-style workflow
 - Reuse components where possible from existing admin portal
@@ -20,6 +21,7 @@ The `visualizer-client` platform requires a complete UI/UX design covering every
 ## Problem
 
 We need detailed specifications for:
+
 1. **8 main screens** - Login, Dashboard, Sessions, Flow Creation, Flow Detail, Results, Products, Settings, Errors
 2. **Core UI components** - ProductTable, InspirationPicker, GenerationProgress, ImageGallery
 3. **Shared components** - Modals, filters, search bars, pagination, etc.
@@ -30,32 +32,42 @@ We need detailed specifications for:
 ## Questions and Answers
 
 ### Q1: Should we build a multi-step wizard or separate pages?
+
 **A**: Dedicated flow creation pages with clear navigation:
+
 - Flow creation: Select products from session
 - Flow settings: Configure generation parameters
 - Benefits: Clear workflow, progress tracking, deep-linking
 
 ### Q2: How do we handle the product table with 1000+ products?
+
 **A**: Server-side pagination + virtualization:
+
 - Initial load: 50 products
 - Virtual scrolling for 100+ visible items
 - Server-side filtering/sorting via API
 - Client-side selection state
 
 ### Q3: Should inspiration picker tabs be separate routes or client-side tabs?
+
 **A**: Client-side tabs within flow settings:
+
 - Single URL, tab state in local component
 - All tabs share same selection state (0-5 images)
 - Simpler UX, no page refresh
 
 ### Q4: What's the responsive breakpoint strategy?
+
 **A**: Three breakpoints:
+
 - Desktop: ≥1024px (primary experience)
 - Tablet: 768px-1023px (simplified, two-column)
 - Mobile: <768px (single column, stacked)
 
 ### Q5: How do we show real-time generation progress?
+
 **A**: Polling + optimistic updates:
+
 - Poll `/api/flows/[id]/status` every 2s during generation
 - WebSocket upgrade path for future
 - Progress bar + live count (e.g., "23/150 completed")
@@ -105,6 +117,7 @@ graph TB
 **Purpose**: Authenticate users via Better Auth
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
@@ -141,12 +154,14 @@ graph TB
 ```
 
 **Components**:
+
 - `LoginForm` - Email/password inputs
 - `SocialAuthButtons` - Google OAuth
 - `FormInput` - Reusable text input
 - `Button` - Primary CTA
 
 **State**:
+
 ```typescript
 interface LoginState {
   email: string;
@@ -157,6 +172,7 @@ interface LoginState {
 ```
 
 **Interactions**:
+
 - Form validation on blur and submit
 - Enter key submits form
 - Error messages inline below inputs
@@ -164,6 +180,7 @@ interface LoginState {
 - Redirect to dashboard on success
 
 **Responsive**:
+
 - Desktop: Centered card, 400px width
 - Mobile: Full-width form, no card
 
@@ -176,6 +193,7 @@ interface LoginState {
 **Purpose**: Quick access to recent studioSessions, stats, and navigation
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
@@ -207,12 +225,14 @@ interface LoginState {
 ```
 
 **Components**:
+
 - `AppShell` - Top nav + sidebar layout
 - `StatCard` - Metric display (products count, etc.)
 - `StudioSessionCard` - Recent studioSession item
 - `EmptyState` - When no studioSessions exist
 
 **State**:
+
 ```typescript
 interface DashboardData {
   user: User;
@@ -227,15 +247,18 @@ interface DashboardData {
 ```
 
 **Data Requirements**:
+
 - `GET /api/dashboard` - Returns stats + recent studioSessions
 - Cached for 5 minutes
 
 **Interactions**:
+
 - Click studioSession card → Navigate to results
 - "+ New StudioSession" → Start wizard
 - Stat cards animate on load
 
 **Responsive**:
+
 - Desktop: 3-column stats, list view studioSessions
 - Tablet: 2-column stats, list view
 - Mobile: Stacked stats, compact studioSession cards
@@ -249,6 +272,7 @@ interface DashboardData {
 **Purpose**: Browse all collections, filter by status
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
@@ -284,6 +308,7 @@ interface DashboardData {
 ```
 
 **Components**:
+
 - `SearchBar` - Full-text search
 - `FilterDropdown` - Status filter (All, Draft, Generating, Completed)
 - `SortDropdown` - Sort options (Recent, Name, Product Count)
@@ -291,6 +316,7 @@ interface DashboardData {
 - `Pagination` - Page controls
 
 **State**:
+
 ```typescript
 interface StudioSessionsListState {
   studioSessions: StudioSession[];
@@ -305,10 +331,12 @@ interface StudioSessionsListState {
 ```
 
 **Data Requirements**:
+
 - `GET /api/studioSessions?search=&status=&sort=&page=&limit=`
 - Returns paginated results
 
 **Interactions**:
+
 - Search debounced 300ms
 - Filter/sort triggers new API call
 - Click row → Navigate to studioSession detail or wizard
@@ -316,6 +344,7 @@ interface StudioSessionsListState {
 - Generating studioSessions show live progress (polling)
 
 **Responsive**:
+
 - Desktop: Grid view (2 columns)
 - Tablet: List view (1 column)
 - Mobile: Compact cards, hide thumbnails
@@ -329,6 +358,7 @@ interface StudioSessionsListState {
 **Purpose**: 4-step guided workflow to create studioSession
 
 **Shared Wizard Shell**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
@@ -355,6 +385,7 @@ interface StudioSessionsListState {
 ```
 
 **Wizard State**:
+
 ```typescript
 interface WizardState {
   step: 1 | 2 | 3 | 4;
@@ -374,6 +405,7 @@ interface WizardState {
 **Purpose**: Select products for the studioSession
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Select Products                                                    │
@@ -401,6 +433,7 @@ interface WizardState {
 ```
 
 **Components**:
+
 - `ProductTable` - Main table with virtualization
 - `FilterBar` - Search + dropdowns
 - `ProductRow` - Checkbox + product info
@@ -408,6 +441,7 @@ interface WizardState {
 - `Pagination` - Page navigation
 
 **State**:
+
 ```typescript
 interface ProductSelectionState {
   products: Product[]; // Current page
@@ -426,10 +460,12 @@ interface ProductSelectionState {
 ```
 
 **Data Requirements**:
+
 - `GET /api/products?search=&category=&roomType=&sort=&page=&limit=`
 - Returns: `{ products: Product[], total: number }`
 
 **Interactions**:
+
 - **Search**: Debounced 300ms, triggers API call
 - **Filter**: Dropdown selection triggers API call
 - **Sort**: Click column header to sort
@@ -443,11 +479,13 @@ interface ProductSelectionState {
   - Enter proceeds to next step
 
 **Validation**:
+
 - Must select at least 1 product
 - Warning if <10 or >500 selected
 - "Continue" button disabled until valid
 
 **Responsive**:
+
 - Desktop: Full table (6 columns)
 - Tablet: Hide Category column
 - Mobile: Card view (thumbnail + name + checkbox)
@@ -461,6 +499,7 @@ interface ProductSelectionState {
 **Purpose**: Show AI analysis of selected products AND let user customize style via prompt tags
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Product Analysis + Style Your Generation                          │
@@ -507,11 +546,13 @@ interface ProductSelectionState {
 ```
 
 **Prompt Tags Component**:
+
 ```typescript
 interface PromptTagsFormProps {
-  initialTags: PromptTags;       // AI-suggested tags
+  initialTags: PromptTags; // AI-suggested tags
   onChange: (tags: PromptTags) => void;
-  suggestedTags: {              // From product analysis
+  suggestedTags: {
+    // From product analysis
     roomType: string[];
     mood: string[];
     lighting: string[];
@@ -520,41 +561,47 @@ interface PromptTagsFormProps {
 }
 
 interface PromptTags {
-  roomType: string[];     // ["living room", "bedroom"]
-  mood: string[];         // ["cozy", "minimalist"]
-  lighting: string[];     // ["natural"]
-  style: string[];        // ["scandinavian"]
-  custom: string[];       // ["high ceilings", "wooden floors"]
+  roomType: string[]; // ["living room", "bedroom"]
+  mood: string[]; // ["cozy", "minimalist"]
+  lighting: string[]; // ["natural"]
+  style: string[]; // ["scandinavian"]
+  custom: string[]; // ["high ceilings", "wooden floors"]
 }
 ```
 
 **Tag Bubble Behavior**:
+
 - ✓ (checked) = tag is selected (included in prompt)
 - Click to toggle on/off
 - [+ Add] opens input to add custom tag in that category
 - Prompt preview updates in real-time
 
 **Prompt Generation**:
+
 ```typescript
 function buildPromptFromTags(tags: PromptTags): string {
   return [
     ...tags.roomType,
     ...tags.mood,
-    ...tags.lighting.map(l => `${l} lighting`),
-    ...tags.style.map(s => `${s} style`),
+    ...tags.lighting.map((l) => `${l} lighting`),
+    ...tags.style.map((s) => `${s} style`),
     ...tags.custom,
-  ].filter(Boolean).join(", ");
+  ]
+    .filter(Boolean)
+    .join(', ');
 }
 // Result: "living room, bedroom, cozy, minimalist, natural lighting, scandinavian style, high ceilings, wooden floors"
 ```
 
 **Components**:
+
 - `AnalysisLoadingState` - Spinner + message
 - `AnalysisResults` - Display panel
 - `RoomTypeChart` - Horizontal bar chart
 - `KeywordList` - Tag-style list
 
 **State**:
+
 ```typescript
 interface AnalysisState {
   isAnalyzing: boolean;
@@ -564,11 +611,13 @@ interface AnalysisState {
 ```
 
 **Data Requirements**:
+
 - `POST /api/studioSessions/[id]/analyze`
 - Input: `{ productIds: string[] }`
 - Output: `ProductAnalysisResult`
 
 **Interactions**:
+
 - Auto-triggers analysis on step load
 - Shows loading state during API call (2-5s)
 - Error state with retry button
@@ -576,6 +625,7 @@ interface AnalysisState {
 - "Continue" enabled once analysis completes
 
 **Responsive**:
+
 - Desktop: Side-by-side layout (chart left, details right)
 - Mobile: Stacked layout
 
@@ -588,6 +638,7 @@ interface AnalysisState {
 **Purpose**: Select 0-5 inspiration images from 3 sources
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Choose Inspiration Images (0-5 selected)                           │
@@ -682,6 +733,7 @@ interface AnalysisState {
 ```
 
 **Components**:
+
 - `InspirationPicker` - Parent container
 - `UploadTab` - Drag-drop file upload
 - `UnsplashTab` - Search + gallery
@@ -690,6 +742,7 @@ interface AnalysisState {
 - `ImageCard` - Thumbnail with select button
 
 **State**:
+
 ```typescript
 interface InspirationPickerState {
   activeTab: 'upload' | 'unsplash' | 'library';
@@ -711,11 +764,13 @@ interface InspirationPickerState {
 ```
 
 **Data Requirements**:
+
 - **Upload**: `POST /api/upload` - Returns image URL
 - **Unsplash**: `GET /api/unsplash/search?q=&page=` - Proxied Unsplash API
 - **Library**: `GET /api/generated-images?pinned=true&clientId=` - Returns pinned images
 
 **Interactions**:
+
 - **Upload tab**:
   - Drag-drop or click to browse
   - Shows upload progress
@@ -735,11 +790,13 @@ interface InspirationPickerState {
   - Can proceed with 0-5 images (optional step)
 
 **Validation**:
+
 - 0-5 images (warn if 0, but allow)
 - Show count: "2 of 5 selected"
 - Uploaded images must be valid formats
 
 **Responsive**:
+
 - Desktop: 4-column grid
 - Tablet: 3-column grid
 - Mobile: 2-column grid
@@ -753,6 +810,7 @@ interface InspirationPickerState {
 **Purpose**: Review settings and launch generation, show progress
 
 **Layout (Pre-Launch)**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Ready to Generate                                                  │
@@ -788,6 +846,7 @@ interface InspirationPickerState {
 ```
 
 **Layout (During Generation)**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Generating StudioSession...                                           │
@@ -814,6 +873,7 @@ interface InspirationPickerState {
 ```
 
 **Components**:
+
 - `GenerationSummary` - Pre-launch review
 - `SettingsEditor` - Inline edits (opens modal)
 - `GenerationProgress` - Progress bar + status
@@ -821,6 +881,7 @@ interface InspirationPickerState {
 - `Button` - Launch/Pause/Cancel
 
 **State**:
+
 ```typescript
 interface GenerationState {
   isGenerating: boolean;
@@ -841,10 +902,12 @@ interface GenerationState {
 ```
 
 **Data Requirements**:
+
 - `POST /api/studioSessions/[id]/generate` - Starts generation
 - `GET /api/studioSessions/[id]/status` - Polls every 2s during generation
 
 **Interactions**:
+
 - **Pre-launch**:
   - Click "Edit" on any setting → Opens modal to adjust
   - "Generate StudioSession" → Confirms and starts
@@ -858,10 +921,12 @@ interface GenerationState {
   - Or "View Results" button appears
 
 **Validation**:
+
 - Must have valid settings
 - Can't launch if already generating
 
 **Responsive**:
+
 - Desktop: Full layout
 - Mobile: Stacked, simplified recent completions
 
@@ -874,6 +939,7 @@ interface GenerationState {
 **Purpose**: View generated images, download, refine, pin
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
@@ -908,6 +974,7 @@ interface GenerationState {
 ```
 
 **Image Actions (Hover State)**:
+
 ```text
 ┌──────────┐
 │ [img]    │
@@ -920,6 +987,7 @@ interface GenerationState {
 ```
 
 **Components**:
+
 - `ImageGallery` - Main gallery container
 - `ProductGroup` - Grouped by product
 - `ImageCard` - Individual image with actions
@@ -928,6 +996,7 @@ interface GenerationState {
 - `ImageModal` - Lightbox view
 
 **State**:
+
 ```typescript
 interface ResultsGalleryState {
   studioSession: StudioSession;
@@ -944,10 +1013,12 @@ interface ResultsGalleryState {
 ```
 
 **Data Requirements**:
+
 - `GET /api/studioSessions/[id]` - StudioSession details
 - `GET /api/generated-images?studioSessionId=&productId=&roomType=` - Images
 
 **Interactions**:
+
 - **View**: Click image → Opens lightbox modal
 - **Star**: Click star icon → Rate 1-5 stars
 - **Pin**: Click pin icon → Pin to library (makes available in Step 3 of wizard)
@@ -960,9 +1031,11 @@ interface ResultsGalleryState {
 - **Filter/Sort**: Updates gallery view
 
 **Validation**:
+
 - Regenerate requires sufficient credits/quota
 
 **Responsive**:
+
 - Desktop: 4 images per row
 - Tablet: 3 images per row
 - Mobile: 2 images per row, simplified actions
@@ -976,6 +1049,7 @@ interface ResultsGalleryState {
 **Purpose**: Manage product catalog (view, upload, edit, delete)
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
@@ -1004,6 +1078,7 @@ interface ResultsGalleryState {
 ```
 
 **Components**:
+
 - `ProductsTable` - Full table view
 - `FilterBar` - Search + filters
 - `ProductRow` - Row with actions
@@ -1011,6 +1086,7 @@ interface ResultsGalleryState {
 - `EditProductModal` - Edit product details
 
 **State**:
+
 ```typescript
 interface ProductsLibraryState {
   products: Product[];
@@ -1027,12 +1103,14 @@ interface ProductsLibraryState {
 ```
 
 **Data Requirements**:
+
 - `GET /api/products?search=&category=&roomType=&page=&limit=`
 - `POST /api/products` - Add product
 - `PATCH /api/products/[id]` - Update product
 - `DELETE /api/products/[id]` - Soft-delete product
 
 **Interactions**:
+
 - Search, filter, paginate (same as Step 1)
 - "Add Products" → Opens modal with:
   - Upload CSV (bulk import)
@@ -1041,6 +1119,7 @@ interface ProductsLibraryState {
 - "Delete" → Confirmation modal, soft-deletes
 
 **Responsive**:
+
 - Desktop: Full table
 - Mobile: Card view
 
@@ -1053,6 +1132,7 @@ interface ProductsLibraryState {
 **Purpose**: Client settings, user profile, billing, API keys
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │ [Logo]  StudioSessions  Products  Settings          [User Menu ▼]     │
@@ -1074,6 +1154,7 @@ interface ProductsLibraryState {
 ```
 
 **Sections**:
+
 - **Profile**: Name, email, password
 - **Account**: Delete account (danger zone)
 - **Client**: Company name, logo, default settings
@@ -1082,6 +1163,7 @@ interface ProductsLibraryState {
 - **Notifications**: Email preferences
 
 **Components**:
+
 - `SettingsSidebar` - Navigation
 - `ProfileSection` - User details form
 - `BillingSection` - Plan + usage
@@ -1089,6 +1171,7 @@ interface ProductsLibraryState {
 - `DangerZone` - Account deletion
 
 **State**:
+
 ```typescript
 interface SettingsState {
   activeSection: 'profile' | 'account' | 'client' | 'billing' | 'api' | 'notifications';
@@ -1099,16 +1182,19 @@ interface SettingsState {
 ```
 
 **Data Requirements**:
+
 - `GET /api/settings` - All settings
 - `PATCH /api/settings` - Update settings
 
 **Interactions**:
+
 - Click sidebar item → Shows section
 - Edit form → "Save Changes" button
 - API Keys: "Generate New Key" → Shows key once
 - Danger Zone: "Delete Account" → Multi-step confirmation
 
 **Responsive**:
+
 - Desktop: Sidebar + content
 - Mobile: Stacked, no sidebar (accordion or tabs)
 
@@ -1121,6 +1207,7 @@ interface SettingsState {
 **Route**: Any invalid route
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                                                                     │
@@ -1140,6 +1227,7 @@ interface SettingsState {
 **Route**: On server error
 
 **Layout**:
+
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                                                                     │
@@ -1155,6 +1243,7 @@ interface SettingsState {
 ```
 
 **Components**:
+
 - `ErrorPage` - Generic error layout
 - `ErrorIllustration` - SVG illustration
 
@@ -1169,6 +1258,7 @@ interface SettingsState {
 **Purpose**: Searchable, filterable, sortable product table with multi-select
 
 **Props**:
+
 ```typescript
 interface ProductTableProps {
   products: Product[];
@@ -1186,6 +1276,7 @@ interface ProductTableProps {
 ```
 
 **Features**:
+
 - Virtual scrolling for 100+ rows
 - Checkbox selection (single, shift-range, select-all)
 - Column sorting (click header)
@@ -1194,6 +1285,7 @@ interface ProductTableProps {
 - Keyboard navigation (arrow keys, space, enter)
 
 **Responsive**:
+
 - Desktop: Full table
 - Mobile: Card view
 
@@ -1204,6 +1296,7 @@ interface ProductTableProps {
 **Purpose**: Tabbed interface to select images from 3 sources
 
 **Props**:
+
 ```typescript
 interface InspirationPickerProps {
   selectedImages: InspirationImage[];
@@ -1215,12 +1308,14 @@ interface InspirationPickerProps {
 ```
 
 **Features**:
+
 - 3 tabs: Upload, Unsplash, Library
 - Selection limit enforcement
 - Preview panel showing selected images
 - Remove/clear actions
 
 **Sub-components**:
+
 - `UploadTab` - Drag-drop file upload
 - `UnsplashTab` - Search + gallery
 - `LibraryTab` - Pinned images gallery
@@ -1232,6 +1327,7 @@ interface InspirationPickerProps {
 **Purpose**: Real-time progress tracking for studioSession generation
 
 **Props**:
+
 ```typescript
 interface GenerationProgressProps {
   studioSessionId: string;
@@ -1243,6 +1339,7 @@ interface GenerationProgressProps {
 ```
 
 **Features**:
+
 - Progress bar (0-100%)
 - Live updates (polls every 2s)
 - Estimated time remaining
@@ -1250,6 +1347,7 @@ interface GenerationProgressProps {
 - Pause/cancel buttons
 
 **State**:
+
 - Uses TanStack Query for polling
 - Auto-stops polling when 100% complete
 
@@ -1260,6 +1358,7 @@ interface GenerationProgressProps {
 **Purpose**: Display generated images with actions (star, pin, download, delete)
 
 **Props**:
+
 ```typescript
 interface ImageGalleryProps {
   images: GeneratedImage[];
@@ -1273,6 +1372,7 @@ interface ImageGalleryProps {
 ```
 
 **Features**:
+
 - Grid layout (responsive columns)
 - Grouped display (optional)
 - Image hover actions
@@ -1280,6 +1380,7 @@ interface ImageGalleryProps {
 - Bulk selection mode
 
 **Sub-components**:
+
 - `ImageCard` - Individual image card
 - `ImageModal` - Lightbox view
 
@@ -1290,6 +1391,7 @@ interface ImageGalleryProps {
 **Purpose**: Search input + filter dropdowns
 
 **Props**:
+
 ```typescript
 interface FilterBarProps {
   searchQuery: string;
@@ -1306,6 +1408,7 @@ interface FilterBarProps {
 ```
 
 **Features**:
+
 - Debounced search input
 - Multi-select dropdowns
 - "Clear All" button
@@ -1318,6 +1421,7 @@ interface FilterBarProps {
 **Purpose**: Generic modal/dialog component
 
 **Props**:
+
 ```typescript
 interface ModalProps {
   isOpen: boolean;
@@ -1330,6 +1434,7 @@ interface ModalProps {
 ```
 
 **Features**:
+
 - Overlay backdrop
 - ESC key to close
 - Click outside to close
@@ -1337,6 +1442,7 @@ interface ModalProps {
 - Scroll lock on body
 
 **Variants**:
+
 - `ConfirmModal` - Confirm/cancel actions
 - `FormModal` - Form in modal
 - `ImageModal` - Lightbox for images
@@ -1348,6 +1454,7 @@ interface ModalProps {
 **Purpose**: Primary button component
 
 **Props**:
+
 ```typescript
 interface ButtonProps {
   children: React.ReactNode;
@@ -1362,6 +1469,7 @@ interface ButtonProps {
 ```
 
 **Variants**:
+
 - Primary: Blue, high emphasis
 - Secondary: Gray outline
 - Danger: Red, destructive
@@ -1374,6 +1482,7 @@ interface ButtonProps {
 **Purpose**: Text input with label and validation
 
 **Props**:
+
 ```typescript
 interface FormInputProps {
   label: string;
@@ -1388,6 +1497,7 @@ interface FormInputProps {
 ```
 
 **Features**:
+
 - Label with optional required indicator
 - Error state with message
 - Disabled state
@@ -1400,6 +1510,7 @@ interface FormInputProps {
 **Purpose**: Select dropdown
 
 **Props**:
+
 ```typescript
 interface DropdownProps {
   options: Array<{ value: string; label: string }>;
@@ -1412,6 +1523,7 @@ interface DropdownProps {
 ```
 
 **Features**:
+
 - Single or multi-select
 - Optional search
 - Keyboard navigation
@@ -1424,6 +1536,7 @@ interface DropdownProps {
 **Purpose**: Page navigation
 
 **Props**:
+
 ```typescript
 interface PaginationProps {
   currentPage: number;
@@ -1436,6 +1549,7 @@ interface PaginationProps {
 ```
 
 **Features**:
+
 - First/prev/next/last buttons
 - Page number buttons (with ellipsis)
 - "Showing X of Y" text
@@ -1489,14 +1603,14 @@ const studioSessionQuery = useQuery({
 const progressQuery = useQuery({
   queryKey: ['studioSession-progress', studioSessionId],
   queryFn: () => fetchStudioSessionProgress(studioSessionId),
-  refetchInterval: (data) =>
-    data?.status === 'generating' ? 2000 : false, // Poll every 2s
+  refetchInterval: (data) => (data?.status === 'generating' ? 2000 : false), // Poll every 2s
 });
 ```
 
 ### Local State (useState)
 
 Use for:
+
 - Form inputs
 - UI toggles (tabs, accordions)
 - Transient state (hover, focus)
@@ -1510,28 +1624,34 @@ Use for:
 
 ```scss
 $breakpoints: (
-  'mobile': 0px,        // 0-767px
-  'tablet': 768px,      // 768-1023px
-  'desktop': 1024px,    // 1024px+
-  'wide': 1440px,       // 1440px+
+  'mobile': 0px,
+  // 0-767px
+  'tablet': 768px,
+  // 768-1023px
+  'desktop': 1024px,
+  // 1024px+
+  'wide': 1440px, // 1440px+
 );
 ```
 
 ### Layout Patterns
 
 **Desktop (≥1024px)**:
+
 - AppShell with sidebar navigation (240px fixed width)
 - Multi-column layouts (2-4 columns)
 - Full data tables
 - Hover states and tooltips
 
 **Tablet (768-1023px)**:
+
 - Collapsible sidebar (hamburger menu)
 - 2-column layouts
 - Simplified tables (fewer columns)
 - Touch-friendly buttons (44px min)
 
 **Mobile (<768px)**:
+
 - No sidebar (fullscreen content)
 - Single column layouts
 - Card views instead of tables
@@ -1715,20 +1835,12 @@ const Step3 = lazy(() => import('./steps/InspirationPicker'));
 const Step4 = lazy(() => import('./steps/GenerationProgress'));
 
 // Virtual scrolling for product table
-<FixedSizeList
-  height={600}
-  itemCount={products.length}
-  itemSize={60}
-  width="100%"
->
+<FixedSizeList height={600} itemCount={products.length} itemSize={60} width="100%">
   {ProductRow}
-</FixedSizeList>
+</FixedSizeList>;
 
 // Debounced search
-const debouncedSearch = useDebouncedCallback(
-  (query: string) => setSearchQuery(query),
-  300
-);
+const debouncedSearch = useDebouncedCallback((query: string) => setSearchQuery(query), 300);
 ```
 
 ---
@@ -1736,6 +1848,7 @@ const debouncedSearch = useDebouncedCallback(
 ## Implementation Plan
 
 ### Phase 1: Foundation (Week 1)
+
 1. Set up Next.js app structure
 2. Implement authentication (Login screen)
 3. Create AppShell layout
@@ -1743,36 +1856,42 @@ const debouncedSearch = useDebouncedCallback(
 5. Create design system (Button, Input, Modal, etc.)
 
 ### Phase 2: Product Management (Week 2)
+
 1. Build ProductTable component
 2. Implement Products Library screen
 3. Add search, filter, sort functionality
 4. Create Add/Edit Product modals
 
 ### Phase 3: StudioSessions List (Week 3)
+
 1. Build StudioSessions List screen
 2. Implement filters and search
 3. Add pagination
 4. Create StudioSessionCard component
 
 ### Phase 4: Wizard - Steps 1-2 (Week 4)
+
 1. Build wizard shell with progress indicator
 2. Implement Step 1: Product Selection (reuse ProductTable)
 3. Build Step 2: Analysis Results display
 4. Integrate with analysis API
 
 ### Phase 5: Wizard - Steps 3-4 (Week 5)
+
 1. Build InspirationPicker component (all 3 tabs)
 2. Integrate Unsplash API
 3. Implement Step 4: Generation launch
 4. Build GenerationProgress component
 
 ### Phase 6: Results Gallery (Week 6)
+
 1. Build ImageGallery component
 2. Implement Results screen
 3. Add image actions (star, pin, download, delete)
 4. Create ImageModal lightbox
 
 ### Phase 7: Settings & Polish (Week 7)
+
 1. Build Settings screen
 2. Implement error pages
 3. Add loading states and skeletons
@@ -1780,6 +1899,7 @@ const debouncedSearch = useDebouncedCallback(
 5. Accessibility audit
 
 ### Phase 8: Testing & Deployment (Week 8)
+
 1. Unit tests for components
 2. Integration tests for wizard flow
 3. E2E tests for critical paths
@@ -1801,19 +1921,9 @@ interface ButtonProps {
   onClick?: () => void;
 }
 
-export function Button({
-  children,
-  variant = 'primary',
-  isLoading,
-  onClick
-}: ButtonProps) {
+export function Button({ children, variant = 'primary', isLoading, onClick }: ButtonProps) {
   return (
-    <button
-      className={`button button--${variant}`}
-      onClick={onClick}
-      disabled={isLoading}
-      aria-busy={isLoading}
-    >
+    <button className={`button button--${variant}`} onClick={onClick} disabled={isLoading} aria-busy={isLoading}>
       {isLoading ? <Spinner /> : children}
     </button>
   );
@@ -1895,12 +2005,12 @@ export function Dashboard() {
 
 ```tsx
 // ❌ Don't hardcode URLs
-<a href="/studioSessions/new?step=1">Start</a>
+<a href="/studioSessions/new?step=1">Start</a>;
 
 // ✅ Use Next.js Link with constants
 import { ROUTES } from '@/lib/constants';
 
-<Link href={ROUTES.studioSessions.new(1)}>Start</Link>
+<Link href={ROUTES.studioSessions.new(1)}>Start</Link>;
 
 // lib/constants.ts
 export const ROUTES = {
@@ -1941,8 +2051,10 @@ function Step1() {
 ## Trade-offs
 
 ### Wizard: Multi-Page vs. Single-Page
+
 **Chosen**: Single-page with URL state (`?step=1-4`)
 **Rationale**:
+
 - ✅ Persistent state across steps
 - ✅ Progress indicator in one place
 - ✅ Easier back/forward navigation
@@ -1951,8 +2063,10 @@ function Step1() {
 - ❌ Larger initial bundle size (can mitigate with lazy loading)
 
 ### Product Table: Client vs. Server Pagination
+
 **Chosen**: Server-side pagination
 **Rationale**:
+
 - ✅ Handles 1000+ products efficiently
 - ✅ Reduces initial page load
 - ✅ Filters/sorts on server (more powerful)
@@ -1960,8 +2074,10 @@ function Step1() {
 - ❌ Slight delay on page change
 
 ### Generation Progress: Polling vs. WebSockets
+
 **Chosen**: Polling (initially)
 **Rationale**:
+
 - ✅ Simpler to implement
 - ✅ Works with serverless (Vercel)
 - ✅ No connection management
@@ -1970,8 +2086,10 @@ function Step1() {
 - 🔄 Can upgrade to WebSockets later
 
 ### State Management: Context vs. Redux
+
 **Chosen**: React Context + TanStack Query
 **Rationale**:
+
 - ✅ Lighter weight
 - ✅ TanStack Query handles server state well
 - ✅ Less boilerplate
@@ -1980,8 +2098,10 @@ function Step1() {
 - ❌ Context can cause unnecessary re-renders (mitigate with splitting contexts)
 
 ### Styling: CSS Modules vs. Tailwind
+
 **Chosen**: SCSS Modules (to match existing admin portal)
 **Rationale**:
+
 - ✅ Consistency with existing codebase
 - ✅ More control over styles
 - ✅ Easier theming

@@ -11,12 +11,14 @@
 ## Background
 
 The visualizer-client platform is an AI-powered product visualization tool that generates photorealistic lifestyle images of furniture and home decor products using the Gemini API. The platform enables brands to:
+
 - Generate unlimited variations of product scenes
 - Create bulk visualizations for entire product catalogs
 - Integrate with e-commerce platforms (Shopify, WooCommerce)
 - Reuse successful compositions as inspiration
 
 The current MVP operates on an invitation-only basis with no monetization. To build a sustainable business, we need a clear pricing strategy that:
+
 1. Covers infrastructure costs (Gemini API, storage, compute)
 2. Provides a clear path from free trial to paid conversion
 3. Scales with customer value (more products = more revenue)
@@ -59,15 +61,16 @@ We need to design a multi-phase business model that:
 
 **A**: Cost breakdown (as of 2026-01):
 
-| Cost Component | Amount | Notes |
-|----------------|--------|-------|
-| S3 storage | $0.023/GB/month | Average 3MB per image = $0.00007/image/month |
-| CloudFront CDN | $0.085/GB transfer | Average 3MB = $0.00025 per view |
-| Database writes | $0.0001 per write | Negligible |
-| Worker compute | $0.005 per generation | BullMQ worker processing |
-| **Total per generation** | **$0.045 - $0.065** | Depends on Gemini model |
+| Cost Component           | Amount                | Notes                                        |
+| ------------------------ | --------------------- | -------------------------------------------- |
+| S3 storage               | $0.023/GB/month       | Average 3MB per image = $0.00007/image/month |
+| CloudFront CDN           | $0.085/GB transfer    | Average 3MB = $0.00025 per view              |
+| Database writes          | $0.0001 per write     | Negligible                                   |
+| Worker compute           | $0.005 per generation | BullMQ worker processing                     |
+| **Total per generation** | **$0.045 - $0.065**   | Depends on Gemini model                      |
 
 **Assumptions**:
+
 - Using Gemini imagen-3.0-generate-001 (standard quality)
 - Images stored for 12 months on average
 - Each image viewed 10 times on average (CDN cost: $0.0025)
@@ -80,6 +83,7 @@ We need to design a multi-phase business model that:
 **A**: No expiration for purchased credits, but enforce expiration on free/bonus credits.
 
 **Rationale**:
+
 - ✅ Non-expiring credits increase perceived value and reduce purchase friction
 - ✅ Industry standard (AWS credits, Anthropic credits don't expire)
 - ✅ Users prefer "bank" model over "subscription waste"
@@ -87,6 +91,7 @@ We need to design a multi-phase business model that:
 - ❌ May lead to unused credit accumulation (opportunity cost)
 
 **Implementation**:
+
 - **Purchased credits**: Never expire
 - **Free trial credits**: Expire after 30 days
 - **Promotional credits**: Expire per campaign terms
@@ -97,6 +102,7 @@ We need to design a multi-phase business model that:
 **A**: 10 free credits on signup (non-expiring for first 30 days).
 
 **Rationale**:
+
 - 10 generations = enough to test 2-3 products with variations
 - Cost to business: 10 × $0.05 = $0.50 per signup
 - Target conversion rate: 15% (industry average for freemium SaaS)
@@ -117,12 +123,14 @@ We need to design a multi-phase business model that:
 **A**: Flat monthly fee based on product catalog size, includes base credits.
 
 **Rationale**:
+
 - E-commerce brands value automation and scale
 - Product count is a clear proxy for business size and willingness to pay
 - Subscription creates predictable MRR
 - Bundled credits encourage usage and reduce churn
 
 **Pricing tiers** (see Design section for details):
+
 - Basic: Up to 100 products
 - Pro: Up to 500 products
 - Enterprise: Up to 2,000+ products
@@ -132,12 +140,14 @@ We need to design a multi-phase business model that:
 **A**: Yes, 20% discount for annual prepayment (2 months free).
 
 **Rationale**:
+
 - ✅ Improves cash flow
 - ✅ Reduces monthly churn
 - ✅ Industry standard (most SaaS offers 15-20% annual discount)
 - ✅ Locks in customers for 12 months (higher LTV)
 
 **Implementation**:
+
 - Monthly: $X/month, cancel anytime
 - Annual: $X × 10/year (17% discount), billed annually
 
@@ -154,12 +164,14 @@ We need to design a multi-phase business model that:
 | Enterprise | 100 | 2,000 | 10 |
 
 **Fair use policy**:
+
 - No reselling of generated images
 - No automated scraping or bulk generation for resale
 - No sharing of account credentials
 - Storage limits: 10GB (Free), 50GB (Starter), 500GB (Pro), 5TB (Enterprise)
 
 **Abuse detection**:
+
 - Flag accounts with >90% failed generations (possible attack)
 - Flag accounts sharing IP addresses (credential sharing)
 - Manual review for accounts exceeding 1,000 generations/day
@@ -170,14 +182,15 @@ We need to design a multi-phase business model that:
 
 **Comparison**:
 
-| Model | Pros | Cons | Best For |
-|-------|------|------|----------|
-| Pure credits | Simple, no commitment | No recurring revenue | Small/sporadic users |
-| Pure subscription | Predictable MRR | High commitment barrier | Enterprise only |
-| Hybrid (chosen) | MRR + usage revenue, flexible | More complex | Multi-segment market |
-| Pay-per-image | Zero commitment | No customer lock-in | Commodity pricing |
+| Model             | Pros                          | Cons                    | Best For             |
+| ----------------- | ----------------------------- | ----------------------- | -------------------- |
+| Pure credits      | Simple, no commitment         | No recurring revenue    | Small/sporadic users |
+| Pure subscription | Predictable MRR               | High commitment barrier | Enterprise only      |
+| Hybrid (chosen)   | MRR + usage revenue, flexible | More complex            | Multi-segment market |
+| Pay-per-image     | Zero commitment               | No customer lock-in     | Commodity pricing    |
 
 **Why hybrid wins**:
+
 - Free tier → Credits: Low commitment, self-service
 - Credits → Subscription: Value proven, ready for platform features
 - Subscription: Recurring revenue + higher engagement
@@ -188,6 +201,7 @@ We need to design a multi-phase business model that:
 **A**: Phase 4 feature - Agency tier with white-label and multi-client support.
 
 **Proposal**:
+
 - Agency plan: $499/month
   - Manage up to 10 client accounts
   - 500 base credits/month
@@ -196,6 +210,7 @@ We need to design a multi-phase business model that:
   - API access for automation
 
 **Revenue model**:
+
 - Agencies pay flat fee for platform access
 - Each client gets separate billing (agency can charge markup)
 - Volume discounts for >1,000 credits/month (10% off)
@@ -207,24 +222,28 @@ We need to design a multi-phase business model that:
 ### Phase 1: MVP - Invitation Only (Months 1-3)
 
 **Features**:
+
 - Admin manually invites users to clients
 - Each user gets 50 free generations
 - No payment infrastructure
 - Track usage to understand willingness to pay
 
 **Goals**:
+
 - Validate product-market fit
 - Collect pricing feedback surveys
 - Measure generation frequency and patterns
 - Identify power users (early enterprise prospects)
 
 **Metrics to track**:
+
 - Generations per user per month
 - Feature usage (bulk generate, inspiration, store sync beta)
 - Completion rate (% of started generations that complete)
 - Net Promoter Score (NPS)
 
 **Exit criteria**:
+
 - 20+ active users
 - 70%+ users say they'd pay
 - Identify pricing range from surveys
@@ -236,6 +255,7 @@ We need to design a multi-phase business model that:
 #### Credit System Design
 
 **Credit Definition**:
+
 - **1 credit = 1 image generation**
 - Credits are account-level (not per-client, if user belongs to multiple clients)
 - Credits deducted when generation starts (not on completion)
@@ -257,15 +277,16 @@ graph TD
     H --> E
 ```
 
-| Package | Credits | Price | Price per Credit | Discount | Target Segment |
-|---------|---------|-------|------------------|----------|----------------|
-| Free Trial | 10 | $0 | $0 | - | New signups |
-| Starter | 50 | $12 | $0.24 | 0% | Hobbyists, small brands |
-| Pro | 200 | $40 | $0.20 | 17% | Growing brands |
-| Business | 1,000 | $150 | $0.15 | 38% | Agencies, large catalogs |
-| Enterprise | Custom | Custom | $0.10-0.12 | 50%+ | Fortune 500, high volume |
+| Package    | Credits | Price  | Price per Credit | Discount | Target Segment           |
+| ---------- | ------- | ------ | ---------------- | -------- | ------------------------ |
+| Free Trial | 10      | $0     | $0               | -        | New signups              |
+| Starter    | 50      | $12    | $0.24            | 0%       | Hobbyists, small brands  |
+| Pro        | 200     | $40    | $0.20            | 17%      | Growing brands           |
+| Business   | 1,000   | $150   | $0.15            | 38%      | Agencies, large catalogs |
+| Enterprise | Custom  | Custom | $0.10-0.12       | 50%+     | Fortune 500, high volume |
 
 **Pricing rationale**:
+
 - Starter: Entry point, minimal commitment ($12 is impulse buy range)
 - Pro: Best value per credit (most popular tier expected)
 - Business: Volume discount, targets agencies
@@ -273,13 +294,14 @@ graph TD
 
 **Revenue projections**:
 
-| Scenario | Users | Avg Credits/User/Mo | Avg Revenue/User/Mo | MRR | ARR |
-|----------|-------|---------------------|---------------------|-----|-----|
-| Conservative | 100 | 50 | $12 | $1,200 | $14,400 |
-| Moderate | 500 | 100 | $20 | $10,000 | $120,000 |
-| Optimistic | 1,000 | 150 | $30 | $30,000 | $360,000 |
+| Scenario     | Users | Avg Credits/User/Mo | Avg Revenue/User/Mo | MRR     | ARR      |
+| ------------ | ----- | ------------------- | ------------------- | ------- | -------- |
+| Conservative | 100   | 50                  | $12                 | $1,200  | $14,400  |
+| Moderate     | 500   | 100                 | $20                 | $10,000 | $120,000 |
+| Optimistic   | 1,000 | 150                 | $30                 | $30,000 | $360,000 |
 
 **Assumptions**:
+
 - 20% of signups convert to paid (industry avg: 15-25%)
 - Average customer buys credits 2x per month
 - 30% buy Starter, 50% buy Pro, 15% buy Business, 5% Enterprise
@@ -287,18 +309,20 @@ graph TD
 #### Cost Analysis
 
 | Revenue Scenario | Monthly Revenue | COGS (30%) | Gross Profit | Gross Margin |
-|-----------------|----------------|------------|--------------|--------------|
-| Conservative | $1,200 | $360 | $840 | 70% |
-| Moderate | $10,000 | $3,000 | $7,000 | 70% |
-| Optimistic | $30,000 | $9,000 | $21,000 | 70% |
+| ---------------- | --------------- | ---------- | ------------ | ------------ |
+| Conservative     | $1,200          | $360       | $840         | 70%          |
+| Moderate         | $10,000         | $3,000     | $7,000       | 70%          |
+| Optimistic       | $30,000         | $9,000     | $21,000      | 70%          |
 
 **COGS breakdown** (30% of revenue):
+
 - Gemini API: 60% of COGS
 - AWS (S3, CloudFront, RDS): 25% of COGS
 - Worker compute: 10% of COGS
 - Other (monitoring, auth): 5% of COGS
 
 **Operating expenses** (not included in gross margin):
+
 - Engineering: $15,000/month (2 engineers)
 - Marketing: $5,000/month
 - Infrastructure overhead: $2,000/month
@@ -337,12 +361,14 @@ sequenceDiagram
 #### UI/UX for Pricing
 
 **Transparent pricing**:
+
 - Show credit cost before generating (e.g., "This will use 1 credit. You have 49 remaining.")
 - Pre-generation confirmation modal for low balance (<10 credits)
 - "Low balance" banner when <5 credits remaining
 - One-click "Buy More Credits" button in header
 
 **Credit display**:
+
 ```text
 ┌─────────────────────────────┐
 │ Credits: 47                 │
@@ -352,6 +378,7 @@ sequenceDiagram
 ```
 
 **Package selection UI**:
+
 ```text
 ┌─────────────────────────────────────────────────────────┐
 │                    Choose Your Plan                     │
@@ -376,6 +403,7 @@ sequenceDiagram
 #### Subscription Model Design
 
 **Value proposition**:
+
 - Automated product catalog sync (Shopify, WooCommerce, BigCommerce)
 - Bulk generation workflows (generate for entire catalog)
 - API access for custom integrations
@@ -384,25 +412,28 @@ sequenceDiagram
 
 **Subscription tiers**:
 
-| Tier | Products | Price/Month | Price/Year (save 17%) | Included Credits/Mo | Overage | Target Segment |
-|------|----------|-------------|----------------------|---------------------|---------|----------------|
-| Basic | Up to 100 | $49 | $490 | 100 | $0.20/credit | Small e-commerce stores |
-| Pro | Up to 500 | $149 | $1,490 | 500 | $0.18/credit | Growing online brands |
-| Business | Up to 2,000 | $399 | $3,990 | 2,000 | $0.15/credit | Large retailers |
-| Enterprise | Unlimited | Custom | Custom | Custom | Custom | Fortune 500 |
+| Tier       | Products    | Price/Month | Price/Year (save 17%) | Included Credits/Mo | Overage      | Target Segment          |
+| ---------- | ----------- | ----------- | --------------------- | ------------------- | ------------ | ----------------------- |
+| Basic      | Up to 100   | $49         | $490                  | 100                 | $0.20/credit | Small e-commerce stores |
+| Pro        | Up to 500   | $149        | $1,490                | 500                 | $0.18/credit | Growing online brands   |
+| Business   | Up to 2,000 | $399        | $3,990                | 2,000               | $0.15/credit | Large retailers         |
+| Enterprise | Unlimited   | Custom      | Custom                | Custom              | Custom       | Fortune 500             |
 
 **Why product count pricing?**:
+
 - ✅ Aligns with customer value (more products = more revenue for them)
 - ✅ Easy to understand and predict costs
 - ✅ Natural upsell path as catalog grows
 - ✅ Competitor benchmark (Shopify, Lightspeed price by products)
 
 **Included credits**:
+
 - Enough for 1 generation per product per month
 - Example: Pro tier (500 products) gets 500 credits/month
 - Encourages monthly refreshes of product images
 
 **Subscription + credits hybrid**:
+
 - Subscription includes base credits (expire monthly)
 - Can purchase additional credit packs (non-expiring) if needed
 - Example: Pro customer generates 700 images/month
@@ -427,6 +458,7 @@ sequenceDiagram
 | 2,000 | $399 | Large store, lock-in for 12 months |
 
 **LTV Improvement**:
+
 - Credits model: 3-month average tenure = $120 LTV
 - Subscription model: 12-month average tenure = $1,788 LTV (Pro tier)
 - **14.9x LTV improvement** with subscriptions
@@ -441,11 +473,13 @@ sequenceDiagram
 | Business | 2,000 | 2,000 | $300 | $99 | 25% |
 
 **Why lower margin at higher tiers?**:
+
 - Business tier designed for volume (land and expand)
 - Upsell to Enterprise with custom pricing for >50% margin
 - Focus on LTV, not initial margin
 
 **Churn mitigation**:
+
 - Annual contracts (17% discount)
 - Unused credits don't roll over (encourages usage)
 - Integration lock-in (hard to switch once catalog is synced)
@@ -453,34 +487,35 @@ sequenceDiagram
 
 #### Subscription Features Matrix
 
-| Feature | Basic | Pro | Business | Enterprise |
-|---------|-------|-----|----------|------------|
-| Products | 100 | 500 | 2,000 | Unlimited |
-| Included credits/mo | 100 | 500 | 2,000 | Custom |
-| Store sync | ✓ | ✓ | ✓ | ✓ |
-| Bulk generation | ✓ | ✓ | ✓ | ✓ |
-| API access | - | ✓ | ✓ | ✓ |
-| Priority queue | - | ✓ | ✓ | ✓ |
-| Analytics dashboard | Basic | Advanced | Advanced | Custom |
-| Custom templates | 3 | 10 | Unlimited | Unlimited |
-| Team seats | 1 | 3 | 10 | Unlimited |
-| Support | Email | Email + Chat | Phone | Dedicated CSM |
-| SLA uptime | 99% | 99.5% | 99.9% | 99.99% |
-| Webhooks | - | 5 | 25 | Unlimited |
-| White-label | - | - | ✓ | ✓ |
+| Feature             | Basic | Pro          | Business  | Enterprise    |
+| ------------------- | ----- | ------------ | --------- | ------------- |
+| Products            | 100   | 500          | 2,000     | Unlimited     |
+| Included credits/mo | 100   | 500          | 2,000     | Custom        |
+| Store sync          | ✓     | ✓            | ✓         | ✓             |
+| Bulk generation     | ✓     | ✓            | ✓         | ✓             |
+| API access          | -     | ✓            | ✓         | ✓             |
+| Priority queue      | -     | ✓            | ✓         | ✓             |
+| Analytics dashboard | Basic | Advanced     | Advanced  | Custom        |
+| Custom templates    | 3     | 10           | Unlimited | Unlimited     |
+| Team seats          | 1     | 3            | 10        | Unlimited     |
+| Support             | Email | Email + Chat | Phone     | Dedicated CSM |
+| SLA uptime          | 99%   | 99.5%        | 99.9%     | 99.99%        |
+| Webhooks            | -     | 5            | 25        | Unlimited     |
+| White-label         | -     | -            | ✓         | ✓             |
 
 #### Revenue Projections (Phase 3)
 
 **Assumptions**:
+
 - 30% of credit users upgrade to subscriptions (industry avg)
 - 50% choose annual plans (higher LTV)
 - 60% Basic, 30% Pro, 10% Business
 
-| Scenario | Subscribers | Avg Plan Value | MRR | ARR | Churn (monthly) |
-|----------|------------|----------------|-----|-----|-----------------|
-| Conservative | 50 | $75 | $3,750 | $45,000 | 8% |
-| Moderate | 200 | $90 | $18,000 | $216,000 | 5% |
-| Optimistic | 500 | $110 | $55,000 | $660,000 | 3% |
+| Scenario     | Subscribers | Avg Plan Value | MRR     | ARR      | Churn (monthly) |
+| ------------ | ----------- | -------------- | ------- | -------- | --------------- |
+| Conservative | 50          | $75            | $3,750  | $45,000  | 8%              |
+| Moderate     | 200         | $90            | $18,000 | $216,000 | 5%              |
+| Optimistic   | 500         | $110           | $55,000 | $660,000 | 3%              |
 
 **Combined revenue (Credits + Subscriptions)**:
 | Scenario | Credit Revenue | Subscription Revenue | Total MRR | Total ARR |
@@ -498,29 +533,34 @@ sequenceDiagram
 #### Enterprise Pricing
 
 **Custom pricing for**:
-- >2,000 products
-- >10,000 generations/month
+
+- > 2,000 products
+- > 10,000 generations/month
 - Custom SLAs (99.99% uptime)
 - Dedicated infrastructure (isolated workers)
 - Custom training (fine-tuned models on brand images)
 
 **Pricing structure**:
+
 - Base platform fee: $2,000/month
 - Per-credit pricing: $0.10 (bulk discount)
 - Minimum commit: $5,000/month (50,000 credits)
 
 **Enterprise customers** (target):
+
 - Wayfair, Overstock, Ikea (large catalogs)
 - Furniture manufacturers (Williams Sonoma, Crate & Barrel)
 - Interior design platforms (Houzz, Pinterest Shopping)
 
 **Revenue potential**:
+
 - 5 enterprise customers @ $5,000/month = $25,000 MRR
 - 10 enterprise customers @ $8,000/month = $80,000 MRR
 
 #### Agency/Reseller Model
 
 **Agency tier**: $499/month
+
 - Manage up to 10 client accounts
 - 500 base credits/month
 - White-label exports (no branding)
@@ -529,19 +569,20 @@ sequenceDiagram
 - Revenue share: Agency can resell at markup
 
 **Revenue model**:
+
 - Direct revenue: $499/month per agency
 - Indirect revenue: Agency clients purchase credits (we keep 70%, agency keeps 30%)
 - Target: 20 agencies @ $499 = $9,980 MRR
 
 #### Advanced Features (Upsells)
 
-| Feature | Price | Description |
-|---------|-------|-------------|
-| AI Copywriting | +$20/month | Auto-generate product descriptions from images |
-| Custom brand models | +$500/month | Fine-tune on brand imagery |
-| Video generation | +$100/month | Generate 3-5 second product videos (future) |
-| Advanced analytics | +$50/month | Conversion tracking, A/B testing |
-| API rate limit increase | +$30/month | 10x API rate limit |
+| Feature                 | Price       | Description                                    |
+| ----------------------- | ----------- | ---------------------------------------------- |
+| AI Copywriting          | +$20/month  | Auto-generate product descriptions from images |
+| Custom brand models     | +$500/month | Fine-tune on brand imagery                     |
+| Video generation        | +$100/month | Generate 3-5 second product videos (future)    |
+| Advanced analytics      | +$50/month  | Conversion tracking, A/B testing               |
+| API rate limit increase | +$30/month  | 10x API rate limit                             |
 
 ---
 
@@ -578,6 +619,7 @@ graph TD
 | Basic → Pro upgrade | 20% | 15-25% |
 
 **Activation metrics**:
+
 - Time to first generation: <5 minutes
 - Generations in first session: 3+ (indicates engagement)
 - Return rate within 7 days: >40%
@@ -609,6 +651,7 @@ graph TD
 | Subscriber (Pro) | $149 | $74 | $15 | 0.2 months |
 
 **LTV:CAC ratio**:
+
 - Target: 3:1 (healthy SaaS business)
 - Credit user: $120 LTV / $15 CAC = 8:1 ✅
 - Subscriber: $1,788 LTV / $15 CAC = 119:1 ✅
@@ -627,16 +670,19 @@ graph TD
 #### Retention Tactics
 
 **For credit users**:
+
 - Email: "You have 5 credits expiring soon" (for trial credits)
 - Email: "See what others created this week" (social proof)
 - Discount: "Get 10% off your next purchase" (after first purchase)
 
 **For subscribers**:
+
 - Monthly report: "You generated X images, saved Y hours"
 - Unused credits alert: "You have 200 unused credits this month"
 - Feature announcements: "New: AI copywriting available"
 
 **Churn prevention**:
+
 - Exit survey: "Why are you canceling?" (offer downgrade vs. cancel)
 - Winback campaign: "We miss you - here's 20 free credits"
 - Annual renewal discount: "Renew now and save 20%"
@@ -652,6 +698,7 @@ graph TD
 | Subscriber uses >80% credits | Auto-email: "Buy credit pack with 10% discount" | Credit pack add-on |
 
 **Net Revenue Retention (NRR) target**: 120%
+
 - 80% gross retention (20% churn)
 - 40% expansion (upgrades, add-ons)
 - 120% NRR = healthy growth without new customers
@@ -663,16 +710,19 @@ graph TD
 #### Model 1: Pure Credit-Based (No Subscriptions)
 
 **Pros**:
+
 - Simple, easy to understand
 - No commitment barrier
 - Appeals to sporadic users
 
 **Cons**:
+
 - No recurring revenue
 - Higher churn
 - Lower LTV
 
 **Revenue projection** (1,000 users):
+
 - MRR: $30,000
 - ARR: $360,000
 - LTV: $120
@@ -681,16 +731,19 @@ graph TD
 #### Model 2: Pure Subscription (No Pay-As-You-Go)
 
 **Pros**:
+
 - Predictable MRR
 - Higher LTV
 - Lower churn
 
 **Cons**:
+
 - High barrier to entry
 - Excludes sporadic users
 - Smaller addressable market
 
 **Revenue projection** (1,000 users):
+
 - MRR: $90,000
 - ARR: $1,080,000
 - LTV: $1,800
@@ -699,23 +752,27 @@ graph TD
 #### Model 3: Hybrid (Credits + Subscriptions) ✅ CHOSEN
 
 **Pros**:
+
 - Low barrier (free trial)
 - Multiple revenue streams
 - Captures all segments
 - Natural upsell path
 
 **Cons**:
+
 - More complex to explain
 - Requires two pricing pages
 - Higher support burden
 
 **Revenue projection** (1,000 users):
+
 - MRR: $55,000 (60% credits, 40% subscriptions)
 - ARR: $660,000
 - LTV: $900 (blended)
 - Churn: 15% monthly (blended)
 
 **Why hybrid wins**:
+
 - Best of both worlds
 - Aligns with customer journey (explore → commit)
 - Maximizes addressable market
@@ -728,15 +785,16 @@ graph TD
 
 **Purpose**: Prevent abuse, ensure fair resource allocation
 
-| Tier | Gen/Hour | Gen/Day | Concurrent | Storage | API Calls/Min |
-|------|----------|---------|------------|---------|---------------|
-| Free | 5 | 20 | 1 | 1 GB | 10 |
-| Starter | 20 | 100 | 2 | 10 GB | 30 |
-| Pro | 50 | 500 | 5 | 50 GB | 100 |
-| Business | 100 | 2,000 | 10 | 500 GB | 300 |
-| Enterprise | Custom | Custom | Custom | Custom | Custom |
+| Tier       | Gen/Hour | Gen/Day | Concurrent | Storage | API Calls/Min |
+| ---------- | -------- | ------- | ---------- | ------- | ------------- |
+| Free       | 5        | 20      | 1          | 1 GB    | 10            |
+| Starter    | 20       | 100     | 2          | 10 GB   | 30            |
+| Pro        | 50       | 500     | 5          | 50 GB   | 100           |
+| Business   | 100      | 2,000   | 10         | 500 GB  | 300           |
+| Enterprise | Custom   | Custom  | Custom     | Custom  | Custom        |
 
 **Implementation**:
+
 - Redis-based rate limiting (sliding window)
 - Return 429 status code with retry-after header
 - UI shows "Rate limit exceeded, retry in X minutes"
@@ -744,17 +802,20 @@ graph TD
 #### Fair Use Policy
 
 **Acceptable use**:
+
 - Generate images for own products or client products
 - Use for commercial purposes (allowed)
 - Download and use generated images indefinitely
 
 **Prohibited use**:
+
 - Reselling platform access (must use Agency tier)
 - Automated scraping or bulk generation for resale
 - Sharing account credentials (each user needs own account)
 - Generating offensive or illegal content
 
 **Enforcement**:
+
 - Automated: Block generations exceeding limits
 - Manual review: Flag accounts with suspicious patterns
 - Warnings: 2 warnings, then account suspension
@@ -769,6 +830,7 @@ graph TD
 **Goals**: Validate product-market fit, collect pricing data
 
 **Tasks**:
+
 1. Implement usage tracking (generation count per user)
 2. Admin dashboard for invitation management
 3. Email survey: "What would you pay for this?"
@@ -776,6 +838,7 @@ graph TD
 5. NPS survey after 10 generations
 
 **Success metrics**:
+
 - 20+ active users
 - 70%+ would pay
 - Pricing range identified ($10-$50/month)
@@ -785,13 +848,16 @@ graph TD
 **Goals**: Launch self-service, achieve $10K MRR
 
 **Milestone 1: Stripe Integration (Month 4)**
+
 1. Set up Stripe account
 2. Create checkout session API
 3. Implement webhook handler (payment_intent.succeeded)
 4. Test payment flow end-to-end
 
 **Milestone 2: Credit System (Month 4)**
+
 1. Add `credits` table to database
+
    ```sql
    CREATE TABLE user_credits (
      user_id UUID PRIMARY KEY,
@@ -818,6 +884,7 @@ graph TD
 4. Add credit balance API endpoint
 
 **Milestone 3: Pricing Packages (Month 5)**
+
 1. Create Stripe products and prices
    - Starter: $12 for 50 credits
    - Pro: $40 for 200 credits
@@ -827,24 +894,28 @@ graph TD
 4. Add "Buy Credits" button in header
 
 **Milestone 4: Free Trial (Month 5)**
+
 1. Auto-grant 10 free credits on signup
 2. Add `free_credits_granted_at` to users table
 3. Expire free credits after 30 days (cron job)
 4. Email notification: "Free credits expiring soon"
 
 **Milestone 5: Credit Transparency (Month 6)**
+
 1. Show credit cost before generation ("This will use 1 credit")
 2. Low balance warning (<10 credits)
 3. Pre-generation confirmation modal (<5 credits)
 4. Post-purchase success page ("You now have X credits")
 
 **Milestone 6: Usage Analytics (Month 6)**
+
 1. Track credit purchases (amount, frequency)
 2. Cohort analysis (signup → first purchase time)
 3. Identify power users (>500 credits/month)
 4. A/B test pricing (Pro: $40 vs. $45)
 
 **Success metrics**:
+
 - 100+ signups
 - 15% conversion to paid
 - $10,000 MRR
@@ -855,11 +926,13 @@ graph TD
 **Goals**: Launch subscriptions, achieve $50K MRR
 
 **Milestone 1: Subscription Infrastructure (Month 10)**
+
 1. Create Stripe subscription products
    - Basic: $49/month (100 products, 100 credits)
    - Pro: $149/month (500 products, 500 credits)
    - Business: $399/month (2,000 products, 2,000 credits)
 2. Add `subscriptions` table
+
    ```sql
    CREATE TABLE subscriptions (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -884,24 +957,28 @@ graph TD
    - `invoice.payment_succeeded` → Grant monthly credits
 
 **Milestone 2: Store Sync (Months 11-13)**
+
 1. Build Shopify app integration
 2. Product catalog sync (import products from Shopify)
 3. Bulk generation workflow (generate for all products)
 4. Auto-sync on product updates (webhook)
 
 **Milestone 3: Subscription Features (Month 14)**
+
 1. Priority queue (subscribers jump to front)
 2. Advanced analytics dashboard
 3. API access (generate via API)
 4. Team seats (invite users to client)
 
 **Milestone 4: Upsell Campaigns (Month 15)**
+
 1. Identify credit users with >100 credits/month
 2. Email: "Save 30% with a subscription"
 3. In-app banner: "Upgrade to Pro for better value"
 4. Exit intent modal: "Wait! Switch to annual and save 17%"
 
 **Success metrics**:
+
 - 200+ subscribers
 - 30% of credit users convert to subscriptions
 - $50,000 MRR
@@ -912,24 +989,28 @@ graph TD
 **Goals**: Land 5-10 enterprise customers, $100K+ MRR
 
 **Milestone 1: Enterprise Sales (Month 18)**
+
 1. Create enterprise landing page
 2. Build custom quote request form
 3. Hire first sales rep (or founder-led sales)
 4. Outreach to target accounts (Wayfair, Crate & Barrel)
 
 **Milestone 2: Enterprise Features (Month 19-20)**
+
 1. Dedicated infrastructure (isolated workers)
 2. Custom SLAs (99.99% uptime)
 3. SSO integration (SAML)
 4. Custom contracts and invoicing
 
 **Milestone 3: Agency Program (Month 21)**
+
 1. Build multi-client management UI
 2. White-label export (remove branding)
 3. Revenue share tracking
 4. Agency onboarding playbook
 
 **Success metrics**:
+
 - 5+ enterprise customers @ $5K+ MRR each
 - 10+ agencies @ $500/month
 - $100,000+ MRR
@@ -951,11 +1032,14 @@ export async function POST(req: Request) {
   const credits = await db.getUserCredits(userId);
 
   if (credits.balance < 1) {
-    return Response.json({
-      error: 'Insufficient credits',
-      balance: credits.balance,
-      purchaseUrl: '/pricing',
-    }, { status: 402 }); // 402 Payment Required
+    return Response.json(
+      {
+        error: 'Insufficient credits',
+        balance: credits.balance,
+        purchaseUrl: '/pricing',
+      },
+      { status: 402 }
+    ); // 402 Payment Required
   }
 
   // Deduct credit immediately (before generation starts)
@@ -1000,7 +1084,6 @@ async function processGeneration(job: Job) {
       imageId: image.id,
       completedAt: new Date(),
     });
-
   } catch (error) {
     // IMPORTANT: Refund credit on failure
     const asset = await db.generatedAssets.findById(assetId);
@@ -1152,11 +1235,11 @@ async function generateImage(productId: string) {
 
 **Chosen**: No expiration for purchased credits
 
-| Option | Pros | Cons |
-|--------|------|------|
-| Never expire | Higher perceived value, less friction | Unused credits are lost revenue opportunity |
-| Expire after 12 months | Encourages usage, industry standard | Refund requests, negative sentiment |
-| Expire monthly (subscription) | Maximizes revenue, simple | Only works for subscriptions |
+| Option                        | Pros                                  | Cons                                        |
+| ----------------------------- | ------------------------------------- | ------------------------------------------- |
+| Never expire                  | Higher perceived value, less friction | Unused credits are lost revenue opportunity |
+| Expire after 12 months        | Encourages usage, industry standard   | Refund requests, negative sentiment         |
+| Expire monthly (subscription) | Maximizes revenue, simple             | Only works for subscriptions                |
 
 **Decision**: Non-expiring for purchased credits, expiring for subscription credits.
 
@@ -1164,11 +1247,11 @@ async function generateImage(productId: string) {
 
 **Chosen**: 10 credits
 
-| Option | Cost/User | Est. Conversion | Effective CAC |
-|--------|-----------|----------------|---------------|
-| 5 credits | $0.25 | 8% | $3.13 |
-| 10 credits ✅ | $0.50 | 15% | $3.33 |
-| 20 credits | $1.00 | 18% | $5.56 |
+| Option        | Cost/User | Est. Conversion | Effective CAC |
+| ------------- | --------- | --------------- | ------------- |
+| 5 credits     | $0.25     | 8%              | $3.13         |
+| 10 credits ✅ | $0.50     | 15%             | $3.33         |
+| 20 credits    | $1.00     | 18%             | $5.56         |
 
 **Decision**: 10 credits balances conversion with cost.
 
@@ -1176,11 +1259,11 @@ async function generateImage(productId: string) {
 
 **Chosen**: Hybrid (credits + subscriptions)
 
-| Model | MRR (1K users) | LTV | Churn | Addressable Market |
-|-------|---------------|-----|-------|--------------------|
-| Pure credits | $30K | $120 | 40% | All |
-| Pure subscription | $90K | $1,800 | 5% | Enterprise only |
-| Hybrid ✅ | $55K | $900 | 15% | All |
+| Model             | MRR (1K users) | LTV    | Churn | Addressable Market |
+| ----------------- | -------------- | ------ | ----- | ------------------ |
+| Pure credits      | $30K           | $120   | 40%   | All                |
+| Pure subscription | $90K           | $1,800 | 5%    | Enterprise only    |
+| Hybrid ✅         | $55K           | $900   | 15%   | All                |
 
 **Decision**: Hybrid captures all segments and maximizes LTV.
 
@@ -1188,11 +1271,11 @@ async function generateImage(productId: string) {
 
 **Chosen**: 3 tiers (Basic, Pro, Business) + Enterprise
 
-| Option | Pros | Cons |
-|--------|------|------|
-| 2 tiers | Simple, clear choice | Misses mid-market |
-| 3 tiers ✅ | Good/Better/Best psychology | Not too complex |
-| 5+ tiers | Granular pricing | Decision paralysis |
+| Option     | Pros                        | Cons               |
+| ---------- | --------------------------- | ------------------ |
+| 2 tiers    | Simple, clear choice        | Misses mid-market  |
+| 3 tiers ✅ | Good/Better/Best psychology | Not too complex    |
+| 5+ tiers   | Granular pricing            | Decision paralysis |
 
 **Decision**: 3 tiers is industry best practice (SaaS playbook).
 
@@ -1200,11 +1283,11 @@ async function generateImage(productId: string) {
 
 **Chosen**: 17% (2 months free)
 
-| Discount | Annual Price (Pro) | Impact |
-|----------|-------------------|--------|
-| 0% | $1,788 | No incentive |
-| 17% ✅ | $1,490 | 2 months free, competitive |
-| 25% | $1,341 | Strong incentive, lower revenue |
+| Discount | Annual Price (Pro) | Impact                          |
+| -------- | ------------------ | ------------------------------- |
+| 0%       | $1,788             | No incentive                    |
+| 17% ✅   | $1,490             | 2 months free, competitive      |
+| 25%      | $1,341             | Strong incentive, lower revenue |
 
 **Decision**: 17% is competitive and improves cash flow.
 
@@ -1215,6 +1298,7 @@ async function generateImage(productId: string) {
 ### Overview
 
 Administrators need the ability to manage client credits for:
+
 - Compensating for service issues
 - Granting promotional credits
 - Handling refund requests
@@ -1222,12 +1306,12 @@ Administrators need the ability to manage client credits for:
 
 ### Admin Actions
 
-| Action | Description | Requires |
-|--------|-------------|----------|
-| **Add Credits** | Grant credits to a client | Reason field (required) |
-| **Adjust Balance** | Correct balance errors | Reason field + approval |
-| **View History** | See all transactions | Read-only access |
-| **Export Report** | Download transaction CSV | Admin role |
+| Action             | Description               | Requires                |
+| ------------------ | ------------------------- | ----------------------- |
+| **Add Credits**    | Grant credits to a client | Reason field (required) |
+| **Adjust Balance** | Correct balance errors    | Reason field + approval |
+| **View History**   | See all transactions      | Read-only access        |
+| **Export Report**  | Download transaction CSV  | Admin role              |
 
 ### Implementation
 
@@ -1247,6 +1331,7 @@ Request: {
 ### Audit Requirements
 
 All admin credit actions must be:
+
 - Logged with admin user ID
 - Include reason/justification
 - Visible in admin dashboard
@@ -1260,12 +1345,12 @@ All admin credit actions must be:
 
 **Failed generations are automatically refunded:**
 
-| Scenario | Refund | Implementation |
-|----------|--------|----------------|
-| Generation fails (AI error) | 1 credit per failed image | Automatic via worker |
-| Timeout (>5 min no response) | 1 credit per image | Automatic via job monitor |
-| Duplicate charge | Full amount | Manual review, then auto |
-| Service outage | Pro-rated | Admin bulk grant |
+| Scenario                     | Refund                    | Implementation            |
+| ---------------------------- | ------------------------- | ------------------------- |
+| Generation fails (AI error)  | 1 credit per failed image | Automatic via worker      |
+| Timeout (>5 min no response) | 1 credit per image        | Automatic via job monitor |
+| Duplicate charge             | Full amount               | Manual review, then auto  |
+| Service outage               | Pro-rated                 | Admin bulk grant          |
 
 ### Refund Flow
 
@@ -1289,11 +1374,13 @@ Show toast: "1 credit refunded due to generation failure"
 ### Manual Refund Requests
 
 **Not supported for purchased credits** (like gift cards):
+
 - Communicate clearly at purchase
 - Offer account credit instead
 - Exception: Major service issues (admin discretion)
 
 **Supported for subscriptions**:
+
 - Pro-rated refund on cancellation
 - Full refund within 7 days if no generations used
 
@@ -1304,17 +1391,20 @@ Show toast: "1 credit refunded due to generation failure"
 ### Q1: Should we offer refunds?
 
 **Options**:
+
 1. No refunds (credit purchases are final)
 2. Refunds within 7 days if <10% of credits used
 3. Pro-rated refunds for subscriptions (cancel anytime)
 
 **Recommendation**:
+
 - Credits: No refunds (like gift cards)
 - Subscriptions: Pro-rated refunds (industry standard)
 
 ### Q2: How do we handle taxes (VAT, sales tax)?
 
 **Options**:
+
 1. Prices are tax-inclusive (absorb cost)
 2. Prices are tax-exclusive (add tax at checkout)
 3. Use Stripe Tax (auto-calculate based on location)
@@ -1324,6 +1414,7 @@ Show toast: "1 credit refunded due to generation failure"
 ### Q3: Should we offer discounts for non-profits or educators?
 
 **Options**:
+
 1. No discounts (keep pricing simple)
 2. 30% discount for verified non-profits
 3. Free tier for educators (with limits)
@@ -1333,12 +1424,14 @@ Show toast: "1 credit refunded due to generation failure"
 ### Q4: How do we prevent account sharing?
 
 **Options**:
+
 1. Trust-based (no enforcement)
 2. IP-based detection (flag multiple IPs)
 3. Device fingerprinting
 4. Require login for each generation (session timeout)
 
 **Recommendation**:
+
 - Phase 1: Trust-based
 - Phase 2: Flag accounts with >5 IPs in 30 days
 - Phase 3: Enforce team seats for multi-user access
@@ -1346,17 +1439,20 @@ Show toast: "1 credit refunded due to generation failure"
 ### Q5: Should we offer a lifetime deal?
 
 **Options**:
+
 1. No lifetime deal (recurring revenue is key)
 2. Limited lifetime deal for early adopters ($299 for unlimited)
 3. "Founder's deal" (annual plan at 50% off forever)
 
 **Recommendation**:
+
 - No lifetime deal (kills MRR)
 - Consider "Founder's plan" (annual at 30% off, locked in forever) for first 100 customers
 
 ### Q6: How do we price API access?
 
 **Options**:
+
 1. Free with Pro/Business subscription
 2. Separate API tier ($99/month + credit costs)
 3. Pay-per-request (1 credit per API call)
@@ -1368,12 +1464,14 @@ Show toast: "1 credit refunded due to generation failure"
 ## Success Criteria
 
 ### Phase 1: MVP (Months 1-3)
+
 - [ ] 20+ active users generating images
 - [ ] 70%+ of users indicate willingness to pay in surveys
 - [ ] Pricing range identified ($10-$50/month acceptable range)
 - [ ] Usage patterns analyzed (avg generations/user/month)
 
 ### Phase 2: Credit System (Months 4-9)
+
 - [ ] Stripe integration complete and tested
 - [ ] 100+ signups with 10 free credits granted automatically
 - [ ] 15%+ conversion rate (free → paid)
@@ -1385,6 +1483,7 @@ Show toast: "1 credit refunded due to generation failure"
 - [ ] Automated refunds on failed generations
 
 ### Phase 3: Subscriptions (Months 10-18)
+
 - [ ] 3 subscription tiers launched (Basic, Pro, Business)
 - [ ] 200+ subscribers
 - [ ] 30%+ of credit users convert to subscriptions
@@ -1396,6 +1495,7 @@ Show toast: "1 credit refunded due to generation failure"
 - [ ] Annual plan discount (17%) available
 
 ### Phase 4: Enterprise (Months 18+)
+
 - [ ] 5+ enterprise customers @ $5K+ MRR each
 - [ ] 10+ agencies @ $500/month
 - [ ] $100,000+ MRR
@@ -1405,6 +1505,7 @@ Show toast: "1 credit refunded due to generation failure"
 - [ ] White-label exports for agencies
 
 ### Financial Metrics (12 months)
+
 - [ ] Gross margin: 60%+ (target: 70%)
 - [ ] LTV:CAC ratio: >3:1
 - [ ] Payback period: <6 months
@@ -1412,6 +1513,7 @@ Show toast: "1 credit refunded due to generation failure"
 - [ ] NRR: 110%+ (expansion revenue > churn)
 
 ### Product Metrics
+
 - [ ] Time to first generation: <5 minutes
 - [ ] Activation rate: 80%+ (signup → first generation)
 - [ ] Free-to-paid conversion: 15%+
@@ -1419,6 +1521,7 @@ Show toast: "1 credit refunded due to generation failure"
 - [ ] Annual plan adoption: 50%+ of subscribers
 
 ### Operational Metrics
+
 - [ ] Zero payment failures (Stripe integration stable)
 - [ ] <1% credit transaction errors
 - [ ] 99.9% uptime for payment endpoints

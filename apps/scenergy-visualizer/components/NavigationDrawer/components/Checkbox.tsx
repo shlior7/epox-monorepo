@@ -7,9 +7,5 @@ interface CheckboxProps {
 }
 
 export function Checkbox({ checked }: CheckboxProps) {
-  return (
-    <div className={clsx(styles.checkbox, { [styles.checkboxSelected]: checked })}>
-      {checked && <Check size={14} />}
-    </div>
-  );
+  return <div className={clsx(styles.checkbox, { [styles.checkboxSelected]: checked })}>{checked && <Check size={14} />}</div>;
 }

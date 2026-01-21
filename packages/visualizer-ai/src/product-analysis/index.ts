@@ -8,5 +8,3 @@ export type {
   ColorScheme,
   ProductSize,
 } from './types';
-
-

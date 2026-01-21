@@ -23,9 +23,13 @@ export const GET = withSecurity(async (request, context) => {
     const flowId = searchParams.get('flowId') ?? undefined;
     const productIdsParam = searchParams.get('productIds') ?? undefined;
     const parsedProductIds = productIdsParam
-      ? productIdsParam.split(',').map((id) => id.trim()).filter(Boolean)
+      ? productIdsParam
+          .split(',')
+          .map((id) => id.trim())
+          .filter(Boolean)
       : [];
-    const productId = parsedProductIds.length === 0 ? searchParams.get('productId') ?? undefined : undefined;
+    const productId =
+      parsedProductIds.length === 0 ? (searchParams.get('productId') ?? undefined) : undefined;
     const pinnedFilter = searchParams.get('pinned') ?? undefined;
     const statusFilter = searchParams.get('status') ?? undefined;
     const approvalFilter = searchParams.get('approval') ?? undefined;
@@ -234,12 +238,14 @@ export const DELETE = withSecurity(async (request, context) => {
     }
 
     // Verify ownership
-    if (!verifyOwnership({
-      clientId,
-      resourceClientId: asset.clientId,
-      resourceType: 'generated-image',
-      resourceId: id,
-    })) {
+    if (
+      !verifyOwnership({
+        clientId,
+        resourceClientId: asset.clientId,
+        resourceType: 'generated-image',
+        resourceId: id,
+      })
+    ) {
       return forbiddenResponse();
     }
 

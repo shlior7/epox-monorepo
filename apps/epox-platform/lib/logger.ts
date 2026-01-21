@@ -95,11 +95,7 @@ export function logJobFailed(
 /**
  * Log API request (call at start of request handling)
  */
-export function logApiRequest(
-  route: string,
-  method: string,
-  data: Record<string, unknown> = {}
-) {
+export function logApiRequest(route: string, method: string, data: Record<string, unknown> = {}) {
   logger.info({ ...data, route, method, event: 'api_request' }, `${method} ${route}`);
 }
 

@@ -46,6 +46,7 @@ This guide walks you through setting up the full production infrastructure for t
    - **REST Token**: `AXxx...`
 
 **Test the connection locally:**
+
 ```bash
 # Install redis-cli if needed
 brew install redis
@@ -140,6 +141,7 @@ gcloud run deploy ai-worker \
 ```
 
 **Verify deployment:**
+
 ```bash
 # Get the service URL
 gcloud run services describe ai-worker --region us-central1 --format='value(status.url)'
@@ -155,6 +157,7 @@ gcloud run services logs read ai-worker --region us-central1 --limit 50
 For local development using production Upstash Redis (but local platform):
 
 **Create `apps/epox-platform/.env.local`:**
+
 ```bash
 # Database - use local or production
 DATABASE_URL="postgresql://test:test@localhost:5434/visualizer_test"
@@ -179,12 +182,14 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 ```
 
 **Run the local platform:**
+
 ```bash
 cd apps/epox-platform
 yarn dev
 ```
 
 **Run the AI worker locally (connecting to production Redis):**
+
 ```bash
 # Terminal 1: Set env and run worker
 export REDIS_URL="redis://default:xxx@xxx.upstash.io:6379"
@@ -236,28 +241,29 @@ curl http://localhost:3000/api/jobs/{jobId}
 
 ### Environment Variables
 
-| Variable | Description | Required | Example |
-|----------|-------------|----------|---------|
-| `DATABASE_URL` | PostgreSQL connection | ✅ | `postgresql://...` |
-| `GOOGLE_AI_STUDIO_API_KEY` | Gemini API key | ✅ | `AIza...` |
-| `REDIS_URL` | Redis connection | ✅ for queue | `redis://...` |
-| `GEMINI_RPM` | Rate limit (req/min) | ❌ | `60` |
-| `WORKER_CONCURRENCY` | Parallel jobs | ❌ | `5` |
-| `STORAGE_DRIVER` | `r2` or `filesystem` | ❌ | `filesystem` |
+| Variable                   | Description           | Required     | Example            |
+| -------------------------- | --------------------- | ------------ | ------------------ |
+| `DATABASE_URL`             | PostgreSQL connection | ✅           | `postgresql://...` |
+| `GOOGLE_AI_STUDIO_API_KEY` | Gemini API key        | ✅           | `AIza...`          |
+| `REDIS_URL`                | Redis connection      | ✅ for queue | `redis://...`      |
+| `GEMINI_RPM`               | Rate limit (req/min)  | ❌           | `60`               |
+| `WORKER_CONCURRENCY`       | Parallel jobs         | ❌           | `5`                |
+| `STORAGE_DRIVER`           | `r2` or `filesystem`  | ❌           | `filesystem`       |
 
 ### Gemini API Tiers
 
-| Tier | RPM | Cost |
-|------|-----|------|
-| Free | 15 | $0 |
-| Pay-as-you-go | 360 | ~$0.0025/image |
-| Scale | 1000+ | Volume pricing |
+| Tier          | RPM   | Cost           |
+| ------------- | ----- | -------------- |
+| Free          | 15    | $0             |
+| Pay-as-you-go | 360   | ~$0.0025/image |
+| Scale         | 1000+ | Volume pricing |
 
 ---
 
 ## Troubleshooting
 
 ### Worker not processing jobs
+
 ```bash
 # Check worker logs
 gcloud run services logs read ai-worker --region us-central1
@@ -270,6 +276,7 @@ redis-cli -u "$REDIS_URL" keys "bull:*"
 ```
 
 ### Jobs stuck in queue
+
 ```bash
 # List waiting jobs
 redis-cli -u "$REDIS_URL" lrange "bull:ai-jobs:wait" 0 -1
@@ -279,6 +286,7 @@ redis-cli -u "$REDIS_URL" zrange "bull:ai-jobs:failed" 0 -1
 ```
 
 ### Clear all jobs (development only!)
+
 ```bash
 redis-cli -u "$REDIS_URL" --scan --pattern "bull:*" | xargs redis-cli -u "$REDIS_URL" del
 ```
@@ -303,4 +311,3 @@ echo -n "new-value" | gcloud secrets versions add redis-url --data-file=-
 # Redeploy with new secrets
 gcloud run services update ai-worker --region us-central1 --update-secrets REDIS_URL=redis-url:latest
 ```
-

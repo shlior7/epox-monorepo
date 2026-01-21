@@ -66,7 +66,7 @@ export const session = pgTable(
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
   },
-  (table) => [index('session_user_id_idx').on(table.userId)]
+  (table) => [index('session_user_id_idx').on(table.userId), index('session_active_client_id_idx').on(table.activeClientId)]
 );
 
 // ===== ACCOUNT (for OAuth providers) =====
@@ -93,14 +93,18 @@ export const account = pgTable(
 );
 
 // ===== VERIFICATION =====
-export const verification = pgTable('verification', {
-  id: text('id').primaryKey(),
-  identifier: text('identifier').notNull(),
-  value: text('value').notNull(),
-  expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
-  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow(),
-});
+export const verification = pgTable(
+  'verification',
+  {
+    id: text('id').primaryKey(),
+    identifier: text('identifier').notNull(),
+    value: text('value').notNull(),
+    expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow(),
+  },
+  (table) => [index('verification_identifier_idx').on(table.identifier)]
+);
 
 // ===== CLIENT (formerly Organization) =====
 export const client = pgTable(
@@ -156,7 +160,7 @@ export const invitation = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
   },
-  (table) => [index('invitation_client_id_idx').on(table.clientId)]
+  (table) => [index('invitation_client_id_idx').on(table.clientId), index('invitation_email_idx').on(table.email)]
 );
 
 // ===== RELATIONS =====

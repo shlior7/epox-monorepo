@@ -275,10 +275,7 @@ export function getModelById(modelId: string): AIModelOption | undefined {
 /**
  * Check if a model supports a specific capability
  */
-export function modelSupportsCapability(
-  modelId: string,
-  capability: keyof ModelCapabilities
-): boolean {
+export function modelSupportsCapability(modelId: string, capability: keyof ModelCapabilities): boolean {
   const model = getModelById(modelId);
   if (!model) return false;
   return Boolean(model.capabilities[capability]);

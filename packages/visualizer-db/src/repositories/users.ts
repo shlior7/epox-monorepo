@@ -10,12 +10,7 @@ export class UserRepository extends BaseRepository<User> {
     super(drizzle, user);
   }
 
-  async create(params: {
-    email: string;
-    name: string;
-    emailVerified?: boolean;
-    image?: string | null;
-  }): Promise<User> {
+  async create(params: { email: string; name: string; emailVerified?: boolean; image?: string | null }): Promise<User> {
     const id = this.generateId();
     const now = new Date();
 
@@ -40,10 +35,7 @@ export class UserRepository extends BaseRepository<User> {
     return rows[0] ? this.mapToEntity(rows[0]) : null;
   }
 
-  async update(
-    id: string,
-    data: Partial<Pick<User, 'email' | 'name' | 'emailVerified' | 'image'>>
-  ): Promise<User> {
+  async update(id: string, data: Partial<Pick<User, 'email' | 'name' | 'emailVerified' | 'image'>>): Promise<User> {
     const updatePayload: Record<string, unknown> = {};
     if (data.email !== undefined) updatePayload.email = data.email;
     if (data.name !== undefined) updatePayload.name = data.name;

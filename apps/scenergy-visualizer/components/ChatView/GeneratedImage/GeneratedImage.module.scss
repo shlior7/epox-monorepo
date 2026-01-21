@@ -16,7 +16,9 @@
   &.selected {
     border: 3px solid color('indigo', 500);
     transform: scale(0.98);
-    box-shadow: 0 0 0 2px color('slate', 800), 0 0 0 5px color('indigo', 500);
+    box-shadow:
+      0 0 0 2px color('slate', 800),
+      0 0 0 5px color('indigo', 500);
   }
 }
 

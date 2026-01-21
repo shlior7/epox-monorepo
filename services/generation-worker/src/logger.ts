@@ -81,19 +81,10 @@ export function logJobProgress(jobId: string, progress: number, details?: Record
 }
 
 export function logJobSuccess(jobId: string, durationMs: number, result: JobResult) {
-  logger.info(
-    { jobId, durationMs, event: 'job_success', ...result },
-    `Job completed in ${durationMs}ms`
-  );
+  logger.info({ jobId, durationMs, event: 'job_success', ...result }, `Job completed in ${durationMs}ms`);
 }
 
-export function logJobFailed(
-  jobId: string,
-  error: Error | string,
-  attempt: number,
-  maxAttempts: number,
-  willRetry: boolean
-) {
+export function logJobFailed(jobId: string, error: Error | string, attempt: number, maxAttempts: number, willRetry: boolean) {
   const errorMessage = error instanceof Error ? error.message : error;
   const errorStack = error instanceof Error ? error.stack : undefined;
 

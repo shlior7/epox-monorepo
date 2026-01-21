@@ -3,13 +3,7 @@
  * Handles single and bulk downloads from storage
  */
 
-import type {
-  DownloadJob,
-  DownloadJobStatus,
-  CreateDownloadJobRequest,
-  SingleDownloadResult,
-  BulkDownloadResult,
-} from './types';
+import type { DownloadJob, DownloadJobStatus, CreateDownloadJobRequest, SingleDownloadResult, BulkDownloadResult } from './types';
 import type { StorageFacade } from '../types';
 import { storagePaths } from '../paths';
 
@@ -45,10 +39,7 @@ export class DownloadService {
   /**
    * Generate a signed download URL for a single file
    */
-  async getSignedDownloadUrl(
-    key: string,
-    filename?: string
-  ): Promise<SingleDownloadResult> {
+  async getSignedDownloadUrl(key: string, filename?: string): Promise<SingleDownloadResult> {
     if (!this.storage) {
       throw new Error('Storage not initialized. Call setStorage() first.');
     }
@@ -151,9 +142,7 @@ export class DownloadService {
     const job = await this.getDownloadJob(jobId);
     if (!job) return null;
 
-    const progress = job.fileCount > 0
-      ? Math.round((job.processedCount / job.fileCount) * 100)
-      : 0;
+    const progress = job.fileCount > 0 ? Math.round((job.processedCount / job.fileCount) * 100) : 0;
 
     // Estimate: 2 seconds per file
     const remainingFiles = job.fileCount - job.processedCount;
@@ -210,4 +199,3 @@ export function getDownloadService(): DownloadService {
 export function resetDownloadService(): void {
   _downloadService = null;
 }
-

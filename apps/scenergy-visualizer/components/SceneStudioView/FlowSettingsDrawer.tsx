@@ -164,11 +164,7 @@ export function FlowSettingsDrawer({ isOpen, onClose, flow, onUpdateSettings, on
           {/* Lighting */}
           <div className={styles.settingsSection}>
             <label className={styles.settingsLabel}>Lighting</label>
-            <select
-              value={settings.lighting}
-              onChange={(e) => handleChange('lighting', e.target.value)}
-              className={styles.settingsSelect}
-            >
+            <select value={settings.lighting} onChange={(e) => handleChange('lighting', e.target.value)} className={styles.settingsSelect}>
               {LIGHTING_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}

@@ -28,10 +28,17 @@ export async function GET(request: NextRequest) {
 
     if (!result.success) {
       console.error('Shopify callback failed:', result.error);
-      return NextResponse.redirect(new URL(`/settings/store?error=${encodeURIComponent(result.error ?? 'unknown')}`, request.url));
+      return NextResponse.redirect(
+        new URL(
+          `/settings/store?error=${encodeURIComponent(result.error ?? 'unknown')}`,
+          request.url
+        )
+      );
     }
 
-    return NextResponse.redirect(new URL(result.returnUrl ?? '/settings/store?connected=true', request.url));
+    return NextResponse.redirect(
+      new URL(result.returnUrl ?? '/settings/store?connected=true', request.url)
+    );
   } catch (error) {
     console.error('Shopify callback error:', error);
     return NextResponse.redirect(new URL('/settings/store?error=callback_failed', request.url));

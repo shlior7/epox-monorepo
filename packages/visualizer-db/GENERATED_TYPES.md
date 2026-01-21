@@ -37,12 +37,14 @@ All database tables have corresponding TypeScript interfaces:
 Types are automatically generated from the live database schema during the build process.
 
 **Manual generation:**
+
 ```bash
 cd packages/visualizer-db
 yarn db:generate:types
 ```
 
 **Automatic generation:**
+
 ```bash
 # From the monorepo root
 yarn build
@@ -68,10 +70,7 @@ import type { Product, ProductImage } from 'visualizer-db/schema';
 export class ProductRepository {
   async getById(id: string): Promise<Product | null> {
     // Return type is automatically validated
-    const result = await drizzle
-      .select()
-      .from(product)
-      .where(eq(product.id, id));
+    const result = await drizzle.select().from(product).where(eq(product.id, id));
 
     return result[0] || null;
   }
@@ -95,10 +94,7 @@ import type { GeneratedAsset, Product } from 'visualizer-db/schema';
 
 export async function GET(request: NextRequest) {
   // Type-safe database query
-  const assets: GeneratedAsset[] = await drizzle
-    .select()
-    .from(generatedAsset)
-    .where(eq(generatedAsset.clientId, clientId));
+  const assets: GeneratedAsset[] = await drizzle.select().from(generatedAsset).where(eq(generatedAsset.clientId, clientId));
 
   // Type-safe mapping
   const mappedAssets = assets.map((asset: GeneratedAsset) => ({
@@ -167,6 +163,7 @@ export async function getCollectionWithStats(id: string): Promise<CollectionWith
 ## Troubleshooting
 
 **Q: Types are out of sync with database**
+
 ```bash
 cd packages/visualizer-db
 yarn db:push
@@ -174,10 +171,12 @@ yarn db:generate:types
 ```
 
 **Q: TypeScript errors after schema change**
+
 - This is expected! The errors guide you to update code that needs to change.
 - Fix each error to align with the new schema.
 
 **Q: Build fails with "DATABASE_URL not set"**
+
 - Type generation requires a live database connection.
 - Ensure `DATABASE_URL` is set in your environment.
 - For CI/CD, you may need to skip type generation or use a test database.

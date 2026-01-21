@@ -143,9 +143,6 @@ export const POST = withSecurity(async (request): Promise<NextResponse<VisionSca
         { status: 429 }
       );
     }
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 });

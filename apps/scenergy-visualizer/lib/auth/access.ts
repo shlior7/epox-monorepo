@@ -50,9 +50,7 @@ export async function isAdminUser(email: string): Promise<boolean> {
   return adminUser !== null && adminUser.isActive;
 }
 
-export async function ensureAdmin(
-  session: Session
-): Promise<{ error: Response } | { role: AppRole }> {
+export async function ensureAdmin(session: Session): Promise<{ error: Response } | { role: AppRole }> {
   const role = await getUserRole(session);
   if (role !== 'admin') {
     return { error: jsonError('Forbidden', 403) };

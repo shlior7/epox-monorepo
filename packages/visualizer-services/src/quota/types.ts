@@ -59,5 +59,3 @@ export interface QuotaCheckResult {
   limit: number;
   remaining: number;
 }
-
-

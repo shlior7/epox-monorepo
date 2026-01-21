@@ -54,7 +54,9 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
       body: JSON.stringify({}),
     });
 
-    const response = await generateCollection(request, { params: Promise.resolve({ id: 'coll-1' }) });
+    const response = await generateCollection(request, {
+      params: Promise.resolve({ id: 'coll-1' }),
+    });
 
     expect(response.status).toBe(404);
   });
@@ -72,7 +74,9 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
       body: JSON.stringify({ productIds: ['prod-2'] }),
     });
 
-    const response = await generateCollection(request, { params: Promise.resolve({ id: 'coll-1' }) });
+    const response = await generateCollection(request, {
+      params: Promise.resolve({ id: 'coll-1' }),
+    });
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -108,7 +112,9 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
       }),
     });
 
-    const response = await generateCollection(request, { params: Promise.resolve({ id: 'coll-1' }) });
+    const response = await generateCollection(request, {
+      params: Promise.resolve({ id: 'coll-1' }),
+    });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -152,10 +158,13 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
       body: JSON.stringify({ settings: { aspectRatio: '4:3' } }),
     });
 
-    const response = await generateCollection(request, { params: Promise.resolve({ id: 'coll-1' }) });
+    const response = await generateCollection(request, {
+      params: Promise.resolve({ id: 'coll-1' }),
+    });
 
     expect(response.status).toBe(200);
-    expect(db.generationFlows.update).toHaveBeenCalledWith('flow-1',
+    expect(db.generationFlows.update).toHaveBeenCalledWith(
+      'flow-1',
       expect.objectContaining({
         settings: expect.objectContaining({ aspectRatio: '4:3' }),
       })

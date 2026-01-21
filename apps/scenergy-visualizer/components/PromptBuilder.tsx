@@ -465,13 +465,13 @@ export function PromptBuilder({
               <label htmlFor="aspectRatio" className={styles.label}>
                 Aspect Ratio
               </label>
-            <select
-              id="aspectRatio"
-              value={settings.aspectRatio}
-              onChange={(e) => updateSetting('aspectRatio', e.target.value)}
-              className={styles.select}
-              data-testid={buildTestId('prompt-builder', 'aspect-ratio-select')}
-            >
+              <select
+                id="aspectRatio"
+                value={settings.aspectRatio}
+                onChange={(e) => updateSetting('aspectRatio', e.target.value)}
+                className={styles.select}
+                data-testid={buildTestId('prompt-builder', 'aspect-ratio-select')}
+              >
                 {ASPECT_RATIO_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -488,14 +488,14 @@ export function PromptBuilder({
                 </label>
                 <input
                   type="number"
-                id="variants"
-                min={1}
-                max={4}
-                value={settings.numberOfVariants}
-                onChange={(e) => updateSetting('numberOfVariants', parseInt(e.target.value, 10) || 1)}
-                className={styles.input}
-                data-testid={buildTestId('prompt-builder', 'variants-input')}
-              />
+                  id="variants"
+                  min={1}
+                  max={4}
+                  value={settings.numberOfVariants}
+                  onChange={(e) => updateSetting('numberOfVariants', parseInt(e.target.value, 10) || 1)}
+                  className={styles.input}
+                  data-testid={buildTestId('prompt-builder', 'variants-input')}
+                />
                 <div className={styles.helpText}>Generate 1-4 variations per request</div>
               </div>
             )}
