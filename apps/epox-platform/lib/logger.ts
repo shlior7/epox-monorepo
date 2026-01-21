@@ -65,14 +65,14 @@ export const logger: Logger = pino({
  * Log job/generation started event
  */
 export function logJobStarted(jobId: string, data: Record<string, unknown>) {
-  logger.info({ jobId, event: 'job_started', ...data }, 'Job started');
+  logger.info({ ...data, jobId, event: 'job_started' }, 'Job started');
 }
 
 /**
  * Log job/generation completed successfully
  */
 export function logJobSuccess(jobId: string, data: Record<string, unknown>) {
-  logger.info({ jobId, event: 'job_success', ...data }, 'Job completed successfully');
+  logger.info({ ...data, jobId, event: 'job_success' }, 'Job completed successfully');
 }
 
 /**
@@ -87,7 +87,7 @@ export function logJobFailed(
   const errorStack = error instanceof Error ? error.stack : undefined;
 
   logger.error(
-    { jobId, event: 'job_failed', error: errorMessage, stack: errorStack, ...data },
+    { ...data, jobId, event: 'job_failed', error: errorMessage, stack: errorStack },
     'Job failed'
   );
 }
@@ -100,7 +100,7 @@ export function logApiRequest(
   method: string,
   data: Record<string, unknown> = {}
 ) {
-  logger.info({ route, method, event: 'api_request', ...data }, `${method} ${route}`);
+  logger.info({ ...data, route, method, event: 'api_request' }, `${method} ${route}`);
 }
 
 /**
@@ -115,7 +115,7 @@ export function logApiResponse(
 ) {
   const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
   logger[level](
-    { route, method, statusCode, durationMs, event: 'api_response', ...data },
+    { ...data, route, method, statusCode, durationMs, event: 'api_response' },
     `${method} ${route} ${statusCode} ${durationMs}ms`
   );
 }
@@ -129,5 +129,5 @@ export function logWithSentryId(
   message: string,
   data: Record<string, unknown> = {}
 ) {
-  logger[level]({ sentryEventId, ...data }, message);
+  logger[level]({ ...data, sentryEventId }, message);
 }

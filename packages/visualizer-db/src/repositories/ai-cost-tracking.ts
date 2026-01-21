@@ -21,7 +21,7 @@ export interface CreateCostRecord {
   operationType: AIOperationType;
   model: string;
   provider?: string;
-  costUsd: number;
+  costUsdCents: number; // Cost in USD cents (e.g., 100 = $1.00)
   inputTokens?: number;
   outputTokens?: number;
   imageCount?: number;
@@ -33,12 +33,12 @@ export interface CreateCostRecord {
 }
 
 export interface CostSummary {
-  totalCostUsd: number;
+  totalCostUsdCents: number; // Cost in USD cents (e.g., 100 = $1.00)
   operationCount: number;
   successCount: number;
   failureCount: number;
-  byOperationType: Record<string, { costUsd: number; count: number }>;
-  byModel: Record<string, { costUsd: number; count: number }>;
+  byOperationType: Record<string, { costUsdCents: number; count: number }>;
+  byModel: Record<string, { costUsdCents: number; count: number }>;
 }
 
 export class AICostTrackingRepository {
@@ -61,7 +61,7 @@ export class AICostTrackingRepository {
         operationType: data.operationType,
         model: data.model,
         provider: data.provider ?? 'google-gemini',
-        costUsd: data.costUsd,
+        costUsdCents: data.costUsdCents,
         inputTokens: data.inputTokens,
         outputTokens: data.outputTokens,
         imageCount: data.imageCount,
@@ -96,46 +96,64 @@ export class AICostTrackingRepository {
       conditions.push(lte(aiCostTracking.createdAt, options.endDate));
     }
 
-    const records = await this.db
-      .select()
+    // DB-side aggregation for overall stats
+    const [overall] = await this.db
+      .select({
+        totalCostUsdCents: sql<number>`COALESCE(SUM(${aiCostTracking.costUsdCents}), 0)`,
+        operationCount: sql<number>`COUNT(*)`,
+        successCount: sql<number>`SUM(CASE WHEN ${aiCostTracking.success} = 1 THEN 1 ELSE 0 END)`,
+        failureCount: sql<number>`SUM(CASE WHEN ${aiCostTracking.success} = 0 THEN 1 ELSE 0 END)`,
+      })
       .from(aiCostTracking)
       .where(and(...conditions));
 
-    // Aggregate results
-    const summary: CostSummary = {
-      totalCostUsd: 0,
-      operationCount: 0,
-      successCount: 0,
-      failureCount: 0,
-      byOperationType: {},
-      byModel: {},
-    };
+    // Aggregation by operation type
+    const byOperationTypeRows = await this.db
+      .select({
+        operationType: aiCostTracking.operationType,
+        costUsdCents: sql<number>`COALESCE(SUM(${aiCostTracking.costUsdCents}), 0)`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(aiCostTracking)
+      .where(and(...conditions))
+      .groupBy(aiCostTracking.operationType);
 
-    for (const record of records) {
-      summary.totalCostUsd += record.costUsd;
-      summary.operationCount += 1;
-      if (record.success === 1) {
-        summary.successCount += 1;
-      } else {
-        summary.failureCount += 1;
-      }
+    // Aggregation by model
+    const byModelRows = await this.db
+      .select({
+        model: aiCostTracking.model,
+        costUsdCents: sql<number>`COALESCE(SUM(${aiCostTracking.costUsdCents}), 0)`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(aiCostTracking)
+      .where(and(...conditions))
+      .groupBy(aiCostTracking.model);
 
-      // By operation type
-      if (!summary.byOperationType[record.operationType]) {
-        summary.byOperationType[record.operationType] = { costUsd: 0, count: 0 };
-      }
-      summary.byOperationType[record.operationType].costUsd += record.costUsd;
-      summary.byOperationType[record.operationType].count += 1;
-
-      // By model
-      if (!summary.byModel[record.model]) {
-        summary.byModel[record.model] = { costUsd: 0, count: 0 };
-      }
-      summary.byModel[record.model].costUsd += record.costUsd;
-      summary.byModel[record.model].count += 1;
+    // Convert to record format
+    const byOperationType: Record<string, { costUsdCents: number; count: number }> = {};
+    for (const row of byOperationTypeRows) {
+      byOperationType[row.operationType] = {
+        costUsdCents: row.costUsdCents,
+        count: row.count,
+      };
     }
 
-    return summary;
+    const byModel: Record<string, { costUsdCents: number; count: number }> = {};
+    for (const row of byModelRows) {
+      byModel[row.model] = {
+        costUsdCents: row.costUsdCents,
+        count: row.count,
+      };
+    }
+
+    return {
+      totalCostUsdCents: overall?.totalCostUsdCents ?? 0,
+      operationCount: overall?.operationCount ?? 0,
+      successCount: overall?.successCount ?? 0,
+      failureCount: overall?.failureCount ?? 0,
+      byOperationType,
+      byModel,
+    };
   }
 
   /**
@@ -151,26 +169,28 @@ export class AICostTrackingRepository {
   }
 
   /**
-   * Get total cost for current month
+   * Get total cost for current month (in USD cents)
    */
   async getCurrentMonthCost(clientId: string): Promise<number> {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
     const summary = await this.getCostSummary(clientId, {
       startDate: startOfMonth,
       endDate: endOfMonth,
     });
 
-    return summary.totalCostUsd;
+    return summary.totalCostUsdCents;
   }
 
   /**
    * Check if client is over budget
+   * @param monthlyBudgetUsdCents - Budget in USD cents (e.g., 10000 = $100.00)
    */
-  async isOverBudget(clientId: string, monthlyBudgetUsd: number): Promise<boolean> {
+  async isOverBudget(clientId: string, monthlyBudgetUsdCents: number): Promise<boolean> {
     const currentCost = await this.getCurrentMonthCost(clientId);
-    return currentCost >= monthlyBudgetUsd;
+    // Being exactly at budget is not considered over budget
+    return currentCost > monthlyBudgetUsdCents;
   }
 }

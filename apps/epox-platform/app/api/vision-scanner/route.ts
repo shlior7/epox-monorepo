@@ -86,53 +86,66 @@ function generatePromptText(analysis: VisionAnalysisResult['json']): string {
 }
 
 export const POST = withSecurity(async (request): Promise<NextResponse<VisionScannerResponse>> => {
-  const body: VisionScannerRequest = await request.json();
+  try {
+    const body: VisionScannerRequest = await request.json();
 
-  if (!body.imageUrl) {
-    return NextResponse.json({ success: false, error: 'Missing imageUrl' }, { status: 400 });
-  }
+    if (!body.imageUrl) {
+      return NextResponse.json({ success: false, error: 'Missing imageUrl' }, { status: 400 });
+    }
 
-  // Validate URL for SSRF mitigation using centralized security
-  const urlValidation = validateImageUrl(body.imageUrl);
-  if (!urlValidation.valid) {
+    // Validate URL for SSRF mitigation using centralized security
+    const urlValidation = validateImageUrl(body.imageUrl);
+    if (!urlValidation.valid) {
+      return NextResponse.json(
+        { success: false, error: urlValidation.error ?? 'Invalid image URL' },
+        { status: 400 }
+      );
+    }
+
+    const geminiService = getGeminiService();
+    const scannerOutput = await geminiService.analyzeInspirationImage(body.imageUrl);
+
+    // Convert scanner output to VisionAnalysisResult format
+    const analysis: VisionAnalysisResult = {
+      json: {
+        styleSummary: scannerOutput.styleSummary,
+        detectedSceneType: scannerOutput.detectedSceneType,
+        heroObjectAccessories: scannerOutput.heroObjectAccessories,
+        sceneInventory: scannerOutput.sceneInventory,
+        lightingPhysics: scannerOutput.lightingPhysics,
+      },
+      promptText: generatePromptText({
+        styleSummary: scannerOutput.styleSummary,
+        detectedSceneType: scannerOutput.detectedSceneType,
+        heroObjectAccessories: scannerOutput.heroObjectAccessories,
+        sceneInventory: scannerOutput.sceneInventory,
+        lightingPhysics: scannerOutput.lightingPhysics,
+      }),
+    };
+
+    // Create the InspirationImage object
+    const inspirationImage: InspirationImage = {
+      url: body.imageUrl,
+      addedAt: new Date().toISOString(),
+      sourceType: body.sourceType ?? 'upload',
+      tags: [scannerOutput.detectedSceneType],
+    };
+
+    return NextResponse.json({
+      success: true,
+      inspirationImage,
+      analysis,
+    });
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json(
+        { success: false, error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429 }
+      );
+    }
     return NextResponse.json(
-      { success: false, error: urlValidation.error ?? 'Invalid image URL' },
-      { status: 400 }
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
     );
   }
-
-  const geminiService = getGeminiService();
-  const scannerOutput = await geminiService.analyzeInspirationImage(body.imageUrl);
-
-  // Convert scanner output to VisionAnalysisResult format
-  const analysis: VisionAnalysisResult = {
-    json: {
-      styleSummary: scannerOutput.styleSummary,
-      detectedSceneType: scannerOutput.detectedSceneType,
-      heroObjectAccessories: scannerOutput.heroObjectAccessories,
-      sceneInventory: scannerOutput.sceneInventory,
-      lightingPhysics: scannerOutput.lightingPhysics,
-    },
-    promptText: generatePromptText({
-      styleSummary: scannerOutput.styleSummary,
-      detectedSceneType: scannerOutput.detectedSceneType,
-      heroObjectAccessories: scannerOutput.heroObjectAccessories,
-      sceneInventory: scannerOutput.sceneInventory,
-      lightingPhysics: scannerOutput.lightingPhysics,
-    }),
-  };
-
-  // Create the InspirationImage object
-  const inspirationImage: InspirationImage = {
-    url: body.imageUrl,
-    addedAt: new Date().toISOString(),
-    sourceType: body.sourceType ?? 'upload',
-    tags: [scannerOutput.detectedSceneType],
-  };
-
-  return NextResponse.json({
-    success: true,
-    inspirationImage,
-    analysis,
-  });
 });

@@ -7,12 +7,15 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { storage } from 'visualizer-storage';
+import { withSecurity } from '@/lib/security/middleware';
+import { verifyOwnership, forbiddenResponse } from '@/lib/security/auth';
 import type { AssetStatus, ApprovalStatus } from 'visualizer-types';
 
-// TODO: Replace with actual auth when implemented
-const PLACEHOLDER_CLIENT_ID = 'test-client';
-
-export async function GET(request: NextRequest) {
+export const GET = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(request.url);
 
@@ -124,14 +127,14 @@ export async function GET(request: NextRequest) {
 
     // Execute count, list, and distinct scene types queries in parallel
     const [total, assets, sceneTypes] = await Promise.all([
-      db.generatedAssets.countWithFilters(PLACEHOLDER_CLIENT_ID, filterOptions),
-      db.generatedAssets.listWithFilters(PLACEHOLDER_CLIENT_ID, {
+      db.generatedAssets.countWithFilters(clientId, filterOptions),
+      db.generatedAssets.listWithFilters(clientId, {
         ...filterOptions,
         sort,
         limit,
         offset,
       }),
-      db.generatedAssets.getDistinctSceneTypes(PLACEHOLDER_CLIENT_ID, {
+      db.generatedAssets.getDistinctSceneTypes(clientId, {
         flowId: filterOptions.flowId,
         productId: filterOptions.productId,
         productIds: filterOptions.productIds,
@@ -204,14 +207,18 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});
 
 /**
  * DELETE /api/generated-images
  * Delete a generated image (revision)
  * Body: { id: string }
  */
-export async function DELETE(request: NextRequest) {
+export const DELETE = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id } = await request.json();
 
@@ -222,8 +229,18 @@ export async function DELETE(request: NextRequest) {
     // First get the asset to verify ownership and get storage path info
     const asset = await db.generatedAssets.getById(id);
 
-    if (asset?.clientId !== PLACEHOLDER_CLIENT_ID) {
+    if (!asset) {
       return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (!verifyOwnership({
+      clientId,
+      resourceClientId: asset.clientId,
+      resourceType: 'generated-image',
+      resourceId: id,
+    })) {
+      return forbiddenResponse();
     }
 
     // Delete the database record (includes product links)
@@ -250,4 +267,4 @@ export async function DELETE(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

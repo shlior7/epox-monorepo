@@ -1,6 +1,12 @@
 /**
  * Server-side auth utilities for API routes
  * Gets the current user and client from the request headers
+ *
+ * ⚠️ SECURITY NOTICE:
+ * - getServerAuthWithFallback() allows test-client fallback ONLY in development
+ * - Production builds MUST have NODE_ENV=production to disable fallback
+ * - Fallback attempt in production logs security violation and throws error
+ * - Pre-deployment verification required to ensure fallback is unreachable
  */
 
 import { auth } from './auth';
@@ -57,28 +63,37 @@ export async function getServerAuth(request: Request): Promise<ServerAuthInfo | 
  * Get auth info from request headers, with dev fallback.
  * In development, returns a test client if not authenticated.
  * In production, returns null if not authenticated.
+ *
+ * ⚠️ SECURITY: This function allows a fallback in development only.
+ * The fallback is COMPLETELY DISABLED in production builds.
  */
 export async function getServerAuthWithFallback(request: Request): Promise<ServerAuthInfo> {
   const authInfo = await getServerAuth(request);
-  
+
   if (authInfo) {
     return authInfo;
   }
 
-  // Development/test fallback
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn('⚠️ Using dev fallback auth - no session found');
-    return {
-      userId: 'dev-user',
-      userEmail: 'dev@example.com',
-      userName: 'Dev User',
-      clientId: DEV_FALLBACK_CLIENT_ID,
-      clientName: 'Test Client',
-    };
+  // Production safety check - fail fast if somehow reached
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (isProduction) {
+    // Double-check: production should NEVER use fallback
+    console.error('🚨 SECURITY VIOLATION: Attempted to use dev fallback in production!');
+    throw new Error('Unauthorized - no valid session');
   }
 
-  // Production: throw error
-  throw new Error('Unauthorized - no valid session');
+  // Development/test fallback - only reachable in development
+  console.warn('⚠️ DEV MODE: Using fallback auth (test-client) - no session found');
+  console.warn('⚠️ This fallback is DISABLED in production builds');
+
+  return {
+    userId: 'dev-user',
+    userEmail: 'dev@example.com',
+    userName: 'Dev User',
+    clientId: DEV_FALLBACK_CLIENT_ID,
+    clientName: 'Test Client',
+  };
 }
 
 /**

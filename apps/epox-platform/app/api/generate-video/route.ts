@@ -55,7 +55,10 @@ type GenerateVideoRequest = z.infer<typeof GenerateVideoRequestSchema>;
  */
 export const POST = withGenerationSecurity(async (request, context) => {
   // clientId is guaranteed non-null by withGenerationSecurity (requireAuth: true)
-  const clientId = context.clientId!;
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   // Parse JSON with explicit error handling
   let rawBody: unknown;

@@ -13,7 +13,7 @@ export async function register() {
     await import('./sentry.server.config');
 
     const { initAIServices } = await import('./lib/services/ai-init');
-    initAIServices();
+    await initAIServices();
   }
 
   // Initialize Sentry for edge runtime

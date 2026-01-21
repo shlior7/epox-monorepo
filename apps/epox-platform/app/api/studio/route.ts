@@ -6,25 +6,38 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
-import { getClientId } from '@/lib/services/get-auth';
+import { withSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
 import type { FlowGenerationSettings } from 'visualizer-types';
 
 /**
  * Create a new studio session for a single product
  */
-export async function POST(request: NextRequest) {
+export const POST = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const body = await request.json();
     const { productId, productName, mode = 'generate' } = body;
 
-    // Always use authenticated client ID - never accept from request body
-    const clientId = await getClientId(request);
-    if (!clientId) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
-
     if (!productId) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
+    }
+
+    // Verify product ownership
+    const product = await db.products.getById(productId);
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    if (!verifyOwnership({
+      clientId,
+      resourceClientId: product.clientId,
+      resourceType: 'product',
+      resourceId: productId,
+    })) {
+      return forbiddenResponse();
     }
 
     // Create a chat session for the product
@@ -72,18 +85,38 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});
 
 /**
  * Get existing studio sessions for a product
  */
-export async function GET(request: NextRequest) {
+export const GET = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(request.url);
     const productId = searchParams.get('productId');
     if (!productId) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
     }
+
+    // Verify product ownership
+    const product = await db.products.getById(productId);
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    if (!verifyOwnership({
+      clientId,
+      resourceClientId: product.clientId,
+      resourceType: 'product',
+      resourceId: productId,
+    })) {
+      return forbiddenResponse();
+    }
+
     const generationFlows = await db.generationFlows.listByProduct(productId);
     return NextResponse.json(generationFlows);
   } catch (error: unknown) {
@@ -91,4 +124,4 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

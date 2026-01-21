@@ -93,7 +93,7 @@ export const aiCostTracking = pgTable(
     operationType: text('operation_type').$type<AIOperationType>().notNull(),
     model: text('model').notNull(), // e.g., 'gemini-2.5-flash-image'
     provider: text('provider').notNull().default('google-gemini'),
-    costUsd: real('cost_usd').notNull(), // Cost in USD
+    costUsdCents: integer('cost_usd_cents').notNull(), // Cost in USD cents (e.g., 100 = $1.00)
     inputTokens: integer('input_tokens'), // For text models
     outputTokens: integer('output_tokens'), // For text models
     imageCount: integer('image_count'), // For image operations

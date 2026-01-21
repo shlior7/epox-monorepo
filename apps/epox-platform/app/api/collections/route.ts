@@ -5,12 +5,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
+import { withSecurity } from '@/lib/security/middleware';
 import type { CollectionSessionStatus, FlowGenerationSettings } from 'visualizer-types';
 
-// TODO: Replace with actual auth when implemented
-const PLACEHOLDER_CLIENT_ID = 'test-client';
-
-export async function GET(request: NextRequest) {
+export const GET = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(request.url);
 
@@ -36,8 +38,8 @@ export async function GET(request: NextRequest) {
 
     // Execute count and list queries in parallel
     const [total, collections] = await Promise.all([
-      db.collectionSessions.countWithFilters(PLACEHOLDER_CLIENT_ID, filterOptions),
-      db.collectionSessions.listWithFilters(PLACEHOLDER_CLIENT_ID, {
+      db.collectionSessions.countWithFilters(clientId, filterOptions),
+      db.collectionSessions.listWithFilters(clientId, {
         ...filterOptions,
         sort,
         limit,
@@ -68,9 +70,9 @@ export async function GET(request: NextRequest) {
       collectionIds.map(async (collectionId) => {
         const flowIds = flowIdsByCollection.get(collectionId) ?? [];
         const [totalImages, generatedCount, firstAsset] = await Promise.all([
-          db.generatedAssets.countByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds),
-          db.generatedAssets.countByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds, 'completed'),
-          db.generatedAssets.getFirstByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds, 'completed'),
+          db.generatedAssets.countByGenerationFlowIds(clientId, flowIds),
+          db.generatedAssets.countByGenerationFlowIds(clientId, flowIds, 'completed'),
+          db.generatedAssets.getFirstByGenerationFlowIds(clientId, flowIds, 'completed'),
         ]);
 
         assetStatsByCollection.set(collectionId, {
@@ -116,9 +118,13 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const body = await request.json();
     const { name, productIds, inspirationImages, promptTags } = body;
@@ -183,7 +189,7 @@ export async function POST(request: NextRequest) {
       : undefined;
 
     // Create collection in database
-    const collection = await db.collectionSessions.create(PLACEHOLDER_CLIENT_ID, {
+    const collection = await db.collectionSessions.create(clientId, {
       name: name.trim(),
       productIds,
       status: 'draft',
@@ -195,7 +201,7 @@ export async function POST(request: NextRequest) {
     const createdFlows = [];
     for (const productId of productIds) {
       try {
-        const flow = await db.generationFlows.create(PLACEHOLDER_CLIENT_ID, {
+        const flow = await db.generationFlows.create(clientId, {
           collectionSessionId: collection.id,
           name: `${name.trim()} - ${productId}`,
           productIds: [productId],
@@ -237,4 +243,4 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

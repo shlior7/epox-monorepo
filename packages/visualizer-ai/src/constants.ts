@@ -215,7 +215,19 @@ export function selectBestModel(context: ModelSelectionContext): {
 
   if (candidates.length === 0) {
     // Fallback to Gemini Flash which supports everything
-    const fallback = AVAILABLE_IMAGE_MODELS.find((m) => m.id === 'gemini-2.5-flash-image')!;
+    const fallback = AVAILABLE_IMAGE_MODELS.find((m) => m.id === 'gemini-2.5-flash-image');
+    if (!fallback) {
+      // If fallback is not found, use the first available model
+      const firstModel = AVAILABLE_IMAGE_MODELS[0];
+      if (!firstModel) {
+        throw new Error('No image models available');
+      }
+      return {
+        recommended: firstModel,
+        alternatives: [],
+        reason: `No models match your criteria. Using ${firstModel.name} as fallback.`,
+      };
+    }
     return {
       recommended: fallback,
       alternatives: [],

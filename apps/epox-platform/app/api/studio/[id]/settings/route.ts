@@ -6,7 +6,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
-import { getClientId } from '@/lib/services/get-auth';
+import { withSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
 import type {
   FlowGenerationSettings,
   InspirationImage,
@@ -46,10 +46,13 @@ interface UpdateSettingsRequest {
   };
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id: flowId } = await params;
-    const clientId = await getClientId(request);
     const body: UpdateSettingsRequest = await request.json();
 
     console.log('📝 Updating studio settings:', { flowId, clientId, body });
@@ -59,6 +62,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if (!flow) {
       return NextResponse.json({ error: 'Flow not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (!verifyOwnership({
+      clientId,
+      resourceClientId: flow.clientId,
+      resourceType: 'generation-flow',
+      resourceId: flowId,
+    })) {
+      return forbiddenResponse();
     }
 
     // Update existing flow settings
@@ -118,9 +131,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id: flowId } = await params;
 
@@ -128,6 +145,16 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
     if (!flow) {
       return NextResponse.json({ error: 'Flow not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (!verifyOwnership({
+      clientId,
+      resourceClientId: flow.clientId,
+      resourceType: 'generation-flow',
+      resourceId: flowId,
+    })) {
+      return forbiddenResponse();
     }
 
     return NextResponse.json({
@@ -141,4 +168,4 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

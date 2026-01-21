@@ -73,7 +73,10 @@ function normalizePromptTags(input?: FlexiblePromptTags): PromptTags {
 }
 
 export const POST = withGenerationSecurity(async (request, context) => {
-  const clientId = context.clientId!;
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   const body: GenerateImagesRequest = await request.json();
   const {

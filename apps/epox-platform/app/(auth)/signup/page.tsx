@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { authClient } from '@/lib/services/auth';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -62,14 +63,45 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // 1. Create user account with Better Auth
+      const { data, error } = await authClient.signUp.email({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) {
+        toast.error(error.message || 'Signup failed');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data?.user) {
+        toast.error('Failed to create account');
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Create client (organization) for this user
+      const clientResponse = await fetch('/api/onboarding/create-client', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientName: `${formData.name}'s Workspace`,
+        }),
+      });
+
+      if (!clientResponse.ok) {
+        toast.error('Failed to create workspace');
+        setIsLoading(false);
+        return;
+      }
 
       toast.success('Account created successfully!');
       router.push('/dashboard');
     } catch (error) {
+      console.error('Signup error:', error);
       toast.error('Failed to create account. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };

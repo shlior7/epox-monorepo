@@ -1,9 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { withPublicSecurity } from '@/lib/security';
 
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
 
-export async function GET(request: NextRequest) {
+export const GET = withPublicSecurity(async (request, context) => {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') ?? 'interior design';
@@ -57,10 +58,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Failed to search Unsplash:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal Server Error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
+});
 

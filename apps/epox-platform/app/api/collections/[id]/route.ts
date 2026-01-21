@@ -7,11 +7,14 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { storage } from 'visualizer-storage';
+import { withSecurity } from '@/lib/security/middleware';
+import { verifyOwnership, forbiddenResponse } from '@/lib/security/auth';
 
-// TODO: Replace with actual auth when implemented
-const PLACEHOLDER_CLIENT_ID = 'test-client';
-
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id } = await params;
 
@@ -26,8 +29,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     const flowIds = flows.map((flow) => flow.id);
 
     const [totalImages, generatedCount] = await Promise.all([
-      db.generatedAssets.countByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds),
-      db.generatedAssets.countByGenerationFlowIds(PLACEHOLDER_CLIENT_ID, flowIds, 'completed'),
+      db.generatedAssets.countByGenerationFlowIds(clientId, flowIds),
+      db.generatedAssets.countByGenerationFlowIds(clientId, flowIds, 'completed'),
     ]);
 
     // Migrate old selectedBaseImages format to new settings.inspirationImages if needed
@@ -77,12 +80,15 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json(response);
   } catch (error: unknown) {
     console.error('❌ Failed to fetch collection:', error);
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id } = await params;
     const body = await request.json();
@@ -92,6 +98,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if (!collection) {
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (!verifyOwnership({
+      clientId,
+      resourceClientId: collection.clientId,
+      resourceType: 'collection',
+      resourceId: id,
+    })) {
+      return forbiddenResponse();
     }
 
     // Validate inputs if provided
@@ -166,15 +182,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json(response);
   } catch (error: unknown) {
     console.error('❌ Failed to update collection:', error);
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
@@ -195,6 +211,16 @@ export async function DELETE(
 
     if (!collection) {
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (!verifyOwnership({
+      clientId,
+      resourceClientId: collection.clientId,
+      resourceType: 'collection',
+      resourceId: id,
+    })) {
+      return forbiddenResponse();
     }
 
     const flows = await db.generationFlows.listByCollectionSession(id);
@@ -242,7 +268,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, id });
   } catch (error: unknown) {
     console.error('❌ Failed to delete collection:', error);
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
+});

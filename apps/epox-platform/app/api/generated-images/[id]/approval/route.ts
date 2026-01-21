@@ -5,16 +5,19 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
+import { withSecurity } from '@/lib/security/middleware';
+import { verifyOwnership, forbiddenResponse } from '@/lib/security/auth';
 import type { ApprovalStatus } from 'visualizer-types';
-
-// TODO: Replace with actual auth when implemented
-const PLACEHOLDER_CLIENT_ID = 'test-client';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export const POST = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id } = await params;
     const { status } = await request.json();
@@ -33,8 +36,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Get the asset to verify ownership
     const asset = await db.generatedAssets.getById(id);
 
-    if (!asset || asset.clientId !== PLACEHOLDER_CLIENT_ID) {
+    if (!asset) {
       return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (!verifyOwnership({
+      clientId,
+      resourceClientId: asset.clientId,
+      resourceType: 'generated-image',
+      resourceId: id,
+    })) {
+      return forbiddenResponse();
     }
 
     // Update approval status
@@ -47,4 +60,4 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

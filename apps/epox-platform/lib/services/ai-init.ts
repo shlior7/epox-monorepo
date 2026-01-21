@@ -12,17 +12,24 @@ import { redis } from './redis';
 import { db } from './db';
 
 let initialized = false;
+let initializing = false;
 
 /**
  * Initialize AI services
  * Call this once on app startup (e.g., in middleware or instrumentation.ts)
  */
-export function initAIServices(): void {
+export async function initAIServices(): Promise<void> {
   if (initialized) {
     console.log('⚠️ AI services already initialized');
     return;
   }
 
+  if (initializing) {
+    console.log('⚠️ AI services initialization already in progress');
+    return;
+  }
+
+  initializing = true;
   console.log('🚀 Initializing AI services...');
 
   // Initialize Redis-based distributed rate limiting
@@ -38,17 +45,14 @@ export function initAIServices(): void {
   if (process.env.SENTRY_DSN) {
     try {
       // Dynamic import to avoid bundling Sentry if not configured
-      import('@sentry/node').then((Sentry) => {
-        Sentry.init({
-          dsn: process.env.SENTRY_DSN,
-          environment: process.env.NODE_ENV ?? 'development',
-          tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
-        });
-        initSentry(Sentry);
-        console.log('✅ Sentry error tracking enabled');
-      }).catch((error) => {
-        console.error('❌ Failed to initialize Sentry:', error);
+      const Sentry = await import('@sentry/node');
+      Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        environment: process.env.NODE_ENV ?? 'development',
+        tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
       });
+      initSentry(Sentry);
+      console.log('✅ Sentry error tracking enabled');
     } catch (error) {
       console.error('❌ Failed to initialize Sentry:', error);
     }
@@ -68,6 +72,7 @@ export function initAIServices(): void {
   // Future: Initialize monitoring dashboard
 
   initialized = true;
+  initializing = false;
   console.log('✅ AI services initialized');
 }
 

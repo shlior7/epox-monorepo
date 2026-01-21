@@ -7,11 +7,14 @@ import { db } from '@/lib/services/db';
 import { storage } from '@/lib/services/storage';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { withSecurity } from '@/lib/security/middleware';
+import { verifyOwnership, forbiddenResponse } from '@/lib/security/auth';
 
-// TODO: Replace with actual auth when implemented
-const PLACEHOLDER_CLIENT_ID = 'test-client';
-
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);
@@ -71,7 +74,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (includeAssets) {
       // Query assets where productIds array contains this product ID
       const productAssets = await db.generatedAssets.listByProductId(
-        PLACEHOLDER_CLIENT_ID,
+        clientId,
         id,
         100
       );
@@ -96,7 +99,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // Query collections that contain this product
     const productCollections = await db.collectionSessions.listByProductId(
-      PLACEHOLDER_CLIENT_ID,
+      clientId,
       id,
       20
     );
@@ -115,9 +118,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id } = await params;
     const body = await request.json();
@@ -127,6 +134,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (!verifyOwnership({
+      clientId,
+      resourceClientId: product.clientId,
+      resourceType: 'product',
+      resourceId: id,
+    })) {
+      return forbiddenResponse();
     }
 
     // Validate inputs if provided
@@ -195,12 +212,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const DELETE = withSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id } = await params;
 
@@ -209,6 +227,16 @@ export async function DELETE(
 
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (!verifyOwnership({
+      clientId,
+      resourceClientId: product.clientId,
+      resourceType: 'product',
+      resourceId: id,
+    })) {
+      return forbiddenResponse();
     }
 
     // Delete product (soft delete)
@@ -221,4 +249,4 @@ export async function DELETE(
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

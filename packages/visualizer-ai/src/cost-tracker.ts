@@ -62,7 +62,7 @@ export class CostTracker {
       // Log the cost tracking
       if (data.logger) {
         data.logger.info('Cost tracked', {
-          costUsd: data.costUsd,
+          costUsdCents: data.costUsdCents,
           model: data.model,
           operationType: data.operationType,
         });
@@ -89,9 +89,10 @@ export class CostTracker {
 
   /**
    * Check if over budget
+   * @param monthlyBudgetUsdCents - Budget in USD cents (e.g., 10000 = $100.00)
    */
-  async isOverBudget(clientId: string, monthlyBudgetUsd: number): Promise<boolean> {
-    return this.repository.isOverBudget(clientId, monthlyBudgetUsd);
+  async isOverBudget(clientId: string, monthlyBudgetUsdCents: number): Promise<boolean> {
+    return this.repository.isOverBudget(clientId, monthlyBudgetUsdCents);
   }
 }
 
@@ -105,7 +106,7 @@ export async function trackAIOperation<T>(
     userId?: string;
     operationType: AIOperationType;
     model: string;
-    estimatedCostUsd: number;
+    estimatedCostUsdCents: number; // Cost in USD cents (e.g., 100 = $1.00)
     logger?: Logger;
     jobId?: string;
     imageCount?: number;
@@ -126,7 +127,7 @@ export async function trackAIOperation<T>(
         userId: costData.userId,
         operationType: costData.operationType,
         model: costData.model,
-        costUsd: costData.estimatedCostUsd,
+        costUsdCents: costData.estimatedCostUsdCents,
         success: true,
         durationMs,
         logger,
@@ -147,7 +148,7 @@ export async function trackAIOperation<T>(
         userId: costData.userId,
         operationType: costData.operationType,
         model: costData.model,
-        costUsd: 0, // No cost for failed operations
+        costUsdCents: 0, // No cost for failed operations
         success: false,
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
         durationMs,

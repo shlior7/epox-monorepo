@@ -6,7 +6,7 @@
     "dev": "next dev",
     "dev:test": "NEXT_PUBLIC_S3_DRIVER=fs next dev",
     "dev:local": "NEXT_PUBLIC_S3_DRIVER=fs NEXT_PUBLIC_LOCAL_S3_DIR=./.local-s3 next dev",
-    "clean": "rm -rf .next",
+    "clean": "sh -c 'if [ -d .next ]; then find .next -mindepth 1 -maxdepth 1 ! -name cache -exec rm -rf {} +; fi'",
     "build": "yarn clean && next build",
     "start": "next start",
     "start:test": "NEXT_PUBLIC_S3_DRIVER=fs next start",

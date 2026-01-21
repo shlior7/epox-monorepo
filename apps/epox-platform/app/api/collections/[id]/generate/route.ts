@@ -7,7 +7,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
-import { getClientId } from '@/lib/services/get-auth';
+import { withGenerationSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
 import type { FlowGenerationSettings } from 'visualizer-types';
 import { enqueueImageGeneration } from 'visualizer-ai';
 
@@ -16,19 +16,29 @@ interface GenerateRequest {
   settings?: Partial<FlowGenerationSettings>; // Override collection settings
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const POST = withGenerationSecurity(async (request, context, { params }) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { id: collectionId } = await params;
-    const clientId = await getClientId(request);
     const body: GenerateRequest = await request.json().catch(() => ({}));
 
     // Fetch collection
     const collection = await db.collectionSessions.getById(collectionId);
     if (!collection) {
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (!verifyOwnership({
+      clientId,
+      resourceClientId: collection.clientId,
+      resourceType: 'collection',
+      resourceId: collectionId,
+    })) {
+      return forbiddenResponse();
     }
 
     // Determine which products to generate
@@ -151,4 +161,4 @@ export async function POST(
     const message = error instanceof Error ? error.message : 'Failed to start generation';
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

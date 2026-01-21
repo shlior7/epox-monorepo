@@ -44,7 +44,8 @@ export interface SecurityContext {
 
 export type SecureRouteHandler = (
   request: NextRequest,
-  context: SecurityContext
+  context: SecurityContext,
+  routeContext: { params: Promise<{ [key: string]: string }> }
 ) => Promise<NextResponse>;
 
 export interface SecurityOptions {
@@ -107,10 +108,10 @@ setInterval(() => {
 export function withSecurity(
   handler: SecureRouteHandler,
   options: SecurityOptions = {}
-): (request: NextRequest) => Promise<NextResponse> {
+): (request: NextRequest, routeContext?: { params: Promise<{ [key: string]: string }> }) => Promise<NextResponse> {
   const { requireAuth = true, rateLimit = 'default', onError } = options;
 
-  return async (request: NextRequest): Promise<NextResponse> => {
+  return async (request: NextRequest, routeContext?: { params: Promise<{ [key: string]: string }> }): Promise<NextResponse> => {
     const requestId = `req_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
     const timestamp = new Date();
 
@@ -157,7 +158,9 @@ export function withSecurity(
       };
 
       // 4. Execute handler
-      const response = await handler(request, context);
+      // For non-dynamic routes, provide an empty params promise
+      const effectiveRouteContext = routeContext || { params: Promise.resolve({}) };
+      const response = await handler(request, context, effectiveRouteContext);
 
       // 5. Add security headers
       response.headers.set('X-Request-ID', requestId);
@@ -205,7 +208,7 @@ function getClientIp(request: NextRequest): string | null {
 export function withPublicSecurity(
   handler: SecureRouteHandler,
   options: Omit<SecurityOptions, 'requireAuth'> = {}
-): (request: NextRequest) => Promise<NextResponse> {
+): (request: NextRequest, routeContext?: { params: Promise<{ [key: string]: string }> }) => Promise<NextResponse> {
   return withSecurity(handler, { ...options, requireAuth: false });
 }
 
@@ -215,7 +218,7 @@ export function withPublicSecurity(
 export function withGenerationSecurity(
   handler: SecureRouteHandler,
   options: Omit<SecurityOptions, 'rateLimit'> = {}
-): (request: NextRequest) => Promise<NextResponse> {
+): (request: NextRequest, routeContext?: { params: Promise<{ [key: string]: string }> }) => Promise<NextResponse> {
   return withSecurity(handler, { ...options, rateLimit: 'generation' });
 }
 
@@ -225,6 +228,6 @@ export function withGenerationSecurity(
 export function withUploadSecurity(
   handler: SecureRouteHandler,
   options: Omit<SecurityOptions, 'rateLimit'> = {}
-): (request: NextRequest) => Promise<NextResponse> {
+): (request: NextRequest, routeContext?: { params: Promise<{ [key: string]: string }> }) => Promise<NextResponse> {
   return withSecurity(handler, { ...options, rateLimit: 'upload' });
 }

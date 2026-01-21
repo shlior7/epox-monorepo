@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { storage, storagePaths } from '@/lib/services/storage';
 import { db } from '@/lib/services/db';
 import { getGeminiService } from 'visualizer-ai';
+import { withUploadSecurity } from '@/lib/security/middleware';
 import type { SubjectAnalysis, ProductAnalysis } from 'visualizer-types';
 
-// TODO: Replace with actual auth when implemented
-const PLACEHOLDER_CLIENT_ID = 'test-client';
-
-export async function POST(request: NextRequest) {
+export const POST = withUploadSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -50,14 +52,14 @@ export async function POST(request: NextRequest) {
     if (type === 'product' && productId) {
       // Product image - generate unique image ID
       const imageId = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      storageKey = storagePaths.productImageBase(PLACEHOLDER_CLIENT_ID, productId, imageId);
+      storageKey = storagePaths.productImageBase(clientId, productId, imageId);
     } else if (type === 'collection' && collectionId) {
       // Collection asset
-      storageKey = storagePaths.collectionAsset(PLACEHOLDER_CLIENT_ID, collectionId, assetId, extension);
+      storageKey = storagePaths.collectionAsset(clientId, collectionId, assetId, extension);
     } else {
       // Generic inspiration or temporary upload
       storageKey = storagePaths.inspirationImage(
-        PLACEHOLDER_CLIENT_ID,
+        clientId,
         'temp',
         assetId,
         extension
@@ -148,4 +150,4 @@ export async function POST(request: NextRequest) {
     console.error('❌ Failed to upload file:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
-}
+});

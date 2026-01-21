@@ -36,6 +36,7 @@ export interface EnqueueVideoResult {
 
 export interface JobStatusResult {
   id: string;
+  clientId: string;
   type: JobType;
   status: JobStatus;
   progress: number;
@@ -129,6 +130,7 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResult | nul
 
   return {
     id: job.id,
+    clientId: job.clientId,
     type: job.type,
     status: job.status,
     progress: job.progress,
@@ -151,6 +153,7 @@ export async function getJobsByFlow(flowId: string): Promise<JobStatusResult[]> 
   const flowJobs = await getJobs().listByFlow(flowId);
   return flowJobs.map((job) => ({
     id: job.id,
+    clientId: job.clientId,
     type: job.type,
     status: job.status,
     progress: job.progress,
