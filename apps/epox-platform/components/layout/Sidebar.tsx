@@ -46,6 +46,11 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Get user initials for avatar
   const getInitials = (name: string) => {
@@ -57,8 +62,9 @@ export function Sidebar({
       .slice(0, 2);
   };
 
-  const userName = user?.name || 'User';
-  const userEmail = user?.email || '';
+  // Prevent hydration mismatch by using consistent fallback until mounted
+  const userName = mounted ? (user?.name || 'User') : 'User';
+  const userEmail = mounted ? (user?.email || '') : '';
   const userInitials = getInitials(userName);
 
   return (

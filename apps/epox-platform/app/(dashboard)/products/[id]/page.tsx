@@ -44,7 +44,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { use, useState } from 'react';
 import { toast } from 'sonner';
-import { useRequiredClientId } from '../../../../lib/contexts/auth-context';
+import { useAuth } from '../../../../lib/contexts/auth-context';
 
 interface ProductDetailPageProps {
   params: Promise<{ id: string }>;
@@ -53,7 +53,7 @@ interface ProductDetailPageProps {
 export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { id: productId } = use(params);
   const router = useRouter();
-  const clientId: string = useRequiredClientId();
+  const { clientId, isLoading: isAuthLoading } = useAuth();
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [activeTab, setActiveTab] = useState('all');
@@ -75,7 +75,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   const createStudioMutation = useMutation({
     mutationFn: (mode: 'generate' | 'edit') =>
       apiClient.createGenerationFlow({
-        clientId,
+        clientId: clientId!,
         productId: productId,
         baseImageId: product?.baseImages?.find((img: any) => img.isPrimary)?.id,
         productName: product?.name,
@@ -105,6 +105,17 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   const handleStartStudio = () => {
     createStudioMutation.mutate('generate');
   };
+
+  // Handle auth loading
+  if (isAuthLoading) {
+    return <ProductDetailSkeleton />;
+  }
+
+  // Redirect to login if not authenticated
+  if (!clientId) {
+    router.push('/login');
+    return <ProductDetailSkeleton />;
+  }
 
   if (isLoading) {
     return <ProductDetailSkeleton />;

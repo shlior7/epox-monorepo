@@ -102,9 +102,7 @@ describe('Video Generation API - POST /api/generate-video', () => {
         productId: 'prod-1',
         sourceImageUrl: 'https://example.com/base.png',
         prompt: 'Pan around the product',
-        settings: {
-          durationSeconds: 6,
-        },
+        settings: {},
       }),
     });
 
@@ -120,9 +118,7 @@ describe('Video Generation API - POST /api/generate-video', () => {
         productIds: ['prod-1'],
         sourceImageUrl: 'https://example.com/base.png',
         prompt: 'Pan around the product',
-        settings: expect.objectContaining({
-          durationSeconds: 6,
-        }),
+        settings: {},
       }),
       expect.objectContaining({
         flowId: 'flow-1',
@@ -190,8 +186,6 @@ describe('Video Generation API - POST /api/generate-video', () => {
         prompt: '  Pan around the product  ',
         inspirationNote: 'Warm, cinematic lighting',
         settings: {
-          durationSeconds: 8,
-          fps: 24,
           model: 'veo-3.1-generate-preview',
         },
       }),
@@ -206,8 +200,6 @@ describe('Video Generation API - POST /api/generate-video', () => {
         prompt: 'Pan around the product',
         inspirationNote: 'Warm, cinematic lighting',
         settings: {
-          durationSeconds: 8,
-          fps: 24,
           model: 'veo-3.1-generate-preview',
         },
       }),

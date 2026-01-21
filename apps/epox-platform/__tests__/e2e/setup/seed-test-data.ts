@@ -18,7 +18,7 @@ import { TEST_CLIENTS } from './test-clients';
 
 async function checkServerRunning(): Promise<boolean> {
   try {
-    const response = await fetch('http://localhost:3000/api/auth/session', {
+    const response = await fetch('http://localhost:3000/api/auth/get-session', {
       method: 'GET',
     });
     return response.status === 200 || response.status === 401; // Either OK or unauthorized is fine
@@ -35,7 +35,7 @@ async function seedTestData() {
   const isServerRunning = await checkServerRunning();
 
   if (!isServerRunning) {
-    console.error('❌ Server is not running on http://localhost:3000');
+    console.error('❌ Server is not running on https://localhost:3000');
     console.error('   Please start the server first: yarn dev');
     process.exit(1);
   }
