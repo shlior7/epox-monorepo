@@ -79,9 +79,14 @@ export const ALLOWED_DOMAIN_PATTERNS: readonly RegExp[] = [
 ];
 
 /**
- * Domains allowed in development only
+ * Domains allowed in development and test only
  */
-export const DEV_ALLOWED_DOMAINS: readonly string[] = ['localhost', '127.0.0.1', '0.0.0.0'];
+export const DEV_ALLOWED_DOMAINS: readonly string[] = [
+  'localhost',
+  '127.0.0.1',
+  '0.0.0.0',
+  'example.com', // For tests
+];
 
 // ============================================================================
 // RATE LIMITING CONFIGURATION

@@ -36,6 +36,7 @@ describe('Jobs API - GET /api/jobs/[id]', () => {
   it('should map processing status to active', async () => {
     vi.mocked(getJobStatus).mockResolvedValue({
       id: 'job-1',
+      clientId: 'test-client',
       type: 'image_generation',
       status: 'processing',
       progress: 50,

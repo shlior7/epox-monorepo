@@ -35,7 +35,7 @@ export async function PATCH(request: NextRequest) {
 
       // Check if email is already taken by another user
       if (email !== session.user.email) {
-        const existingUser = await db.users.findByEmail(email);
+        const existingUser = await db.users.getByEmail(email);
         if (existingUser) {
           return NextResponse.json({ error: 'Email already in use' }, { status: 409 });
         }
@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest) {
       updates.emailVerified = false;
     }
 
-    // Update user
+    // Update user using repository
     const updatedUser = await db.users.update(session.user.id, updates);
 
     return NextResponse.json({

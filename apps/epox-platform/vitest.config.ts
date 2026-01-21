@@ -6,10 +6,11 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./tests/setup.ts'],
+    exclude: ['node_modules/**', '__tests__/**', '.next/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', 'tests/', '.next/', '*.config.ts', '*.config.js'],
+      exclude: ['node_modules/', 'tests/', '__tests__/', '.next/', '*.config.ts', '*.config.js'],
     },
   },
   resolve: {

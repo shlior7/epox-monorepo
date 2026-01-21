@@ -8,6 +8,9 @@ import { POST as createStudio, GET as listStudios } from '@/app/api/studio/route
 
 vi.mock('@/lib/services/db', () => ({
   db: {
+    products: {
+      getById: vi.fn(),
+    },
     generationFlows: {
       create: vi.fn(),
       listByProduct: vi.fn(),
@@ -34,6 +37,31 @@ describe('Studio API - POST /api/studio', () => {
   });
 
   it('should create a studio session', async () => {
+    vi.mocked(db.products.getById).mockResolvedValue({
+      id: 'prod-1',
+      clientId: 'test-client',
+      name: 'Chair',
+      category: null,
+      sceneTypes: [],
+      source: 'uploaded' as const,
+      description: null,
+      erpSku: null,
+      isFavorite: false,
+      modelFilename: null,
+      version: 1,
+      storeConnectionId: null,
+      erpId: null,
+      erpUrl: null,
+      importedAt: null,
+      analysisData: null,
+      analysisVersion: null,
+      analyzedAt: null,
+      price: null,
+      metadata: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     vi.mocked(db.generationFlows.create).mockResolvedValue({
       id: 'flow-1',
       createdAt: new Date('2025-01-01T00:00:00Z'),
@@ -42,10 +70,10 @@ describe('Studio API - POST /api/studio', () => {
 
     const request = new NextRequest('http://localhost:3000/api/studio', {
       method: 'POST',
+      headers: { 'x-test-client-id': 'test-client' },
       body: JSON.stringify({
         productId: 'prod-1',
         productName: 'Chair',
-        clientId: 'client-1',
         baseImageId: 'img-1',
       }),
     });
@@ -55,7 +83,7 @@ describe('Studio API - POST /api/studio', () => {
 
     expect(response.status).toBe(201);
     expect(db.generationFlows.create).toHaveBeenCalledWith(
-      'client-1',
+      'test-client',
       expect.objectContaining({
         productIds: ['prod-1'],
         selectedBaseImages: { 'prod-1': 'img-1' },
@@ -67,10 +95,36 @@ describe('Studio API - POST /api/studio', () => {
   });
 
   it('should handle errors', async () => {
+    vi.mocked(db.products.getById).mockResolvedValue({
+      id: 'prod-1',
+      clientId: 'test-client',
+      name: 'Chair',
+      category: null,
+      sceneTypes: [],
+      source: 'uploaded' as const,
+      description: null,
+      erpSku: null,
+      isFavorite: false,
+      modelFilename: null,
+      version: 1,
+      storeConnectionId: null,
+      erpId: null,
+      erpUrl: null,
+      importedAt: null,
+      analysisData: null,
+      analysisVersion: null,
+      analyzedAt: null,
+      price: null,
+      metadata: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     vi.mocked(db.generationFlows.create).mockRejectedValueOnce(new Error('DB failed'));
 
     const request = new NextRequest('http://localhost:3000/api/studio', {
       method: 'POST',
+      headers: { 'x-test-client-id': 'test-client' },
       body: JSON.stringify({ productId: 'prod-1' }),
     });
 
@@ -95,12 +149,39 @@ describe('Studio API - GET /api/studio', () => {
   });
 
   it('should return generation flows for product', async () => {
+    vi.mocked(db.products.getById).mockResolvedValue({
+      id: 'prod-1',
+      clientId: 'test-client',
+      name: 'Chair',
+      category: null,
+      sceneTypes: [],
+      source: 'uploaded' as const,
+      description: null,
+      erpSku: null,
+      isFavorite: false,
+      modelFilename: null,
+      version: 1,
+      storeConnectionId: null,
+      erpId: null,
+      erpUrl: null,
+      importedAt: null,
+      analysisData: null,
+      analysisVersion: null,
+      analyzedAt: null,
+      price: null,
+      metadata: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     vi.mocked(db.generationFlows.listByProduct).mockResolvedValue([
       { id: 'flow-1' },
       { id: 'flow-2' },
     ] as any);
 
-    const request = new NextRequest('http://localhost:3000/api/studio?productId=prod-1');
+    const request = new NextRequest('http://localhost:3000/api/studio?productId=prod-1', {
+      headers: { 'x-test-client-id': 'test-client' },
+    });
     const response = await listStudios(request);
     const data = await response.json();
 

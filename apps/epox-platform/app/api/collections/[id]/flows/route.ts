@@ -8,6 +8,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { withSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
+import { internalServerErrorResponse } from '@/lib/security/error-handling';
 import type { FlowGenerationSettings, SceneTypeInspirationMap } from 'visualizer-types';
 
 export const GET = withSecurity(async (request, context, { params }) => {
@@ -104,8 +105,7 @@ export const GET = withSecurity(async (request, context, { params }) => {
     });
   } catch (error) {
     console.error('❌ Failed to fetch collection flows:', error);
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return internalServerErrorResponse(error);
   }
 });
 

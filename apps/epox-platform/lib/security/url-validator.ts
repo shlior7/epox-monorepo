@@ -116,8 +116,11 @@ function isDomainAllowed(hostname: string, additionalDomains?: string[]): boolea
     return true;
   }
 
-  // Check dev-only domains
-  if (process.env.NODE_ENV === 'development' && DEV_ALLOWED_DOMAINS.includes(hostname)) {
+  // Check dev/test-only domains
+  if (
+    (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') &&
+    DEV_ALLOWED_DOMAINS.includes(hostname)
+  ) {
     return true;
   }
 

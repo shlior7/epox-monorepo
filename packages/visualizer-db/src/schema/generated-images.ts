@@ -4,7 +4,7 @@
  * Actual files stored in R2
  */
 
-import { pgTable, text, timestamp, jsonb, index, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, jsonb, index, boolean, foreignKey } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { client, user } from './auth';
 import { chatSession, generationFlow } from './sessions';
@@ -86,18 +86,24 @@ export const generatedAssetProduct = pgTable(
   'generated_asset_product',
   {
     id: text('id').primaryKey(),
-    generatedAssetId: text('generated_asset_id')
-      .notNull()
-      .references(() => generatedAsset.id, { onDelete: 'cascade' }),
-    productId: text('product_id')
-      .notNull()
-      .references(() => product.id, { onDelete: 'cascade' }),
+    generatedAssetId: text('generated_asset_id').notNull(),
+    productId: text('product_id').notNull(),
     isPrimary: boolean('is_primary').notNull().default(false),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
   },
   (table) => [
     index('generated_asset_product_asset_idx').on(table.generatedAssetId),
     index('generated_asset_product_product_idx').on(table.productId),
+    foreignKey({
+      name: 'gen_asset_prod_asset_fk',
+      columns: [table.generatedAssetId],
+      foreignColumns: [generatedAsset.id],
+    }).onDelete('cascade'),
+    foreignKey({
+      name: 'gen_asset_prod_product_fk',
+      columns: [table.productId],
+      foreignColumns: [product.id],
+    }).onDelete('cascade'),
   ]
 );
 

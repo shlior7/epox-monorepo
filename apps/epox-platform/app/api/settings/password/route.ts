@@ -55,10 +55,8 @@ export async function PATCH(request: NextRequest) {
     // Hash new password
     const hashedPassword = await hash(newPassword, 10);
 
-    // Update password
-    await db.accounts.update(credentialAccount.id, {
-      password: hashedPassword,
-    });
+    // Update password using repository method
+    await db.accounts.upsertPasswordForProvider(session.user.id, 'credential', hashedPassword);
 
     return NextResponse.json({
       success: true,

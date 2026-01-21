@@ -28,7 +28,7 @@ vi.mock('@/lib/services/db', () => ({
 }));
 
 vi.mock('@/lib/services/get-auth', () => ({
-  getClientId: vi.fn(() => Promise.resolve('client-1')),
+  getClientId: vi.fn(() => Promise.resolve('test-client')),
 }));
 
 import { db } from '@/lib/services/db';
@@ -182,7 +182,7 @@ describe('Collection Flows API - POST /api/collections/[id]/flows', () => {
     expect(response.status).toBe(200);
     expect(db.generationFlows.create).toHaveBeenCalledTimes(1);
     expect(db.generationFlows.create).toHaveBeenCalledWith(
-      'client-1',
+      'test-client',
       expect.objectContaining({
         productIds: ['prod-2'],
         settings: expect.objectContaining({

@@ -33,23 +33,56 @@ async function waitForPostgres(): Promise<void> {
 async function pushSchema(): Promise<void> {
   console.log('Pushing schema to test database...');
 
-  // Run drizzle-kit push with pgTAP workaround
-  const env = {
-    ...process.env,
-    DATABASE_URL: getTestConnectionString(),
-  };
-
   try {
     // Drop pgTAP extension before push
     execSync('docker exec visualizer-db-test psql -U test -d visualizer_test -c "DROP EXTENSION IF EXISTS pgtap CASCADE"', {
       stdio: 'pipe',
     });
 
-    // Push schema
-    execSync('npx drizzle-kit push --force', {
-      cwd: process.cwd(),
-      env,
-      stdio: 'inherit',
+    // Push schema using spawn to handle interactive prompt
+    const env = {
+      ...process.env,
+      DATABASE_URL: getTestConnectionString(),
+    };
+
+    await new Promise<void>((resolve, reject) => {
+      const drizzlePush = spawn('npx', ['drizzle-kit', 'push'], {
+        cwd: process.cwd(),
+        env,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      let output = '';
+      let errorOutput = '';
+
+      drizzlePush.stdout.on('data', (data) => {
+        const text = data.toString();
+        output += text;
+
+        // Auto-confirm any prompts by writing 'y\n'
+        if (text.includes('execute') || text.includes('Yes')) {
+          drizzlePush.stdin.write('y\n');
+        }
+      });
+
+      drizzlePush.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+
+      drizzlePush.on('close', (code) => {
+        if (code === 0 || output.includes('No changes detected')) {
+          console.log('Schema push completed');
+          resolve();
+        } else {
+          console.error('Drizzle push output:', output);
+          console.error('Drizzle push error:', errorOutput);
+          reject(new Error(`drizzle-kit push exited with code ${code}`));
+        }
+      });
+
+      drizzlePush.on('error', (error) => {
+        reject(error);
+      });
     });
 
     // Recreate pgTAP extension for pgTAP tests (optional - may not be available)

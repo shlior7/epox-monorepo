@@ -231,7 +231,8 @@ describe('Video Generation API - POST /api/generate-video', () => {
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.error).toBe('Validation failed');
+    expect(data.error).toContain('Validation failed');
+    expect(data.error).toContain('inspirationImageUrl');
     expect(data.details.join(' ')).toContain('inspirationImageUrl');
   });
 
@@ -252,6 +253,6 @@ describe('Video Generation API - POST /api/generate-video', () => {
     const data = await response.json();
 
     expect(response.status).toBe(500);
-    expect(data.error).toBe('Internal server error');
+    expect(data.error).toBe('Internal Server Error');
   });
 });

@@ -38,8 +38,12 @@ import { storage } from '@/lib/services/storage';
 import { db } from '@/lib/services/db';
 
 function createFormRequest(formData: FormData): NextRequest {
+  const headers = new Headers();
+  headers.set('x-test-client-id', 'test-client');
+
   return {
     formData: async () => formData,
+    headers,
   } as NextRequest;
 }
 

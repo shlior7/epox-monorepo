@@ -331,6 +331,7 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
     it('should include product and inspiration image URLs in payload', async () => {
       const request = new NextRequest('http://localhost:3000/api/generate-images', {
         method: 'POST',
+        headers: { 'x-test-client-id': 'test-client' },
         body: JSON.stringify({
           sessionId: 'session-1',
           productIds: ['prod-1'],
@@ -431,10 +432,11 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
   describe('Error Handling', () => {
     it('should handle queue errors gracefully', async () => {
-      vi.mocked(enqueueImageGeneration).mockRejectedValue(new Error('Queue down'));
+      vi.mocked(enqueueImageGeneration).mockRejectedValueOnce(new Error('Queue down'));
 
       const request = new NextRequest('http://localhost:3000/api/generate-images', {
         method: 'POST',
+        headers: { 'x-test-client-id': 'test-client' },
         body: JSON.stringify({
           sessionId: 'session-1',
           productIds: ['prod-1'],
@@ -445,7 +447,7 @@ describe('Image Generation Flow - POST /api/generate-images', () => {
 
       expect(response.status).toBe(500);
       const data = await response.json();
-      expect(data.error).toBe('Internal server error');
+      expect(data.error).toBe('Internal Server Error');
     });
   });
 

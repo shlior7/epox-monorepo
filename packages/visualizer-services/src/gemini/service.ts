@@ -1,14 +1,11 @@
 import type { ImageConfig } from '@google/genai';
 import { GoogleGenAI } from '@google/genai';
-import { createDefaultConfig } from '../config';
-import { AI_MODELS, ERROR_MESSAGES } from '../constants';
-import { estimateTokenUsage } from '../utils';
+import { createDefaultConfig, AI_MODELS, ERROR_MESSAGES, estimateTokenUsage } from 'visualizer-ai';
+import type { ProductAnalysis, ProductAsset } from 'visualizer-ai';
 const AI_CONFIG = createDefaultConfig();
 
 /** Gemini 3 model ID - required for 2K/4K image generation */
 const GEMINI_3_MODEL = 'gemini-3-pro-image-preview';
-
-import type { ProductAnalysis, ProductAsset } from '../types';
 import type {
   ComponentAnalysisResult,
   EditImageRequest,

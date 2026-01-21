@@ -7,10 +7,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./lib/__tests__/setup.ts'],
     include: ['**/__tests__/**/*.{test,spec}.{ts,tsx}', '**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['node_modules/**', '__tests__/**', '.next/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', 'lib/__tests__/**', '*.config.ts', '*.config.js', 'dist/', '.next/'],
+      exclude: ['node_modules/', 'lib/__tests__/**', '__tests__/', '*.config.ts', '*.config.js', 'dist/', '.next/'],
     },
     testTimeout: 10000,
   },

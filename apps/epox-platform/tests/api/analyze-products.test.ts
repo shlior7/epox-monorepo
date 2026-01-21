@@ -96,6 +96,7 @@ describe('Analyze Products API - POST /api/analyze-products', () => {
 
     const request = new NextRequest('http://localhost:3000/api/analyze-products', {
       method: 'POST',
+      headers: { 'x-test-client-id': 'test-client' },
       body: JSON.stringify({
         productIds: ['prod-1'],
         productImageUrls: ['https://example.com/product.jpg'],
@@ -117,6 +118,7 @@ describe('Analyze Products API - POST /api/analyze-products', () => {
 
     const request = new NextRequest('http://localhost:3000/api/analyze-products', {
       method: 'POST',
+      headers: { 'x-test-client-id': 'test-client' },
       body: JSON.stringify({
         productIds: ['prod-1'],
         productImageUrls: ['https://example.com/product.jpg'],
@@ -149,6 +151,7 @@ describe('Analyze Products API - POST /api/analyze-products', () => {
 
     const request = new NextRequest('http://localhost:3000/api/analyze-products', {
       method: 'POST',
+      headers: { 'x-test-client-id': 'test-client' },
       body: JSON.stringify({
         productIds: ['prod-1'],
         productImageUrls: ['https://example.com/product.jpg'],

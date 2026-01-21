@@ -10,6 +10,7 @@ export interface AuthUser {
   email: string;
   name: string;
   image?: string;
+  emailVerified?: boolean;
 }
 
 export interface AuthClient {
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           email: userData.data.email,
           name: userData.data.name,
           image: userData.data.image ?? undefined,
+          emailVerified: userData.data.emailVerified ?? false,
         }
       : null;
 

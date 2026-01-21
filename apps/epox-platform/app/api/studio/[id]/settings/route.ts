@@ -7,6 +7,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { withSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
+import { internalServerErrorResponse } from '@/lib/security/error-handling';
 import type {
   FlowGenerationSettings,
   InspirationImage,
@@ -130,8 +131,8 @@ export const PATCH = withSecurity(async (request, context, { params }) => {
     });
   } catch (error) {
     console.error('❌ Failed to update studio settings:', error);
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Secure error handling - use helper
+    return internalServerErrorResponse(error);
   }
 });
 
@@ -169,7 +170,7 @@ export const GET = withSecurity(async (request, context, { params }) => {
     });
   } catch (error) {
     console.error('❌ Failed to get studio settings:', error);
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Secure error handling - use helper
+    return internalServerErrorResponse(error);
   }
 });

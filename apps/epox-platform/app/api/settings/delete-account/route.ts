@@ -16,13 +16,21 @@ import {
   productImage,
   collectionSession,
   generationFlow,
+  generationFlowProduct,
   generatedAsset,
+  generatedAssetProduct,
   generationJob,
   chatSession,
   message,
   favoriteImage,
   invitation,
   userSettings,
+  generationEvent,
+  storeConnection,
+  usageRecord,
+  quotaLimit,
+  aiCostTracking,
+  verification,
 } from 'visualizer-db/schema';
 import { eq, and } from 'drizzle-orm';
 
@@ -79,31 +87,73 @@ export async function DELETE(request: NextRequest) {
       const clientId = ownedClient.id;
       console.log(`   Deleting data for owned client: ${clientId}`);
 
-      // Delete generation-related data
+      // Delete store sync data
+      await drizzle.delete(storeConnection).where(eq(storeConnection.clientId, clientId));
+
+      // Delete generated assets and related data
+      const generatedAssets = await drizzle
+        .select()
+        .from(generatedAsset)
+        .where(eq(generatedAsset.clientId, clientId));
+
+      for (const asset of generatedAssets) {
+        await drizzle
+          .delete(generatedAssetProduct)
+          .where(eq(generatedAssetProduct.generatedAssetId, asset.id));
+        await drizzle.delete(favoriteImage).where(eq(favoriteImage.generatedAssetId, asset.id));
+      }
       await drizzle.delete(generatedAsset).where(eq(generatedAsset.clientId, clientId));
+
+      // Delete generation jobs
       await drizzle.delete(generationJob).where(eq(generationJob.clientId, clientId));
+
+      // Delete generation flows and related data
+      const genFlows = await drizzle
+        .select()
+        .from(generationFlow)
+        .where(eq(generationFlow.clientId, clientId));
+
+      for (const flow of genFlows) {
+        await drizzle
+          .delete(generationFlowProduct)
+          .where(eq(generationFlowProduct.generationFlowId, flow.id));
+      }
       await drizzle.delete(generationFlow).where(eq(generationFlow.clientId, clientId));
 
-      // Delete collection data
+      // Delete collection data and messages
+      const collectionSessions = await drizzle
+        .select()
+        .from(collectionSession)
+        .where(eq(collectionSession.clientId, clientId));
+      for (const colSession of collectionSessions) {
+        await drizzle.delete(message).where(eq(message.collectionSessionId, colSession.id));
+      }
       await drizzle.delete(collectionSession).where(eq(collectionSession.clientId, clientId));
 
-      // Delete chat data
-      const chatSessions = await drizzle
-        .select()
-        .from(chatSession)
-        .where(eq(chatSession.clientId, clientId));
-      for (const chat of chatSessions) {
-        await drizzle.delete(message).where(eq(message.chatSessionId, chat.id));
-      }
-      await drizzle.delete(chatSession).where(eq(chatSession.clientId, clientId));
-
-      // Delete product data
+      // Delete product data and chat sessions
       const products = await drizzle.select().from(product).where(eq(product.clientId, clientId));
       for (const prod of products) {
         await drizzle.delete(productImage).where(eq(productImage.productId, prod.id));
-        await drizzle.delete(favoriteImage).where(eq(favoriteImage.productId, prod.id));
+
+        // Delete chat sessions for this product and their messages
+        const prodChatSessions = await drizzle
+          .select()
+          .from(chatSession)
+          .where(eq(chatSession.productId, prod.id));
+        for (const chat of prodChatSessions) {
+          await drizzle.delete(message).where(eq(message.chatSessionId, chat.id));
+        }
+        await drizzle.delete(chatSession).where(eq(chatSession.productId, prod.id));
       }
       await drizzle.delete(product).where(eq(product.clientId, clientId));
+
+      // Delete analytics
+      await drizzle.delete(generationEvent).where(eq(generationEvent.clientId, clientId));
+
+      // Delete usage and quota data
+      await drizzle.delete(usageRecord).where(eq(usageRecord.clientId, clientId));
+      await drizzle.delete(quotaLimit).where(eq(quotaLimit.clientId, clientId));
+      await drizzle.delete(aiCostTracking).where(eq(aiCostTracking.clientId, clientId));
 
       // Delete invitations
       await drizzle.delete(invitation).where(eq(invitation.clientId, clientId));
@@ -123,7 +173,9 @@ export async function DELETE(request: NextRequest) {
     // Delete user-related data
     console.log(`   Deleting user data for: ${userId}`);
 
+    const userEmail = authSession.user.email;
     await drizzle.delete(userSettings).where(eq(userSettings.userId, userId));
+    await drizzle.delete(verification).where(eq(verification.identifier, userEmail));
     await drizzle.delete(session).where(eq(session.userId, userId));
     await drizzle.delete(account).where(eq(account.userId, userId));
     await drizzle.delete(user).where(eq(user.id, userId));

@@ -42,10 +42,12 @@ describe('Studio Settings API - PATCH /api/studio/[id]/settings', () => {
   it('should update flow settings', async () => {
     vi.mocked(db.generationFlows.getById).mockResolvedValue({
       id: 'flow-1',
+      clientId: 'test-client',
       settings: {},
     } as any);
     vi.mocked(db.generationFlows.updateSettings).mockResolvedValue({
       id: 'flow-1',
+      clientId: 'test-client',
       settings: {
         aspectRatio: '16:9',
         imageQuality: '4k',
@@ -80,10 +82,12 @@ describe('Studio Settings API - PATCH /api/studio/[id]/settings', () => {
   it('should update video settings', async () => {
     vi.mocked(db.generationFlows.getById).mockResolvedValue({
       id: 'flow-1',
+      clientId: 'test-client',
       settings: {},
     } as any);
     vi.mocked(db.generationFlows.updateSettings).mockResolvedValue({
       id: 'flow-1',
+      clientId: 'test-client',
       settings: {
         video: {
           prompt: 'Slow pan around the chair',
@@ -139,6 +143,7 @@ describe('Studio Settings API - PATCH /api/studio/[id]/settings', () => {
   it('should handle errors', async () => {
     vi.mocked(db.generationFlows.getById).mockResolvedValue({
       id: 'flow-1',
+      clientId: 'test-client',
       settings: {},
     } as any);
     vi.mocked(db.generationFlows.updateSettings).mockRejectedValueOnce(new Error('Update failed'));
@@ -152,7 +157,7 @@ describe('Studio Settings API - PATCH /api/studio/[id]/settings', () => {
 
     expect(response.status).toBe(500);
     const data = await response.json();
-    expect(data.error).toContain('Update failed');
+    expect(data.error).toBe('Internal Server Error');
   });
 });
 
@@ -173,6 +178,7 @@ describe('Studio Settings API - GET /api/studio/[id]/settings', () => {
   it('should return flow settings', async () => {
     vi.mocked(db.generationFlows.getById).mockResolvedValue({
       id: 'flow-1',
+      clientId: 'test-client',
       settings: {
         aspectRatio: '1:1',
         video: {

@@ -16,7 +16,8 @@
     "clean": "rm -rf node_modules packages/*/node_modules",
     "deps:update": "yarn upgrade-interactive",
     "ensure-deduped-lockfile": "yarn dedupe --check",
-    "dev": "turbo dev"
+    "dev": "turbo dev",
+    "post-change-check": "yarn format:write:all && yarn typecheck && yarn build && yarn test"
   },
   "workspaces": [
     "services/*",

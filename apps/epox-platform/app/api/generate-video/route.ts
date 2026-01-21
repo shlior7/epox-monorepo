@@ -77,7 +77,9 @@ export const POST = withGenerationSecurity(async (request, context) => {
   const parseResult = GenerateVideoRequestSchema.safeParse(rawBody);
   if (!parseResult.success) {
     const errors = parseResult.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
-    return NextResponse.json({ error: 'Validation failed', details: errors }, { status: 400 });
+    const firstError = parseResult.error.errors[0];
+    const errorMessage = `Validation failed: ${firstError.path.join('.')}: ${firstError.message}`;
+    return NextResponse.json({ error: errorMessage, details: errors }, { status: 400 });
   }
 
   const body: GenerateVideoRequest = parseResult.data;

@@ -80,8 +80,6 @@ export function createAuth() {
               console.error('Failed to auto-create organization:', error);
               // Don't fail signup if org creation fails
             }
-
-            return user;
           },
         },
       },

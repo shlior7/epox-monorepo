@@ -16,9 +16,19 @@ const mockGemini = {
   analyzeInspirationImage: vi.fn(),
 };
 
-vi.mock('visualizer-ai', () => ({
-  getGeminiService: vi.fn(() => mockGemini),
-}));
+vi.mock('visualizer-ai', () => {
+  class RateLimitError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'RateLimitError';
+    }
+  }
+
+  return {
+    getGeminiService: vi.fn(() => mockGemini),
+    RateLimitError,
+  };
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -102,6 +112,7 @@ describe('Analyze Image API - POST /api/analyze-image', () => {
 
     const request = new NextRequest('http://localhost:3000/api/analyze-image', {
       method: 'POST',
+      headers: { 'x-test-client-id': 'test-client' },
       body: JSON.stringify({ imageDataUrl: 'data:image/png;base64,abc' }),
     });
 
@@ -109,7 +120,7 @@ describe('Analyze Image API - POST /api/analyze-image', () => {
 
     expect(response.status).toBe(500);
     const data = await response.json();
-    expect(data.error).toContain('Gemini failed');
+    expect(data.error).toBe('Internal Server Error');
   });
 });
 
@@ -168,7 +179,7 @@ describe('Edit Image API - POST /api/edit-image', () => {
 
     expect(response.status).toBe(500);
     const data = await response.json();
-    expect(data.error).toContain('Edit failed');
+    expect(data.error).toBe('Internal server error');
   });
 });
 
@@ -221,6 +232,7 @@ describe('Remove Background API - POST /api/remove-background', () => {
 
     const request = new NextRequest('http://localhost:3000/api/remove-background', {
       method: 'POST',
+      headers: { 'x-test-client-id': 'test-client' },
       body: JSON.stringify({ imageDataUrl: 'data:image/png;base64,abc' }),
     });
 
@@ -228,7 +240,7 @@ describe('Remove Background API - POST /api/remove-background', () => {
 
     expect(response.status).toBe(500);
     const data = await response.json();
-    expect(data.error).toContain('Removal failed');
+    expect(data.error).toBe('Internal Server Error');
   });
 });
 
@@ -281,6 +293,7 @@ describe('Upscale Image API - POST /api/upscale-image', () => {
 
     const request = new NextRequest('http://localhost:3000/api/upscale-image', {
       method: 'POST',
+      headers: { 'x-test-client-id': 'test-client' },
       body: JSON.stringify({ imageDataUrl: 'data:image/png;base64,abc' }),
     });
 
@@ -288,7 +301,7 @@ describe('Upscale Image API - POST /api/upscale-image', () => {
 
     expect(response.status).toBe(500);
     const data = await response.json();
-    expect(data.error).toContain('Upscale failed');
+    expect(data.error).toBe('Internal Server Error');
   });
 });
 
@@ -332,6 +345,6 @@ describe('Vision Scanner API - POST /api/vision-scanner', () => {
 
     expect(response.status).toBe(500);
     const data = await response.json();
-    expect(data.error).toContain('Scanner failed');
+    expect(data.error).toBe('Internal server error');
   });
 });

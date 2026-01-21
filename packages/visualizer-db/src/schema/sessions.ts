@@ -3,7 +3,7 @@
  * ChatSession, CollectionSession (formerly StudioSession), Message, and GenerationFlow tables
  */
 
-import { pgTable, text, timestamp, jsonb, integer, index, check, boolean, unique } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, jsonb, integer, index, check, boolean, unique, foreignKey } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import { client } from './auth';
 import { product } from './products';
@@ -150,18 +150,24 @@ export const generationFlowProduct = pgTable(
   'generation_flow_product',
   {
     id: text('id').primaryKey(),
-    generationFlowId: text('generation_flow_id')
-      .notNull()
-      .references(() => generationFlow.id, { onDelete: 'cascade' }),
-    productId: text('product_id')
-      .notNull()
-      .references(() => product.id, { onDelete: 'cascade' }),
+    generationFlowId: text('generation_flow_id').notNull(),
+    productId: text('product_id').notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
   },
   (table) => [
     index('generation_flow_product_flow_idx').on(table.generationFlowId),
     index('generation_flow_product_product_idx').on(table.productId),
     unique('generation_flow_product_unique').on(table.generationFlowId, table.productId),
+    foreignKey({
+      name: 'gen_flow_prod_flow_fk',
+      columns: [table.generationFlowId],
+      foreignColumns: [generationFlow.id],
+    }).onDelete('cascade'),
+    foreignKey({
+      name: 'gen_flow_prod_product_fk',
+      columns: [table.productId],
+      foreignColumns: [product.id],
+    }).onDelete('cascade'),
   ]
 );
 

@@ -130,7 +130,6 @@ describe('Collections API - POST /api/collections', () => {
       status: 'draft',
       settings: {},
       selectedBaseImages: {},
-      createdAt: new Date(),
       updatedAt: new Date(),
     } as any);
   });
@@ -138,10 +137,11 @@ describe('Collections API - POST /api/collections', () => {
   it('should create a new collection with valid data', async () => {
     const mockCollection = {
       id: 'coll-1',
-      clientId: 'demo-client',
+      clientId: 'test-client',
       name: 'Living Room Collection',
       productIds: ['prod-1', 'prod-2'],
       selectedBaseImages: {},
+      settings: null,
       status: 'draft' as const,
       version: 1,
       createdAt: new Date(),
@@ -258,10 +258,11 @@ describe('Collections API - GET /api/collections/[id]', () => {
   it('should return collection with stats', async () => {
     const mockCollection = {
       id: 'coll-1',
-      clientId: 'demo-client',
+      clientId: 'test-client',
       name: 'Living Room Collection',
       productIds: ['prod-1', 'prod-2'],
       selectedBaseImages: {},
+      settings: null,
       status: 'completed' as const,
       version: 1,
       createdAt: new Date(),
@@ -302,10 +303,11 @@ describe('Collections API - PATCH /api/collections/[id]', () => {
   it('should update collection name', async () => {
     const existingCollection = {
       id: 'coll-1',
-      clientId: 'demo-client',
+      clientId: 'test-client',
       name: 'Old Name',
       productIds: ['prod-1'],
       selectedBaseImages: {},
+      settings: null,
       status: 'draft' as const,
       version: 1,
       createdAt: new Date(),
@@ -336,10 +338,11 @@ describe('Collections API - PATCH /api/collections/[id]', () => {
   it('should update collection status', async () => {
     const existingCollection = {
       id: 'coll-1',
-      clientId: 'demo-client',
+      clientId: 'test-client',
       name: 'Test Collection',
       productIds: ['prod-1'],
       selectedBaseImages: {},
+      settings: null,
       status: 'draft' as const,
       version: 1,
       createdAt: new Date(),
@@ -370,11 +373,11 @@ describe('Collections API - PATCH /api/collections/[id]', () => {
   it('should update collection settings with video config', async () => {
     const existingCollection = {
       id: 'coll-1',
-      clientId: 'demo-client',
+      clientId: 'test-client',
       name: 'Test Collection',
       productIds: ['prod-1'],
       selectedBaseImages: {},
-      settings: {},
+      settings: null,
       status: 'draft' as const,
       version: 1,
       createdAt: new Date(),
@@ -384,6 +387,8 @@ describe('Collections API - PATCH /api/collections/[id]', () => {
     const updatedCollection = {
       ...existingCollection,
       settings: {
+        inspirationImages: [],
+        aspectRatio: '16:9',
         video: {
           prompt: 'Slow orbit around the sofa',
           inspirationImageUrl: 'https://example.com/inspo.jpg',
@@ -441,10 +446,11 @@ describe('Collections API - PATCH /api/collections/[id]', () => {
   it('should reject invalid status', async () => {
     vi.mocked(db.collectionSessions.getById).mockResolvedValue({
       id: 'coll-1',
-      clientId: 'demo-client',
+      clientId: 'test-client',
       name: 'Test',
       productIds: ['prod-1'],
       selectedBaseImages: {},
+      settings: null,
       status: 'draft' as const,
       version: 1,
       createdAt: new Date(),
@@ -487,10 +493,11 @@ describe('Collections API - DELETE /api/collections/[id]', () => {
   it('should delete existing collection', async () => {
     vi.mocked(db.collectionSessions.getById).mockResolvedValue({
       id: 'coll-1',
-      clientId: 'demo-client',
+      clientId: 'test-client',
       name: 'Test',
       productIds: ['prod-1'],
       selectedBaseImages: {},
+      settings: null,
       status: 'draft' as const,
       version: 1,
       createdAt: new Date(),
@@ -504,7 +511,6 @@ describe('Collections API - DELETE /api/collections/[id]', () => {
         status: 'completed',
         settings: {},
         selectedBaseImages: {},
-        createdAt: new Date(),
         updatedAt: new Date(),
       } as any,
     ]);
@@ -538,10 +544,11 @@ describe('Collections API - DELETE /api/collections/[id]', () => {
   it('should keep pinned and approved assets when policy is keep_pinned_approved', async () => {
     vi.mocked(db.collectionSessions.getById).mockResolvedValue({
       id: 'coll-1',
-      clientId: 'demo-client',
+      clientId: 'test-client',
       name: 'Test',
       productIds: ['prod-1'],
       selectedBaseImages: {},
+      settings: null,
       status: 'draft' as const,
       version: 1,
       createdAt: new Date(),
@@ -555,7 +562,6 @@ describe('Collections API - DELETE /api/collections/[id]', () => {
         status: 'completed',
         settings: {},
         selectedBaseImages: {},
-        createdAt: new Date(),
         updatedAt: new Date(),
       } as any,
     ]);

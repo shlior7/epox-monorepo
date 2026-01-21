@@ -31,7 +31,7 @@ vi.mock('@/lib/services/db', () => ({
 }));
 
 vi.mock('@/lib/services/get-auth', () => ({
-  getClientId: vi.fn(() => Promise.resolve('client-1')),
+  getClientId: vi.fn(() => Promise.resolve('test-client')),
 }));
 
 import { db } from '@/lib/services/db';
@@ -119,7 +119,7 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
 
     expect(response.status).toBe(200);
     expect(enqueueImageGeneration).toHaveBeenCalledWith(
-      'client-1',
+      'test-client',
       expect.objectContaining({
         sessionId: 'flow-1',
         productIds: ['prod-1'],
