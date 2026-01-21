@@ -91,6 +91,19 @@ export const VIDEO_ASPECT_RATIO_OPTIONS: VideoAspectRatio[] = ['16:9', '9:16'];
 export const VIDEO_TYPE_OPTIONS = ['product pan', 'orbit'] as const;
 export const CAMERA_MOTION_OPTIONS = ['dolly', 'orbit', 'pan', 'tilt', 'static'] as const;
 
+// ===== IMAGE ASPECT RATIO (Gemini supported) =====
+
+export const IMAGE_ASPECT_RATIO_OPTIONS = ['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9'] as const;
+
+export type ImageAspectRatio = (typeof IMAGE_ASPECT_RATIO_OPTIONS)[number];
+/**
+ * Convert aspect ratio from colon format to slash format for display.
+ * e.g., "16:9" -> "16/9"
+ */
+export function formatAspectRatioDisplay(ratio: string): string {
+  return ratio.replace(':', '/');
+}
+
 export interface VideoGenerationSettings {
   prompt?: string;
   inspirationImageUrl?: string;
@@ -105,15 +118,16 @@ export interface FlowGenerationSettings {
   // ===== SCENE STYLE (Section 1) =====
   inspirationImages: InspirationImage[]; // Multiple images (raw uploads)
   sceneTypeInspirations?: SceneTypeInspirationMap; // Grouped by detected scene type
-  stylePreset?: StylePreset; // Simple Mode dropdown
-  lightingPreset?: LightingPreset; // Simple Mode dropdown
+  stylePreset?: string; // Simple Mode dropdown or custom value
+  lightingPreset?: string; // Simple Mode dropdown or custom value
+  sceneType?: string; // Scene type selection or custom value
 
   // ===== USER PROMPT (Section 3) =====
   // User's additional details - gets APPENDED to generated prompt, not replacing it
   userPrompt?: string;
 
   // ===== OUTPUT SETTINGS (Section 4) =====
-  aspectRatio: string;
+  aspectRatio: ImageAspectRatio;
   imageQuality?: ImageQuality;
   variantsCount?: number;
 

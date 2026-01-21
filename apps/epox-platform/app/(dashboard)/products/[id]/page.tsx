@@ -42,7 +42,8 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { use, useState } from 'react';
+import { use, useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
 import { useAuth } from '../../../../lib/contexts/auth-context';
 
@@ -53,7 +54,7 @@ interface ProductDetailPageProps {
 export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { id: productId } = use(params);
   const router = useRouter();
-  const { clientId, isLoading: isAuthLoading } = useAuth();
+  const { clientId } = useAuth();
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [activeTab, setActiveTab] = useState('all');
@@ -102,21 +103,42 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     },
   });
 
+  // Upload base image mutation
+  const uploadImageMutation = useMutation({
+    mutationFn: (file: File) => apiClient.uploadFile(file, 'product', { productId }),
+    onSuccess: () => {
+      toast.success('Image uploaded successfully');
+      queryClient.invalidateQueries({ queryKey: ['product', productId] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to upload image');
+    },
+  });
+
+  // Dropzone for base images
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      acceptedFiles.forEach((file) => {
+        uploadImageMutation.mutate(file);
+      });
+    },
+    [uploadImageMutation]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.webp', '.gif'],
+    },
+    disabled: !product || product.source !== 'uploaded',
+  });
+
   const handleStartStudio = () => {
     createStudioMutation.mutate('generate');
   };
 
-  // Handle auth loading
-  if (isAuthLoading) {
-    return <ProductDetailSkeleton />;
-  }
-
-  // Redirect to login if not authenticated
-  if (!clientId) {
-    router.push('/login');
-    return <ProductDetailSkeleton />;
-  }
-
+  // Auth is handled by AuthGuard in the layout
+  // Show loading while fetching product data
   if (isLoading) {
     return <ProductDetailSkeleton />;
   }
@@ -198,11 +220,23 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
           {/* Left Column - Product Info */}
           <div className="space-y-6 lg:col-span-1">
             {/* Base Images */}
-            <Card>
+            <Card
+              {...(isEditable ? getRootProps() : {})}
+              className={cn(
+                'transition-colors',
+                isDragActive && isEditable && 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+              )}
+            >
+              {isEditable && <input {...getInputProps()} />}
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <ImageIcon className="h-4 w-4" />
                   Base Images
+                  {uploadImageMutation.isPending && (
+                    <Badge variant="default" className="ml-auto text-xs">
+                      Uploading...
+                    </Badge>
+                  )}
                   {!isEditable && (
                     <Badge variant="muted" className="ml-auto text-xs">
                       Read-only
@@ -211,45 +245,56 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-2">
-                  {product.baseImages?.map((img: any, index: number) => (
-                    <div
-                      key={img.id}
-                      className={cn(
-                        'group relative aspect-square overflow-hidden rounded-lg',
-                        img.isPrimary && 'ring-2 ring-primary'
-                      )}
-                    >
-                      <Image
-                        src={img.url}
-                        alt={`${product.name} - Image ${index + 1}`}
-                        fill
-                        className="object-cover"
-                      />
-                      {img.isPrimary && (
-                        <Badge className="absolute left-2 top-2" variant="default">
-                          Primary
-                        </Badge>
-                      )}
-                      {isEditable && (
-                        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-                          <Button size="icon" variant="secondary" className="h-8 w-8">
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="secondary" className="h-8 w-8">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {isEditable && (
-                    <button className="flex aspect-square flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground">
-                      <Upload className="h-5 w-5" />
-                      <span className="text-xs">Add Image</span>
-                    </button>
-                  )}
-                </div>
+                {isDragActive && isEditable ? (
+                  <div className="flex aspect-video flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary bg-primary/5 text-primary">
+                    <Upload className="h-8 w-8" />
+                    <span className="text-sm font-medium">Drop images here</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {product.baseImages?.map((img: any, index: number) => (
+                      <div
+                        key={img.id}
+                        className={cn(
+                          'group relative aspect-square overflow-hidden rounded-lg',
+                          img.isPrimary && 'ring-2 ring-primary'
+                        )}
+                      >
+                        <Image
+                          src={img.url}
+                          alt={`${product.name} - Image ${index + 1}`}
+                          fill
+                          sizes="(max-width: 768px) 50vw, 150px"
+                          className="object-cover"
+                        />
+                        {img.isPrimary && (
+                          <Badge className="absolute left-2 top-2" variant="default">
+                            Primary
+                          </Badge>
+                        )}
+                        {isEditable && (
+                          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                            <Button size="icon" variant="secondary" className="h-8 w-8">
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="secondary" className="h-8 w-8">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {isEditable && (
+                      <button
+                        type="button"
+                        className="flex aspect-square flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                      >
+                        <Upload className="h-5 w-5" />
+                        <span className="text-xs">Add Image</span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -322,11 +367,18 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                         style={{ backgroundColor: product.analysis.dominantColorHex }}
                       />
                       <div className="flex flex-wrap gap-1">
-                        {product.analysis.colors?.map((c: string) => (
-                          <Badge key={c} variant="outline">
-                            {c}
-                          </Badge>
-                        ))}
+                        {Array.isArray(product.analysis.colors)
+                          ? product.analysis.colors.map((c: string) => (
+                              <Badge key={c} variant="outline">
+                                {c}
+                              </Badge>
+                            ))
+                          : product.analysis.colors &&
+                            Object.values(product.analysis.colors).map((c: any) => (
+                              <Badge key={String(c)} variant="outline">
+                                {String(c)}
+                              </Badge>
+                            ))}
                       </div>
                     </div>
                   </div>
@@ -590,6 +642,7 @@ function AssetCard({
           src={asset.url}
           alt={`${productName} - ${asset.sceneType}`}
           fill
+          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 200px"
           className="object-cover"
         />
         {/* Badges */}
@@ -646,6 +699,7 @@ function AssetListItem({
           src={asset.url}
           alt={`${productName} - ${asset.sceneType}`}
           fill
+          sizes="64px"
           className="object-cover"
         />
       </div>
@@ -799,6 +853,7 @@ function ImagePreviewDialog({
             src={image.url}
             alt={`${productName} - ${image.sceneType}`}
             fill
+            sizes="(max-width: 1024px) 100vw, 900px"
             className="object-contain"
           />
         </div>

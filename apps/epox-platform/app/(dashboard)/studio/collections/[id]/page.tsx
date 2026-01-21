@@ -47,7 +47,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { GenerationFlowCard } from '@/components/studio/GenerationFlowCard';
-import { ProductAssetCard } from '@/components/studio/ProductAssetCard';
+import { ProductAssetCard } from '@/components/studio/AssetCard/ProductAssetCard';
 import { ProductThumbnailNav } from '@/components/studio/ThumbnailNav';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
@@ -62,6 +62,7 @@ import type {
   LightingPreset,
   VisionAnalysisResult,
   VideoPromptSettings,
+  ImageAspectRatio,
 } from 'visualizer-types';
 import {
   CAMERA_MOTION_OPTIONS,
@@ -137,7 +138,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   const [isAnalyzingInspiration, setIsAnalyzingInspiration] = useState(false);
   const [isInspirationModalOpen, setIsInspirationModalOpen] = useState(false);
   const [outputSettings, setOutputSettings] = useState({
-    aspectRatio: '1:1',
+    aspectRatio: '1:1' as ImageAspectRatio,
     quality: '2k' as '1k' | '2k' | '4k',
     variantsCount: 1,
   });
@@ -1628,7 +1629,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                   description="Add products to start generating images."
                   action={{
                     label: 'Add Products',
-                    onClick: () => {},
+                    onClick: () => { },
                   }}
                 />
               )}

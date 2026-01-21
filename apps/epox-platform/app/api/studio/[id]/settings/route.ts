@@ -10,6 +10,7 @@ import { withSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security
 import { internalServerErrorResponse } from '@/lib/security/error-handling';
 import type {
   FlowGenerationSettings,
+  ImageAspectRatio,
   InspirationImage,
   SceneTypeInspirationMap,
   StylePreset,
@@ -21,14 +22,15 @@ interface UpdateSettingsRequest {
   // Scene Style (Section 1)
   inspirationImages?: InspirationImage[];
   sceneTypeInspirations?: SceneTypeInspirationMap;
-  stylePreset?: StylePreset;
-  lightingPreset?: LightingPreset;
+  stylePreset?: string; // Can be preset or custom value
+  lightingPreset?: string; // Can be preset or custom value
+  sceneType?: string; // Scene type selection
 
   // User Prompt (Section 3)
   userPrompt?: string;
 
   // Output Settings (Section 4)
-  aspectRatio?: string;
+  aspectRatio?: ImageAspectRatio;
   imageQuality?: '1k' | '2k' | '4k';
   variantsCount?: number;
   video?: {
@@ -92,6 +94,9 @@ export const PATCH = withSecurity(async (request, context, { params }) => {
     }
     if (body.lightingPreset !== undefined) {
       settingsUpdate.lightingPreset = body.lightingPreset;
+    }
+    if (body.sceneType !== undefined) {
+      settingsUpdate.sceneType = body.sceneType;
     }
 
     // User Prompt

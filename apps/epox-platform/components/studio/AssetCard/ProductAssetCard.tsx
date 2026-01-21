@@ -18,14 +18,14 @@ import {
   AssetCardWrapper,
   AssetCardHeader,
   AssetCardContent,
-  AssetCardFooter,
   ImageThumbnail,
   ConfigBadges,
   StatusBadges,
   AssetActionBar,
   GalleryNavigation,
   ThumbnailStrip,
-} from './shared';
+} from './AssetCardContent';
+import { AssetCardFooter } from './AssetCardFooter';
 
 interface Revision {
   id: string;

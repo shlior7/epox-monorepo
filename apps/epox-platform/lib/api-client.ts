@@ -4,6 +4,7 @@
  */
 
 import type { PromptTags } from './types';
+import type { ImageAspectRatio } from 'visualizer-types';
 
 // ===== Response Types =====
 
@@ -171,7 +172,7 @@ export interface Collection {
     stylePreset?: string;
     lightingPreset?: string;
     userPrompt?: string;
-    aspectRatio?: string;
+    aspectRatio?: ImageAspectRatio;
     imageQuality?: '1k' | '2k' | '4k';
     variantsCount?: number;
     video?: {
@@ -249,7 +250,7 @@ export interface UpdateCollectionPayload {
     stylePreset?: string;
     lightingPreset?: string;
     userPrompt?: string;
-    aspectRatio?: string;
+    aspectRatio?: ImageAspectRatio;
     imageQuality?: '1k' | '2k' | '4k';
     variantsCount?: number;
     video?: {
@@ -277,7 +278,7 @@ export interface GenerationFlow {
   mode: 'generate' | 'edit' | 'regenerate';
   status: string;
   settings: {
-    aspectRatio: string;
+    aspectRatio: ImageAspectRatio;
     variantsCount: number;
     varietyLevel: number;
     matchProductColors: boolean;
@@ -324,12 +325,13 @@ export interface UpdateStudioSettingsPayload {
   >;
   stylePreset?: string;
   lightingPreset?: string;
+  sceneType?: string;
 
   // User Prompt (Section 3)
   userPrompt?: string;
 
   // Output Settings (Section 4)
-  aspectRatio?: string;
+  aspectRatio?: ImageAspectRatio;
   imageQuality?: '1k' | '2k' | '4k' | '1K' | '2K' | '4K';
   variantsCount?: number;
   video?: {
@@ -374,7 +376,7 @@ export interface GeneratedAsset {
   status: 'pending' | 'generating' | 'completed' | 'error';
   createdAt: string;
   settings?: {
-    aspectRatio?: string;
+    aspectRatio?: ImageAspectRatio;
     imageQuality?: '1k' | '2k' | '4k';
   };
 }
@@ -414,7 +416,7 @@ export interface GenerateImagesPayload {
   productImageUrls?: string[];
   inspirationImageUrls?: string[];
   settings?: {
-    aspectRatio?: string;
+    aspectRatio?: ImageAspectRatio;
     imageQuality?: '1k' | '2k' | '4k';
     variantsPerProduct?: number;
   };

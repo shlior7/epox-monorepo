@@ -107,6 +107,7 @@ export const GET = withSecurity(async (request, context) => {
         approvalStatus: asset.approvalStatus,
         createdAt: asset.createdAt.toISOString(),
         pinned: asset.pinned,
+        settings: asset.settings,
       }));
 
       return NextResponse.json({
@@ -158,7 +159,6 @@ export const GET = withSecurity(async (request, context) => {
         }
       }
     }
-
     // Fetch products in a single query
     const productMap =
       productIdsSet.size > 0
@@ -186,12 +186,7 @@ export const GET = withSecurity(async (request, context) => {
         approvalStatus: asset.approvalStatus,
         status: asset.status,
         createdAt: asset.createdAt.toISOString(),
-        settings: asset.settings
-          ? {
-              aspectRatio: asset.settings.aspectRatio,
-              imageQuality: asset.settings.imageQuality,
-            }
-          : undefined,
+        settings: asset.settings,
       };
     });
 

@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { SceneLoader } from '@/components/ui/scene-loader';
 import { InspirationImageModal } from '@/components/studio/InspirationImageModal';
-import { AssetCard } from '@/components/studio/AssetCard';
+import { AssetCard } from '@/components/studio/AssetCard/AssetCard';
 import { ThumbnailNav } from '@/components/studio/ThumbnailNav';
 import type { GeneratedAsset } from '@/lib/api-client';
 import { apiClient } from '@/lib/api-client';
@@ -53,12 +53,15 @@ import type {
 } from 'visualizer-types';
 import {
   CAMERA_MOTION_OPTIONS,
+  IMAGE_ASPECT_RATIO_OPTIONS,
   LIGHTING_PRESETS,
   STYLE_PRESETS,
   VIDEO_TYPE_OPTIONS,
   VIDEO_ASPECT_RATIO_OPTIONS,
   VIDEO_RESOLUTION_OPTIONS,
+  formatAspectRatioDisplay,
 } from 'visualizer-types';
+import type { ImageAspectRatio } from 'visualizer-types';
 
 interface StudioPageProps {
   params: Promise<{ id: string }>;
@@ -71,13 +74,17 @@ const QUALITY_OPTIONS = [
   { value: '4k', label: '4K', description: 'High Quality' },
 ] as const;
 
-// Aspect ratio options
-const ASPECT_OPTIONS = [
-  { value: '1:1', label: '1:1', icon: '◻' },
-  { value: '16:9', label: '16:9', icon: '▭' },
-  { value: '9:16', label: '9:16', icon: '▯' },
-  { value: '4:3', label: '4:3', icon: '▱' },
-] as const;
+// Aspect ratio options with icons
+const ASPECT_RATIO_ICONS: Record<ImageAspectRatio, string> = {
+  '1:1': '◻',
+  '2:3': '▯',
+  '3:2': '▭',
+  '3:4': '▯',
+  '4:3': '▱',
+  '9:16': '▯',
+  '16:9': '▭',
+  '21:9': '▭',
+};
 
 type StudioTab = 'images' | 'video';
 type ViewMode = 'list' | 'grid';
@@ -191,10 +198,17 @@ export default function StudioPage({ params }: StudioPageProps) {
   // Section 1: Scene Style
   const [inspirationImages, setInspirationImages] = useState<InspirationImage[]>([]);
   const [sceneTypeInspirations, setSceneTypeInspirations] = useState<SceneTypeInspirationMap>({});
-  const [stylePreset, setStylePreset] = useState<StylePreset>('Modern Minimalist');
-  const [lightingPreset, setLightingPreset] = useState<LightingPreset>('Studio Soft Light');
+  const [stylePreset, setStylePreset] = useState<StylePreset | 'Custom'>('Modern Minimalist');
+  const [customStylePreset, setCustomStylePreset] = useState('');
+  const [lightingPreset, setLightingPreset] = useState<LightingPreset | 'Custom'>('Studio Soft Light');
+  const [customLightingPreset, setCustomLightingPreset] = useState('');
+  const [sceneType, setSceneType] = useState<string>('');
+  const [customSceneType, setCustomSceneType] = useState('');
   const [isAnalyzingInspiration, setIsAnalyzingInspiration] = useState(false);
   const [isInspirationModalOpen, setIsInspirationModalOpen] = useState(false);
+
+  // Track previous values to avoid unnecessary saves
+  const prevSettingsRef = useRef<string>('');
 
   // Section 2: Product Details (read-only from product analysis)
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -206,7 +220,7 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   // Section 4: Output Settings
   const [settings, setSettings] = useState({
-    aspectRatio: '1:1',
+    aspectRatio: '1:1' as ImageAspectRatio,
     quality: '2k' as '1k' | '2k' | '4k',
     variantsCount: 4,
   });
@@ -429,8 +443,39 @@ export default function StudioPage({ params }: StudioPageProps) {
       const s = flowData.settings as FlowGenerationSettings;
       if (s.inspirationImages) setInspirationImages(s.inspirationImages);
       if (s.sceneTypeInspirations) setSceneTypeInspirations(s.sceneTypeInspirations);
-      if (s.stylePreset) setStylePreset(s.stylePreset);
-      if (s.lightingPreset) setLightingPreset(s.lightingPreset);
+
+      // Handle stylePreset - check if it's a known preset or custom
+      if (s.stylePreset) {
+        if ((STYLE_PRESETS as readonly string[]).includes(s.stylePreset)) {
+          setStylePreset(s.stylePreset as StylePreset);
+        } else {
+          setStylePreset('Custom');
+          setCustomStylePreset(s.stylePreset);
+        }
+      }
+
+      // Handle lightingPreset - check if it's a known preset or custom
+      if (s.lightingPreset) {
+        if ((LIGHTING_PRESETS as readonly string[]).includes(s.lightingPreset)) {
+          setLightingPreset(s.lightingPreset as LightingPreset);
+        } else {
+          setLightingPreset('Custom');
+          setCustomLightingPreset(s.lightingPreset);
+        }
+      }
+
+      // Handle sceneType
+      if (s.sceneType) {
+        // Check if it's a native scene type from product analysis
+        const nativeTypes = products?.[0]?.analysis?.subject?.nativeSceneTypes || [];
+        if (nativeTypes.includes(s.sceneType)) {
+          setSceneType(s.sceneType);
+        } else {
+          setSceneType('Custom');
+          setCustomSceneType(s.sceneType);
+        }
+      }
+
       if (s.userPrompt) setUserPrompt(s.userPrompt);
       if (s.aspectRatio) setSettings((prev) => ({ ...prev, aspectRatio: s.aspectRatio }));
       if (s.imageQuality)
@@ -528,11 +573,40 @@ export default function StudioPage({ params }: StudioPageProps) {
         sound: videoSettings.sound,
         soundPrompt: videoSettings.soundPrompt,
       };
+
+      // Resolve custom values
+      const effectiveStylePreset = stylePreset === 'Custom' ? customStylePreset : stylePreset;
+      const effectiveLightingPreset = lightingPreset === 'Custom' ? customLightingPreset : lightingPreset;
+      const effectiveSceneType = sceneType === 'Custom' ? customSceneType : sceneType;
+
+      // Create settings object for comparison
+      const currentSettings = JSON.stringify({
+        inspirationImages,
+        sceneTypeInspirations,
+        stylePreset: effectiveStylePreset,
+        lightingPreset: effectiveLightingPreset,
+        sceneType: effectiveSceneType,
+        userPrompt,
+        aspectRatio: settings.aspectRatio,
+        quality: settings.quality,
+        variantsCount: settings.variantsCount,
+        videoPrompt,
+        videoSettings: normalizedVideoSettings,
+        videoPresetId,
+      });
+
+      // Skip save if settings haven't changed
+      if (prevSettingsRef.current === currentSettings) {
+        return;
+      }
+      prevSettingsRef.current = currentSettings;
+
       await apiClient.updateStudioSettings(studioId, {
         inspirationImages: inspirationImages as any,
         sceneTypeInspirations: sceneTypeInspirations as any,
-        stylePreset,
-        lightingPreset,
+        stylePreset: effectiveStylePreset,
+        lightingPreset: effectiveLightingPreset,
+        sceneType: effectiveSceneType || undefined,
         userPrompt: userPrompt || undefined,
         aspectRatio: settings.aspectRatio,
         imageQuality: settings.quality,
@@ -551,7 +625,11 @@ export default function StudioPage({ params }: StudioPageProps) {
     inspirationImages,
     sceneTypeInspirations,
     stylePreset,
+    customStylePreset,
     lightingPreset,
+    customLightingPreset,
+    sceneType,
+    customSceneType,
     userPrompt,
     settings.aspectRatio,
     settings.quality,
@@ -1222,8 +1300,12 @@ export default function StudioPage({ params }: StudioPageProps) {
                         </label>
                         <select
                           value={stylePreset}
-                          onChange={(e) => setStylePreset(e.target.value as StylePreset)}
-                          onBlur={saveSettings}
+                          onChange={(e) => {
+                            setStylePreset(e.target.value as StylePreset | 'Custom');
+                            if (e.target.value !== 'Custom') {
+                              saveSettings();
+                            }
+                          }}
                           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                         >
                           {STYLE_PRESETS.map((style) => (
@@ -1231,7 +1313,17 @@ export default function StudioPage({ params }: StudioPageProps) {
                               {style}
                             </option>
                           ))}
+                          <option value="Custom">Custom...</option>
                         </select>
+                        {stylePreset === 'Custom' && (
+                          <Input
+                            value={customStylePreset}
+                            onChange={(e) => setCustomStylePreset(e.target.value)}
+                            onBlur={saveSettings}
+                            placeholder="Enter custom style..."
+                            className="mt-2"
+                          />
+                        )}
                       </div>
 
                       {/* Lighting Preset */}
@@ -1241,8 +1333,12 @@ export default function StudioPage({ params }: StudioPageProps) {
                         </label>
                         <select
                           value={lightingPreset}
-                          onChange={(e) => setLightingPreset(e.target.value as LightingPreset)}
-                          onBlur={saveSettings}
+                          onChange={(e) => {
+                            setLightingPreset(e.target.value as LightingPreset | 'Custom');
+                            if (e.target.value !== 'Custom') {
+                              saveSettings();
+                            }
+                          }}
                           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                         >
                           {LIGHTING_PRESETS.map((lighting) => (
@@ -1250,7 +1346,54 @@ export default function StudioPage({ params }: StudioPageProps) {
                               {lighting}
                             </option>
                           ))}
+                          <option value="Custom">Custom...</option>
                         </select>
+                        {lightingPreset === 'Custom' && (
+                          <Input
+                            value={customLightingPreset}
+                            onChange={(e) => setCustomLightingPreset(e.target.value)}
+                            onBlur={saveSettings}
+                            placeholder="Enter custom lighting..."
+                            className="mt-2"
+                          />
+                        )}
+                      </div>
+
+                      {/* Scene Type */}
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
+                          Scene Type
+                        </label>
+                        <select
+                          value={sceneType}
+                          onChange={(e) => {
+                            setSceneType(e.target.value);
+                            if (e.target.value !== 'Custom') {
+                              saveSettings();
+                            }
+                          }}
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="">Auto (from analysis)</option>
+                          {(subjectAnalysis?.nativeSceneTypes && subjectAnalysis.nativeSceneTypes.length > 0
+                            ? subjectAnalysis.nativeSceneTypes
+                            : ['Living Room', 'Bedroom', 'Office', 'Kitchen', 'Dining Room', 'Bathroom', 'Outdoor', 'Studio']
+                          ).map((type) => (
+                            <option key={type} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                          <option value="Custom">Custom...</option>
+                        </select>
+                        {sceneType === 'Custom' && (
+                          <Input
+                            value={customSceneType}
+                            onChange={(e) => setCustomSceneType(e.target.value)}
+                            onBlur={saveSettings}
+                            placeholder="Enter custom scene type..."
+                            className="mt-2"
+                          />
+                        )}
                       </div>
                     </div>
                   </MinimalAccordionContent>
@@ -1449,23 +1592,23 @@ export default function StudioPage({ params }: StudioPageProps) {
                         <label className="mb-2 block text-xs font-medium text-muted-foreground">
                           Aspect Ratio
                         </label>
-                        <div className="flex gap-1.5">
-                          {ASPECT_OPTIONS.map((opt) => (
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {IMAGE_ASPECT_RATIO_OPTIONS.map((ratio) => (
                             <button
-                              key={opt.value}
+                              key={ratio}
                               onClick={() => {
-                                setSettings({ ...settings, aspectRatio: opt.value });
+                                setSettings({ ...settings, aspectRatio: ratio });
                                 saveSettings();
                               }}
                               className={cn(
-                                'flex flex-1 flex-col items-center rounded-lg border py-2 text-xs transition-colors',
-                                settings.aspectRatio === opt.value
+                                'flex flex-col items-center rounded-lg border py-2 text-xs transition-colors',
+                                settings.aspectRatio === ratio
                                   ? 'border-primary bg-primary/10 text-primary'
                                   : 'border-border hover:border-primary/50'
                               )}
                             >
-                              <span className="mb-0.5 text-base">{opt.icon}</span>
-                              <span>{opt.label}</span>
+                              <span className="mb-0.5 text-base">{ASPECT_RATIO_ICONS[ratio]}</span>
+                              <span>{formatAspectRatioDisplay(ratio)}</span>
                             </button>
                           ))}
                         </div>
@@ -1873,7 +2016,7 @@ export default function StudioPage({ params }: StudioPageProps) {
                   label={
                     (activeTab === 'images' ? generationStatus : videoStatus) === 'retrying'
                       ? (activeTab === 'images' ? generationError : videoError) ||
-                        'Encountered an issue, retrying...'
+                      'Encountered an issue, retrying...'
                       : (activeTab === 'images' ? effectiveImageProgress : videoProgress) > 0
                         ? activeTab === 'images'
                           ? 'AI is creating your visualizations'
@@ -1888,27 +2031,27 @@ export default function StudioPage({ params }: StudioPageProps) {
             {/* Error State */}
             {((activeTab === 'images' && generationStatus === 'failed' && generationError) ||
               (activeTab === 'video' && videoStatus === 'failed' && videoError)) && (
-              <div className="mb-6 flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-8 text-center">
-                <div className="rounded-full bg-destructive/10 p-4">
-                  <X className="h-8 w-8 text-destructive" />
+                <div className="mb-6 flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-8 text-center">
+                  <div className="rounded-full bg-destructive/10 p-4">
+                    <X className="h-8 w-8 text-destructive" />
+                  </div>
+                  <div>
+                    <h3 className="mb-2 text-lg font-semibold text-foreground">
+                      {activeTab === 'images' ? 'Generation Failed' : 'Video Generation Failed'}
+                    </h3>
+                    <p className="mb-4 max-w-md text-sm text-muted-foreground">
+                      {activeTab === 'images' ? generationError : videoError}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={activeTab === 'images' ? handleGenerate : handleGenerateVideo}
+                    variant="default"
+                  >
+                    <Wand2 className="mr-2 h-4 w-4" />
+                    Try Again
+                  </Button>
                 </div>
-                <div>
-                  <h3 className="mb-2 text-lg font-semibold text-foreground">
-                    {activeTab === 'images' ? 'Generation Failed' : 'Video Generation Failed'}
-                  </h3>
-                  <p className="mb-4 max-w-md text-sm text-muted-foreground">
-                    {activeTab === 'images' ? generationError : videoError}
-                  </p>
-                </div>
-                <Button
-                  onClick={activeTab === 'images' ? handleGenerate : handleGenerateVideo}
-                  variant="default"
-                >
-                  <Wand2 className="mr-2 h-4 w-4" />
-                  Try Again
-                </Button>
-              </div>
-            )}
+              )}
 
             {/* Assets Display */}
             {currentAssets.length === 0 && !isGenerating && !isGeneratingVideo ? (

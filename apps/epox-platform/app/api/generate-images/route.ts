@@ -8,6 +8,7 @@ import * as Sentry from '@sentry/nextjs';
 import { enqueueImageGeneration } from 'visualizer-ai';
 import { buildFullGenerationPrompt } from '@/lib/services/prompt-builder';
 import type { PromptTags } from '@/lib/types';
+import type { ImageAspectRatio } from 'visualizer-types';
 import { withGenerationSecurity, validateUrls } from '@/lib/security';
 import { logJobStarted, logJobFailed, logger } from '@/lib/logger';
 
@@ -32,7 +33,7 @@ interface GenerateImagesRequest {
   productImageUrls?: string[];
   inspirationImageUrls?: string[];
   settings?: {
-    aspectRatio?: string;
+    aspectRatio?: ImageAspectRatio;
     imageQuality?: '1k' | '2k' | '4k';
     variantsPerProduct?: number;
   };

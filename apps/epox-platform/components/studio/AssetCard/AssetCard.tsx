@@ -12,14 +12,14 @@ import {
   AssetCardWrapper,
   AssetCardHeader,
   AssetCardContent,
-  AssetCardFooter,
   ImageThumbnail,
   InspirationStack,
   ConfigBadges,
   StatusBadges,
   AssetActionBar,
   VideoOverlay,
-} from './shared';
+} from './AssetCardContent';
+import { AssetCardFooter } from './AssetCardFooter';
 
 interface AssetCardProps {
   asset: GeneratedAsset;
@@ -52,6 +52,7 @@ export function AssetCard({
   isRejected = false,
   className,
 }: AssetCardProps) {
+  console.log(asset)
   const [isPlaying, setIsPlaying] = useState(false);
   const isVideo = asset.assetType === 'video';
 
@@ -85,7 +86,7 @@ export function AssetCard({
       </AssetCardHeader>
 
       {/* Content */}
-      <AssetCardContent>
+      <AssetCardContent aspectRatio={asset.settings?.aspectRatio}>
         {isVideo ? (
           <div className="relative h-full w-full">
             <video

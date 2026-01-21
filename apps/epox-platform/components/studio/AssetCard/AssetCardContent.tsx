@@ -25,7 +25,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import type { InspirationImage } from 'visualizer-types';
+import type { InspirationImage, ImageAspectRatio } from 'visualizer-types';
+import { formatAspectRatioDisplay } from 'visualizer-types';
 
 // ============================================================================
 // Types
@@ -526,42 +527,42 @@ export function AssetCardHeader({ children, className }: AssetCardHeaderProps) {
 // Card Content
 // ============================================================================
 
+// Aspect ratio display format (uses "/" for Tailwind CSS classes)
+type AspectRatioDisplay = '1/1' | '2/3' | '3/2' | '3/4' | '4/3' | '9/16' | '16/9' | '21/9';
+
 interface AssetCardContentProps {
   children: React.ReactNode;
-  aspectRatio?: 'square' | '4/3' | '16/9' | '3/4';
+  /** Accepts both colon format (ImageAspectRatio) and slash format */
+  aspectRatio?: ImageAspectRatio | AspectRatioDisplay;
   className?: string;
 }
 
 export function AssetCardContent({
   children,
-  aspectRatio = 'square',
+  aspectRatio = '1/1',
   className,
 }: AssetCardContentProps) {
-  const aspectClasses = {
-    square: 'aspect-square',
-    '4/3': 'aspect-[4/3]',
-    '16/9': 'aspect-video',
+  // Normalize aspect ratio to slash format for Tailwind
+  console.log('Aspect Ratio:', aspectRatio);
+  const normalizedRatio = formatAspectRatioDisplay(aspectRatio);
+
+  const aspectClasses: Record<string, string> = {
+    '1/1': 'aspect-square',
+    '2/3': 'aspect-[2/3]',
+    '3/2': 'aspect-[3/2]',
     '3/4': 'aspect-[3/4]',
+    '4/3': 'aspect-[4/3]',
+    '9/16': 'aspect-[9/16]',
+    '16/9': 'aspect-video',
+    '21/9': 'aspect-[21/9]',
   };
 
+  const aspectClass = aspectClasses[normalizedRatio] || 'aspect-square';
+
   return (
-    <div className={cn('relative bg-black/5', aspectClasses[aspectRatio], className)}>
+    <div className={cn('relative bg-black/5', aspectClass, className)}>
       {children}
     </div>
   );
 }
 
-// ============================================================================
-// Card Footer
-// ============================================================================
-
-interface AssetCardFooterProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-export function AssetCardFooter({ children, className }: AssetCardFooterProps) {
-  return (
-    <div className={cn('border-t border-border bg-card px-2 py-2', className)}>{children}</div>
-  );
-}

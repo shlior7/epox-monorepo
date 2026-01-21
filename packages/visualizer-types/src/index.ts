@@ -14,6 +14,7 @@ export type {
   VideoGenerationSettings,
   VideoResolution,
   VideoAspectRatio,
+  ImageAspectRatio,
   PromptSettings,
   PromptTags,
   AIModelConfig,
@@ -46,11 +47,13 @@ export {
   CAMERA_MOTION_OPTIONS,
   VIDEO_ASPECT_RATIO_OPTIONS,
   VIDEO_RESOLUTION_OPTIONS,
+  IMAGE_ASPECT_RATIO_OPTIONS,
   // New presets for studio settings
   STYLE_PRESETS,
   LIGHTING_PRESETS,
   // Utility functions
   normalizeImageQuality,
+  formatAspectRatioDisplay,
 } from './settings';
 
 // Message types
