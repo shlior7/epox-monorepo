@@ -8,6 +8,7 @@
  * - One listener connection subscribes to 'new_generation_job' channel
  * - Worker loops wait on a shared signal (resolved by listener)
  * - Fallback polling every 30s ensures no jobs are missed
+ * - Redis for distributed rate limiting across multiple workers
  */
 
 import { Pool } from '@neondatabase/serverless';
@@ -24,6 +25,7 @@ import {
 } from 'visualizer-db/schema';
 import { storage, storagePaths } from 'visualizer-storage';
 import { logger, logJobClaimed, logJobProgress, logJobSuccess, logJobFailed, logWorkerStarted, logWorkerStopped } from './logger';
+import { DistributedRateLimiter } from './rate-limiter';
 
 // ============================================================================
 // CONFIG
@@ -35,6 +37,7 @@ export interface WorkerConfig {
   fallbackPollIntervalMs: number;
   workerId: string;
   enableListenNotify: boolean; // Set to false for Neon free tier
+  redisUrl?: string; // Redis URL for distributed rate limiting
 }
 
 const DEFAULT_CONFIG: WorkerConfig = {
@@ -43,6 +46,7 @@ const DEFAULT_CONFIG: WorkerConfig = {
   fallbackPollIntervalMs: parseInt(process.env.FALLBACK_POLL_MS ?? '5000', 10), // 5s fallback (Neon free tier friendly)
   workerId: process.env.WORKER_ID ?? `worker_${process.pid}`,
   enableListenNotify: process.env.ENABLE_LISTEN_NOTIFY !== 'false', // Disable for Neon free tier
+  redisUrl: process.env.REDIS_URL, // Redis for distributed rate limiting
 };
 
 const VIDEO_POLL_INTERVAL_MS = 10000;
@@ -56,11 +60,10 @@ export class GenerationWorker {
   private isRunning = false;
   private stopPromise: Promise<void> | null = null;
   private activeJobs = 0;
-  private jobsThisMinute = 0;
-  private minuteStart = Date.now();
   private db = getDb();
   private jobs: GenerationJobRepository;
   private gemini = getGeminiService();
+  private rateLimiter: DistributedRateLimiter;
 
   // LISTEN/NOTIFY state
   private listenerPool: Pool | null = null;
@@ -70,6 +73,10 @@ export class GenerationWorker {
   constructor(config: Partial<WorkerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.jobs = new GenerationJobRepository(this.db);
+    this.rateLimiter = new DistributedRateLimiter({
+      redisUrl: this.config.redisUrl ?? '',
+      fallbackRpm: this.config.maxJobsPerMinute,
+    });
   }
 
   async start(): Promise<void> {
@@ -77,6 +84,10 @@ export class GenerationWorker {
 
     // Configure WebSocket before any database operations
     await configureWebSocket();
+
+    // Connect to Redis for distributed rate limiting
+    const redisConnected = await this.rateLimiter.connect();
+    const rateLimitMode = redisConnected ? 'Redis (distributed)' : 'In-memory (single worker)';
 
     const mode = this.config.enableListenNotify
       ? `LISTEN/NOTIFY with ${this.config.fallbackPollIntervalMs}ms fallback`
@@ -86,6 +97,7 @@ export class GenerationWorker {
       concurrency: this.config.concurrency,
       maxJobsPerMinute: this.config.maxJobsPerMinute,
       mode,
+      rateLimitMode,
     });
 
     // Start the LISTEN connection (if enabled)
@@ -123,6 +135,9 @@ export class GenerationWorker {
         await this.listenerPool.end();
         this.listenerPool = null;
       }
+
+      // Disconnect from Redis
+      await this.rateLimiter.disconnect();
 
       logWorkerStopped(this.config.workerId);
     })();
@@ -209,7 +224,8 @@ export class GenerationWorker {
     }
 
     while (this.isRunning) {
-      if (!this.canProcessJob()) {
+      // Check distributed rate limit before attempting to claim
+      if (!(await this.canProcessJob())) {
         await this.sleep(100);
         continue;
       }
@@ -222,8 +238,9 @@ export class GenerationWorker {
         continue;
       }
 
+      // Consume rate limit token after successful claim
+      await this.rateLimiter.consume();
       this.activeJobs++;
-      this.jobsThisMinute++;
 
       try {
         await this.processJob(job);
@@ -235,13 +252,12 @@ export class GenerationWorker {
     }
   }
 
-  private canProcessJob(): boolean {
-    const now = Date.now();
-    if (now - this.minuteStart >= 60_000) {
-      this.jobsThisMinute = 0;
-      this.minuteStart = now;
+  private async canProcessJob(): Promise<boolean> {
+    const { allowed, remaining, limit } = await this.rateLimiter.canProcess();
+    if (!allowed) {
+      logger.debug({ remaining, limit }, 'Rate limit reached, waiting...');
     }
-    return this.jobsThisMinute < this.config.maxJobsPerMinute;
+    return allowed;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents

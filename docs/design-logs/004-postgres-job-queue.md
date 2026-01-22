@@ -747,3 +747,365 @@ if (canRetry) {
 2. Switch API to enqueue to PostgreSQL
 3. Wait for Redis queue to drain
 4. Remove old infrastructure
+
+---
+
+## Implementation Results
+
+### Completed Implementation (2025)
+
+The PostgreSQL job queue was successfully implemented with the following architecture:
+
+#### What Was Built
+
+1. **Database Schema** (`visualizer-db/src/schema/jobs.ts`)
+   - `generation_job` table with all planned fields
+   - Support for `image_generation`, `image_edit`, and `video_generation` job types
+   - Four indexes for efficient querying
+
+2. **Repository Pattern** (`visualizer-db/src/repositories/generation-jobs.ts`)
+   - Atomic `claimJob()` using `FOR UPDATE SKIP LOCKED`
+   - Full retry scheduling with exponential backoff
+   - CRUD operations with proper type mapping
+
+3. **Worker Service** (`services/generation-worker/`)
+   - LISTEN/NOTIFY for instant job pickup
+   - Fallback polling for reliability
+   - Graceful shutdown handling
+   - Better Stack + Sentry logging
+
+4. **Video Generation Support**
+   - Two-phase async model (start → poll)
+   - `operationName` preserved in payload
+   - Special retry logic that doesn't clear video operation state
+
+#### Deviations from Original Design
+
+| Planned | Actual | Reason |
+|---------|--------|--------|
+| `batch_generation` job type | Removed | Not needed - use multiple `image_generation` jobs |
+| `POLL_INTERVAL_MS` config | Changed to `FALLBACK_POLL_MS` | LISTEN/NOTIFY is primary; polling is fallback |
+| Static `idx_generation_job_claimable` partial index | Regular composite index | Drizzle ORM doesn't support partial index WHERE clause well |
+| Redis for rate limiting | In-memory only | Single worker instance doesn't need distributed rate limiting |
+
+---
+
+## Production Analysis
+
+### Current Architecture Strengths
+
+1. **Zero-polling with LISTEN/NOTIFY**: Jobs picked up instantly (~10ms) vs polling delay
+2. **Atomic claiming**: `FOR UPDATE SKIP LOCKED` prevents race conditions with zero external locks
+3. **Cost effective**: ~$5/mo Railway vs $20-50/mo Redis + Cloud Run
+4. **Rich queryability**: Can filter by client, flow, status, priority with standard SQL
+5. **ACID guarantees**: Job state is always consistent
+
+### Current Limitations
+
+#### 1. Stale Lock Problem
+**Issue**: If worker crashes mid-job, `locked_by`/`locked_at` remain set indefinitely.
+
+**Current mitigation**: Railway's `restartPolicyType: ON_FAILURE` eventually restarts, but orphaned jobs stay locked.
+
+**Production necessity**: Add stale lock cleanup:
+```sql
+-- Jobs locked for >15 minutes are considered abandoned
+UPDATE generation_job
+SET status = 'pending', locked_by = NULL, locked_at = NULL
+WHERE status = 'processing'
+  AND locked_at < NOW() - INTERVAL '15 minutes';
+```
+
+#### 2. No Dead Letter Queue
+**Issue**: Jobs that fail `maxAttempts` times are marked `failed` but never alerted on.
+
+**Production necessity**:
+- Sentry alerts for failed jobs (partially implemented)
+- Consider: Separate `dead_letter_job` table for manual review
+
+#### 3. Single Region Deployment
+**Issue**: Worker runs in `us-west2` only; Neon may be in different region.
+
+**Impact**: ~50-100ms added latency per DB call if cross-region.
+
+**Recommendation**: Co-locate worker with Neon region (check Neon dashboard).
+
+#### 4. No Job Deduplication
+**Issue**: Nothing prevents enqueueing duplicate jobs (same payload).
+
+**Mitigation**: Client-side dedup before enqueue, or add hash column:
+```sql
+payload_hash TEXT GENERATED ALWAYS AS (md5(payload::text)) STORED,
+UNIQUE (client_id, payload_hash, status) WHERE status = 'pending'
+```
+
+#### 5. No Queue Depth Monitoring
+**Issue**: No alerts when queue backs up.
+
+**Production necessity**: Add monitoring for `pending` count threshold.
+
+---
+
+## Optimization Recommendations
+
+### High Priority (Production Necessities)
+
+#### 1. Stale Lock Cleanup Cron
+Add to worker startup or as separate Railway cron:
+```typescript
+async function cleanupStaleLocks(db: DrizzleClient): Promise<number> {
+  const result = await db.execute(sql`
+    UPDATE generation_job
+    SET status = 'pending', locked_by = NULL, locked_at = NULL,
+        error = 'Lock expired - worker likely crashed'
+    WHERE status = 'processing'
+      AND locked_at < NOW() - INTERVAL '15 minutes'
+    RETURNING id
+  `);
+  return result.rows.length;
+}
+
+// Call on startup and every 5 minutes
+setInterval(() => cleanupStaleLocks(db), 5 * 60 * 1000);
+```
+
+#### 2. Queue Depth Alerting
+Add to health endpoint or monitoring:
+```typescript
+const stats = await jobs.getStats();
+if (stats.pending > 100) {
+  logger.warn({ queueDepth: stats.pending }, 'Queue depth exceeds threshold');
+  // Send to Sentry/PagerDuty
+}
+```
+
+#### 3. Failed Job Alerts
+Already logging to Sentry, but add explicit alert:
+```typescript
+// In handleJobError when canRetry === false
+Sentry.captureMessage(`Job permanently failed: ${job.id}`, {
+  level: 'error',
+  tags: { jobType: job.type, clientId: job.clientId },
+  extra: { attempts: job.attempts, error: errorMsg }
+});
+```
+
+### Medium Priority (Performance)
+
+#### 4. Batch Progress Updates
+Current: One UPDATE per progress tick (0→10→20→...→90)
+Optimization: Only update every 25% to reduce DB writes:
+```typescript
+const shouldUpdate = progress % 25 === 0 || progress === 100;
+if (shouldUpdate) {
+  await this.jobs.updateProgress(job.id, progress);
+}
+```
+
+#### 5. Connection Pooling Tuning
+Current: Default pool size for Neon serverless.
+Recommendation: Tune based on concurrency:
+```typescript
+// In worker config
+const poolSize = Math.min(this.config.concurrency + 2, 20);
+```
+
+#### 6. Partial Index for Claimable Jobs
+Migrate to raw SQL migration for true partial index:
+```sql
+DROP INDEX IF EXISTS idx_generation_job_claimable;
+CREATE INDEX idx_generation_job_claimable
+ON generation_job(priority, created_at)
+WHERE status = 'pending' AND scheduled_for <= NOW();
+```
+
+### Low Priority (Nice to Have)
+
+#### 7. Job Metrics Dashboard
+Expose Prometheus-compatible metrics:
+```typescript
+// /metrics endpoint
+generation_jobs_total{status="completed"} 1234
+generation_jobs_total{status="failed"} 12
+generation_jobs_processing_seconds_bucket{le="30"} 1100
+generation_jobs_queue_depth 5
+```
+
+#### 8. Priority Queue Tuning
+Current: Single priority level (100 default).
+Enhancement: Use priority for:
+- Paid clients: priority = 50
+- Free tier: priority = 100
+- Retries: priority = original + (attempts * 10)
+
+---
+
+## Scaling Guidelines
+
+### Current Capacity
+- **1 worker, 5 concurrency**: ~60 jobs/minute (Gemini rate limit)
+- **Queue throughput**: PostgreSQL handles 1000+ claims/second easily
+
+### Horizontal Scaling
+```
+Workers × Concurrency ≤ Gemini RPM limit
+```
+
+| Target RPM | Workers | Concurrency/Worker | Config |
+|------------|---------|-------------------|--------|
+| 60 | 1 | 5 | Current |
+| 200 | 2 | 10 | Scale tier |
+| 1000 | 4 | 25 | Enterprise |
+
+### Vertical Scaling
+Railway Hobby → Pro unlocks:
+- More memory (important for video processing)
+- Better CPU burst
+- Multiple replicas in same service
+
+---
+
+## Monitoring Checklist
+
+### Required Alerts
+- [ ] Queue depth > 100 for > 5 minutes
+- [ ] Failed jobs > 10 in 1 hour
+- [ ] Worker health check fails
+- [ ] Processing time p99 > 2 minutes
+
+### Dashboard Metrics
+- [ ] Jobs completed/failed per hour
+- [ ] Average processing time by job type
+- [ ] Queue depth over time
+- [ ] Retry rate (attempts > 1)
+
+### Log Queries (Better Stack)
+```
+# Failed jobs
+level:error jobId:* willRetry:false
+
+# Slow jobs (>60s)
+job_success durationMs:>60000
+
+# High retry jobs
+job_claimed attempt:>2
+```
+
+---
+
+## Security Considerations
+
+1. **Client isolation**: Jobs filtered by `clientId` in all queries ✓
+2. **No credential exposure**: API keys in env vars only ✓
+3. **Input validation**: Payload validated at API layer ✓
+4. **Rate limiting**: Per-worker rate limit prevents abuse ✓
+
+### Not Implemented (consider for enterprise)
+- Per-client rate limiting (currently global)
+- Job payload encryption at rest
+- Audit log for job state changes
+
+---
+
+## Auto-Scaling Architecture (v2)
+
+### Overview
+
+Added auto-scaling worker pool with Redis coordination:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        Auto-Scaling Generation System                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────────────────────┐  │
+│  │   Vercel     │─────▶│  PostgreSQL  │◀─────│     Autoscaler          │  │
+│  │   (API)      │      │   (Neon)     │      │  (Railway - always on)  │  │
+│  └──────────────┘      │              │      │                         │  │
+│                        │ generation_  │      │  • Monitors queue depth │  │
+│                        │ job table    │      │  • Scales workers 0→N   │  │
+│                        └──────────────┘      │  • Calls Railway API    │  │
+│                              ▲               └───────────┬──────────────┘  │
+│                              │                           │                 │
+│                              │                    Scale up/down            │
+│                              │                           │                 │
+│                        ┌─────┴─────┐                     ▼                 │
+│                        │   Redis   │      ┌──────────────────────────────┐ │
+│                        │ (Railway) │◀────▶│      Worker Pool (0-N)       │ │
+│                        │           │      │  ┌────────┐ ┌────────┐      │ │
+│                        │ • Rate    │      │  │Worker 1│ │Worker 2│ ...  │ │
+│                        │   Limit   │      │  └────────┘ └────────┘      │ │
+│                        │ • Config  │      │                              │ │
+│                        └───────────┘      │  • Claim jobs from PG       │ │
+│                                           │  • Check rate limit (Redis) │ │
+│                                           │  • Process with Gemini      │ │
+│                                           └──────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Scaling Logic
+
+| Queue Depth | Desired Workers | Reasoning |
+|-------------|-----------------|-----------|
+| 0 jobs | 0 workers | No work, save money |
+| 1-10 jobs | 1 worker | Light load |
+| 11-30 jobs | 2 workers | Moderate load |
+| 31-60 jobs | 3 workers | Heavy load |
+| 61-100 jobs | 4 workers | Very heavy |
+| 100+ jobs | 5 workers (max) | Cap to respect rate limit |
+
+**Cooldowns:**
+- Scale up: 30 seconds between scaling actions
+- Scale down: 2 minutes (prevent thrashing)
+
+### Redis Keys
+
+| Key | Purpose |
+|-----|---------|
+| `worker:rpm:<window>` | Current minute's request count |
+| `worker:config:rpm_limit` | Global RPM limit (60) |
+| `worker:config:per_worker_rpm` | Per-worker allocation (60/N) |
+| `worker:config:max_workers` | Maximum worker count |
+| `worker:count` | Current worker count |
+| `worker:last_scale_up` | Timestamp of last scale up |
+| `worker:last_scale_down` | Timestamp of last scale down |
+
+### Cost Estimate
+
+| Component | Always On | Monthly Cost |
+|-----------|-----------|--------------|
+| Autoscaler | Yes | ~$0.50-1.00 |
+| Redis | Yes | ~$1.00-1.50 |
+| Workers (idle) | No | $0.00 |
+| Workers (per job burst) | Variable | ~$0.001-0.03 per burst |
+
+**Total fixed cost:** ~$2.50/mo
+**Variable cost:** Depends on job volume
+
+### New Services
+
+1. **`services/worker-autoscaler/`** - Monitors queue, scales workers via Railway API
+2. **`services/generation-worker/src/rate-limiter.ts`** - Distributed rate limiting with Redis
+
+### Environment Variables (Autoscaler)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `RAILWAY_API_TOKEN` | Yes | Railway API token for scaling |
+| `RAILWAY_PROJECT_ID` | Yes | Railway project ID |
+| `RAILWAY_ENVIRONMENT_ID` | Yes | Railway environment ID |
+| `RAILWAY_WORKER_SERVICE_ID` | Yes | Worker service ID to scale |
+| `DATABASE_URL` | Yes | PostgreSQL connection |
+| `REDIS_URL` | Yes | Redis connection |
+| `MAX_WORKERS` | No | Maximum workers (default: 5) |
+| `MIN_WORKERS` | No | Minimum workers (default: 0) |
+| `GLOBAL_RPM_LIMIT` | No | Total RPM limit (default: 60) |
+
+### Environment Variables (Worker - Updated)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `REDIS_URL` | No | Redis for distributed rate limiting |
+| (all existing vars) | | |
+
+When `REDIS_URL` is set, workers use distributed rate limiting. Otherwise falls back to in-memory (single worker only).

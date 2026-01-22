@@ -15,6 +15,7 @@
     "@neondatabase/serverless": "^0.10.4",
     "@sentry/node": "^10.32.1",
     "drizzle-orm": "^0.38.3",
+    "ioredis": "^5.3.2",
     "pino": "^9.6.0",
     "visualizer-ai": "1.0.0",
     "visualizer-db": "1.0.0",
