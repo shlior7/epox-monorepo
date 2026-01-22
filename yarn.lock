@@ -4174,7 +4174,7 @@ __metadata:
     "@neondatabase/serverless": "npm:^0.10.4"
     "@types/node": "npm:^24.1.0"
     ioredis: "npm:^5.3.2"
-    tsx: "npm:^4.7.0"
+    tsx: "npm:^4.21.0"
     typescript: "npm:^5.7.2"
   languageName: unknown
   linkType: soft
@@ -14993,7 +14993,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tsx@npm:^4.21.0, tsx@npm:^4.7.0":
+"tsx@npm:^4.21.0":
   version: 4.21.0
   resolution: "tsx@npm:4.21.0"
   dependencies:
