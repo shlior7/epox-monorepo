@@ -136,6 +136,54 @@ export REDIS_URL=...
 yarn dev
 ```
 
+## Testing
+
+Run the integration tests to validate autoscaling decisions and rate limiting:
+
+```bash
+# Run all tests (starts Docker, runs tests, stops Docker)
+yarn test
+
+# Or run steps manually:
+yarn test:up     # Start Redis + PostgreSQL containers
+yarn test:run    # Run test suite
+yarn test:down   # Stop and cleanup containers
+```
+
+### Test Scenarios
+
+The test harness validates:
+
+1. **Autoscaling decisions** - Correct worker count for 0, 1, 10, 50, 100, 500, 1000 jobs
+2. **Rate limit distribution** - Per-worker RPM calculated correctly (60 RPM / N workers)
+3. **Rate limit enforcement** - Requests blocked when limit reached
+4. **Dynamic RPM** - Different RPM configurations (30, 60, 120) enforced correctly
+5. **Scale up/down sequence** - Realistic job flow from empty → burst → completion
+
+### Test Output
+
+```
+🧪 Starting Worker Autoscaler Integration Tests
+
+📊 Test 1: Autoscaling decisions for various job counts
+     0 jobs → 0 workers ✅
+     1 jobs → 1 workers ✅
+    50 jobs → 3 workers ✅
+   100 jobs → 4 workers ✅
+  1000 jobs → 5 workers ✅
+
+📊 Test 2: Rate limiting with different worker counts
+  1 workers → 60 RPM/worker ✅
+  5 workers → 12 RPM/worker ✅
+
+📋 TEST SUMMARY
+  Total:  25
+  Passed: 25 ✅
+  Failed: 0 ❌
+
+🎉 All tests passed!
+```
+
 ## Related Files
 
 - Worker: `services/generation-worker/`
