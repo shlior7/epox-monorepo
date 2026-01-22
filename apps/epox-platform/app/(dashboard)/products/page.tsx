@@ -4,6 +4,9 @@ import { getServerComponentAuthRequired } from '@/lib/server/auth';
 import { fetchProducts } from '@/lib/server/queries';
 import { ProductsClient } from './products-client';
 
+// Force dynamic rendering since auth reads headers
+export const dynamic = 'force-dynamic';
+
 export default async function ProductsPage() {
   const queryClient = getQueryClient();
 

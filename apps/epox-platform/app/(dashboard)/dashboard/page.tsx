@@ -4,6 +4,9 @@ import { getServerComponentAuthRequired } from '@/lib/server/auth';
 import { fetchDashboardData } from '@/lib/server/queries';
 import { DashboardClient } from './dashboard-client';
 
+// Force dynamic rendering since auth reads headers
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
   const queryClient = getQueryClient();
 

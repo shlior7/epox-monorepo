@@ -4,6 +4,9 @@ import { getServerComponentAuthRequired } from '@/lib/server/auth';
 import { fetchCollectionDetail, fetchProducts } from '@/lib/server/queries';
 import { CollectionDetailClient } from './collection-detail-client';
 
+// Force dynamic rendering since auth reads headers
+export const dynamic = 'force-dynamic';
+
 interface CollectionDetailPageProps {
   params: Promise<{ id: string }>;
 }

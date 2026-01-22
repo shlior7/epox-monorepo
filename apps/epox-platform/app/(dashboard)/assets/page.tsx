@@ -4,6 +4,9 @@ import { getServerComponentAuthRequired } from '@/lib/server/auth';
 import { fetchAssets, fetchProducts, fetchCollections } from '@/lib/server/queries';
 import { AssetsClient } from './assets-client';
 
+// Force dynamic rendering since auth reads headers
+export const dynamic = 'force-dynamic';
+
 export default async function AssetsPage() {
   const queryClient = getQueryClient();
 

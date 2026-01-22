@@ -4,6 +4,9 @@ import { getServerComponentAuthRequired } from '@/lib/server/auth';
 import { fetchCollections } from '@/lib/server/queries';
 import { CollectionsClient } from './collections-client';
 
+// Force dynamic rendering since auth reads headers
+export const dynamic = 'force-dynamic';
+
 export default async function CollectionsPage() {
   const queryClient = getQueryClient();
 

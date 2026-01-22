@@ -4,6 +4,9 @@ import { getServerComponentAuthRequired } from '@/lib/server/auth';
 import { fetchProductDetail } from '@/lib/server/queries';
 import { ProductDetailClient } from './product-detail-client';
 
+// Force dynamic rendering since auth reads headers
+export const dynamic = 'force-dynamic';
+
 interface ProductDetailPageProps {
   params: Promise<{ id: string }>;
 }
