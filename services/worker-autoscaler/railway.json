@@ -1,8 +1,9 @@
 {
-  "$schema": "https://railway.app/railway.schema.json",
+  "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "corepack enable && yarn install --immutable && yarn build"
+    "buildCommand": "yarn build",
+    "watchPatterns": ["/services/worker-autoscaler/**", "yarn.lock"]
   },
   "deploy": {
     "runtime": "V2",

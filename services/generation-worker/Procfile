@@ -1,2 +1,2 @@
-worker: yarn workspace @repo/generation-worker start
+worker: yarn start
 

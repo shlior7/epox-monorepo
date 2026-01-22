@@ -4171,10 +4171,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@repo/worker-autoscaler@workspace:services/worker-autoscaler"
   dependencies:
-    "@types/node": "npm:^20.10.0"
+    "@neondatabase/serverless": "npm:^0.10.4"
+    "@types/node": "npm:^24.1.0"
     ioredis: "npm:^5.3.2"
     tsx: "npm:^4.7.0"
-    typescript: "npm:^5.3.0"
+    typescript: "npm:^5.7.2"
   languageName: unknown
   linkType: soft
 
@@ -15190,7 +15191,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.3.0, typescript@npm:^5.7.2":
+"typescript@npm:^5.7.2":
   version: 5.9.3
   resolution: "typescript@npm:5.9.3"
   bin:
@@ -15200,7 +15201,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^5.3.0#optional!builtin<compat/typescript>, typescript@patch:typescript@npm%3A^5.7.2#optional!builtin<compat/typescript>":
+"typescript@patch:typescript@npm%3A^5.7.2#optional!builtin<compat/typescript>":
   version: 5.9.3
   resolution: "typescript@patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"
   bin:

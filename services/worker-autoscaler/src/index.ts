@@ -94,7 +94,7 @@ process.on('SIGINT', async () => {
 });
 
 // Start autoscaler
-autoscaler.start().catch((err) => {
+autoscaler.start().catch((err: unknown) => {
   console.error('❌ Autoscaler failed to start:', err);
   process.exit(1);
 });
