@@ -10,6 +10,9 @@ import { withSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security
 import { internalServerErrorResponse } from '@/lib/security/error-handling';
 import type { FlowGenerationSettings } from 'visualizer-types';
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const GET = withSecurity(async (_request, context, routeContext) => {
   const { params } = routeContext;
   const clientId = context.clientId;

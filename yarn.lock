@@ -4081,7 +4081,6 @@ __metadata:
   resolution: "@repo/epox-platform@workspace:apps/epox-platform"
   dependencies:
     "@hookform/resolvers": "npm:^3.3.2"
-    "@logtail/pino": "npm:^0.5.0"
     "@playwright/test": "npm:^1.57.0"
     "@radix-ui/react-accordion": "npm:^1.2.12"
     "@radix-ui/react-avatar": "npm:^1.1.0"

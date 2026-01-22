@@ -9,6 +9,9 @@ import { db } from '@/lib/services/db';
 import { withSecurity } from '@/lib/security/middleware';
 
 // Revalidate dashboard data every 30 seconds
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const revalidate = 30;
 
 export const GET = withSecurity(async (request, context) => {

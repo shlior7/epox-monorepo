@@ -27,6 +27,9 @@ interface EnhanceVideoPromptResponse {
 
 // ===== MAIN HANDLER =====
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const POST = withSecurity(
   async (request): Promise<NextResponse<EnhanceVideoPromptResponse>> => {
     const body: EnhanceVideoPromptRequest = await request.json();

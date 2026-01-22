@@ -52,6 +52,9 @@ interface UpdateSettingsRequest {
   selectedBaseImages?: Record<string, string>;
 }
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const PATCH = withSecurity(async (request, context, { params }) => {
   const clientId = context.clientId;
   if (!clientId) {

@@ -8,6 +8,9 @@ import { getGeminiService, RateLimitError } from 'visualizer-ai';
 import type { EditImageRequest, EditImageResponse } from 'visualizer-ai';
 import { withSecurity, validateImageUrl } from '@/lib/security';
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const POST = withSecurity(
   async (
     request

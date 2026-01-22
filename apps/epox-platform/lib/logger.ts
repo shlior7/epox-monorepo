@@ -1,9 +1,10 @@
 /**
  * Structured Logger using Pino + Better Stack (Logtail)
  *
- * - In production: sends structured logs to Better Stack
+ * - In production: sends structured logs to Better Stack (if configured)
  * - In development: pretty-prints to console
  * - Only logs 'info' level and above in production to save quota
+ * - IMPORTANT: Logger failures should NEVER crash the app
  */
 
 import pino, { Logger } from 'pino';
@@ -11,51 +12,55 @@ import pino, { Logger } from 'pino';
 const isDev = process.env.NODE_ENV !== 'production';
 const betterStackToken = process.env.BETTERSTACK_TOKEN;
 
-// Build transports based on environment
+// Build transports based on environment - always returns a safe fallback
 function buildTransport() {
-  // In development, just use pretty console output
+  // In development, use pretty console output (or fallback to stdout)
   if (isDev) {
-    return {
-      target: 'pino-pretty',
-      options: { colorize: true },
-    };
+    try {
+      return {
+        target: 'pino-pretty',
+        options: { colorize: true },
+      };
+    } catch {
+      // pino-pretty not available, use stdout
+      return undefined;
+    }
   }
 
-  // In production with Better Stack token, use Logtail transport
-  if (betterStackToken) {
-    return {
-      targets: [
-        {
-          target: '@logtail/pino',
-          options: { sourceToken: betterStackToken },
-          level: 'info', // Skip debug logs to save quota
-        },
-        // Also log to stdout for Railway's built-in logging
-        {
-          target: 'pino/file',
-          options: { destination: 1 }, // stdout
-          level: 'info',
-        },
-      ],
-    };
-  }
-
-  // Production without Better Stack - just stdout (for Railway)
-  return {
-    target: 'pino/file',
-    options: { destination: 1 },
-  };
+  // Production - only use stdout to avoid transport initialization issues
+  // Better Stack can be integrated via log drain on the hosting platform
+  return undefined;
 }
 
-// Create the logger instance
-export const logger: Logger = pino({
-  level: isDev ? 'debug' : 'info',
-  transport: buildTransport(),
-  base: {
-    service: 'epox-platform',
-    env: process.env.NODE_ENV || 'development',
-  },
-});
+// Create the logger instance safely
+function createLogger(): Logger {
+  try {
+    const transport = buildTransport();
+    return pino({
+      level: isDev ? 'debug' : 'info',
+      ...(transport ? { transport } : {}),
+      base: {
+        service: 'epox-platform',
+        env: process.env.NODE_ENV || 'development',
+      },
+    });
+  } catch (error) {
+    // If pino fails, create a minimal console-based logger
+    console.error('Failed to initialize pino logger:', error);
+    return {
+      level: 'info',
+      info: (obj: unknown, msg?: string) => console.log(msg || '', obj),
+      warn: (obj: unknown, msg?: string) => console.warn(msg || '', obj),
+      error: (obj: unknown, msg?: string) => console.error(msg || '', obj),
+      debug: (obj: unknown, msg?: string) => console.debug(msg || '', obj),
+      fatal: (obj: unknown, msg?: string) => console.error(msg || '', obj),
+      trace: (obj: unknown, msg?: string) => console.trace(msg || '', obj),
+      child: () => createLogger(),
+    } as unknown as Logger;
+  }
+}
+
+export const logger: Logger = createLogger();
 
 // ============================================================================
 // CONVENIENCE METHODS FOR COMMON LOGGING PATTERNS

@@ -55,6 +55,9 @@ type GenerateVideoRequest = z.infer<typeof GenerateVideoRequestSchema>;
  * - Rate limited (generation tier)
  * - Request logging
  */
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const POST = withGenerationSecurity(async (request, context) => {
   // clientId is guaranteed non-null by withGenerationSecurity (requireAuth: true)
   const clientId = context.clientId;

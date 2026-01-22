@@ -12,6 +12,9 @@ import { getJobStatus } from 'visualizer-ai';
 import { withSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
 import { logger } from '@/lib/logger';
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const GET = withSecurity(async (request, context, { params }) => {
   const clientId = context.clientId;
   if (!clientId) {

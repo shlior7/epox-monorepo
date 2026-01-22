@@ -25,7 +25,6 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
-    "@logtail/pino": "^0.5.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-avatar": "^1.1.0",
     "@radix-ui/react-checkbox": "^1.1.0",

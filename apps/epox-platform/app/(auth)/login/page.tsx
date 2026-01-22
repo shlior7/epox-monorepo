@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Sparkles, Mail, Lock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,6 @@ import { toast } from 'sonner';
 import { authClient } from '@/lib/services/auth';
 
 export default function LoginPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
   const [isLoading, setIsLoading] = useState(false);
@@ -35,11 +34,8 @@ export default function LoginPage() {
       }
 
       toast.success('Welcome back!');
-      try {
-        router.push(callbackUrl);
-      } finally {
-        setIsLoading(false);
-      }
+      // Force a full navigation to ensure session cookies are picked up
+      window.location.href = callbackUrl;
     } catch (err) {
       console.error('Login error:', err);
       toast.error('An unexpected error occurred');

@@ -12,6 +12,9 @@ import type { FlowGenerationSettings } from 'visualizer-types';
 /**
  * Create a new studio session for a single product
  */
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const POST = withSecurity(async (request, context) => {
   const clientId = context.clientId;
   if (!clientId) {

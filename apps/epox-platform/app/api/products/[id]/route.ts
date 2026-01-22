@@ -10,6 +10,9 @@ import { NextResponse } from 'next/server';
 import { withSecurity } from '@/lib/security/middleware';
 import { verifyOwnership, forbiddenResponse } from '@/lib/security/auth';
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const GET = withSecurity(async (request, context, { params }) => {
   const clientId = context.clientId;
   if (!clientId) {

@@ -85,8 +85,8 @@ export default function SignupPage() {
 
       toast.success('Account created successfully!');
 
-      // Redirect to dashboard
-      router.push('/dashboard');
+      // Force a full navigation to ensure session cookies are picked up
+      window.location.href = '/dashboard';
     } catch (error) {
       console.error('Signup error:', error);
       toast.error('Failed to create account. Please try again.');

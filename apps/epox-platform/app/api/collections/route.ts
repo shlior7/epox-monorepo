@@ -8,6 +8,9 @@ import { db } from '@/lib/services/db';
 import { withSecurity } from '@/lib/security/middleware';
 import type { CollectionSessionStatus, FlowGenerationSettings } from 'visualizer-types';
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const GET = withSecurity(async (request, context) => {
   const clientId = context.clientId;
   if (!clientId) {

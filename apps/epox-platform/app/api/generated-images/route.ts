@@ -11,6 +11,9 @@ import { withSecurity } from '@/lib/security/middleware';
 import { verifyOwnership, forbiddenResponse } from '@/lib/security/auth';
 import type { AssetStatus, ApprovalStatus } from 'visualizer-types';
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const GET = withSecurity(async (request, context) => {
   const clientId = context.clientId;
   if (!clientId) {

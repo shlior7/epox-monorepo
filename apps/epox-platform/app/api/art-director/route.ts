@@ -202,6 +202,9 @@ function buildSceneNarrative(
 
 // ===== MAIN HANDLER =====
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const POST = withSecurity(async (request): Promise<NextResponse<ArtDirectorResponse>> => {
   const body: ArtDirectorRequest = await request.json();
 

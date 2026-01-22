@@ -8,6 +8,9 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { withSecurity } from '@/lib/security';
 import { getStoreService } from '@/lib/services/erp';
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const GET = withSecurity(async (request, context) => {
   const clientId = context.clientId;
   if (!clientId) {

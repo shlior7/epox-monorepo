@@ -9,6 +9,9 @@ import { getStoreService } from '@/lib/services/erp';
 
 const APP_NAME = process.env.SHOPIFY_APP_NAME ?? 'Epox Platform';
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const POST = withSecurity(async (request, context) => {
   const clientId = context.clientId;
   if (!clientId) {

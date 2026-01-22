@@ -60,6 +60,9 @@ interface AnalyzeResponse {
   };
 }
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const POST = withSecurity(async (request) => {
   const body: AnalyzeRequest = await request.json();
   const { products, productIds, productImageUrls, inspirationImageUrls, useAI = true } = body;

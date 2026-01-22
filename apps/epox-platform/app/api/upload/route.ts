@@ -5,6 +5,9 @@ import { getGeminiService } from 'visualizer-ai';
 import { withUploadSecurity } from '@/lib/security/middleware';
 import type { SubjectAnalysis, ProductAnalysis } from 'visualizer-types';
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const POST = withUploadSecurity(async (request, context) => {
   const clientId = context.clientId;
   if (!clientId) {

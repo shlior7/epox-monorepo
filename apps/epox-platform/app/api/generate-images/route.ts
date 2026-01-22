@@ -73,6 +73,9 @@ function normalizePromptTags(input?: FlexiblePromptTags): PromptTags {
   return tags;
 }
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const POST = withGenerationSecurity(async (request, context) => {
   const clientId = context.clientId;
   if (!clientId) {

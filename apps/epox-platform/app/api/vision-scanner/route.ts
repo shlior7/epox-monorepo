@@ -85,6 +85,9 @@ function generatePromptText(analysis: VisionAnalysisResult['json']): string {
   return parts.join(' ');
 }
 
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const POST = withSecurity(async (request): Promise<NextResponse<VisionScannerResponse>> => {
   try {
     const body: VisionScannerRequest = await request.json();

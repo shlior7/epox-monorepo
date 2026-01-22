@@ -11,6 +11,9 @@ import { withSecurity } from '@/lib/security/middleware';
 import type { ProductSource } from 'visualizer-types';
 
 // Revalidate product listings every 15 seconds
+
+// Force dynamic rendering since security middleware reads headers
+export const dynamic = 'force-dynamic';
 export const revalidate = 15;
 
 export const GET = withSecurity(async (request, context) => {
