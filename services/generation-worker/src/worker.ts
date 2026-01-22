@@ -12,7 +12,7 @@
 
 import { Pool } from '@neondatabase/serverless';
 import { getGeminiService } from 'visualizer-ai';
-import { getDb, configureWebSocket } from 'visualizer-db';
+import { db, getDb, configureWebSocket } from 'visualizer-db';
 import { GenerationJobRepository, type GenerationJob } from 'visualizer-db/repositories/generation-jobs';
 import {
   type ImageEditPayload,
@@ -481,10 +481,23 @@ export class GenerationWorker {
         : undefined;
 
     try {
+      // Try to update existing placeholder asset for this job
+      const existingAssetId = await db.generatedAssets.completePendingByJobId(job.id, {
+        assetUrl,
+        prompt,
+        settings,
+      });
+
+      if (existingAssetId) {
+        // Placeholder was updated - use existing asset ID for product links
+        return { id: existingAssetId, url: assetUrl };
+      }
+
+      // No placeholder - create new asset
       await this.db.insert(generatedAsset).values({
         id: assetId,
         clientId,
-        generationFlowId: flowId, // Use generationFlowId instead of legacy chatSessionId
+        generationFlowId: flowId,
         assetUrl,
         assetType: 'image',
         status: 'completed',

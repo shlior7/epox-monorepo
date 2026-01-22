@@ -4,6 +4,9 @@ import { withPublicSecurity } from '@/lib/security';
 
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
 
+// Revalidate search results every 5 minutes (Unsplash data doesn't change frequently)
+export const revalidate = 300;
+
 export const GET = withPublicSecurity(async (request, context) => {
   try {
     const { searchParams } = new URL(request.url);
@@ -17,7 +20,7 @@ export const GET = withPublicSecurity(async (request, context) => {
     }
 
     // Call the Unsplash API
-    const response = await fetch(
+    const fetchResponse = await fetch(
       `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&page=${page}&per_page=${perPage}&orientation=landscape`,
       {
         headers: {
@@ -26,16 +29,16 @@ export const GET = withPublicSecurity(async (request, context) => {
       }
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Unsplash API error:', response.status, errorText);
+    if (!fetchResponse.ok) {
+      const errorText = await fetchResponse.text();
+      console.error('Unsplash API error:', fetchResponse.status, errorText);
       return NextResponse.json(
         { error: 'Failed to fetch from Unsplash' },
-        { status: response.status }
+        { status: fetchResponse.status }
       );
     }
 
-    const data = await response.json();
+    const data = await fetchResponse.json();
 
     // Map Unsplash response to our format
     const results = data.results.map((photo: any) => ({
@@ -48,11 +51,16 @@ export const GET = withPublicSecurity(async (request, context) => {
       downloadUrl: photo.links.download_location,
     }));
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       results,
       total: data.total,
       total_pages: data.total_pages,
     });
+
+    // Cache Unsplash results for 5 minutes (public, shared across users)
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+
+    return response;
   } catch (error: any) {
     console.error('Failed to search Unsplash:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

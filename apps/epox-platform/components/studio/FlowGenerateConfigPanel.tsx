@@ -138,7 +138,14 @@ export function FlowGenerateConfigPanel({
                         : 'ring-transparent hover:ring-primary/50'
                     )}
                   >
-                    <Image src={img.url} alt="Base" fill className="object-cover" unoptimized />
+                    <Image
+                      src={img.url}
+                      alt="Base"
+                      fill
+                      sizes="80px"
+                      className="object-cover"
+                      unoptimized
+                    />
                     {img.isPrimary && (
                       <Badge
                         className="absolute bottom-1 left-1 px-1.5 py-0.5 text-2xs"

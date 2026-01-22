@@ -33,6 +33,7 @@ export function ProductSelectionStep({
 }: ProductSelectionStepProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [sceneTypeFilter, setSceneTypeFilter] = useState('all');
 
   // Fetch products with useQuery
   const {
@@ -52,7 +53,13 @@ export function ProductSelectionStep({
 
   const products = productsData?.products ?? [];
   const categories = productsData?.filters?.categories ?? [];
-  const filteredProducts = products;
+  const sceneTypes = productsData?.filters?.sceneTypes ?? [];
+
+  // Filter products by scene type (client-side since API doesn't support it)
+  const filteredProducts =
+    sceneTypeFilter === 'all'
+      ? products
+      : products.filter((p) => p.sceneTypes?.includes(sceneTypeFilter));
 
   const toggleProduct = (id: string) => {
     if (selectedIds.includes(id)) {
@@ -142,7 +149,7 @@ export function ProductSelectionStep({
             onSearch={setSearchQuery}
           />
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full sm:w-48">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -150,6 +157,19 @@ export function ProductSelectionStep({
               {categories.map((cat) => (
                 <SelectItem key={cat} value={cat}>
                   {cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={sceneTypeFilter} onValueChange={setSceneTypeFilter}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="Scene Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Scene Types</SelectItem>
+              {sceneTypes.map((sceneType) => (
+                <SelectItem key={sceneType} value={sceneType}>
+                  {sceneType}
                 </SelectItem>
               ))}
             </SelectContent>

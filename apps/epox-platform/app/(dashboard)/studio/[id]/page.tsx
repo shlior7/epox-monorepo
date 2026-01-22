@@ -25,7 +25,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Check,
+  ChevronRight,
   Eye,
+  FolderOpen,
   Grid3X3,
   LayoutList,
   Loader2,
@@ -200,7 +202,9 @@ export default function StudioPage({ params }: StudioPageProps) {
   const [sceneTypeInspirations, setSceneTypeInspirations] = useState<SceneTypeInspirationMap>({});
   const [stylePreset, setStylePreset] = useState<StylePreset | 'Custom'>('Modern Minimalist');
   const [customStylePreset, setCustomStylePreset] = useState('');
-  const [lightingPreset, setLightingPreset] = useState<LightingPreset | 'Custom'>('Studio Soft Light');
+  const [lightingPreset, setLightingPreset] = useState<LightingPreset | 'Custom'>(
+    'Studio Soft Light'
+  );
   const [customLightingPreset, setCustomLightingPreset] = useState('');
   const [sceneType, setSceneType] = useState<string>('');
   const [customSceneType, setCustomSceneType] = useState('');
@@ -576,7 +580,8 @@ export default function StudioPage({ params }: StudioPageProps) {
 
       // Resolve custom values
       const effectiveStylePreset = stylePreset === 'Custom' ? customStylePreset : stylePreset;
-      const effectiveLightingPreset = lightingPreset === 'Custom' ? customLightingPreset : lightingPreset;
+      const effectiveLightingPreset =
+        lightingPreset === 'Custom' ? customLightingPreset : lightingPreset;
       const effectiveSceneType = sceneType === 'Custom' ? customSceneType : sceneType;
 
       // Create settings object for comparison
@@ -1120,11 +1125,30 @@ export default function StudioPage({ params }: StudioPageProps) {
       {/* Header */}
       <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <Link href="/dashboard">
+          <Link
+            href={
+              flowData?.collectionSessionId
+                ? `/studio/collections/${flowData.collectionSessionId}`
+                : '/dashboard'
+            }
+          >
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
+          {/* Breadcrumb when flow belongs to a collection */}
+          {flowData?.collectionSessionId && flowData?.collectionName && (
+            <div className="flex items-center gap-1.5 text-sm">
+              <Link
+                href={`/studio/collections/${flowData.collectionSessionId}`}
+                className="flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                <span className="max-w-[120px] truncate">{flowData.collectionName}</span>
+              </Link>
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <div className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg bg-secondary">
               {primaryImageUrl ? (
@@ -1213,6 +1237,65 @@ export default function StudioPage({ params }: StudioPageProps) {
                 onValueChange={setExpandedSections}
                 defaultValue={['scene-style', 'output-settings']}
               >
+                {/* Collection Settings Section (when flow belongs to a collection) */}
+                {flowData?.collectionSessionId && flowData?.collectionSettings && (
+                  <MinimalAccordionItem value="collection-settings">
+                    <MinimalAccordionTrigger
+                      suffix={
+                        <Badge variant="outline" className="text-[10px]">
+                          Collection
+                        </Badge>
+                      }
+                    >
+                      Collection Settings
+                    </MinimalAccordionTrigger>
+                    <MinimalAccordionContent>
+                      <div className="space-y-3">
+                        <p className="text-[10px] text-muted-foreground">
+                          These settings come from the parent collection and apply to all products.
+                        </p>
+                        {flowData.collectionSettings.userPrompt && (
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                              Collection Prompt
+                            </label>
+                            <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+                              {flowData.collectionSettings.userPrompt}
+                            </p>
+                          </div>
+                        )}
+                        {flowData.collectionSettings.stylePreset && (
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                              Collection Style
+                            </label>
+                            <Badge variant="secondary">
+                              {flowData.collectionSettings.stylePreset}
+                            </Badge>
+                          </div>
+                        )}
+                        {flowData.collectionSettings.lightingPreset && (
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                              Collection Lighting
+                            </label>
+                            <Badge variant="secondary">
+                              {flowData.collectionSettings.lightingPreset}
+                            </Badge>
+                          </div>
+                        )}
+                        <Link
+                          href={`/studio/collections/${flowData.collectionSessionId}`}
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          Edit collection settings
+                          <ChevronRight className="h-3 w-3" />
+                        </Link>
+                      </div>
+                    </MinimalAccordionContent>
+                  </MinimalAccordionItem>
+                )}
+
                 {/* Section 1: Scene Style */}
                 <MinimalAccordionItem value="scene-style">
                   <MinimalAccordionTrigger
@@ -1375,9 +1458,19 @@ export default function StudioPage({ params }: StudioPageProps) {
                           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
                         >
                           <option value="">Auto (from analysis)</option>
-                          {(subjectAnalysis?.nativeSceneTypes && subjectAnalysis.nativeSceneTypes.length > 0
+                          {(subjectAnalysis?.nativeSceneTypes &&
+                          subjectAnalysis.nativeSceneTypes.length > 0
                             ? subjectAnalysis.nativeSceneTypes
-                            : ['Living Room', 'Bedroom', 'Office', 'Kitchen', 'Dining Room', 'Bathroom', 'Outdoor', 'Studio']
+                            : [
+                                'Living Room',
+                                'Bedroom',
+                                'Office',
+                                'Kitchen',
+                                'Dining Room',
+                                'Bathroom',
+                                'Outdoor',
+                                'Studio',
+                              ]
                           ).map((type) => (
                             <option key={type} value={type}>
                               {type}
@@ -1423,7 +1516,17 @@ export default function StudioPage({ params }: StudioPageProps) {
                           {currentProduct?.baseImages?.map((img: any) => (
                             <button
                               key={img.id}
-                              onClick={() => setSelectedBaseImageId(img.id)}
+                              onClick={async () => {
+                                setSelectedBaseImageId(img.id);
+                                // Persist to database
+                                try {
+                                  await apiClient.updateFlowBaseImages(studioId, {
+                                    [currentProduct.id]: img.url,
+                                  });
+                                } catch (error) {
+                                  console.error('Failed to save base image selection:', error);
+                                }
+                              }}
                               className={cn(
                                 'relative aspect-square h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all',
                                 selectedBaseImageId === img.id
@@ -2016,7 +2119,7 @@ export default function StudioPage({ params }: StudioPageProps) {
                   label={
                     (activeTab === 'images' ? generationStatus : videoStatus) === 'retrying'
                       ? (activeTab === 'images' ? generationError : videoError) ||
-                      'Encountered an issue, retrying...'
+                        'Encountered an issue, retrying...'
                       : (activeTab === 'images' ? effectiveImageProgress : videoProgress) > 0
                         ? activeTab === 'images'
                           ? 'AI is creating your visualizations'
@@ -2031,27 +2134,27 @@ export default function StudioPage({ params }: StudioPageProps) {
             {/* Error State */}
             {((activeTab === 'images' && generationStatus === 'failed' && generationError) ||
               (activeTab === 'video' && videoStatus === 'failed' && videoError)) && (
-                <div className="mb-6 flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-8 text-center">
-                  <div className="rounded-full bg-destructive/10 p-4">
-                    <X className="h-8 w-8 text-destructive" />
-                  </div>
-                  <div>
-                    <h3 className="mb-2 text-lg font-semibold text-foreground">
-                      {activeTab === 'images' ? 'Generation Failed' : 'Video Generation Failed'}
-                    </h3>
-                    <p className="mb-4 max-w-md text-sm text-muted-foreground">
-                      {activeTab === 'images' ? generationError : videoError}
-                    </p>
-                  </div>
-                  <Button
-                    onClick={activeTab === 'images' ? handleGenerate : handleGenerateVideo}
-                    variant="default"
-                  >
-                    <Wand2 className="mr-2 h-4 w-4" />
-                    Try Again
-                  </Button>
+              <div className="mb-6 flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-8 text-center">
+                <div className="rounded-full bg-destructive/10 p-4">
+                  <X className="h-8 w-8 text-destructive" />
                 </div>
-              )}
+                <div>
+                  <h3 className="mb-2 text-lg font-semibold text-foreground">
+                    {activeTab === 'images' ? 'Generation Failed' : 'Video Generation Failed'}
+                  </h3>
+                  <p className="mb-4 max-w-md text-sm text-muted-foreground">
+                    {activeTab === 'images' ? generationError : videoError}
+                  </p>
+                </div>
+                <Button
+                  onClick={activeTab === 'images' ? handleGenerate : handleGenerateVideo}
+                  variant="default"
+                >
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  Try Again
+                </Button>
+              </div>
+            )}
 
             {/* Assets Display */}
             {currentAssets.length === 0 && !isGenerating && !isGeneratingVideo ? (
@@ -2068,7 +2171,7 @@ export default function StudioPage({ params }: StudioPageProps) {
               </div>
             ) : viewMode === 'list' ? (
               // List View - Scrollable Asset Cards
-              <div className="mx-auto max-w-4xl space-y-6">
+              <div className="mx-auto max-w-5xl space-y-6">
                 {currentAssets.map((asset) => (
                   <div key={asset.id} id={`asset-${asset.id}`}>
                     <AssetCard

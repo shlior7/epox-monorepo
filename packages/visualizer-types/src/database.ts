@@ -84,11 +84,13 @@ export interface ProductImageCreate {
   r2KeyBase: string;
   r2KeyPreview?: string;
   sortOrder?: number;
+  isPrimary?: boolean;
 }
 
 export interface ProductImageUpdate {
   r2KeyPreview?: string;
   sortOrder?: number;
+  isPrimary?: boolean;
 }
 
 // ===== CHAT SESSION =====

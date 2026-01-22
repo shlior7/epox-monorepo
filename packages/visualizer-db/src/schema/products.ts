@@ -74,6 +74,7 @@ export const productImage = pgTable(
     r2KeyBase: text('r2_key_base').notNull(),
     r2KeyPreview: text('r2_key_preview'),
     sortOrder: integer('sort_order').notNull().default(0),
+    isPrimary: boolean('is_primary').notNull().default(false),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
@@ -81,6 +82,7 @@ export const productImage = pgTable(
   (table) => [
     index('product_image_product_id_idx').on(table.productId),
     index('product_image_sort_order_idx').on(table.productId, table.sortOrder),
+    index('product_image_primary_idx').on(table.productId, table.isPrimary),
   ]
 );
 

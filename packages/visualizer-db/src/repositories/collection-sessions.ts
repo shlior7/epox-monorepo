@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, ilike, sql, type SQL } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
 import { collectionSession, generationFlow, message } from '../schema/sessions';
+import { generatedAsset } from '../schema/generated-images';
 import type {
   CollectionSession,
   CollectionSessionCreate,
@@ -218,5 +219,88 @@ export class CollectionSessionRepository extends BaseRepository<CollectionSessio
       .where(eq(collectionSession.clientId, clientId));
 
     return result?.count ?? 0;
+  }
+
+  // ===== OPTIMIZED: LIST WITH ASSET STATS (single query for N+1 elimination) =====
+
+  async listWithAssetStats(
+    clientId: string,
+    options: CollectionSessionListOptions = {}
+  ): Promise<
+    Array<CollectionSession & { totalImages: number; completedCount: number; generatingCount: number; thumbnailUrl: string | null }>
+  > {
+
+    // Single query with JOINs and aggregation
+    const rows = await this.drizzle.execute(sql`
+      WITH collection_flows AS (
+        SELECT
+          cs.id as collection_id,
+          COALESCE(array_agg(gf.id) FILTER (WHERE gf.id IS NOT NULL), '{}') as flow_ids
+        FROM ${collectionSession} cs
+        LEFT JOIN ${generationFlow} gf ON gf.collection_session_id = cs.id
+        WHERE cs.client_id = ${clientId}
+          ${options.search ? sql`AND cs.name ILIKE ${`%${options.search}%`}` : sql``}
+          ${options.status && options.status !== 'all' ? sql`AND cs.status = ${options.status}` : sql``}
+        GROUP BY cs.id
+      ),
+      asset_stats AS (
+        SELECT
+          cf.collection_id,
+          COUNT(ga.id)::int as total_images,
+          COUNT(ga.id) FILTER (WHERE ga.status = 'completed')::int as completed_count,
+          COUNT(ga.id) FILTER (WHERE ga.status IN ('pending', 'generating'))::int as generating_count
+        FROM collection_flows cf
+        LEFT JOIN generated_asset ga ON ga.generation_flow_id = ANY(cf.flow_ids) AND ga.deleted_at IS NULL
+        GROUP BY cf.collection_id
+      ),
+      first_thumbnail AS (
+        SELECT DISTINCT ON (cf.collection_id)
+          cf.collection_id,
+          ga.asset_url as thumbnail_url
+        FROM collection_flows cf
+        INNER JOIN generated_asset ga ON ga.generation_flow_id = ANY(cf.flow_ids)
+          AND ga.deleted_at IS NULL
+          AND ga.status = 'completed'
+        ORDER BY cf.collection_id, ga.created_at DESC
+      )
+      SELECT
+        cs.*,
+        COALESCE(ast.total_images, 0) as total_images,
+        COALESCE(ast.completed_count, 0) as completed_count,
+        COALESCE(ast.generating_count, 0) as generating_count,
+        ft.thumbnail_url
+      FROM ${collectionSession} cs
+      LEFT JOIN asset_stats ast ON cs.id = ast.collection_id
+      LEFT JOIN first_thumbnail ft ON cs.id = ft.collection_id
+      WHERE cs.client_id = ${clientId}
+        ${options.search ? sql`AND cs.name ILIKE ${`%${options.search}%`}` : sql``}
+        ${options.status && options.status !== 'all' ? sql`AND cs.status = ${options.status}` : sql``}
+      ORDER BY ${
+        options.sort === 'name'
+          ? sql`cs.name ASC`
+          : options.sort === 'productCount'
+            ? sql`jsonb_array_length(cs.product_ids) DESC`
+            : sql`cs.updated_at DESC`
+      }
+      LIMIT ${options.limit ?? 100}
+      OFFSET ${options.offset ?? 0}
+    `);
+
+    return (rows.rows as any[]).map((row) => ({
+      id: row.id,
+      clientId: row.client_id,
+      name: row.name,
+      status: row.status as CollectionSessionStatus,
+      productIds: row.product_ids ?? [],
+      selectedBaseImages: row.selected_base_images ?? {},
+      settings: row.settings,
+      version: row.version,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      totalImages: row.total_images,
+      completedCount: row.completed_count,
+      generatingCount: row.generating_count,
+      thumbnailUrl: row.thumbnail_url,
+    }));
   }
 }

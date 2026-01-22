@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Settings2, Sparkles } from 'lucide-react';
+import { Settings2, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -26,6 +26,7 @@ import {
   ThumbnailStrip,
 } from './AssetCardContent';
 import { AssetCardFooter } from './AssetCardFooter';
+import type { ImageAspectRatio } from 'visualizer-types';
 
 interface Revision {
   id: string;
@@ -33,6 +34,7 @@ interface Revision {
   timestamp: Date;
   type: 'generated' | 'original' | 'edited';
   isVideo?: boolean;
+  aspectRatio?: ImageAspectRatio;
 }
 
 interface ProductAssetCardProps {
@@ -47,6 +49,7 @@ interface ProductAssetCardProps {
   configuration?: AssetConfiguration;
   isPinned?: boolean;
   isApproved?: boolean;
+  isGenerating?: boolean;
   onPin?: () => void;
   onApprove?: () => void;
   onReject?: () => void;
@@ -64,6 +67,7 @@ export function ProductAssetCard({
   configuration,
   isPinned = false,
   isApproved = false,
+  isGenerating = false,
   onPin,
   onApprove,
   onReject,
@@ -110,8 +114,28 @@ export function ProductAssetCard({
       </AssetCardHeader>
 
       {/* Content */}
-      <AssetCardContent aspectRatio="4/3">
-        {hasRevisions && currentRevision ? (
+      <AssetCardContent aspectRatio={currentRevision?.aspectRatio}>
+        {isGenerating ? (
+          // Generating state - show loader overlay with existing content behind
+          <div className="relative h-full w-full">
+            {hasRevisions && currentRevision && (
+              <Image
+                src={currentRevision.imageUrl}
+                alt={`${product.name} - Revision ${currentIndex + 1}`}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-contain opacity-30"
+                unoptimized
+              />
+            )}
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+              <div className="rounded-full bg-primary/10 p-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+              <p className="text-sm font-medium text-foreground">Generating...</p>
+            </div>
+          </div>
+        ) : hasRevisions && currentRevision ? (
           <>
             {currentRevision.isVideo ? (
               <video
@@ -126,6 +150,7 @@ export function ProductAssetCard({
                 src={currentRevision.imageUrl}
                 alt={`${product.name} - Revision ${currentIndex + 1}`}
                 fill
+                sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-contain"
                 unoptimized
               />

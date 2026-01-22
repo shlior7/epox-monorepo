@@ -161,7 +161,7 @@ export default function SettingsPage() {
         description="Manage your profile, security, and preferences"
       />
 
-      <div className="max-w-3xl space-y-6 p-8">
+      <div className="mx-auto max-w-3xl space-y-6 p-8">
         {/* Profile Settings */}
         <Card>
           <CardHeader>

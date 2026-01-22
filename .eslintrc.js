@@ -4,7 +4,14 @@ module.exports = {
   env: {
     node: true,
     browser: true,
-    es2021: true,
+    es2022: true,
+  },
+  languageOptions: {
+    parserOptions: {
+      projectService: {
+        allowDefaultProject: ['./drizzle.config.ts'],
+      },
+    },
   },
   extends: [
     'prettier',

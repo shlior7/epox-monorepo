@@ -2,8 +2,14 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    // Use threads for better isolation
-    pool: 'threads',
+    // Use forks for DB tests - each fork gets isolated process with own connection
+    // Threads cause connection pool issues with shared module state
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true, // Run all tests in single fork to share DB connection
+      },
+    },
 
     // Don't fail if no test files found
     passWithNoTests: true,
@@ -19,6 +25,11 @@ export default defineConfig({
     // Timeouts
     testTimeout: 30000, // 30s for DB operations
     hookTimeout: 60000, // 60s for setup/teardown
+
+    // Run tests sequentially to avoid DB connection issues
+    sequence: {
+      shuffle: false,
+    },
 
     // Coverage
     coverage: {

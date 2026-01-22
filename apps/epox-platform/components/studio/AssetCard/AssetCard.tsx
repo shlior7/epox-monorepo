@@ -52,7 +52,7 @@ export function AssetCard({
   isRejected = false,
   className,
 }: AssetCardProps) {
-  console.log(asset)
+  console.log(asset);
   const [isPlaying, setIsPlaying] = useState(false);
   const isVideo = asset.assetType === 'video';
 
@@ -106,6 +106,7 @@ export function AssetCard({
             src={asset.url}
             alt="Generated image"
             fill
+            sizes="(max-width: 768px) 100vw, 50vw"
             className="object-contain"
             unoptimized
           />

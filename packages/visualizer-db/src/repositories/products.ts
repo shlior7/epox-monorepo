@@ -229,6 +229,18 @@ export class ProductRepository extends BaseRepository<Product> {
     return new Map(rows.map((p) => [p.id, p.name]));
   }
 
+  // ===== GET BY IDS (batch fetch for N+1 elimination) =====
+
+  async getByIds(ids: string[]): Promise<Map<string, Product>> {
+    if (ids.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.drizzle.select().from(product).where(inArray(product.id, ids));
+
+    return new Map(rows.map((row) => [row.id, this.mapToEntity(row)]));
+  }
+
   // ===== COUNT =====
 
   async count(clientId: string): Promise<number> {

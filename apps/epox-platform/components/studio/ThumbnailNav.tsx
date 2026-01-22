@@ -37,7 +37,7 @@ export function ThumbnailNav({ items, onItemClick, activeId, className }: Thumbn
     <div
       ref={navRef}
       className={cn(
-        'scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border flex w-16 flex-col gap-2 overflow-y-auto py-2',
+        'scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border flex w-28 flex-col gap-2 overflow-y-auto py-2',
         className
       )}
     >
@@ -46,7 +46,7 @@ export function ThumbnailNav({ items, onItemClick, activeId, className }: Thumbn
           key={item.id}
           onClick={() => handleItemClick(item.id)}
           className={cn(
-            'group relative mx-auto aspect-square w-12 shrink-0 overflow-hidden rounded-lg border-2 transition-all',
+            'group relative mx-auto aspect-square w-22 shrink-0 overflow-hidden rounded-lg border-2 transition-all',
             activeId === item.id
               ? 'border-primary ring-2 ring-primary/30'
               : 'border-transparent hover:border-primary/50 hover:ring-2 hover:ring-primary/20'
@@ -57,6 +57,7 @@ export function ThumbnailNav({ items, onItemClick, activeId, className }: Thumbn
             src={item.thumbnailUrl}
             alt={item.label || `Thumbnail ${index + 1}`}
             fill
+            sizes="88px"
             className="object-cover"
             unoptimized
           />
@@ -143,6 +144,7 @@ export function ProductThumbnailNav({
                 src={item.thumbnailUrl}
                 alt={item.name}
                 fill
+                sizes="56px"
                 className="object-cover"
                 unoptimized
               />

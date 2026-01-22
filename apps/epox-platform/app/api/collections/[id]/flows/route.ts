@@ -4,14 +4,14 @@
  * POST /api/collections/:id/flows - Create flows for products in collection (with scene-matched settings)
  */
 
-import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { withSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
 import { internalServerErrorResponse } from '@/lib/security/error-handling';
-import type { FlowGenerationSettings, SceneTypeInspirationMap } from 'visualizer-types';
+import type { FlowGenerationSettings } from 'visualizer-types';
 
-export const GET = withSecurity(async (request, context, { params }) => {
+export const GET = withSecurity(async (_request, context, routeContext) => {
+  const { params } = routeContext;
   const clientId = context.clientId;
   if (!clientId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -19,13 +19,12 @@ export const GET = withSecurity(async (request, context, { params }) => {
   try {
     const { id: collectionId } = await params;
 
-    // Fetch collection to verify it exists
+    // Fetch collection to verify it exists and ownership
     const collection = await db.collectionSessions.getById(collectionId);
     if (!collection) {
       return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
     }
 
-    // Verify ownership
     if (
       !verifyOwnership({
         clientId,
@@ -37,86 +36,59 @@ export const GET = withSecurity(async (request, context, { params }) => {
       return forbiddenResponse();
     }
 
-    // Fetch generation flows for this collection
-    const flows = await db.generationFlows.listByCollectionSession(collectionId);
-
-    // Get all flow IDs to batch fetch generated assets
-    const flowIds = flows.map((f) => f.id);
-    const allGeneratedAssets =
-      flowIds.length > 0 ? await db.generatedAssets.listByGenerationFlowIds(flowIds) : [];
-
-    // Group assets by flow ID
-    const assetsByFlowId = new Map<string, typeof allGeneratedAssets>();
-    for (const asset of allGeneratedAssets) {
-      if (asset.generationFlowId) {
-        const existing = assetsByFlowId.get(asset.generationFlowId) || [];
-        existing.push(asset);
-        assetsByFlowId.set(asset.generationFlowId, existing);
-      }
-    }
-
-    // Map flows to include product info and generated images
-    const flowsWithProducts = await Promise.all(
-      flows.map(async (flow) => {
-        const productId = flow.productIds[0];
-        const product = productId ? await db.products.getById(productId) : null;
-        const images = productId ? await db.productImages.list(productId) : [];
-        const generatedAssets = (assetsByFlowId.get(flow.id) || []).filter(
-          (asset) => asset.assetType !== 'video'
-        );
-
-        // Determine flow status based on generated assets
-        let effectiveStatus = flow.status;
-        if (generatedAssets.some((a) => a.status === 'completed')) {
-          effectiveStatus = 'completed';
-        }
-
-        return {
-          id: flow.id,
-          productId,
-          productName: product?.name || 'Unknown Product',
-          productCategory: product?.category,
-          productSceneTypes: product?.sceneTypes,
-          status: effectiveStatus,
-          settings: flow.settings,
-          createdAt: flow.createdAt.toISOString(),
-          updatedAt: flow.updatedAt.toISOString(),
-          baseImages: images.map((img, idx) => ({
-            id: img.id,
-            url: `${process.env.R2_PUBLIC_URL || 'https://pub-xxx.r2.dev'}/${img.r2KeyBase}`,
-            isPrimary: idx === 0,
-          })),
-          // Include generated images/revisions
-          generatedImages: generatedAssets.map((asset) => ({
-            id: asset.id,
-            imageUrl: asset.assetUrl,
-            timestamp: asset.createdAt,
-            type: 'generated' as const,
-            status: asset.status,
-            approvalStatus: asset.approvalStatus,
-          })),
-        };
-      })
+    const r2PublicUrl = process.env.R2_PUBLIC_URL || 'https://pub-xxx.r2.dev';
+    const flowsWithDetails = await db.generationFlows.listByCollectionSessionWithDetails(
+      collectionId,
+      r2PublicUrl
     );
 
-    return NextResponse.json({
-      flows: flowsWithProducts,
-      total: flowsWithProducts.length,
+    // Map to API response format
+    const flows = flowsWithDetails.map((flow) => {
+      // Determine effective status based on generated assets
+      let effectiveStatus = flow.status;
+      if (flow.generatedAssets.some((a) => a.status === 'completed')) {
+        effectiveStatus = 'completed';
+      }
+
+      return {
+        id: flow.id,
+        productId: flow.productIds[0],
+        productName: flow.product?.name || 'Unknown Product',
+        productCategory: flow.product?.category,
+        productSceneTypes: flow.product?.sceneTypes,
+        status: effectiveStatus,
+        settings: flow.settings,
+        createdAt: flow.createdAt.toISOString(),
+        updatedAt: flow.updatedAt.toISOString(),
+        baseImages: flow.baseImages,
+        generatedImages: flow.generatedAssets.map((asset) => ({
+          id: asset.id,
+          imageUrl: asset.assetUrl,
+          timestamp: asset.createdAt,
+          type: 'generated' as const,
+          status: asset.status,
+          approvalStatus: asset.approvalStatus,
+          aspectRatio: asset.aspectRatio,
+          jobId: asset.jobId,
+        })),
+      };
     });
+
+    return NextResponse.json({ flows, total: flows.length });
   } catch (error) {
     console.error('❌ Failed to fetch collection flows:', error);
     return internalServerErrorResponse(error);
   }
 });
 
-export const POST = withSecurity(async (request, context, { params }) => {
+export const POST = withSecurity(async (_request, context, routeContext) => {
+  const { params } = routeContext;
   const clientId = context.clientId;
   if (!clientId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   try {
     const { id: collectionId } = await params;
-    const body = await request.json().catch(() => ({}));
 
     // Fetch collection
     const collection = await db.collectionSessions.getById(collectionId);
@@ -144,6 +116,13 @@ export const POST = withSecurity(async (request, context, { params }) => {
     const existingFlows = await db.generationFlows.listByCollectionSession(collectionId);
     const existingProductIds = new Set(existingFlows.flatMap((f) => f.productIds));
 
+    // Batch fetch all products that need new flows upfront
+    const productsNeedingFlows = collection.productIds.filter((id) => !existingProductIds.has(id));
+    const productsMap =
+      productsNeedingFlows.length > 0
+        ? await db.products.getByIds(productsNeedingFlows)
+        : new Map();
+
     // Create flows for products that don't have one
     const newFlows: Array<{ flowId: string; productId: string }> = [];
 
@@ -157,8 +136,8 @@ export const POST = withSecurity(async (request, context, { params }) => {
         continue;
       }
 
-      // Get product to determine its scene types
-      const product = await db.products.getById(productId);
+      // Get product from pre-fetched Map (O(1) lookup)
+      const product = productsMap.get(productId);
       const productSceneTypes = product?.sceneTypes || [];
 
       // Find matching inspiration from collection settings based on product's scene types

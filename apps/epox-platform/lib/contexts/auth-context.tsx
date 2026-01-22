@@ -122,11 +122,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
 // ===== Hook =====
 
+// Default value returned when context is not yet available (during SSR/navigation transitions)
+const defaultAuthValue: AuthContextValue = {
+  user: null,
+  isAuthenticated: false,
+  client: null,
+  clientId: null,
+  isLoading: true,
+  isLoadingUser: true,
+  isLoadingClient: true,
+  session: null,
+  signOut: async () => {},
+  setActiveOrganization: async () => {},
+  refetchOrganization: async () => {},
+};
+
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
 
+  // Return default loading state when context is not available
+  // This handles edge cases during Next.js App Router navigation transitions
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    return defaultAuthValue;
   }
 
   return context;

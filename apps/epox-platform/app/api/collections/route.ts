@@ -36,10 +36,10 @@ export const GET = withSecurity(async (request, context) => {
       status: statusFilter,
     };
 
-    // Execute count and list queries in parallel
-    const [total, collections] = await Promise.all([
+    // Execute count and optimized list with asset stats in parallel (N+1 elimination)
+    const [total, collectionsWithStats] = await Promise.all([
       db.collectionSessions.countWithFilters(clientId, filterOptions),
-      db.collectionSessions.listWithFilters(clientId, {
+      db.collectionSessions.listWithAssetStats(clientId, {
         ...filterOptions,
         sort,
         limit,
@@ -49,59 +49,32 @@ export const GET = withSecurity(async (request, context) => {
 
     const totalPages = Math.ceil(total / limit);
 
-    const collectionIds = collections.map((collection) => collection.id);
-    const flows = await db.generationFlows.listByCollectionSessionIds(collectionIds);
-    const flowIdsByCollection = new Map<string, string[]>();
-
-    for (const flow of flows) {
-      const collectionId = flow.collectionSessionId;
-      if (!collectionId) continue;
-      const existing = flowIdsByCollection.get(collectionId) ?? [];
-      existing.push(flow.id);
-      flowIdsByCollection.set(collectionId, existing);
-    }
-
-    const assetStatsByCollection = new Map<
-      string,
-      { totalImages: number; generatedCount: number; thumbnailUrl: string }
-    >();
-
-    await Promise.all(
-      collectionIds.map(async (collectionId) => {
-        const flowIds = flowIdsByCollection.get(collectionId) ?? [];
-        const [totalImages, generatedCount, firstAsset] = await Promise.all([
-          db.generatedAssets.countByGenerationFlowIds(clientId, flowIds),
-          db.generatedAssets.countByGenerationFlowIds(clientId, flowIds, 'completed'),
-          db.generatedAssets.getFirstByGenerationFlowIds(clientId, flowIds, 'completed'),
-        ]);
-
-        assetStatsByCollection.set(collectionId, {
-          totalImages,
-          generatedCount,
-          thumbnailUrl: firstAsset?.assetUrl ?? '',
-        });
-      })
-    );
-
-    // Map collections to frontend format
-    const mappedCollections = collections.map((c) => {
+    // Map collections to frontend format - stats already included
+    const mappedCollections = collectionsWithStats.map((c) => {
       const productIds = c.productIds as string[];
-      const assetStats = assetStatsByCollection.get(c.id) ?? {
-        totalImages: 0,
-        generatedCount: 0,
-        thumbnailUrl: '',
-      };
+
+      // Compute effective status based on actual asset state
+      let effectiveStatus: CollectionSessionStatus = c.status;
+      if (c.generatingCount > 0) {
+        effectiveStatus = 'generating';
+      } else if (c.totalImages > 0 && c.completedCount === c.totalImages) {
+        effectiveStatus = 'completed';
+      } else if (c.totalImages === 0 && c.status === 'generating') {
+        // No assets but marked as generating - reset to draft
+        effectiveStatus = 'draft';
+      }
+
       return {
         id: c.id,
         name: c.name,
-        status: c.status,
+        status: effectiveStatus,
         productCount: productIds.length,
         productIds,
-        generatedCount: assetStats.generatedCount,
-        totalImages: assetStats.totalImages,
+        generatedCount: c.completedCount,
+        totalImages: c.totalImages,
         createdAt: c.createdAt.toISOString(),
         updatedAt: c.updatedAt.toISOString(),
-        thumbnailUrl: assetStats.thumbnailUrl,
+        thumbnailUrl: c.thumbnailUrl ?? '',
       };
     });
 

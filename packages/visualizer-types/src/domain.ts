@@ -90,6 +90,7 @@ export interface ProductImage extends VersionedEntity {
   r2KeyBase: string;
   r2KeyPreview: string | null;
   sortOrder: number;
+  isPrimary: boolean;
 }
 
 // ===== CHAT SESSION (Single Product) =====
@@ -270,6 +271,30 @@ export interface CollectionSessionWithFlows extends CollectionSession {
 
 export interface GenerationFlowWithAssets extends GenerationFlow {
   generatedAssets: GeneratedAsset[];
+}
+
+/** Enriched flow with product details, images, and generated assets for collection studio */
+export interface GenerationFlowWithDetails extends GenerationFlow {
+  product: {
+    id: string;
+    name: string;
+    category: string | null;
+    sceneTypes: string[] | null;
+  } | null;
+  baseImages: Array<{
+    id: string;
+    url: string;
+    isPrimary: boolean;
+  }>;
+  generatedAssets: Array<{
+    id: string;
+    assetUrl: string;
+    status: AssetStatus;
+    approvalStatus: ApprovalStatus;
+    aspectRatio: string | null;
+    createdAt: Date;
+    jobId: string | null;
+  }>;
 }
 
 // ===== FLOW GENERATED IMAGE (for client-side history) =====

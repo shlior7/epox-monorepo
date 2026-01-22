@@ -69,9 +69,9 @@ export const generatedAsset = pgTable(
     deletedAt: timestamp('deleted_at', { mode: 'date' }),
   },
   (table) => [
-    index('generated_asset_client_id_idx').on(table.clientId),
-    index('generated_asset_generation_flow_id_idx').on(table.generationFlowId),
-    index('generated_asset_chat_session_id_idx').on(table.chatSessionId),
+    index('generated_asset_client_id_idx').on(table.clientId, table.createdAt),
+    index('generated_asset_generation_flow_id_idx').on(table.generationFlowId, table.createdAt),
+    index('generated_asset_chat_session_id_idx').on(table.chatSessionId, table.createdAt),
     index('generated_asset_created_at_idx').on(table.createdAt),
     index('generated_asset_job_id_idx').on(table.jobId),
     index('generated_asset_status_idx').on(table.status),

@@ -16,13 +16,10 @@ import {
   Loader2,
   Play,
   X,
-  ChevronDown,
-  Image as ImageIcon,
-  Lightbulb,
-  Settings2,
   Video,
   Package,
   Wand2,
+  RefreshCw,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -37,7 +34,6 @@ import {
   MinimalAccordionTrigger,
   MinimalAccordionContent,
 } from '@/components/ui/minimal-accordion';
-import { SceneLoader } from '@/components/ui/scene-loader';
 import { InspirationImageModal } from '@/components/studio/InspirationImageModal';
 import {
   Select,
@@ -153,6 +149,12 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   const [videoPresets, setVideoPresets] = useState<VideoPreset[]>([]);
   const [isEnhancingVideoPrompt, setIsEnhancingVideoPrompt] = useState(false);
 
+  // Scene type management state
+  const [expandedSceneTypes, setExpandedSceneTypes] = useState<string[]>([]);
+  const [editingSceneTypeFlowId, setEditingSceneTypeFlowId] = useState<string | null>(null);
+  const [newSceneTypeValue, setNewSceneTypeValue] = useState('');
+  const sceneTypeAccordionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
   // Generation state
   const [flowJobs, setFlowJobs] = useState<Map<string, FlowJobState>>(new Map());
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -168,15 +170,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     refetchInterval: isGenerationInProgress ? 5000 : false,
   });
 
-  // Fetch products for this collection
-  const { data: productsData, isLoading: isLoadingProducts } = useQuery({
-    queryKey: ['products', 'all'],
-    queryFn: () => apiClient.listProducts({ limit: 500 }),
-    enabled: !!collection,
-    refetchInterval: isGenerationInProgress ? 5000 : false,
-  });
-
-  // Fetch real generation flows for this collection
+  // Fetch generation flows for this collection (includes product and asset data)
   const { data: flowsData, isLoading: isLoadingFlows } = useQuery({
     queryKey: ['collection-flows', id],
     queryFn: () => apiClient.getCollectionFlows(id),
@@ -193,6 +187,35 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       }
     });
     return map;
+  }, [flowsData?.flows]);
+
+  // Resume polling for generating assets on page load/refresh
+  const hasInitializedPolling = useRef(false);
+  useEffect(() => {
+    if (!flowsData?.flows || hasInitializedPolling.current) return;
+
+    // Find generating assets with jobIds
+    const generatingJobs = new Map<string, FlowJobState>();
+    for (const flow of flowsData.flows) {
+      const generatingAsset = flow.generatedImages?.find(
+        (img) => (img.status === 'generating' || img.status === 'pending') && img.jobId
+      );
+      if (generatingAsset?.jobId) {
+        generatingJobs.set(flow.productId, {
+          jobId: generatingAsset.jobId,
+          status: 'generating',
+          progress: 30, // Assume some progress already made
+          startedAt: Date.now(),
+        });
+      }
+    }
+
+    if (generatingJobs.size > 0) {
+      console.log(`Resuming polling for ${generatingJobs.size} generating jobs`);
+      setFlowJobs(generatingJobs);
+      setActiveGenerationType('image'); // Assume image generation
+      hasInitializedPolling.current = true;
+    }
   }, [flowsData?.flows]);
 
   // Initialize settings from collection
@@ -239,11 +262,6 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
 
   // No longer needed - multi-open accordions don't need tab-based reset
 
-  // Filter products to only those in the collection
-  const collectionProducts = useMemo(() => {
-    return productsData?.products.filter((p) => collection?.productIds?.includes(p.id)) || [];
-  }, [productsData?.products, collection?.productIds]);
-
   // Scene type groups from inspiration analysis
   const sceneTypeGroups = useMemo(() => {
     const groups: Record<string, number> = {};
@@ -252,6 +270,23 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     }
     return groups;
   }, [sceneTypeInspirations]);
+
+  // All available scene types (from flows in the collection)
+  const availableSceneTypes = useMemo(() => {
+    const types = new Set<string>();
+    flowsData?.flows?.forEach((flow) => {
+      flow.productSceneTypes?.forEach((type) => types.add(type));
+    });
+    // Also add any scene types from inspiration analysis
+    Object.keys(sceneTypeInspirations).forEach((type) => types.add(type));
+    // Add some common defaults if empty
+    if (types.size === 0) {
+      ['Living Room', 'Bedroom', 'Office', 'Kitchen', 'Dining Room', 'Outdoor', 'Studio'].forEach(
+        (type) => types.add(type)
+      );
+    }
+    return Array.from(types).sort();
+  }, [flowsData?.flows, sceneTypeInspirations]);
 
   // Helper to determine flow status (combines local job state with server flow status)
   const getFlowStatus = useCallback(
@@ -276,49 +311,46 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     [flowJobs]
   );
 
-  // Build generation flows from products, using real flow IDs when available
+  // Build generation flows directly from flows API response
   const generationFlows = useMemo(() => {
-    return collectionProducts.map((product) => {
-      const baseImages =
-        product.images?.map((img, idx) => ({
-          id: img.id,
-          url: img.baseUrl,
-          isPrimary: idx === 0,
-        })) || [];
+    if (!flowsData?.flows) return [];
 
-      // Use real flow ID if it exists, otherwise use temporary ID
-      const realFlowId = productToFlowMap[product.id];
-      const flowData = flowsData?.flows?.find((f) => f.productId === product.id);
-
+    return flowsData.flows.map((flow) => {
       // Build revisions from generated images
-      const revisions = (flowData?.generatedImages || [])
+      const revisions = (flow.generatedImages || [])
         .filter((img) => img.status === 'completed')
         .map((img) => ({
           id: img.id,
           imageUrl: img.imageUrl,
           timestamp: new Date(img.timestamp),
           type: 'generated' as const,
+          aspectRatio: img.aspectRatio,
         }));
 
+      const baseImages = flow.baseImages || [];
+
       return {
-        id: realFlowId || `temp_${product.id}`, // Real or temporary ID
-        realFlowId, // Store the real ID separately
+        id: flow.id,
+        realFlowId: flow.id,
         product: {
-          id: product.id,
-          name: product.name,
-          sku: product.sku,
-          category: product.category,
+          id: flow.productId,
+          name: flow.productName,
+          sku: undefined,
+          category: flow.productCategory,
         },
-        baseImages: flowData?.baseImages || baseImages,
-        selectedBaseImageId: selectedBaseImages[product.id] || baseImages[0]?.id || '',
+        baseImages,
+        selectedBaseImageId: selectedBaseImages[flow.productId] || baseImages[0]?.id || '',
         revisions,
-        status: getFlowStatus(product.id, flowData?.status),
+        status: getFlowStatus(flow.productId, flow.status),
         approvalStatus: 'pending' as ApprovalStatus,
         isPinned: false,
-        sceneType: product.sceneTypes?.[0] || 'Living Room',
+        sceneType:
+          (typeof flow.settings?.sceneType === 'string' ? flow.settings.sceneType : null) ||
+          flow.productSceneTypes?.[0] ||
+          'Living Room',
       };
     });
-  }, [collectionProducts, getFlowStatus, productToFlowMap, flowsData?.flows, selectedBaseImages]);
+  }, [flowsData?.flows, getFlowStatus, selectedBaseImages]);
 
   useEffect(() => {
     setSelectedBaseImages((prev) => {
@@ -341,6 +373,85 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       return matchesSearch && matchesStatus;
     });
   }, [generationFlows, searchQuery, statusFilter]);
+
+  // Flows grouped by scene type
+  const flowsBySceneType = useMemo(() => {
+    const groups: Record<string, typeof generationFlows> = {};
+    for (const flow of generationFlows) {
+      const sceneType = flow.sceneType || 'Unassigned';
+      if (!groups[sceneType]) {
+        groups[sceneType] = [];
+      }
+      groups[sceneType].push(flow);
+    }
+    return groups;
+  }, [generationFlows]);
+
+  // Handler to change a flow's scene type
+  const handleChangeSceneType = useCallback(
+    async (_flowId: string, productId: string, newSceneType: string) => {
+      try {
+        // Update the flow's scene type setting
+        const realFlowId = productToFlowMap[productId];
+        if (realFlowId) {
+          await apiClient.updateStudioSettings(realFlowId, {
+            sceneType: newSceneType,
+          });
+          // Invalidate queries to refresh the data
+          queryClient.invalidateQueries({ queryKey: ['collection-flows', id] });
+          toast.success(`Moved to "${newSceneType}"`);
+
+          // Expand and scroll to the new scene type
+          setExpandedSceneTypes((prev) => {
+            if (!prev.includes(newSceneType)) {
+              return [...prev, newSceneType];
+            }
+            return prev;
+          });
+
+          // Scroll to the scene type accordion after a short delay
+          setTimeout(() => {
+            const ref = sceneTypeAccordionRefs.current[newSceneType];
+            if (ref) {
+              ref.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 100);
+        }
+      } catch (error) {
+        toast.error('Failed to change scene type');
+        console.error('Failed to change scene type:', error);
+      } finally {
+        setEditingSceneTypeFlowId(null);
+        setNewSceneTypeValue('');
+      }
+    },
+    [productToFlowMap, queryClient, id]
+  );
+
+  // Handler to change a flow's selected base image and persist to database
+  const handleChangeBaseImage = useCallback(
+    async (productId: string, imageId: string, imageUrl: string) => {
+      // Update local state immediately
+      setSelectedBaseImages((prev) => ({
+        ...prev,
+        [productId]: imageId,
+      }));
+
+      // Persist to database
+      const realFlowId = productToFlowMap[productId];
+      if (realFlowId) {
+        try {
+          await apiClient.updateFlowBaseImages(realFlowId, {
+            [productId]: imageUrl,
+          });
+        } catch (error) {
+          console.error('Failed to persist base image selection:', error);
+          // Don't show error toast - local state is still updated
+        }
+      }
+    },
+    [productToFlowMap]
+  );
 
   const readyToGenerateFlows = useMemo(() => {
     // Include pending, completed, and error flows - anything not currently generating
@@ -369,6 +480,11 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
 
     for (const [productId, jobState] of flowJobs) {
       if (jobState.status === 'completed' || jobState.status === 'error') {
+        continue;
+      }
+
+      // Skip polling if jobId is not yet available (optimistic state before mutation completes)
+      if (!jobState.jobId) {
         continue;
       }
 
@@ -650,11 +766,13 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     onSuccess: (data) => {
       toast.success(`Started generating ${data.productCount} images`);
 
-      // Update flow jobs with the actual jobId
+      // Update flow jobs with their respective jobIds (one job per product)
       const updatedJobs = new Map<string, FlowJobState>();
-      data.productIds.forEach((productId) => {
+      data.productIds.forEach((productId, index) => {
+        // Use the individual jobId for this product, or fall back to primary jobId
+        const jobId = data.jobIds?.[index] ?? data.jobId;
         updatedJobs.set(productId, {
-          jobId: data.jobId,
+          jobId,
           status: 'generating',
           progress: 10,
           startedAt: data.startedAt,
@@ -940,7 +1058,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     document.body.removeChild(link);
   };
 
-  const isLoading = isLoadingCollection || isLoadingProducts || isLoadingFlows;
+  const isLoading = isLoadingCollection || isLoadingFlows;
 
   if (isLoading) {
     return (
@@ -1129,6 +1247,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                                   src={img.url}
                                   alt={`Inspiration ${idx + 1}`}
                                   fill
+                                  sizes="64px"
                                   className="object-cover"
                                 />
                                 <button
@@ -1210,6 +1329,130 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {/* Scene Types Management */}
+                        {Object.keys(flowsBySceneType).length > 0 && (
+                          <div className="pt-2">
+                            <p className="mb-2 text-xs font-medium text-muted-foreground">
+                              Products by Scene Type
+                            </p>
+                            <MinimalAccordion
+                              value={expandedSceneTypes}
+                              onValueChange={setExpandedSceneTypes}
+                            >
+                              {Object.entries(flowsBySceneType).map(([sceneType, flows]) => (
+                                <MinimalAccordionItem
+                                  key={sceneType}
+                                  value={sceneType}
+                                  ref={(el) => {
+                                    sceneTypeAccordionRefs.current[sceneType] = el;
+                                  }}
+                                >
+                                  <MinimalAccordionTrigger
+                                    suffix={
+                                      <Badge variant="secondary" className="text-[10px]">
+                                        {flows.length}
+                                      </Badge>
+                                    }
+                                    className="text-xs"
+                                  >
+                                    {sceneType}
+                                  </MinimalAccordionTrigger>
+                                  <MinimalAccordionContent>
+                                    <div className="space-y-1.5">
+                                      {flows.map((flow) => (
+                                        <div
+                                          key={flow.id}
+                                          className="flex items-center gap-2 rounded-md border border-border bg-muted/30 p-1.5"
+                                        >
+                                          {/* Product Image */}
+                                          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded bg-secondary">
+                                            {flow.baseImages[0]?.url ? (
+                                              <Image
+                                                src={flow.baseImages[0].url}
+                                                alt={flow.product.name}
+                                                fill
+                                                sizes="32px"
+                                                className="object-cover"
+                                                unoptimized
+                                              />
+                                            ) : (
+                                              <div className="flex h-full w-full items-center justify-center">
+                                                <Package className="h-4 w-4 text-muted-foreground" />
+                                              </div>
+                                            )}
+                                          </div>
+                                          {/* Product Name */}
+                                          <span className="min-w-0 flex-1 truncate text-xs">
+                                            {flow.product.name}
+                                          </span>
+                                          {/* Change Scene Type Button */}
+                                          {editingSceneTypeFlowId === flow.id ? (
+                                            <div className="flex items-center gap-1">
+                                              <Select
+                                                value={newSceneTypeValue || sceneType}
+                                                onValueChange={(value) => {
+                                                  if (value === '__new__') {
+                                                    setNewSceneTypeValue('');
+                                                  } else {
+                                                    handleChangeSceneType(
+                                                      flow.id,
+                                                      flow.product.id,
+                                                      value
+                                                    );
+                                                  }
+                                                }}
+                                              >
+                                                <SelectTrigger className="h-7 w-[100px] text-xs">
+                                                  <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  {availableSceneTypes.map((type) => (
+                                                    <SelectItem
+                                                      key={type}
+                                                      value={type}
+                                                      className="text-xs"
+                                                    >
+                                                      {type}
+                                                    </SelectItem>
+                                                  ))}
+                                                  <SelectItem value="__new__" className="text-xs">
+                                                    + New type...
+                                                  </SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-6 w-6"
+                                                onClick={() => {
+                                                  setEditingSceneTypeFlowId(null);
+                                                  setNewSceneTypeValue('');
+                                                }}
+                                              >
+                                                <X className="h-3 w-3" />
+                                              </Button>
+                                            </div>
+                                          ) : (
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 gap-1 px-1.5 text-[10px]"
+                                              onClick={() => setEditingSceneTypeFlowId(flow.id)}
+                                            >
+                                              <RefreshCw className="h-3 w-3" />
+                                              Move
+                                            </Button>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </MinimalAccordionContent>
+                                </MinimalAccordionItem>
+                              ))}
+                            </MinimalAccordion>
+                          </div>
+                        )}
                       </div>
                     </MinimalAccordionContent>
                   </MinimalAccordionItem>
@@ -1564,10 +1807,10 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                         isPinned={flow.isPinned}
                         sceneType={flow.sceneType}
                         onChangeBaseImage={(imageId) => {
-                          setSelectedBaseImages((prev) => ({
-                            ...prev,
-                            [flow.product.id]: imageId,
-                          }));
+                          const baseImage = flow.baseImages.find((img) => img.id === imageId);
+                          if (baseImage) {
+                            handleChangeBaseImage(flow.product.id, imageId, baseImage.url);
+                          }
                         }}
                         onDeleteRevision={handleDeleteRevision}
                         onClick={() => handleProductClick(flow.product.id, flow.realFlowId)}
@@ -1596,6 +1839,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                             timestamp: r.timestamp,
                             type: r.type,
                             isVideo: false,
+                            aspectRatio: r.aspectRatio,
                           }))}
                           configuration={{
                             sceneType: flow.sceneType,
@@ -1606,6 +1850,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                           }}
                           isPinned={flow.isPinned}
                           isApproved={flow.approvalStatus === 'approved'}
+                          isGenerating={flow.status === 'generating'}
                           onPin={() => handlePinAsset(flow.id)}
                           onApprove={() => handleApproveAsset(flow.id)}
                           onDownload={() => {
@@ -1629,7 +1874,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                   description="Add products to start generating images."
                   action={{
                     label: 'Add Products',
-                    onClick: () => { },
+                    onClick: () => {},
                   }}
                 />
               )}

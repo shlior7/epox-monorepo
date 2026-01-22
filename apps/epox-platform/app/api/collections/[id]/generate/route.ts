@@ -8,7 +8,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { withGenerationSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
-import type { FlowGenerationSettings } from 'visualizer-types';
+import type { FlowGenerationSettings, ProductImage } from 'visualizer-types';
 import { enqueueImageGeneration } from 'visualizer-ai';
 
 interface GenerateRequest {
@@ -43,14 +43,14 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
       return forbiddenResponse();
     }
 
-    // Determine which products to generate
-    const productIdsToGenerate = body.productIds?.length
-      ? body.productIds.filter((id) => collection.productIds.includes(id))
-      : collection.productIds;
+    const generationFlows = await db.generationFlows.listByCollectionSession(collectionId);
 
-    if (productIdsToGenerate.length === 0) {
-      return NextResponse.json({ error: 'No products to generate' }, { status: 400 });
-    }
+    // Get all product IDs to fetch their images
+    const allProductIds = generationFlows.flatMap((f) => f.productIds);
+    const productImagesMap =
+      allProductIds.length > 0
+        ? await db.productImages.listByProductIds(allProductIds)
+        : new Map<string, ProductImage[]>();
 
     // Merge settings: request settings override collection settings
     const mergedSettings: Partial<FlowGenerationSettings> = {
@@ -62,98 +62,90 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
       ...body.settings,
     };
 
-    // Create or get generation flows for each product
-    const flowIds: string[] = [];
-    const createdFlows: Array<{ flowId: string; productId: string }> = [];
-
-    for (const productId of productIdsToGenerate) {
-      // Check if a flow already exists for this product in this collection
-      const existingFlows = await db.generationFlows.listByCollectionSession(collectionId);
-      let flow = existingFlows.find((f) => f.productIds.includes(productId));
-
-      if (!flow) {
-        // Create new generation flow for this product
-        flow = await db.generationFlows.create(clientId, {
-          collectionSessionId: collectionId,
-          productIds: [productId],
-          selectedBaseImages: collection.selectedBaseImages,
-          settings: mergedSettings,
-        });
-        console.log(`✅ Created generation flow ${flow.id} for product ${productId}`);
-      } else {
-        // Update existing flow with latest settings
-        flow = await db.generationFlows.update(flow.id, {
-          settings: mergedSettings,
-        });
-        console.log(`📝 Updated generation flow ${flow.id} for product ${productId}`);
-      }
-
-      flowIds.push(flow.id);
-      createdFlows.push({ flowId: flow.id, productId });
-    }
-
-    // Get product image URLs for generation
-    const products = await Promise.all(productIdsToGenerate.map((id) => db.products.getById(id)));
-    const productImages = await Promise.all(
-      productIdsToGenerate.map((productId) => db.productImages.list(productId))
-    );
-
-    const productImageUrls: string[] = [];
-    for (let i = 0; i < productIdsToGenerate.length; i++) {
-      const productId = productIdsToGenerate[i];
-      const images = productImages[i];
-      // Use selected base image or first available (sorted by sortOrder, first is primary)
-      const selectedImageId = collection.selectedBaseImages[productId];
-      const selectedImage = selectedImageId
-        ? images.find((img) => img.id === selectedImageId)
-        : images[0]; // First image is primary (sorted by sortOrder)
-      if (selectedImage) {
-        // Convert R2 key to URL
-        const baseUrl = `${process.env.R2_PUBLIC_URL || 'https://pub-xxx.r2.dev'}/${selectedImage.r2KeyBase}`;
-        productImageUrls.push(baseUrl);
-      }
-    }
-
     // Get inspiration image URLs from settings
     const inspirationImageUrls = mergedSettings.inspirationImages?.map((img) => img.url) || [];
 
-    // Create a single generation job for all products
-    // Use the first flow ID as the session ID (for job tracking)
-    const primaryFlowId = flowIds[0];
+    // Build collection settings for Art Director context
+    const collectionSettings = {
+      stylePreset: mergedSettings.stylePreset as string | undefined,
+      lightingPreset: mergedSettings.lightingPreset as string | undefined,
+      userPrompt: mergedSettings.userPrompt as string | undefined,
+    };
 
-    const { jobId } = await enqueueImageGeneration(
-      clientId,
-      {
-        prompt: '', // Will be built by the worker using Art Director
-        productIds: productIdsToGenerate,
-        sessionId: primaryFlowId,
-        settings: {
-          aspectRatio: mergedSettings.aspectRatio,
-          imageQuality: mergedSettings.imageQuality,
-          numberOfVariants: mergedSettings.variantsCount ?? 1,
+    // Create separate jobs for each gen flow so each gets its own generated images
+    const jobIds: string[] = [];
+
+    for (let i = 0; i < generationFlows.length; i++) {
+      const flow = generationFlows[i];
+      const flowId = flow.id;
+      const productIds = flow.productIds;
+      let productImageUrls = Object.values(flow.selectedBaseImages);
+
+      productIds.forEach((productId) => {
+        if (!flow.selectedBaseImages[productId]) {
+          const productImages = productImagesMap.get(productId) || [];
+          // Use explicitly marked primary image, or fall back to first by sort order
+          const primaryImage = productImages.find((img) => img.isPrimary) ?? productImages[0];
+          if (primaryImage?.r2KeyBase) {
+            const baseUrl = `${process.env.R2_PUBLIC_URL || 'https://pub-xxx.r2.dev'}/${primaryImage.r2KeyBase}`;
+            flow.selectedBaseImages[productId] = baseUrl;
+          }
+        }
+      });
+      // Use stored selectedBaseImages (productId -> imageUrl)
+      productImageUrls = Object.values(flow.selectedBaseImages);
+
+      // Create a job for this product
+      const { jobId } = await enqueueImageGeneration(
+        clientId,
+        {
+          prompt: '', // Will be built by the worker using Art Director
+          productIds: flow.productIds,
+          sessionId: flowId,
+          settings: {
+            aspectRatio: mergedSettings.aspectRatio,
+            imageQuality: mergedSettings.imageQuality,
+            numberOfVariants: mergedSettings.variantsCount ?? 1,
+          },
+          productImageUrls,
+          inspirationImageUrls,
+          collectionSettings,
         },
-        productImageUrls,
-        inspirationImageUrls,
-      },
-      {
-        priority: 100,
-        flowId: primaryFlowId,
-      }
-    );
+        {
+          priority: 100,
+          flowId,
+        }
+      );
+
+      // Create placeholder asset with pending status so we can resume polling on refresh
+      await db.generatedAssets.create({
+        clientId,
+        generationFlowId: flowId,
+        assetUrl: '', // Will be set when job completes
+        assetType: 'image',
+        status: 'pending',
+        jobId,
+        productIds: flow.productIds,
+        settings: mergedSettings as FlowGenerationSettings,
+      });
+
+      jobIds.push(jobId);
+      console.log(
+        `🚀 Started generation job ${jobId} for flow ${flowId}, products ${productIds.join(',')}, base images: ${productImageUrls.join(', ') || 'none'}`
+      );
+    }
 
     // Update collection status to generating
     await db.collectionSessions.update(collectionId, { status: 'generating' });
 
-    console.log(`🚀 Started generation job ${jobId} for collection ${collectionId}`);
-    console.log(`   Products: ${productIdsToGenerate.length}, Flows: ${flowIds.length}`);
+    console.log(`🎯 Started ${jobIds.length} generation jobs for collection ${collectionId}`);
 
     return NextResponse.json({
       success: true,
-      jobId,
-      flowIds,
-      flows: createdFlows,
-      productCount: productIdsToGenerate.length,
-      message: `Generation started for ${productIdsToGenerate.length} products`,
+      jobIds,
+      flowIds: generationFlows.map((f) => f.id),
+      productCount: generationFlows.reduce((sum, f) => sum + f.productIds.length, 0),
+      message: `Generation started for ${jobIds.length} flows`,
     });
   } catch (error) {
     console.error('❌ Failed to start collection generation:', error);

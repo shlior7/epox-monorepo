@@ -36,6 +36,7 @@ export interface ProductImage {
   baseUrl: string;
   previewUrl: string | null;
   sortOrder: number;
+  isPrimary?: boolean;
 }
 
 export interface Product {
@@ -655,6 +656,15 @@ class ApiClient {
     });
   }
 
+  async setPrimaryImage(
+    productId: string,
+    imageId: string
+  ): Promise<{ success: boolean; image: { id: string; isPrimary: boolean; sortOrder: number } }> {
+    return this.request(`/api/products/${productId}/images/${imageId}/primary`, {
+      method: 'POST',
+    });
+  }
+
   // ===== Collections =====
   async listCollections(params?: CollectionsParams): Promise<CollectionsResponse> {
     const searchParams = new URLSearchParams();
@@ -724,6 +734,7 @@ class ApiClient {
   ): Promise<{
     success: boolean;
     jobId: string;
+    jobIds?: string[]; // Array of job IDs, one per product
     flowIds: string[];
     flows: Array<{ flowId: string; productId: string }>;
     productCount: number;
@@ -756,6 +767,8 @@ class ApiClient {
         type: 'generated';
         status: string;
         approvalStatus: string;
+        aspectRatio?: ImageAspectRatio;
+        jobId?: string;
       }>;
     }>;
     total: number;
@@ -797,6 +810,17 @@ class ApiClient {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+    });
+  }
+
+  async updateFlowBaseImages(
+    flowId: string,
+    selectedBaseImages: Record<string, string>
+  ): Promise<StudioSettingsResponse> {
+    return this.request<StudioSettingsResponse>(`/api/studio/${flowId}/settings`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ selectedBaseImages }),
     });
   }
 

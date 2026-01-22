@@ -20,7 +20,9 @@ export function proxy(request: NextRequest) {
   const hasSession = !!sessionCookie;
 
   // Check if this is a public path
-  const isPublicPath = PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  const isPublicPath = PUBLIC_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  );
 
   // Check if this is an auth path (login/signup)
   const isAuthPath = AUTH_PATHS.some((path) => pathname === path);

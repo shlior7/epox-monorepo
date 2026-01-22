@@ -15,6 +15,9 @@ vi.mock('@/lib/services/db', () => ({
       listByGenerationFlow: vi.fn(),
       countWithFilters: vi.fn(),
       listWithFilters: vi.fn(),
+      // Optimized flow-specific methods
+      countByFlowWithFilters: vi.fn(),
+      listByFlowWithFilters: vi.fn(),
       getDistinctSceneTypes: vi.fn(),
       getById: vi.fn(),
       hardDelete: vi.fn(),
@@ -50,42 +53,38 @@ describe('Generated Images API - GET /api/generated-images', () => {
   });
 
   it('should filter and sort by flowId', async () => {
-    const assets = [
+    // With flowId, the API now uses SQL-level filtering via the optimized methods
+    const filteredAssets = [
       {
         id: 'asset-1',
         assetUrl: 'https://cdn.example.com/a1.jpg',
+        assetType: 'image',
         productIds: ['prod-1'],
         status: 'completed',
         approvalStatus: 'approved',
         pinned: true,
         createdAt: new Date('2025-01-01T00:00:00Z'),
+        settings: {},
       },
       {
         id: 'asset-2',
         assetUrl: 'https://cdn.example.com/a2.jpg',
+        assetType: 'image',
         productIds: ['prod-2'],
         status: 'completed',
         approvalStatus: 'approved',
         pinned: true,
         createdAt: new Date('2025-01-02T00:00:00Z'),
-      },
-      {
-        id: 'asset-3',
-        assetUrl: 'https://cdn.example.com/a3.jpg',
-        productIds: ['prod-3'],
-        status: 'failed',
-        approvalStatus: 'rejected',
-        pinned: false,
-        createdAt: new Date('2025-01-03T00:00:00Z'),
+        settings: {},
       },
     ];
 
-    vi.mocked(db.generatedAssets.listByGenerationFlow).mockResolvedValue(assets as any);
+    vi.mocked(db.generatedAssets.countByFlowWithFilters).mockResolvedValue(2);
+    vi.mocked(db.generatedAssets.listByFlowWithFilters).mockResolvedValue(filteredAssets as any);
     vi.mocked(db.products.getNamesByIds).mockResolvedValue(
       new Map([
         ['prod-1', 'Chair'],
         ['prod-2', 'Sofa'],
-        ['prod-3', 'Lamp'],
       ])
     );
 
@@ -96,7 +95,15 @@ describe('Generated Images API - GET /api/generated-images', () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(db.generatedAssets.listByGenerationFlow).toHaveBeenCalledWith('flow-1', false);
+    expect(db.generatedAssets.listByFlowWithFilters).toHaveBeenCalledWith(
+      'flow-1',
+      expect.objectContaining({
+        status: 'completed',
+        approvalStatus: 'approved',
+        pinned: true,
+        sort: 'oldest',
+      })
+    );
     expect(data.images).toHaveLength(2);
     expect(data.images[0]).toMatchObject({
       id: 'asset-1',
@@ -180,7 +187,8 @@ describe('Generated Images API - GET /api/generated-images', () => {
   });
 
   it('should include assetType for flow assets', async () => {
-    vi.mocked(db.generatedAssets.listByGenerationFlow).mockResolvedValue([
+    vi.mocked(db.generatedAssets.countByFlowWithFilters).mockResolvedValue(1);
+    vi.mocked(db.generatedAssets.listByFlowWithFilters).mockResolvedValue([
       {
         id: 'asset-vid-1',
         assetUrl: 'https://cdn.example.com/v1.mp4',
@@ -190,6 +198,7 @@ describe('Generated Images API - GET /api/generated-images', () => {
         approvalStatus: 'approved',
         pinned: false,
         createdAt: new Date('2025-01-02T00:00:00Z'),
+        settings: {},
       },
     ] as any);
     vi.mocked(db.products.getNamesByIds).mockResolvedValue(new Map([['prod-1', 'Chair']]));

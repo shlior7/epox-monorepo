@@ -1,7 +1,7 @@
 import { and, desc, asc, eq, inArray, isNull, isNotNull, lt, sql, type SQL } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
 import { generatedAsset, generatedAssetProduct } from '../schema/generated-images';
-import type { GeneratedAsset, GeneratedAssetCreate, GeneratedAssetUpdate, AssetStatus, ApprovalStatus } from 'visualizer-types';
+import type { GeneratedAsset, GeneratedAssetCreate, GeneratedAssetUpdate, AssetStatus, ApprovalStatus, FlowGenerationSettings } from 'visualizer-types';
 import { NotFoundError } from '../errors';
 import { BaseRepository } from './base';
 
@@ -97,6 +97,16 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
       .returning();
 
     return rows.map((row) => this.mapToEntity(row));
+  }
+
+  // Override to filter out soft-deleted records
+  async getById(id: string): Promise<GeneratedAsset | null> {
+    const rows = await this.drizzle
+      .select()
+      .from(generatedAsset)
+      .where(and(eq(generatedAsset.id, id), isNull(generatedAsset.deletedAt)))
+      .limit(1);
+    return rows[0] ? this.mapToEntity(rows[0]) : null;
   }
 
   async list(
@@ -398,6 +408,33 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
     return this.listWithFilters(clientId, { productId, limit });
   }
 
+  // ===== OPTIMIZED: GET STATS BY PRODUCT ID (single query) =====
+
+  async getStatsByProductId(
+    clientId: string,
+    productId: string
+  ): Promise<{ totalGenerated: number; pinnedCount: number; approvedCount: number; pendingCount: number }> {
+    const result = await this.drizzle.execute(sql`
+      SELECT
+        COUNT(*)::int as total_generated,
+        COUNT(*) FILTER (WHERE pinned = true)::int as pinned_count,
+        COUNT(*) FILTER (WHERE approval_status = 'approved')::int as approved_count,
+        COUNT(*) FILTER (WHERE approval_status = 'pending')::int as pending_count
+      FROM ${generatedAsset}
+      WHERE client_id = ${clientId}
+        AND ${generatedAsset.productIds} @> ${JSON.stringify([productId])}::jsonb
+        AND deleted_at IS NULL
+    `);
+
+    const row = (result.rows[0] ?? {}) as { total_generated: number; pinned_count: number; approved_count: number; pending_count: number };
+    return {
+      totalGenerated: row.total_generated ?? 0,
+      pinnedCount: row.pinned_count ?? 0,
+      approvedCount: row.approved_count ?? 0,
+      pendingCount: row.pending_count ?? 0,
+    };
+  }
+
   // ===== COUNT BY STATUS =====
 
   async countByStatus(clientId: string, status: AssetStatus): Promise<number> {
@@ -561,5 +598,233 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
 
     // Delete the asset
     await this.delete(id);
+  }
+
+  // ===== HARD DELETE MANY (batch delete for parallel storage operations) =====
+
+  async hardDeleteMany(ids: string[]): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+
+    // Delete product links first (foreign key constraint)
+    await this.drizzle.delete(generatedAssetProduct).where(inArray(generatedAssetProduct.generatedAssetId, ids));
+
+    // Delete the assets
+    await this.drizzle.delete(generatedAsset).where(inArray(generatedAsset.id, ids));
+  }
+
+  // ===== LIST DELETABLE BY FLOW IDS (not pinned and not approved - SQL-level filtering) =====
+
+  async listDeletableByFlowIds(flowIds: string[]): Promise<GeneratedAsset[]> {
+    if (flowIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.drizzle
+      .select()
+      .from(generatedAsset)
+      .where(
+        and(
+          inArray(generatedAsset.generationFlowId, flowIds),
+          isNull(generatedAsset.deletedAt),
+          eq(generatedAsset.pinned, false),
+          sql`${generatedAsset.approvalStatus} != 'approved'`
+        )
+      );
+
+    return rows.map((row) => this.mapToEntity(row));
+  }
+
+  // ===== OPTIMIZED: LIST BY FLOW WITH ALL FILTERS (SQL-level) =====
+
+  async listByFlowWithFilters(
+    generationFlowId: string,
+    options: Omit<GeneratedAssetListOptions, 'flowId'> = {}
+  ): Promise<GeneratedAsset[]> {
+    const conditions: SQL[] = [eq(generatedAsset.generationFlowId, generationFlowId), isNull(generatedAsset.deletedAt)];
+
+    if (options.productId) {
+      conditions.push(sql`${generatedAsset.productIds} @> ${JSON.stringify([options.productId])}::jsonb`);
+    }
+
+    if (options.productIds && options.productIds.length > 0) {
+      const arrayLiteral = `array[${options.productIds.map((id) => `'${id.replaceAll("'", "''")}'`).join(', ')}]`;
+      conditions.push(sql`${generatedAsset.productIds} ?| ${sql.raw(arrayLiteral)}`);
+    }
+
+    if (options.pinned !== undefined) {
+      conditions.push(eq(generatedAsset.pinned, options.pinned));
+    }
+
+    if (options.status) {
+      conditions.push(eq(generatedAsset.status, options.status));
+    }
+
+    if (options.approvalStatus) {
+      conditions.push(eq(generatedAsset.approvalStatus, options.approvalStatus));
+    }
+
+    const orderByClause = options.sort === 'oldest' ? asc(generatedAsset.createdAt) : desc(generatedAsset.createdAt);
+
+    const rows = await this.drizzle
+      .select()
+      .from(generatedAsset)
+      .where(and(...conditions))
+      .orderBy(orderByClause)
+      .limit(options.limit ?? 100)
+      .offset(options.offset ?? 0);
+
+    return rows.map((row) => this.mapToEntity(row));
+  }
+
+  async countByFlowWithFilters(
+    generationFlowId: string,
+    options: Omit<GeneratedAssetListOptions, 'flowId' | 'limit' | 'offset' | 'sort'> = {}
+  ): Promise<number> {
+    const conditions: SQL[] = [eq(generatedAsset.generationFlowId, generationFlowId), isNull(generatedAsset.deletedAt)];
+
+    if (options.productId) {
+      conditions.push(sql`${generatedAsset.productIds} @> ${JSON.stringify([options.productId])}::jsonb`);
+    }
+
+    if (options.productIds && options.productIds.length > 0) {
+      const arrayLiteral = `array[${options.productIds.map((id) => `'${id.replaceAll("'", "''")}'`).join(', ')}]`;
+      conditions.push(sql`${generatedAsset.productIds} ?| ${sql.raw(arrayLiteral)}`);
+    }
+
+    if (options.pinned !== undefined) {
+      conditions.push(eq(generatedAsset.pinned, options.pinned));
+    }
+
+    if (options.status) {
+      conditions.push(eq(generatedAsset.status, options.status));
+    }
+
+    if (options.approvalStatus) {
+      conditions.push(eq(generatedAsset.approvalStatus, options.approvalStatus));
+    }
+
+    const [result] = await this.drizzle
+      .select({ count: sql<number>`count(*)::int` })
+      .from(generatedAsset)
+      .where(and(...conditions));
+
+    return result.count;
+  }
+
+  // ===== OPTIMIZED: BULK STATS BY FLOW IDS (single query for N+1 elimination) =====
+
+  async getStatsByFlowIds(
+    clientId: string,
+    flowIds: string[]
+  ): Promise<Map<string, { totalImages: number; completedCount: number; thumbnailUrl: string | null }>> {
+    if (flowIds.length === 0) {
+      return new Map();
+    }
+
+    // Convert to PostgreSQL array literal
+    const flowIdsArray = sql.raw(`ARRAY[${flowIds.map((id) => `'${id}'`).join(', ')}]::text[]`);
+
+    // Single query with aggregation and first completed asset for thumbnail
+    const rows = await this.drizzle.execute(sql`
+      WITH flow_stats AS (
+        SELECT
+          generation_flow_id,
+          COUNT(*)::int as total_images,
+          COUNT(*) FILTER (WHERE status = 'completed')::int as completed_count
+        FROM ${generatedAsset}
+        WHERE client_id = ${clientId}
+          AND generation_flow_id = ANY(${flowIdsArray})
+          AND deleted_at IS NULL
+        GROUP BY generation_flow_id
+      ),
+      first_completed AS (
+        SELECT DISTINCT ON (generation_flow_id)
+          generation_flow_id,
+          asset_url
+        FROM ${generatedAsset}
+        WHERE client_id = ${clientId}
+          AND generation_flow_id = ANY(${flowIdsArray})
+          AND deleted_at IS NULL
+          AND status = 'completed'
+        ORDER BY generation_flow_id, created_at DESC
+      )
+      SELECT
+        fs.generation_flow_id as flow_id,
+        COALESCE(fs.total_images, 0) as total_images,
+        COALESCE(fs.completed_count, 0) as completed_count,
+        fc.asset_url as thumbnail_url
+      FROM flow_stats fs
+      LEFT JOIN first_completed fc ON fs.generation_flow_id = fc.generation_flow_id
+    `);
+
+    const result = new Map<string, { totalImages: number; completedCount: number; thumbnailUrl: string | null }>();
+
+    // Initialize all flow IDs with zero stats
+    for (const flowId of flowIds) {
+      result.set(flowId, { totalImages: 0, completedCount: 0, thumbnailUrl: null });
+    }
+
+    // Fill in actual stats
+    for (const row of rows.rows as Array<{
+      flow_id: string;
+      total_images: number;
+      completed_count: number;
+      thumbnail_url: string | null;
+    }>) {
+      result.set(row.flow_id, {
+        totalImages: row.total_images,
+        completedCount: row.completed_count,
+        thumbnailUrl: row.thumbnail_url,
+      });
+    }
+
+    return result;
+  }
+
+  // ===== COMPLETE PENDING ASSET BY JOB ID =====
+
+  /**
+   * Find a pending asset for a job and mark it as completed.
+   * Used by the worker to update placeholder assets created when generation starts.
+   * @returns The asset ID if found and updated, or null if no pending asset exists
+   */
+  async completePendingByJobId(
+    jobId: string,
+    data: {
+      assetUrl: string;
+      prompt?: string;
+      settings?: Record<string, unknown>;
+    }
+  ): Promise<string | null> {
+    // Find pending asset for this job
+    const rows = await this.drizzle
+      .select()
+      .from(generatedAsset)
+      .where(and(eq(generatedAsset.jobId, jobId), eq(generatedAsset.status, 'pending')))
+      .limit(1);
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const existingAsset = rows[0];
+    const now = new Date();
+
+    // Update the placeholder to completed
+    await this.drizzle
+      .update(generatedAsset)
+      .set({
+        assetUrl: data.assetUrl,
+        status: 'completed',
+        prompt: data.prompt ?? null,
+        settings: data.settings as FlowGenerationSettings | null | undefined,
+        completedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(generatedAsset.id, existingAsset.id));
+
+    return existingAsset.id;
   }
 }

@@ -24,7 +24,7 @@ export const POST = withSecurity(async (request, context, { params }) => {
       return NextResponse.json({ error: 'Missing required parameter: id' }, { status: 400 });
     }
 
-    // Get the asset to verify ownership and get current pin status
+    // Get the asset to verify ownership
     const asset = await db.generatedAssets.getById(id);
 
     if (!asset) {
@@ -43,12 +43,11 @@ export const POST = withSecurity(async (request, context, { params }) => {
       return forbiddenResponse();
     }
 
-    // Toggle pin status
-    const newPinnedStatus = !asset.pinned;
-    await db.generatedAssets.update(id, { pinned: newPinnedStatus });
+    // Atomic toggle pin status (eliminates race condition)
+    const updated = await db.generatedAssets.togglePin(id);
 
-    console.log(`📌 Asset ${id} pinned status: ${newPinnedStatus}`);
-    return NextResponse.json({ success: true, isPinned: newPinnedStatus });
+    console.log(`📌 Asset ${id} pinned status: ${updated.pinned}`);
+    return NextResponse.json({ success: true, isPinned: updated.pinned });
   } catch (error: unknown) {
     console.error('❌ Failed to toggle pin status:', error);
     const message = error instanceof Error ? error.message : 'Internal Server Error';

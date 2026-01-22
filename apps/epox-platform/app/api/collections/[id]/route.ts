@@ -232,36 +232,46 @@ export const DELETE = withSecurity(async (request, context, { params }) => {
     const flowIds = flows.map((flow) => flow.id);
 
     if (flowIds.length > 0) {
-      const assets = await db.generatedAssets.listByGenerationFlowIds(flowIds);
-      const activeAssets = assets.filter((asset) => !asset.deletedAt);
-
       if (effectivePolicy === 'delete_all') {
-        for (const asset of activeAssets) {
-          if (!asset.assetUrl) continue;
-          try {
-            const url = new URL(asset.assetUrl);
-            const key = url.pathname.replace(/^\//, '');
-            await storage.delete(key);
-          } catch (storageError) {
-            console.warn(`⚠️ Failed to delete from storage:`, storageError);
-          }
-        }
+        // Get all assets for storage cleanup
+        const assets = await db.generatedAssets.listByGenerationFlowIds(flowIds);
+        const activeAssets = assets.filter((asset) => !asset.deletedAt && asset.assetUrl);
+
+        // Parallelize storage deletes
+        await Promise.all(
+          activeAssets.map(async (asset) => {
+            try {
+              const url = new URL(asset.assetUrl!);
+              const key = url.pathname.replace(/^\//, '');
+              await storage.delete(key);
+            } catch (storageError) {
+              console.warn(`⚠️ Failed to delete from storage:`, storageError);
+            }
+          })
+        );
+        // Batch delete from DB
         await db.generatedAssets.deleteByGenerationFlowIds(flowIds);
       } else {
-        const assetsToDelete = activeAssets.filter(
-          (asset) => !asset.pinned && asset.approvalStatus !== 'approved'
+        // Use SQL-level filtering (not pinned and not approved)
+        const assetsToDelete = await db.generatedAssets.listDeletableByFlowIds(flowIds);
+        const assetsWithUrls = assetsToDelete.filter((asset) => asset.assetUrl);
+
+        // Parallelize storage deletes
+        await Promise.all(
+          assetsWithUrls.map(async (asset) => {
+            try {
+              const url = new URL(asset.assetUrl!);
+              const key = url.pathname.replace(/^\//, '');
+              await storage.delete(key);
+            } catch (storageError) {
+              console.warn(`⚠️ Failed to delete from storage:`, storageError);
+            }
+          })
         );
 
-        for (const asset of assetsToDelete) {
-          await db.generatedAssets.hardDelete(asset.id);
-          if (!asset.assetUrl) continue;
-          try {
-            const url = new URL(asset.assetUrl);
-            const key = url.pathname.replace(/^\//, '');
-            await storage.delete(key);
-          } catch (storageError) {
-            console.warn(`⚠️ Failed to delete from storage:`, storageError);
-          }
+        // Batch delete from DB
+        if (assetsToDelete.length > 0) {
+          await db.generatedAssets.hardDeleteMany(assetsToDelete.map((a) => a.id));
         }
       }
     }

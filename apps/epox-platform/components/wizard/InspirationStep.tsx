@@ -267,6 +267,7 @@ export function InspirationStep({
                   src={url}
                   alt="Selected inspiration"
                   fill
+                  sizes="(max-width: 768px) 25vw, 80px"
                   className="object-cover"
                   unoptimized
                 />
@@ -359,7 +360,14 @@ export function InspirationStep({
                           !canSelect && !isSelected && 'cursor-not-allowed opacity-50'
                         )}
                       >
-                        <Image src={url} alt="Uploaded" fill className="object-cover" unoptimized />
+                        <Image
+                          src={url}
+                          alt="Uploaded"
+                          fill
+                          sizes="(max-width: 768px) 50vw, 25vw"
+                          className="object-cover"
+                          unoptimized
+                        />
                         {isSelected && (
                           <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
@@ -433,6 +441,7 @@ export function InspirationStep({
                         src={image.thumbUrl || image.url}
                         alt={image.description}
                         fill
+                        sizes="(max-width: 768px) 50vw, 25vw"
                         className="object-cover"
                       />
                       {isSelected && (
@@ -491,6 +500,7 @@ export function InspirationStep({
                       src={image.url}
                       alt={image.productName || 'Pinned image'}
                       fill
+                      sizes="(max-width: 768px) 50vw, 25vw"
                       className="object-cover"
                     />
                     {isSelected && (

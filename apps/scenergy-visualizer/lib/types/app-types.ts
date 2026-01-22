@@ -144,7 +144,7 @@ export interface FlowGenerationSettings {
   lighting: string;
   customLighting?: string;
   cameraAngle: string;
-  aspectRatio: string;
+  aspectRatio: ImageAspectRatio;
   surroundings: string;
   customSurroundings?: string;
   colorScheme: string;
@@ -286,7 +286,7 @@ export interface AIModelConfig {
 }
 
 // ===== CLIENT =====
-import type { CommerceProvider, CommerceConfig as BaseCommerceConfig } from 'visualizer-types';
+import type { CommerceProvider, CommerceConfig as BaseCommerceConfig, ImageAspectRatio } from 'visualizer-types';
 
 export type { CommerceProvider };
 

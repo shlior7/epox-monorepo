@@ -16,6 +16,15 @@ export class ProductImageRepository extends BaseRepository<ProductImage> {
     const id = this.generateId();
     const now = new Date();
 
+    // If this is the first image or explicitly set as primary, set isPrimary
+    const existingImages = await this.list(productId);
+    const shouldBePrimary = data.isPrimary ?? existingImages.length === 0;
+
+    // If setting as primary, clear other primaries first
+    if (shouldBePrimary && existingImages.length > 0) {
+      await this.drizzle.update(productImage).set({ isPrimary: false, updatedAt: now }).where(eq(productImage.productId, productId));
+    }
+
     const [created] = await this.drizzle
       .insert(productImage)
       .values({
@@ -24,6 +33,7 @@ export class ProductImageRepository extends BaseRepository<ProductImage> {
         r2KeyBase: data.r2KeyBase,
         r2KeyPreview: data.r2KeyPreview ?? null,
         sortOrder: data.sortOrder ?? 0,
+        isPrimary: shouldBePrimary,
         version: 1,
         createdAt: now,
         updatedAt: now,
@@ -31,6 +41,59 @@ export class ProductImageRepository extends BaseRepository<ProductImage> {
       .returning();
 
     return this.mapToEntity(created);
+  }
+
+  /**
+   * Set an image as primary, clearing other primaries for the same product
+   */
+  async setPrimary(productId: string, imageId: string): Promise<ProductImage> {
+    const now = new Date();
+
+    // First, verify the image exists and belongs to the product
+    const image = await this.getById(imageId);
+    if (!image || image.productId !== productId) {
+      throw new NotFoundError('product_image', imageId);
+    }
+
+    // Clear all other primaries for this product
+    await this.drizzle
+      .update(productImage)
+      .set({ isPrimary: false, updatedAt: now })
+      .where(and(eq(productImage.productId, productId), eq(productImage.isPrimary, true)));
+
+    // Set the new primary
+    const [updated] = await this.drizzle
+      .update(productImage)
+      .set({ isPrimary: true, updatedAt: now, version: sql`${productImage.version} + 1` })
+      .where(eq(productImage.id, imageId))
+      .returning();
+
+    return this.mapToEntity(updated);
+  }
+
+  /**
+   * Get the primary image for a product
+   */
+  async getPrimary(productId: string): Promise<ProductImage | null> {
+    const [row] = await this.drizzle
+      .select()
+      .from(productImage)
+      .where(and(eq(productImage.productId, productId), eq(productImage.isPrimary, true)))
+      .limit(1);
+
+    if (!row) {
+      // Fallback to first image by sort order if no primary is set
+      const [firstImage] = await this.drizzle
+        .select()
+        .from(productImage)
+        .where(eq(productImage.productId, productId))
+        .orderBy(asc(productImage.sortOrder))
+        .limit(1);
+
+      return firstImage ? this.mapToEntity(firstImage) : null;
+    }
+
+    return this.mapToEntity(row);
   }
 
   async list(productId: string): Promise<ProductImage[]> {
@@ -41,6 +104,32 @@ export class ProductImageRepository extends BaseRepository<ProductImage> {
       .orderBy(asc(productImage.sortOrder));
 
     return rows.map((row) => this.mapToEntity(row));
+  }
+
+  // ===== BATCH FETCH BY PRODUCT IDS (for N+1 elimination) =====
+
+  async listByProductIds(productIds: string[]): Promise<Map<string, ProductImage[]>> {
+    if (productIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.drizzle
+      .select()
+      .from(productImage)
+      .where(inArray(productImage.productId, productIds))
+      .orderBy(sql`${productImage.isPrimary} DESC`, asc(productImage.sortOrder));
+
+    const result = new Map<string, ProductImage[]>();
+    for (const productId of productIds) {
+      result.set(productId, []);
+    }
+    for (const row of rows) {
+      const images = result.get(row.productId) || [];
+      images.push(this.mapToEntity(row));
+      result.set(row.productId, images);
+    }
+
+    return result;
   }
 
   async update(id: string, data: Partial<ProductImageUpdate>, expectedVersion?: number): Promise<ProductImage> {

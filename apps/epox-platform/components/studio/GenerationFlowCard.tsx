@@ -16,6 +16,7 @@ import {
   MoreHorizontal,
   RefreshCw,
   Trash2,
+  Maximize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -26,8 +27,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import type { AssetStatus, ApprovalStatus } from '@/lib/types';
+import type { ImageAspectRatio } from 'visualizer-types';
 
 interface Revision {
   id: string;
@@ -35,6 +38,8 @@ interface Revision {
   timestamp: Date;
   prompt?: string;
   type: 'original' | 'generated' | 'edited';
+  isVideo?: boolean;
+  aspectRatio?: ImageAspectRatio;
 }
 
 interface BaseImage {
@@ -108,6 +113,7 @@ export function GenerationFlowCard({
 }: GenerationFlowCardProps) {
   const [currentRevisionIndex, setCurrentRevisionIndex] = useState(0);
   const [showBaseImageSelector, setShowBaseImageSelector] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   const StatusIcon = statusConfig[status].icon;
   const isCompleted = status === 'completed';
@@ -119,6 +125,7 @@ export function GenerationFlowCard({
   const canNavigateNext = currentRevisionIndex < revisions.length - 1;
 
   const isGenerating = status === 'generating';
+  const hasRevisions = revisions.length > 0;
 
   const cardContent = (
     <Card
@@ -241,52 +248,48 @@ export function GenerationFlowCard({
       </div>
 
       {/* Main Preview / Status */}
-      {!isCompleted ? (
-        // Status placeholder when not completed
-        <div
-          className={cn(
-            'flex aspect-video flex-col items-center justify-center',
-            isGenerating ? 'bg-warning/10' : 'bg-secondary'
-          )}
-        >
+      {isGenerating && !hasRevisions ? (
+        // Status placeholder when generating with no revisions yet
+        <div className="flex aspect-video flex-col items-center justify-center bg-warning/10">
           <StatusIcon className={cn('mb-2 h-8 w-8', statusConfig[status].className)} />
-          <span
-            className={cn(
-              'text-sm',
-              isGenerating ? 'font-medium text-warning' : 'text-muted-foreground'
-            )}
-          >
-            {statusConfig[status].label}
-          </span>
-          {isGenerating && (
-            <div className="mt-2 flex items-center gap-1">
-              <div
-                className="h-1.5 w-1.5 animate-bounce rounded-full bg-warning"
-                style={{ animationDelay: '0ms' }}
-              />
-              <div
-                className="h-1.5 w-1.5 animate-bounce rounded-full bg-warning"
-                style={{ animationDelay: '150ms' }}
-              />
-              <div
-                className="h-1.5 w-1.5 animate-bounce rounded-full bg-warning"
-                style={{ animationDelay: '300ms' }}
-              />
-            </div>
-          )}
+          <span className="text-sm font-medium text-warning">{statusConfig[status].label}</span>
+          <div className="mt-2 flex items-center gap-1">
+            <div
+              className="h-1.5 w-1.5 animate-bounce rounded-full bg-warning"
+              style={{ animationDelay: '0ms' }}
+            />
+            <div
+              className="h-1.5 w-1.5 animate-bounce rounded-full bg-warning"
+              style={{ animationDelay: '150ms' }}
+            />
+            <div
+              className="h-1.5 w-1.5 animate-bounce rounded-full bg-warning"
+              style={{ animationDelay: '300ms' }}
+            />
+          </div>
         </div>
       ) : currentRevision ? (
-        // Current revision preview
+        // Current revision preview (show even when generating if we have revisions)
         <div className="relative aspect-video bg-black/20">
           <Image
             src={currentRevision.imageUrl}
             alt="Generated"
             fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover"
             unoptimized
           />
+          {/* Generating overlay - show on top of image when generating */}
+          {isGenerating && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+              <div className="flex flex-col items-center">
+                <Loader2 className="mb-2 h-8 w-8 animate-spin text-warning" />
+                <span className="text-sm font-medium text-white">Generating...</span>
+              </div>
+            </div>
+          )}
           {/* Navigation overlay */}
-          {revisions.length > 1 && (
+          {revisions.length > 1 && !isGenerating && (
             <>
               <button
                 type="button"
@@ -318,6 +321,18 @@ export function GenerationFlowCard({
               </button>
             </>
           )}
+          {/* Fullscreen button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setFullscreenImage(currentRevision.imageUrl);
+            }}
+            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
+          >
+            <Maximize2 className="h-4 w-4 text-white" />
+          </button>
           {/* Revision counter */}
           {revisions.length > 1 && (
             <div className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
@@ -325,14 +340,24 @@ export function GenerationFlowCard({
             </div>
           )}
         </div>
+      ) : status === 'pending' ? (
+        <div className="flex aspect-video flex-col items-center justify-center bg-secondary">
+          <Clock className="mb-2 h-8 w-8 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Queued</span>
+        </div>
+      ) : status === 'error' ? (
+        <div className="flex aspect-video flex-col items-center justify-center bg-destructive/10">
+          <X className="mb-2 h-8 w-8 text-destructive" />
+          <span className="text-sm text-destructive">Error</span>
+        </div>
       ) : (
         <div className="flex aspect-video items-center justify-center bg-secondary">
           <span className="text-sm text-muted-foreground">No revisions</span>
         </div>
       )}
 
-      {/* Horizontal Revision Gallery */}
-      {isCompleted && revisions.length > 0 && (
+      {/* Horizontal Revision Gallery - show whenever there are revisions */}
+      {hasRevisions && (
         <div className="border-t border-border bg-card/30 p-2">
           <div className="flex gap-1.5 overflow-x-auto pb-1">
             {revisions.map((rev, idx) => (
@@ -385,10 +410,89 @@ export function GenerationFlowCard({
     </Card>
   );
 
+  // Fullscreen image dialog
+  const fullscreenDialog = (
+    <Dialog open={!!fullscreenImage} onOpenChange={(open) => !open && setFullscreenImage(null)}>
+      <DialogContent className="max-h-[90vh] max-w-[90vw] overflow-hidden border-none bg-black/95 p-0">
+        {fullscreenImage && (
+          <div className="relative flex h-full w-full items-center justify-center">
+            <Image
+              src={fullscreenImage}
+              alt="Fullscreen preview"
+              width={1920}
+              height={1080}
+              className="max-h-[85vh] max-w-full object-contain"
+              unoptimized
+            />
+            {/* Navigation in fullscreen */}
+            {revisions.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (canNavigatePrev) {
+                      const newIndex = currentRevisionIndex - 1;
+                      setCurrentRevisionIndex(newIndex);
+                      setFullscreenImage(revisions[newIndex].imageUrl);
+                    }
+                  }}
+                  className={cn(
+                    'absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 transition-all hover:bg-black/70',
+                    !canNavigatePrev && 'cursor-not-allowed opacity-30'
+                  )}
+                  disabled={!canNavigatePrev}
+                >
+                  <ChevronLeft className="h-6 w-6 text-white" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (canNavigateNext) {
+                      const newIndex = currentRevisionIndex + 1;
+                      setCurrentRevisionIndex(newIndex);
+                      setFullscreenImage(revisions[newIndex].imageUrl);
+                    }
+                  }}
+                  className={cn(
+                    'absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 transition-all hover:bg-black/70',
+                    !canNavigateNext && 'cursor-not-allowed opacity-30'
+                  )}
+                  disabled={!canNavigateNext}
+                >
+                  <ChevronRight className="h-6 w-6 text-white" />
+                </button>
+              </>
+            )}
+            {/* Counter */}
+            {revisions.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-sm text-white">
+                {currentRevisionIndex + 1} / {revisions.length}
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
   // If onClick is provided, use it directly; otherwise wrap in Link
   if (onClick) {
-    return cardContent;
+    return (
+      <>
+        {cardContent}
+        {fullscreenDialog}
+      </>
+    );
   }
 
-  return <Link href={`/studio/collections/${collectionId}/flow/${flowId}`}>{cardContent}</Link>;
+  return (
+    <>
+      <Link href={`/studio/collections/${collectionId}/flow/${flowId}`}>{cardContent}</Link>
+      {fullscreenDialog}
+    </>
+  );
 }

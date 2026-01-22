@@ -1,14 +1,19 @@
 /**
  * Global Test Setup
  * Runs once before all tests - starts Docker container and pushes schema
+ *
+ * Performance optimizations:
+ * - Keeps container running between test runs
+ * - Only pushes schema if tables don't exist
+ * - Uses direct psql for faster schema checks
  */
 
-import { execSync, spawn } from 'child_process';
+import { execSync } from 'child_process';
 import { getTestPool, closeTestDb, getTestConnectionString } from './test-client';
 
 const DOCKER_COMPOSE_FILE = 'docker-compose.test.yml';
 const MAX_RETRIES = 30;
-const RETRY_DELAY = 1000;
+const RETRY_DELAY = 500; // Reduced from 1000ms
 
 async function waitForPostgres(): Promise<void> {
   const pool = getTestPool();
@@ -24,9 +29,30 @@ async function waitForPostgres(): Promise<void> {
       if (i === MAX_RETRIES - 1) {
         throw new Error(`PostgreSQL not ready after ${MAX_RETRIES} retries: ${error}`);
       }
-      console.log(`Waiting for PostgreSQL... (${i + 1}/${MAX_RETRIES})`);
+      if (i % 5 === 0) {
+        console.log(`Waiting for PostgreSQL... (${i + 1}/${MAX_RETRIES})`);
+      }
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
     }
+  }
+}
+
+async function schemaExists(): Promise<boolean> {
+  const pool = getTestPool();
+  try {
+    const client = await pool.connect();
+    // Check if a core table exists (collection_session has the settings column we need)
+    const result = await client.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns
+        WHERE table_name = 'collection_session'
+        AND column_name = 'settings'
+      ) as has_settings
+    `);
+    client.release();
+    return result.rows[0]?.has_settings === true;
+  } catch {
+    return false;
   }
 }
 
@@ -34,65 +60,17 @@ async function pushSchema(): Promise<void> {
   console.log('Pushing schema to test database...');
 
   try {
-    // Drop pgTAP extension before push
-    execSync('docker exec visualizer-db-test psql -U test -d visualizer_test -c "DROP EXTENSION IF EXISTS pgtap CASCADE"', {
-      stdio: 'pipe',
-    });
-
-    // Push schema using spawn to handle interactive prompt
+    // Push schema using --force to auto-approve all changes (safe for test DB)
     const env = {
       ...process.env,
       DATABASE_URL: getTestConnectionString(),
     };
 
-    await new Promise<void>((resolve, reject) => {
-      const drizzlePush = spawn('npx', ['drizzle-kit', 'push'], {
-        cwd: process.cwd(),
-        env,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
-
-      let output = '';
-      let errorOutput = '';
-
-      drizzlePush.stdout.on('data', (data) => {
-        const text = data.toString();
-        output += text;
-
-        // Auto-confirm any prompts by writing 'y\n'
-        if (text.includes('execute') || text.includes('Yes')) {
-          drizzlePush.stdin.write('y\n');
-        }
-      });
-
-      drizzlePush.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-      });
-
-      drizzlePush.on('close', (code) => {
-        if (code === 0 || output.includes('No changes detected')) {
-          console.log('Schema push completed');
-          resolve();
-        } else {
-          console.error('Drizzle push output:', output);
-          console.error('Drizzle push error:', errorOutput);
-          reject(new Error(`drizzle-kit push exited with code ${code}`));
-        }
-      });
-
-      drizzlePush.on('error', (error) => {
-        reject(error);
-      });
+    execSync('npx drizzle-kit push --force', {
+      cwd: process.cwd(),
+      env,
+      stdio: 'inherit',
     });
-
-    // Recreate pgTAP extension for pgTAP tests (optional - may not be available)
-    try {
-      execSync('docker exec visualizer-db-test psql -U test -d visualizer_test -c "CREATE EXTENSION IF NOT EXISTS pgtap"', {
-        stdio: 'pipe',
-      });
-    } catch {
-      console.log('Note: pgTAP extension not available (optional for pgTAP-based tests)');
-    }
   } catch (error) {
     console.error('Failed to push schema:', error);
     throw error;
@@ -108,26 +86,46 @@ export async function setup(): Promise<void> {
   try {
     execSync('docker info', { stdio: 'pipe' });
   } catch {
-    throw new Error('Docker is not running. Please start Docker (Rancher Desktop) and try again.');
+    throw new Error('Docker is not running. Please start Docker and try again.');
   }
 
-  // Start the test database container
-  console.log('Starting PostgreSQL container...');
+  // Check if container is already running
+  let containerRunning = false;
   try {
-    execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} up -d`, {
-      cwd: process.cwd(),
-      stdio: 'inherit',
-    });
-  } catch (error) {
-    console.error('Failed to start Docker container:', error);
-    throw error;
+    const result = execSync('docker ps --filter "name=visualizer-db-test" --format "{{.Names}}"', {
+      encoding: 'utf-8',
+    }).trim();
+    containerRunning = result === 'visualizer-db-test';
+  } catch {
+    containerRunning = false;
+  }
+
+  if (containerRunning) {
+    console.log('PostgreSQL container already running');
+  } else {
+    // Start the test database container
+    console.log('Starting PostgreSQL container...');
+    try {
+      execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} up -d`, {
+        cwd: process.cwd(),
+        stdio: 'inherit',
+      });
+    } catch (error) {
+      console.error('Failed to start Docker container:', error);
+      throw error;
+    }
   }
 
   // Wait for PostgreSQL to be ready
   await waitForPostgres();
 
-  // Push schema
-  await pushSchema();
+  // Only push schema if needed (check for settings column which was recently added)
+  const hasSchema = await schemaExists();
+  if (hasSchema) {
+    console.log('Schema already exists, skipping push');
+  } else {
+    await pushSchema();
+  }
 
   console.log('\n✅ Test environment ready!\n');
 }
@@ -135,18 +133,13 @@ export async function setup(): Promise<void> {
 export async function teardown(): Promise<void> {
   console.log('\n🧹 Cleaning up test environment...\n');
 
-  // Close the database connection
+  // Close the database connection pool
   await closeTestDb();
 
-  // Stop the test database container (but keep the volume for faster restarts)
-  try {
-    execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} down`, {
-      cwd: process.cwd(),
-      stdio: 'inherit',
-    });
-  } catch (error) {
-    console.error('Failed to stop Docker container:', error);
-  }
+  // DON'T stop the container - keep it running for faster subsequent test runs
+  // User can manually stop it with: docker compose -f docker-compose.test.yml down
+  console.log('Note: PostgreSQL container left running for faster subsequent runs.');
+  console.log('To stop: cd packages/visualizer-db && docker compose -f docker-compose.test.yml down\n');
 
-  console.log('\n✅ Cleanup complete!\n');
+  console.log('✅ Cleanup complete!\n');
 }

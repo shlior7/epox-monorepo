@@ -257,6 +257,7 @@ export function ImageEditorPanel({
               src={currentImageUrl}
               alt={productName}
               fill
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="rounded-lg object-contain"
             />
             {(isEditing || isProcessing) && (
@@ -316,6 +317,7 @@ export function ImageEditorPanel({
                   src={rev.imageDataUrl}
                   alt={`Revision ${idx + 1}`}
                   fill
+                  sizes="48px"
                   className="object-cover"
                 />
               </button>

@@ -84,7 +84,7 @@ export function ImageThumbnail({
       )}
     >
       {src ? (
-        <Image src={src} alt={alt} fill className="object-cover" unoptimized />
+        <Image src={src} alt={alt} fill sizes="64px" className="object-cover" unoptimized />
       ) : (
         fallback || (
           <div className="flex h-full w-full items-center justify-center">
@@ -129,6 +129,7 @@ export function InspirationStack({ images, maxVisible = 3, size = 'sm' }: Inspir
                   src={img.url}
                   alt={img.tags?.[0] || `Inspiration ${idx + 1}`}
                   fill
+                  sizes="36px"
                   className="object-cover"
                   unoptimized
                 />
@@ -463,6 +464,7 @@ export function ThumbnailStrip({
             src={thumb.url}
             alt={`Thumbnail ${idx + 1}`}
             fill
+            sizes="24px"
             className="object-cover"
             unoptimized
           />
@@ -543,7 +545,6 @@ export function AssetCardContent({
   className,
 }: AssetCardContentProps) {
   // Normalize aspect ratio to slash format for Tailwind
-  console.log('Aspect Ratio:', aspectRatio);
   const normalizedRatio = formatAspectRatioDisplay(aspectRatio);
 
   const aspectClasses: Record<string, string> = {
@@ -559,10 +560,5 @@ export function AssetCardContent({
 
   const aspectClass = aspectClasses[normalizedRatio] || 'aspect-square';
 
-  return (
-    <div className={cn('relative bg-black/5', aspectClass, className)}>
-      {children}
-    </div>
-  );
+  return <div className={cn('relative bg-black/5', aspectClass, className)}>{children}</div>;
 }
-

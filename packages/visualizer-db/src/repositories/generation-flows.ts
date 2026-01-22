@@ -1,7 +1,16 @@
-import { asc, eq, inArray, and, sql } from 'drizzle-orm';
+import { asc, desc, eq, inArray, and, sql } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
 import { generationFlow, generationFlowProduct } from '../schema/sessions';
-import type { GenerationFlow, GenerationFlowCreate, FlowGenerationSettings, GenerationFlowUpdate } from 'visualizer-types';
+import { product } from '../schema/products';
+import { productImage } from '../schema/products';
+import { generatedAsset } from '../schema/generated-images';
+import type {
+  GenerationFlow,
+  GenerationFlowCreate,
+  FlowGenerationSettings,
+  GenerationFlowUpdate,
+  GenerationFlowWithDetails,
+} from 'visualizer-types';
 import { DEFAULT_FLOW_SETTINGS, DEFAULT_POST_ADJUSTMENTS, normalizeImageQuality } from 'visualizer-types';
 import { updateWithVersion } from '../utils/optimistic-lock';
 import { BaseRepository } from './base';
@@ -255,6 +264,116 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
       .orderBy(asc(generationFlow.createdAt));
 
     return rows.map((row) => this.mapToEntity(row));
+  }
+
+  /**
+   * Get all flows for a collection with enriched product, image, and asset data.
+   * Single optimized query that batch fetches all related data in parallel.
+   */
+  async listByCollectionSessionWithDetails(collectionSessionId: string, r2PublicUrl: string): Promise<GenerationFlowWithDetails[]> {
+    // 1. Get all flows for the collection
+    const flows = await this.listByCollectionSession(collectionSessionId);
+    if (flows.length === 0) return [];
+
+    // 2. Extract unique IDs for batch fetching
+    const flowIds = flows.map((f) => f.id);
+    const allProductIds = [...new Set(flows.flatMap((f) => f.productIds).filter(Boolean))];
+
+    // 3. Batch fetch all related data in parallel
+    const [productsRows, imagesRows, assetsRows] = await Promise.all([
+      allProductIds.length > 0
+        ? this.drizzle
+            .select({
+              id: product.id,
+              name: product.name,
+              category: product.category,
+              sceneTypes: product.sceneTypes,
+            })
+            .from(product)
+            .where(inArray(product.id, allProductIds))
+        : [],
+      allProductIds.length > 0
+        ? this.drizzle
+            .select({
+              id: productImage.id,
+              productId: productImage.productId,
+              r2KeyBase: productImage.r2KeyBase,
+              isPrimary: productImage.isPrimary,
+              sortOrder: productImage.sortOrder,
+            })
+            .from(productImage)
+            .where(inArray(productImage.productId, allProductIds))
+            .orderBy(desc(productImage.isPrimary), asc(productImage.sortOrder))
+        : [],
+      flowIds.length > 0
+        ? this.drizzle
+            .select({
+              id: generatedAsset.id,
+              generationFlowId: generatedAsset.generationFlowId,
+              assetUrl: generatedAsset.assetUrl,
+              assetType: generatedAsset.assetType,
+              status: generatedAsset.status,
+              approvalStatus: generatedAsset.approvalStatus,
+              settings: generatedAsset.settings,
+              createdAt: generatedAsset.createdAt,
+              jobId: generatedAsset.jobId,
+            })
+            .from(generatedAsset)
+            .where(inArray(generatedAsset.generationFlowId, flowIds))
+            .orderBy(desc(generatedAsset.createdAt))
+        : [],
+    ]);
+
+    // 4. Build lookup maps for O(1) access
+    const productsMap = new Map(productsRows.map((p) => [p.id, p]));
+    const imagesByProduct = new Map<string, typeof imagesRows>();
+    for (const img of imagesRows) {
+      const existing = imagesByProduct.get(img.productId) || [];
+      existing.push(img);
+      imagesByProduct.set(img.productId, existing);
+    }
+    const assetsByFlow = new Map<string, typeof assetsRows>();
+    for (const asset of assetsRows) {
+      if (asset.generationFlowId) {
+        const existing = assetsByFlow.get(asset.generationFlowId) || [];
+        existing.push(asset);
+        assetsByFlow.set(asset.generationFlowId, existing);
+      }
+    }
+
+    // 5. Assemble enriched flows
+    return flows.map((flow): GenerationFlowWithDetails => {
+      const productId = flow.productIds[0];
+      const productData = productId ? productsMap.get(productId) : null;
+      const images = productId ? imagesByProduct.get(productId) || [] : [];
+      const assets = (assetsByFlow.get(flow.id) || []).filter((a) => a.assetType !== 'video');
+
+      return {
+        ...flow,
+        product: productData
+          ? {
+              id: productData.id,
+              name: productData.name,
+              category: productData.category,
+              sceneTypes: productData.sceneTypes as string[] | null,
+            }
+          : null,
+        baseImages: images.map((img) => ({
+          id: img.id,
+          url: `${r2PublicUrl}/${img.r2KeyBase}`,
+          isPrimary: img.isPrimary,
+        })),
+        generatedAssets: assets.map((a) => ({
+          id: a.id,
+          assetUrl: a.assetUrl,
+          status: a.status as GenerationFlowWithDetails['generatedAssets'][0]['status'],
+          approvalStatus: a.approvalStatus as GenerationFlowWithDetails['generatedAssets'][0]['approvalStatus'],
+          aspectRatio: (a.settings as { aspectRatio?: string } | null)?.aspectRatio ?? null,
+          createdAt: a.createdAt,
+          jobId: a.jobId,
+        })),
+      };
+    });
   }
 
   async listByClient(clientId: string): Promise<GenerationFlow[]> {

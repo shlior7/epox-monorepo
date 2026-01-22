@@ -34,7 +34,6 @@ const navigation = [
   { name: 'Collections', href: '/collections', icon: FolderKanban },
   { name: 'Products', href: '/products', icon: Package },
   { name: 'Assets', href: '/assets', icon: Images },
-  { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 export function Sidebar({
@@ -63,8 +62,8 @@ export function Sidebar({
   };
 
   // Prevent hydration mismatch by using consistent fallback until mounted
-  const userName = mounted ? (user?.name || 'User') : 'User';
-  const userEmail = mounted ? (user?.email || '') : '';
+  const userName = mounted ? user?.name || 'User' : 'User';
+  const userEmail = mounted ? user?.email || '' : '';
   const userInitials = getInitials(userName);
 
   return (
@@ -226,12 +225,6 @@ export function Sidebar({
               <Link href="/settings">
                 <User className="mr-2 h-4 w-4" />
                 Profile
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/settings">
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

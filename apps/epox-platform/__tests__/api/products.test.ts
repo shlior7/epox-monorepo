@@ -29,6 +29,8 @@ vi.mock('@/lib/services/db', () => ({
     },
     generatedAssets: {
       listByProductId: vi.fn(),
+      // Optimized stats query
+      getStatsByProductId: vi.fn(),
     },
     collectionSessions: {
       listByProductId: vi.fn(),
@@ -134,7 +136,7 @@ describe('Products API - POST /api/products', () => {
       analysisData: null,
       analysisVersion: null,
       analyzedAt: null,
-      price: 299.99,
+      price: '299.99',
       metadata: null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -232,6 +234,12 @@ describe('Products API - GET /api/products/[id]', () => {
     vi.clearAllMocks();
     // Setup default mocks for detail endpoint
     vi.mocked(db.generatedAssets.listByProductId).mockResolvedValue([]);
+    vi.mocked(db.generatedAssets.getStatsByProductId).mockResolvedValue({
+      totalGenerated: 0,
+      pinnedCount: 0,
+      approvedCount: 0,
+      pendingCount: 0,
+    });
     vi.mocked(db.collectionSessions.listByProductId).mockResolvedValue([]);
   });
 
@@ -276,6 +284,7 @@ describe('Products API - GET /api/products/[id]', () => {
           r2KeyBase: 'products/img1.jpg',
           r2KeyPreview: null,
           sortOrder: 0,
+          isPrimary: true,
           version: 1,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -286,6 +295,7 @@ describe('Products API - GET /api/products/[id]', () => {
           r2KeyBase: 'products/img2.jpg',
           r2KeyPreview: null,
           sortOrder: 1,
+          isPrimary: false,
           version: 1,
           createdAt: new Date(),
           updatedAt: new Date(),

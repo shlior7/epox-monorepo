@@ -44,44 +44,30 @@ export const GET = withSecurity(async (request, context) => {
 
     const offset = (page - 1) * limit;
 
-    // If flowId is provided, fetch assets directly by flow
+    // If flowId is provided, use optimized SQL-level filtering
     if (flowId) {
-      const assets = await db.generatedAssets.listByGenerationFlow(flowId, false);
+      const flowFilterOptions = {
+        productId,
+        productIds: parsedProductIds.length > 0 ? parsedProductIds : undefined,
+        pinned: pinnedFilter === 'true' ? true : pinnedFilter === 'false' ? false : undefined,
+        status: statusFilter as AssetStatus | undefined,
+        approvalStatus: approvalFilter as ApprovalStatus | undefined,
+        sort,
+        limit,
+        offset,
+      };
 
-      // Apply additional filters
-      let filteredAssets = assets;
-      if (statusFilter) {
-        filteredAssets = filteredAssets.filter((a) => a.status === statusFilter);
-      }
-      if (approvalFilter) {
-        filteredAssets = filteredAssets.filter((a) => a.approvalStatus === approvalFilter);
-      }
-      if (pinnedFilter !== undefined) {
-        const isPinned = pinnedFilter === 'true';
-        filteredAssets = filteredAssets.filter((a) => a.pinned === isPinned);
-      }
-      if (parsedProductIds.length > 0 || productId) {
-        const productFilterIds = parsedProductIds.length > 0 ? parsedProductIds : [productId!];
-        filteredAssets = filteredAssets.filter((asset) =>
-          asset.productIds?.some((id) => productFilterIds.includes(id))
-        );
-      }
+      // Execute count and list in parallel - all filtering done in SQL
+      const [total, assets] = await Promise.all([
+        db.generatedAssets.countByFlowWithFilters(flowId, flowFilterOptions),
+        db.generatedAssets.listByFlowWithFilters(flowId, flowFilterOptions),
+      ]);
 
-      // Sort
-      if (sort === 'oldest') {
-        filteredAssets.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-      } else {
-        filteredAssets.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      }
-
-      // Paginate
-      const total = filteredAssets.length;
       const totalPages = Math.ceil(total / limit);
-      const paginatedAssets = filteredAssets.slice(offset, offset + limit);
 
-      // Get product names
+      // Get product names in batch
       const productIdsSet = new Set<string>();
-      for (const asset of paginatedAssets) {
+      for (const asset of assets) {
         if (asset.productIds) {
           for (const id of asset.productIds) {
             productIdsSet.add(id);
@@ -95,7 +81,7 @@ export const GET = withSecurity(async (request, context) => {
           : new Map<string, string>();
 
       // Map to frontend format
-      const mappedAssets = paginatedAssets.map((asset) => ({
+      const mappedAssets = assets.map((asset) => ({
         id: asset.id,
         url: asset.assetUrl,
         assetType: asset.assetType,

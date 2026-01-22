@@ -44,7 +44,7 @@ export const GET = withSecurity(async (request, context, { params }) => {
       baseImages: product.images.map((img) => ({
         id: img.id,
         url: storage.getPublicUrl(img.r2KeyBase),
-        isPrimary: img.sortOrder === 0,
+        isPrimary: img.isPrimary,
         sortOrder: img.sortOrder,
       })),
 
@@ -72,8 +72,11 @@ export const GET = withSecurity(async (request, context, { params }) => {
     } = mappedProduct;
 
     if (includeAssets) {
-      // Query assets where productIds array contains this product ID
-      const productAssets = await db.generatedAssets.listByProductId(clientId, id, 100);
+      // Query assets and stats in parallel - stats use optimized SQL aggregation
+      const [productAssets, stats] = await Promise.all([
+        db.generatedAssets.listByProductId(clientId, id, 100),
+        db.generatedAssets.getStatsByProductId(clientId, id),
+      ]);
 
       response.generatedAssets = productAssets.map((asset) => ({
         id: asset.id,
@@ -85,12 +88,7 @@ export const GET = withSecurity(async (request, context, { params }) => {
         createdAt: asset.createdAt.toISOString(),
       }));
 
-      response.stats = {
-        totalGenerated: productAssets.length,
-        pinnedCount: productAssets.filter((a) => a.pinned).length,
-        approvedCount: productAssets.filter((a) => a.approvalStatus === 'approved').length,
-        pendingCount: productAssets.filter((a) => a.approvalStatus === 'pending').length,
-      };
+      response.stats = stats;
     }
 
     // Query collections that contain this product

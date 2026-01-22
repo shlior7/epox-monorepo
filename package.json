@@ -17,7 +17,7 @@
     "deps:update": "yarn upgrade-interactive",
     "ensure-deduped-lockfile": "yarn dedupe --check",
     "dev": "turbo dev",
-    "post-change-check": "yarn format:write:all && yarn typecheck && yarn build && yarn test"
+    "post-change-check": "yarn typecheck && yarn build && yarn test"
   },
   "workspaces": [
     "services/*",

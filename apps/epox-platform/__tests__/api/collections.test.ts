@@ -23,6 +23,8 @@ vi.mock('@/lib/services/db', () => ({
       delete: vi.fn(),
       listWithFilters: vi.fn(),
       countWithFilters: vi.fn(),
+      // Optimized method with pre-aggregated stats
+      listWithAssetStats: vi.fn(),
     },
     generationFlows: {
       create: vi.fn(),
@@ -36,6 +38,9 @@ vi.mock('@/lib/services/db', () => ({
       listByGenerationFlowIds: vi.fn(),
       deleteByGenerationFlowIds: vi.fn(),
       hardDelete: vi.fn(),
+      // Optimized methods for batch operations
+      listDeletableByFlowIds: vi.fn(),
+      hardDeleteMany: vi.fn(),
     },
   },
 }));
@@ -52,12 +57,9 @@ import { storage } from 'visualizer-storage';
 describe('Collections API - GET /api/collections', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Setup default mocks for list endpoint
+    // Setup default mocks for list endpoint - now uses optimized listWithAssetStats
     vi.mocked(db.collectionSessions.countWithFilters).mockResolvedValue(0);
-    vi.mocked(db.collectionSessions.listWithFilters).mockResolvedValue([]);
-    vi.mocked(db.generationFlows.listByCollectionSessionIds).mockResolvedValue([]);
-    vi.mocked(db.generatedAssets.countByGenerationFlowIds).mockResolvedValue(0);
-    vi.mocked(db.generatedAssets.getFirstByGenerationFlowIds).mockResolvedValue(null);
+    vi.mocked(db.collectionSessions.listWithAssetStats).mockResolvedValue([]);
   });
 
   it('should return empty list when no collections exist', async () => {
@@ -83,7 +85,7 @@ describe('Collections API - GET /api/collections', () => {
     const request = new NextRequest('http://localhost:3000/api/collections?status=completed');
     await getCollections(request);
 
-    expect(db.collectionSessions.listWithFilters).toHaveBeenCalledWith(
+    expect(db.collectionSessions.listWithAssetStats).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ status: 'completed' })
     );
@@ -93,7 +95,7 @@ describe('Collections API - GET /api/collections', () => {
     const request = new NextRequest('http://localhost:3000/api/collections?search=living room');
     await getCollections(request);
 
-    expect(db.collectionSessions.listWithFilters).toHaveBeenCalledWith(
+    expect(db.collectionSessions.listWithAssetStats).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ search: 'living room' })
     );
@@ -103,7 +105,7 @@ describe('Collections API - GET /api/collections', () => {
     const request = new NextRequest('http://localhost:3000/api/collections?sort=name');
     await getCollections(request);
 
-    expect(db.collectionSessions.listWithFilters).toHaveBeenCalledWith(
+    expect(db.collectionSessions.listWithAssetStats).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ sort: 'name' })
     );
@@ -113,7 +115,7 @@ describe('Collections API - GET /api/collections', () => {
     const request = new NextRequest('http://localhost:3000/api/collections?sort=productCount');
     await getCollections(request);
 
-    expect(db.collectionSessions.listWithFilters).toHaveBeenCalledWith(
+    expect(db.collectionSessions.listWithAssetStats).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ sort: 'productCount' })
     );
@@ -388,7 +390,7 @@ describe('Collections API - PATCH /api/collections/[id]', () => {
       ...existingCollection,
       settings: {
         inspirationImages: [],
-        aspectRatio: '16:9',
+        aspectRatio: '16:9' as const,
         video: {
           prompt: 'Slow orbit around the sofa',
           inspirationImageUrl: 'https://example.com/inspo.jpg',
@@ -565,21 +567,8 @@ describe('Collections API - DELETE /api/collections/[id]', () => {
         updatedAt: new Date(),
       } as any,
     ]);
-    vi.mocked(db.generatedAssets.listByGenerationFlowIds).mockResolvedValue([
-      {
-        id: 'asset-keep-pinned',
-        assetUrl: 'https://cdn.example.com/keep-pinned.png',
-        pinned: true,
-        approvalStatus: 'pending',
-        deletedAt: null,
-      } as any,
-      {
-        id: 'asset-keep-approved',
-        assetUrl: 'https://cdn.example.com/keep-approved.png',
-        pinned: false,
-        approvalStatus: 'approved',
-        deletedAt: null,
-      } as any,
+    // Now uses SQL-level filtering via listDeletableByFlowIds instead of JS filtering
+    vi.mocked(db.generatedAssets.listDeletableByFlowIds).mockResolvedValue([
       {
         id: 'asset-delete',
         assetUrl: 'https://cdn.example.com/delete.png',
@@ -589,7 +578,7 @@ describe('Collections API - DELETE /api/collections/[id]', () => {
       } as any,
     ]);
     vi.mocked(db.collectionSessions.delete).mockResolvedValue();
-    vi.mocked(db.generatedAssets.hardDelete).mockResolvedValue();
+    vi.mocked(db.generatedAssets.hardDeleteMany).mockResolvedValue();
 
     const request = new NextRequest('http://localhost:3000/api/collections/coll-1', {
       method: 'DELETE',
@@ -601,8 +590,8 @@ describe('Collections API - DELETE /api/collections/[id]', () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(db.generatedAssets.hardDelete).toHaveBeenCalledWith('asset-delete');
-    expect(db.generatedAssets.hardDelete).toHaveBeenCalledTimes(1);
+    // Now uses batch delete
+    expect(db.generatedAssets.hardDeleteMany).toHaveBeenCalledWith(['asset-delete']);
     expect(storage.delete).toHaveBeenCalledWith('delete.png');
   });
 

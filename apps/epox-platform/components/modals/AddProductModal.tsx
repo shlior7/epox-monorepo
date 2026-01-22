@@ -319,6 +319,7 @@ export function AddProductModal({ isOpen, onClose, onProductAdded }: AddProductM
                           src={file.preview}
                           alt={file.file.name}
                           fill
+                          sizes="80px"
                           className="object-cover"
                         />
                         {index === 0 && (

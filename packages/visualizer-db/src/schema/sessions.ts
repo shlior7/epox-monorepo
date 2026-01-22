@@ -97,7 +97,7 @@ export const generationFlow = pgTable(
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
   },
   (table) => [
-    index('generation_flow_collection_session_id_idx').on(table.collectionSessionId),
+    index('generation_flow_collection_session_id_idx').on(table.collectionSessionId, table.createdAt),
     index('generation_flow_client_id_idx').on(table.clientId),
     index('generation_flow_status_idx').on(table.status),
     index('generation_flow_favorite_idx').on(table.clientId, table.isFavorite),

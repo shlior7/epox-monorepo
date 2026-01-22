@@ -49,6 +49,12 @@ export interface ImageGenerationPayload {
     imageModel?: string;
     fallbackImageModel?: string;
   };
+  /** Collection-level settings for Art Director context */
+  collectionSettings?: {
+    stylePreset?: string;
+    lightingPreset?: string;
+    userPrompt?: string;
+  };
 }
 
 export interface ImageEditPayload {

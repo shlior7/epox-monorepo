@@ -10,6 +10,9 @@ import { storage } from '@/lib/services/storage';
 import { withSecurity } from '@/lib/security/middleware';
 import type { ProductSource } from 'visualizer-types';
 
+// Revalidate product listings every 15 seconds
+export const revalidate = 15;
+
 export const GET = withSecurity(async (request, context) => {
   const clientId = context.clientId;
   if (!clientId) {
@@ -86,16 +89,20 @@ export const GET = withSecurity(async (request, context) => {
         baseUrl: storage.getPublicUrl(img.r2KeyBase),
         previewUrl: img.r2KeyPreview ? storage.getPublicUrl(img.r2KeyPreview) : null,
         sortOrder: img.sortOrder,
+        isPrimary: img.isPrimary,
       })),
 
-      // Backward compatibility: first image URL
-      imageUrl: p.images[0] ? storage.getPublicUrl(p.images[0].r2KeyBase) : '',
+      // Backward compatibility: primary image URL (or first if none marked)
+      imageUrl: (() => {
+        const primary = p.images.find((img) => img.isPrimary) ?? p.images[0];
+        return primary ? storage.getPublicUrl(primary.r2KeyBase) : '';
+      })(),
 
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
     }));
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       products: mappedProducts,
       pagination: {
         total,
@@ -109,6 +116,11 @@ export const GET = withSecurity(async (request, context) => {
         sceneTypes,
       },
     });
+
+    // Cache product listings for 15 seconds (private per-user)
+    response.headers.set('Cache-Control', 'private, s-maxage=15, stale-while-revalidate=30');
+
+    return response;
   } catch (error: any) {
     console.error('❌ Failed to fetch products:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

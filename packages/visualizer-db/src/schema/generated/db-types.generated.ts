@@ -255,6 +255,7 @@ export interface ProductImage {
   version: number;
   createdAt: Date;
   updatedAt: Date;
+  isPrimary: boolean;
 }
 
 export interface QuotaLimit {

@@ -17,14 +17,18 @@
   },
   "scripts": {
     "build": "npm run db:generate:types",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
+    "db:push": "dotenv -e .env.local -- drizzle-kit push",
+    "db:studio": "dotenv -e .env.local -- drizzle-kit studio",
     "db:generate:types": "tsx scripts/generate-db-interfaces.ts",
     "db:generate:test-schema": "drizzle-kit generate && cp drizzle/*.sql sql-tests/schema.sql && sed -i '' 's/--> statement-breakpoint//g' sql-tests/schema.sql && rm -rf drizzle && echo 'Generated sql-tests/schema.sql'",
     "db:seed:admin": "tsx scripts/create-default-admin.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:db:start": "docker compose -f docker-compose.test.yml up -d",
+    "test:db:stop": "docker compose -f docker-compose.test.yml down",
+    "test:db:reset": "docker compose -f docker-compose.test.yml down -v && docker compose -f docker-compose.test.yml up -d",
+    "test:db:push": "DATABASE_URL=postgresql://test:test@localhost:5434/visualizer_test drizzle-kit push"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",

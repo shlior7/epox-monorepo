@@ -2,7 +2,7 @@
 // Card Footer
 // ============================================================================
 
-import { cn } from "../../../lib/utils";
+import { cn } from '../../../lib/utils';
 
 interface AssetCardFooterProps {
   children: React.ReactNode;

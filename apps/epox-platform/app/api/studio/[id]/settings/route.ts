@@ -47,6 +47,9 @@ interface UpdateSettingsRequest {
     };
     presetId?: string | null;
   };
+
+  // Selected base images (productId -> imageUrl)
+  selectedBaseImages?: Record<string, string>;
 }
 
 export const PATCH = withSecurity(async (request, context, { params }) => {
@@ -125,7 +128,17 @@ export const PATCH = withSecurity(async (request, context, { params }) => {
       settingsUpdate.video = body.video as FlowGenerationSettings['video'];
     }
 
-    flow = await db.generationFlows.updateSettings(flowId, settingsUpdate);
+    // Update settings if any
+    if (Object.keys(settingsUpdate).length > 0) {
+      flow = await db.generationFlows.updateSettings(flowId, settingsUpdate);
+    }
+
+    // Update selectedBaseImages separately (not part of settings)
+    if (body.selectedBaseImages !== undefined) {
+      flow = await db.generationFlows.update(flowId, {
+        selectedBaseImages: body.selectedBaseImages,
+      });
+    }
 
     console.log('✅ Updated studio settings:', flowId);
 
@@ -167,12 +180,41 @@ export const GET = withSecurity(async (request, context, { params }) => {
       return forbiddenResponse();
     }
 
-    return NextResponse.json({
+    // Fetch collection data if this flow belongs to a collection
+    let collectionName: string | null = null;
+    let collectionSettings: {
+      userPrompt?: string;
+      stylePreset?: string;
+      lightingPreset?: string;
+    } | null = null;
+    if (flow.collectionSessionId) {
+      const collection = await db.collectionSessions.getById(flow.collectionSessionId);
+      if (collection) {
+        collectionName = collection.name;
+        if (collection.settings) {
+          collectionSettings = {
+            userPrompt: collection.settings.userPrompt,
+            stylePreset: collection.settings.stylePreset,
+            lightingPreset: collection.settings.lightingPreset,
+          };
+        }
+      }
+    }
+
+    const response = NextResponse.json({
       flowId: flow.id,
       settings: flow.settings,
       productIds: flow.productIds,
       selectedBaseImages: flow.selectedBaseImages,
+      collectionSessionId: flow.collectionSessionId ?? null,
+      collectionName,
+      collectionSettings,
     });
+
+    // Cache studio settings for 10 seconds (private per-user)
+    response.headers.set('Cache-Control', 'private, s-maxage=10, stale-while-revalidate=20');
+
+    return response;
   } catch (error) {
     console.error('❌ Failed to get studio settings:', error);
     // Secure error handling - use helper

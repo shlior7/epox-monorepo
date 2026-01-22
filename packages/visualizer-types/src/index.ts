@@ -104,6 +104,7 @@ export type {
   ChatSessionWithMessages,
   CollectionSessionWithFlows,
   GenerationFlowWithAssets,
+  GenerationFlowWithDetails,
   FlowGeneratedImage,
 } from './domain';
 
