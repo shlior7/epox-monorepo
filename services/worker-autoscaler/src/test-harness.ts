@@ -10,7 +10,7 @@
  */
 
 import Redis from 'ioredis';
-import pg from 'pg';
+import pg, { Pool as PoolType } from 'pg';
 const { Pool } = pg;
 
 // ============================================================================
@@ -19,8 +19,7 @@ const { Pool } = pg;
 
 const TEST_CONFIG = {
   redisUrl: process.env.TEST_REDIS_URL ?? 'redis://localhost:6380',
-  databaseUrl:
-    process.env.TEST_DATABASE_URL ?? 'postgresql://test:test@localhost:5435/worker_test',
+  databaseUrl: process.env.TEST_DATABASE_URL ?? 'postgresql://test:test@localhost:5435/worker_test',
   globalRpmLimit: 60,
   maxWorkers: 5,
   minWorkers: 0,
@@ -45,8 +44,8 @@ interface RateLimitState {
 }
 
 class TestHarness {
-  private redis: Redis;
-  private pool: Pool;
+  redis: Redis;
+  private pool: PoolType;
   private simulatedWorkerCount = 0;
   private scalingHistory: ScalingDecision[] = [];
 
@@ -61,7 +60,9 @@ class TestHarness {
     // Clear Redis
     await this.redis.flushall();
 
-    // Clear jobs table
+    // Clear tables in correct order (dependent tables first)
+    await this.pool.query('DELETE FROM generated_asset_product').catch(() => {});
+    await this.pool.query('DELETE FROM generated_asset').catch(() => {});
     await this.pool.query('DELETE FROM generation_job');
 
     // Initialize Redis config (like autoscaler does)
@@ -85,13 +86,10 @@ class TestHarness {
   // ---------------------------------------------------------------------------
 
   async createJobs(count: number, status: 'pending' | 'processing' = 'pending'): Promise<void> {
-    const values = Array.from(
-      { length: count },
-      (_, i) => `('job-${Date.now()}-${i}', '${status}')`
-    ).join(',');
+    const values = Array.from({ length: count }, (_, i) => `('job-${Date.now()}-${i}', 'autoscaler-test', '${status}')`).join(',');
 
     if (count > 0) {
-      await this.pool.query(`INSERT INTO generation_job (id, status) VALUES ${values}`);
+      await this.pool.query(`INSERT INTO generation_job (id, client_id, status) VALUES ${values}`);
     }
   }
 
@@ -154,8 +152,7 @@ class TestHarness {
       this.simulatedWorkerCount = desiredWorkers;
 
       // Update Redis per-worker RPM
-      const perWorkerRpm =
-        desiredWorkers > 0 ? Math.floor(TEST_CONFIG.globalRpmLimit / desiredWorkers) : 0;
+      const perWorkerRpm = desiredWorkers > 0 ? Math.floor(TEST_CONFIG.globalRpmLimit / desiredWorkers) : 0;
       await this.redis.set('worker:config:per_worker_rpm', perWorkerRpm.toString());
       await this.redis.set('worker:count', desiredWorkers.toString());
     }
@@ -270,9 +267,7 @@ async function runTests(): Promise<void> {
           : `❌ Expected ${test.expectedWorkers}, got ${decision.desiredWorkers}`,
       });
 
-      console.log(
-        `  ${test.jobs.toString().padStart(4)} jobs → ${decision.desiredWorkers} workers ${passed ? '✅' : '❌'}`
-      );
+      console.log(`  ${test.jobs.toString().padStart(4)} jobs → ${decision.desiredWorkers} workers ${passed ? '✅' : '❌'}`);
     }
 
     console.log();
@@ -295,8 +290,7 @@ async function runTests(): Promise<void> {
     for (const test of rpmTests) {
       // Create enough jobs to trigger the desired worker count
       await harness.clearJobs();
-      const jobsNeeded =
-        test.workers === 1 ? 5 : test.workers === 2 ? 20 : test.workers === 3 ? 50 : test.workers === 4 ? 80 : 150;
+      const jobsNeeded = test.workers === 1 ? 5 : test.workers === 2 ? 20 : test.workers === 3 ? 50 : test.workers === 4 ? 80 : 150;
 
       await harness.createJobs(jobsNeeded);
       await harness.simulateAutoscalerDecision();
@@ -312,9 +306,7 @@ async function runTests(): Promise<void> {
           : `❌ Expected ${test.expectedPerWorkerRpm}, got ${state.perWorkerRpm}`,
       });
 
-      console.log(
-        `  ${test.workers} workers → ${state.perWorkerRpm} RPM/worker (global: ${state.limit}) ${passed ? '✅' : '❌'}`
-      );
+      console.log(`  ${test.workers} workers → ${state.perWorkerRpm} RPM/worker (global: ${state.limit}) ${passed ? '✅' : '❌'}`);
     }
 
     console.log();
@@ -352,9 +344,7 @@ async function runTests(): Promise<void> {
           : `❌ Expected ${test.shouldAllow ? 'allow' : 'block'}, got ${canProcess ? 'allow' : 'block'}`,
       });
 
-      console.log(
-        `  After ${test.consume.toString().padStart(3)} requests: ${canProcess ? 'ALLOW' : 'BLOCK'} ${passed ? '✅' : '❌'}`
-      );
+      console.log(`  After ${test.consume.toString().padStart(3)} requests: ${canProcess ? 'ALLOW' : 'BLOCK'} ${passed ? '✅' : '❌'}`);
     }
 
     console.log();
@@ -384,9 +374,7 @@ async function runTests(): Promise<void> {
       results.push({
         name: `RPM limit enforcement at ${rpm}`,
         passed,
-        details: passed
-          ? `✅ Correctly enforced limit at ${rpm}`
-          : `❌ Failed: before=${canProcessBefore}, after=${canProcessAfter}`,
+        details: passed ? `✅ Correctly enforced limit at ${rpm}` : `❌ Failed: before=${canProcessBefore}, after=${canProcessAfter}`,
       });
 
       console.log(`  RPM ${rpm}: allow at ${rpm - 1}, block at ${rpm} ${passed ? '✅' : '❌'}`);

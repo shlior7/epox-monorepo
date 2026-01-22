@@ -47,6 +47,11 @@ function createFormRequest(formData: FormData): NextRequest {
   } as NextRequest;
 }
 
+// Helper to call the route handler with proper context
+async function callUpload(formData: FormData) {
+  return upload(createFormRequest(formData), { params: Promise.resolve({}) });
+}
+
 describe('Upload API - POST /api/upload', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -74,9 +79,7 @@ describe('Upload API - POST /api/upload', () => {
 
   it('should require a file', async () => {
     const formData = new FormData();
-    const request = createFormRequest(formData);
-
-    const response = await upload(request);
+    const response = await callUpload(formData);
 
     expect(response.status).toBe(400);
   });
@@ -86,7 +89,7 @@ describe('Upload API - POST /api/upload', () => {
     const file = new File(['test'], 'test.txt', { type: 'text/plain' });
     formData.set('file', file);
 
-    const response = await upload(createFormRequest(formData));
+    const response = await callUpload(formData);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -100,7 +103,7 @@ describe('Upload API - POST /api/upload', () => {
     });
     formData.set('file', file);
 
-    const response = await upload(createFormRequest(formData));
+    const response = await callUpload(formData);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -114,7 +117,7 @@ describe('Upload API - POST /api/upload', () => {
     formData.set('type', 'product');
     formData.set('productId', 'prod-1');
 
-    const response = await upload(createFormRequest(formData));
+    const response = await callUpload(formData);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -144,7 +147,7 @@ describe('Upload API - POST /api/upload', () => {
     formData.set('type', 'product');
     formData.set('productId', 'prod-1');
 
-    const response = await upload(createFormRequest(formData));
+    const response = await callUpload(formData);
 
     expect(response.status).toBe(200);
     expect(db.products.update).not.toHaveBeenCalled();
@@ -157,7 +160,7 @@ describe('Upload API - POST /api/upload', () => {
     formData.set('type', 'collection');
     formData.set('collectionId', 'coll-1');
 
-    const response = await upload(createFormRequest(formData));
+    const response = await callUpload(formData);
     const data = await response.json();
 
     expect(response.status).toBe(200);

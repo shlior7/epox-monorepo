@@ -18,20 +18,14 @@ vi.mock('@/lib/services/db', () => ({
     },
     generationFlows: {
       listByCollectionSession: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    products: {
-      getById: vi.fn(),
     },
     productImages: {
-      list: vi.fn(),
+      listByProductIds: vi.fn(),
+    },
+    generatedAssets: {
+      create: vi.fn(),
     },
   },
-}));
-
-vi.mock('@/lib/services/get-auth', () => ({
-  getClientId: vi.fn(() => Promise.resolve('test-client')),
 }));
 
 import { db } from '@/lib/services/db';
@@ -44,6 +38,7 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
       jobId: 'job-1',
       expectedImageIds: [],
     });
+    vi.mocked(db.generatedAssets.create).mockResolvedValue({ id: 'asset-1' } as any);
   });
 
   it('should return 404 when collection not found', async () => {
@@ -61,9 +56,10 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
     expect(response.status).toBe(404);
   });
 
-  it('should reject when no products to generate', async () => {
+  it('should return 403 when client does not own collection', async () => {
     vi.mocked(db.collectionSessions.getById).mockResolvedValue({
       id: 'coll-1',
+      clientId: 'other-client',
       productIds: ['prod-1'],
       selectedBaseImages: {},
       settings: {},
@@ -71,21 +67,20 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
 
     const request = new NextRequest('http://localhost:3000/api/collections/coll-1/generate', {
       method: 'POST',
-      body: JSON.stringify({ productIds: ['prod-2'] }),
+      body: JSON.stringify({}),
     });
 
     const response = await generateCollection(request, {
       params: Promise.resolve({ id: 'coll-1' }),
     });
 
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error).toContain('No products to generate');
+    expect(response.status).toBe(403);
   });
 
-  it('should create flows and generation job', async () => {
+  it('should create generation jobs for each flow', async () => {
     vi.mocked(db.collectionSessions.getById).mockResolvedValue({
       id: 'coll-1',
+      clientId: 'test-client',
       productIds: ['prod-1'],
       selectedBaseImages: {},
       settings: {
@@ -95,12 +90,14 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
         variantsCount: 1,
       },
     } as any);
-    vi.mocked(db.generationFlows.listByCollectionSession).mockResolvedValue([] as any);
-    vi.mocked(db.generationFlows.create).mockResolvedValue({ id: 'flow-1' } as any);
-    vi.mocked(db.products.getById).mockResolvedValue({ id: 'prod-1' } as any);
-    vi.mocked(db.productImages.list).mockResolvedValue([
-      { id: 'img-1', r2KeyBase: 'clients/test-client/products/prod-1/img-1.jpg' },
+    vi.mocked(db.generationFlows.listByCollectionSession).mockResolvedValue([
+      { id: 'flow-1', productIds: ['prod-1'], selectedBaseImages: {} },
     ] as any);
+    vi.mocked(db.productImages.listByProductIds).mockResolvedValue(
+      new Map([
+        ['prod-1', [{ id: 'img-1', r2KeyBase: 'clients/test-client/products/prod-1/img-1.jpg', isPrimary: true }]],
+      ]) as any
+    );
 
     const request = new NextRequest('http://localhost:3000/api/collections/coll-1/generate', {
       method: 'POST',
@@ -134,28 +131,71 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
       })
     );
     expect(db.collectionSessions.update).toHaveBeenCalledWith('coll-1', { status: 'generating' });
-    expect(data.jobId).toBe('job-1');
+    expect(db.generatedAssets.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: 'test-client',
+        generationFlowId: 'flow-1',
+        status: 'pending',
+        jobId: 'job-1',
+      })
+    );
+    expect(data.jobIds).toEqual(['job-1']);
+    expect(data.flowIds).toEqual(['flow-1']);
   });
 
-  it('should update existing flows with new settings', async () => {
+  it('should handle multiple flows', async () => {
     vi.mocked(db.collectionSessions.getById).mockResolvedValue({
       id: 'coll-1',
+      clientId: 'test-client',
+      productIds: ['prod-1', 'prod-2'],
+      selectedBaseImages: {},
+      settings: {},
+    } as any);
+    vi.mocked(db.generationFlows.listByCollectionSession).mockResolvedValue([
+      { id: 'flow-1', productIds: ['prod-1'], selectedBaseImages: {} },
+      { id: 'flow-2', productIds: ['prod-2'], selectedBaseImages: {} },
+    ] as any);
+    vi.mocked(db.productImages.listByProductIds).mockResolvedValue(new Map() as any);
+    vi.mocked(enqueueImageGeneration)
+      .mockResolvedValueOnce({ jobId: 'job-1', expectedImageIds: [] })
+      .mockResolvedValueOnce({ jobId: 'job-2', expectedImageIds: [] });
+
+    const request = new NextRequest('http://localhost:3000/api/collections/coll-1/generate', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+
+    const response = await generateCollection(request, {
+      params: Promise.resolve({ id: 'coll-1' }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(enqueueImageGeneration).toHaveBeenCalledTimes(2);
+    expect(data.jobIds).toEqual(['job-1', 'job-2']);
+    expect(data.flowIds).toEqual(['flow-1', 'flow-2']);
+  });
+
+  it('should use selected base images from flow', async () => {
+    vi.mocked(db.collectionSessions.getById).mockResolvedValue({
+      id: 'coll-1',
+      clientId: 'test-client',
       productIds: ['prod-1'],
       selectedBaseImages: {},
       settings: {},
     } as any);
     vi.mocked(db.generationFlows.listByCollectionSession).mockResolvedValue([
-      { id: 'flow-1', productIds: ['prod-1'] },
+      {
+        id: 'flow-1',
+        productIds: ['prod-1'],
+        selectedBaseImages: { 'prod-1': 'https://storage.example.com/custom-image.jpg' },
+      },
     ] as any);
-    vi.mocked(db.generationFlows.update).mockResolvedValue({ id: 'flow-1' } as any);
-    vi.mocked(db.products.getById).mockResolvedValue({ id: 'prod-1' } as any);
-    vi.mocked(db.productImages.list).mockResolvedValue([
-      { id: 'img-1', r2KeyBase: 'clients/test-client/products/prod-1/img-1.jpg' },
-    ] as any);
+    vi.mocked(db.productImages.listByProductIds).mockResolvedValue(new Map() as any);
 
     const request = new NextRequest('http://localhost:3000/api/collections/coll-1/generate', {
       method: 'POST',
-      body: JSON.stringify({ settings: { aspectRatio: '4:3' } }),
+      body: JSON.stringify({}),
     });
 
     const response = await generateCollection(request, {
@@ -163,11 +203,12 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
     });
 
     expect(response.status).toBe(200);
-    expect(db.generationFlows.update).toHaveBeenCalledWith(
-      'flow-1',
+    expect(enqueueImageGeneration).toHaveBeenCalledWith(
+      'test-client',
       expect.objectContaining({
-        settings: expect.objectContaining({ aspectRatio: '4:3' }),
-      })
+        productImageUrls: ['https://storage.example.com/custom-image.jpg'],
+      }),
+      expect.any(Object)
     );
   });
 });

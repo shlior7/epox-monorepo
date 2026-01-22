@@ -538,3 +538,119 @@ export function setupMockDbTests() {
     },
   };
 }
+
+// ============================================================================
+// PART 7: SCHEMA PUSH UTILITIES
+// ============================================================================
+
+import { execSync } from 'child_process';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+/**
+ * Push the full Drizzle schema to any PostgreSQL database.
+ * Uses drizzle-kit push internally for schema synchronization.
+ *
+ * @param connectionString - PostgreSQL connection string (e.g., 'postgresql://user:pass@host:port/db')
+ * @example
+ * ```ts
+ * await pushSchemaToDb('postgresql://test:test@localhost:5435/worker_test');
+ * ```
+ */
+export async function pushSchemaToDb(connectionString: string): Promise<void> {
+  // Get the path to visualizer-db package (where drizzle.config.ts lives)
+  const currentFile = fileURLToPath(import.meta.url);
+  const packageDir = dirname(dirname(currentFile)); // Go up from src/ to package root
+
+  console.log(`📦 Pushing full schema to: ${connectionString.replace(/:[^@]*@/, ':***@')}`);
+
+  try {
+    execSync('npx drizzle-kit push --force', {
+      cwd: packageDir,
+      env: {
+        ...process.env,
+        DATABASE_URL: connectionString,
+      },
+      stdio: 'pipe', // Suppress output for cleaner test logs
+    });
+    console.log('✅ Full schema pushed successfully');
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('❌ Failed to push schema:', errorMsg);
+    throw new Error(`Schema push failed: ${errorMsg}`);
+  }
+}
+
+/**
+ * Tables available for selective testing.
+ * These are the table names as defined in the Drizzle schema.
+ */
+export type WorkerTableName = 'client' | 'generation_job' | 'generated_asset' | 'generated_asset_product';
+
+/**
+ * Default tables needed for worker/generation testing.
+ * Order matters for FK constraints.
+ */
+export const WORKER_TABLES: WorkerTableName[] = [
+  'client',
+  'generation_job',
+  'generated_asset',
+  'generated_asset_product',
+];
+
+/**
+ * Push schema and prepare specific tables for testing.
+ * Uses drizzle-kit push to sync the full schema (single source of truth),
+ * then truncates specified tables for test isolation.
+ *
+ * @param connectionString - PostgreSQL connection string
+ * @param tables - Tables to prepare (truncate) for testing. Defaults to WORKER_TABLES.
+ * @example
+ * ```ts
+ * await pushSchemaAndPrepareTables(
+ *   'postgresql://test:test@localhost:5435/worker_test',
+ *   ['client', 'generation_job', 'generated_asset']
+ * );
+ * ```
+ */
+export async function pushSchemaAndPrepareTables(
+  connectionString: string,
+  tables: WorkerTableName[] = WORKER_TABLES
+): Promise<void> {
+  // Push full schema using drizzle-kit (single source of truth)
+  await pushSchemaToDb(connectionString);
+
+  // Truncate specified tables for test isolation
+  if (tables.length > 0) {
+    const pool = new Pool({ connectionString });
+    try {
+      // Truncate in reverse order to respect FK constraints
+      const reversedTables = [...tables].reverse();
+      for (const table of reversedTables) {
+        await pool.query(`TRUNCATE TABLE "${table}" CASCADE`);
+      }
+      console.log(`✅ Prepared ${tables.length} tables for testing: ${tables.join(', ')}`);
+    } finally {
+      await pool.end();
+    }
+  }
+}
+
+/**
+ * Truncate specific tables for test isolation without re-pushing schema.
+ * Useful for resetting state between tests when schema is already pushed.
+ *
+ * @param pool - PostgreSQL Pool connection
+ * @param tables - Tables to truncate. Defaults to WORKER_TABLES.
+ * @example
+ * ```ts
+ * await truncateTables(pool, ['generation_job', 'generated_asset']);
+ * ```
+ */
+export async function truncateTables(pool: Pool, tables: WorkerTableName[] = WORKER_TABLES): Promise<void> {
+  // Truncate in reverse order to respect FK constraints
+  const reversedTables = [...tables].reverse();
+  for (const table of reversedTables) {
+    await pool.query(`TRUNCATE TABLE "${table}" CASCADE`);
+  }
+}

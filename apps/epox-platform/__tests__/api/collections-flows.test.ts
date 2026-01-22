@@ -13,6 +13,7 @@ vi.mock('@/lib/services/db', () => ({
     },
     generationFlows: {
       listByCollectionSession: vi.fn(),
+      listByCollectionSessionWithDetails: vi.fn(),
       create: vi.fn(),
     },
     generatedAssets: {
@@ -20,12 +21,10 @@ vi.mock('@/lib/services/db', () => ({
     },
     products: {
       getById: vi.fn(),
-      // Batch fetch methods for N+1 elimination
       getByIds: vi.fn(),
     },
     productImages: {
       list: vi.fn(),
-      // Batch fetch methods for N+1 elimination
       listByProductIds: vi.fn(),
     },
   },
@@ -64,7 +63,8 @@ describe('Collection Flows API - GET /api/collections/[id]/flows', () => {
       clientId: 'test-client',
       productIds: ['prod-1', 'prod-2'],
     } as any);
-    vi.mocked(db.generationFlows.listByCollectionSession).mockResolvedValue([
+    // Mock the new listByCollectionSessionWithDetails method
+    vi.mocked(db.generationFlows.listByCollectionSessionWithDetails).mockResolvedValue([
       {
         id: 'flow-1',
         productIds: ['prod-1'],
@@ -72,6 +72,24 @@ describe('Collection Flows API - GET /api/collections/[id]/flows', () => {
         settings: {},
         createdAt: new Date('2025-01-01T00:00:00Z'),
         updatedAt: new Date('2025-01-01T00:00:00Z'),
+        product: {
+          id: 'prod-1',
+          name: 'Chair',
+          category: 'Chairs',
+          sceneTypes: ['Living Room'],
+        },
+        baseImages: [{ url: 'https://cdn.example.com/products/prod-1/img-1.jpg' }],
+        generatedAssets: [
+          {
+            id: 'asset-1',
+            generationFlowId: 'flow-1',
+            assetUrl: 'https://cdn.example.com/asset-1.jpg',
+            assetType: 'image',
+            status: 'completed',
+            approvalStatus: 'approved',
+            createdAt: new Date('2025-01-02T00:00:00Z'),
+          },
+        ],
       },
       {
         id: 'flow-2',
@@ -80,48 +98,16 @@ describe('Collection Flows API - GET /api/collections/[id]/flows', () => {
         settings: {},
         createdAt: new Date('2025-01-01T00:00:00Z'),
         updatedAt: new Date('2025-01-01T00:00:00Z'),
+        product: {
+          id: 'prod-2',
+          name: 'Sofa',
+          category: 'Sofas',
+          sceneTypes: ['Bedroom'],
+        },
+        baseImages: [],
+        generatedAssets: [],
       },
     ] as any);
-    vi.mocked(db.generatedAssets.listByGenerationFlowIds).mockResolvedValue([
-      {
-        id: 'asset-1',
-        generationFlowId: 'flow-1',
-        assetUrl: 'https://cdn.example.com/asset-1.jpg',
-        assetType: 'image',
-        status: 'completed',
-        approvalStatus: 'approved',
-        createdAt: new Date('2025-01-02T00:00:00Z'),
-      },
-    ] as any);
-    // Now uses batch methods for N+1 elimination
-    vi.mocked(db.products.getByIds).mockResolvedValue(
-      new Map([
-        [
-          'prod-1',
-          {
-            id: 'prod-1',
-            name: 'Chair',
-            category: 'Chairs',
-            sceneTypes: ['Living Room'],
-          },
-        ],
-        [
-          'prod-2',
-          {
-            id: 'prod-2',
-            name: 'Sofa',
-            category: 'Sofas',
-            sceneTypes: ['Bedroom'],
-          },
-        ],
-      ]) as any
-    );
-    vi.mocked(db.productImages.listByProductIds).mockResolvedValue(
-      new Map([
-        ['prod-1', [{ id: 'img-1', r2KeyBase: 'clients/test-client/products/prod-1/img-1.jpg' }]],
-        ['prod-2', []],
-      ]) as any
-    );
 
     const request = new NextRequest('http://localhost:3000/api/collections/coll-1/flows');
     const response = await getFlows(request, { params: Promise.resolve({ id: 'coll-1' }) });
