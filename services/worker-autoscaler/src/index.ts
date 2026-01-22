@@ -14,7 +14,7 @@
  */
 
 import { createServer } from 'http';
-import { Autoscaler } from './autoscaler';
+import { Autoscaler } from './autoscaler.js';
 
 // Configuration from environment
 const config = {
