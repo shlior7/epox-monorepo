@@ -100,15 +100,21 @@ export class GenerationWorker {
       rateLimitMode,
     });
 
-    // Start the LISTEN connection (if enabled)
-    const listenerPromise = this.config.enableListenNotify ? this.startListener() : Promise.resolve();
+    // Start the LISTEN connection (if enabled) - run in background, don't await
+    if (this.config.enableListenNotify) {
+      this.startListener().catch((err) => {
+        logger.error({ err }, 'Listener failed');
+      });
+    }
 
-    // Start worker loops
-    const workers = Array(this.config.concurrency)
-      .fill(0)
-      .map((_, i) => this.workerLoop(i));
+    // Start worker loops in background - don't await (they run forever)
+    for (let i = 0; i < this.config.concurrency; i++) {
+      this.workerLoop(i).catch((err) => {
+        logger.error({ err, workerId: i }, 'Worker loop failed');
+      });
+    }
 
-    await Promise.all([listenerPromise, ...workers]);
+    // Return immediately so healthcheck can report healthy
   }
 
   async stop(): Promise<void> {

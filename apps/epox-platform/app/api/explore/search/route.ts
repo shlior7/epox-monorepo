@@ -4,8 +4,8 @@ import { withPublicSecurity } from '@/lib/security';
 
 const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY;
 
-// Revalidate search results every 5 minutes (Unsplash data doesn't change frequently)
-export const revalidate = 300;
+// Force dynamic rendering since withPublicSecurity reads headers
+export const dynamic = 'force-dynamic';
 
 export const GET = withPublicSecurity(async (request, context) => {
   try {
