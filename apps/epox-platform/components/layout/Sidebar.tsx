@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
-  LayoutDashboard,
+  Home,
   FolderKanban,
   Package,
   Settings,
@@ -15,6 +15,7 @@ import {
   User,
   Wand2,
   Images,
+  Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -27,21 +28,25 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { buildTestId } from '@/lib/testing/testid';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Home', href: '/home', icon: Home },
   { name: 'Studio', href: '/studio', icon: Wand2 },
   { name: 'Collections', href: '/collections', icon: FolderKanban },
   { name: 'Products', href: '/products', icon: Package },
   { name: 'Assets', href: '/assets', icon: Images },
+  { name: 'Store', href: '/store', icon: Store },
 ];
 
 export function Sidebar({
   setCollapsed,
   collapsed,
+  testId,
 }: {
   setCollapsed: (collapsed: boolean) => void;
   collapsed: boolean;
+  testId?: string;
 }) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
@@ -76,9 +81,13 @@ export function Sidebar({
         'transition-all duration-300 ease-out',
         collapsed ? 'w-[60px]' : 'w-64'
       )}
+      data-testid={testId}
     >
       {/* Ambient glow effect */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+        data-testid={buildTestId(testId, 'background')}
+      >
         <div className="absolute -left-24 -top-24 h-48 w-48 rounded-full bg-primary/5 blur-3xl" />
         <div className="bg-accent/3 absolute -left-12 top-1/2 h-64 w-24 rounded-full blur-2xl" />
       </div>
@@ -89,6 +98,7 @@ export function Sidebar({
           'relative flex h-14 items-center justify-between px-3',
           'border-b border-border/50'
         )}
+        data-testid={buildTestId(testId, 'logo')}
       >
         <Link
           href="/dashboard"
@@ -97,6 +107,7 @@ export function Sidebar({
             'transition-all duration-300',
             collapsed && 'justify-center'
           )}
+          data-testid={buildTestId(testId, 'logo-link')}
         >
           <div className="relative h-8 w-8">
             <Image
@@ -106,6 +117,7 @@ export function Sidebar({
               height={32}
               className="object-contain"
               unoptimized
+              data-testid={buildTestId(testId, 'logo-image')}
             />
           </div>
           {!collapsed && (
@@ -125,6 +137,7 @@ export function Sidebar({
             collapsed &&
               'absolute -right-3 border border-border bg-transparent hover:bg-charcoal-700'
           )}
+          testId={buildTestId(testId, 'collapse-toggle')}
         >
           {collapsed ? (
             <ChevronRight className="h-3.5 w-3.5" />
@@ -135,7 +148,10 @@ export function Sidebar({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
+      <nav
+        className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3"
+        data-testid={buildTestId(testId, 'nav')}
+      >
         {navigation.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
@@ -161,6 +177,7 @@ export function Sidebar({
                       'border border-transparent',
                     ]
               )}
+              data-testid={buildTestId(testId, 'nav-item', item.name.toLowerCase())}
             >
               {/* Active indicator bar */}
               {isActive && (
@@ -170,6 +187,7 @@ export function Sidebar({
                     'h-5 w-0.5 rounded-r-full',
                     'bg-gradient-to-b from-primary to-accent'
                   )}
+                  data-testid={buildTestId(testId, 'nav-item', item.name.toLowerCase(), 'active')}
                 />
               )}
 
@@ -178,8 +196,16 @@ export function Sidebar({
                   'h-5 w-5 shrink-0 transition-colors',
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 )}
+                data-testid={buildTestId(testId, 'nav-item', item.name.toLowerCase(), 'icon')}
               />
-              {!collapsed && <span className="truncate">{item.name}</span>}
+              {!collapsed && (
+                <span
+                  className="truncate"
+                  data-testid={buildTestId(testId, 'nav-item', item.name.toLowerCase(), 'label')}
+                >
+                  {item.name}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -189,7 +215,10 @@ export function Sidebar({
       {!collapsed && <div className="px-2 pb-3"></div>}
 
       {/* User Section */}
-      <div className="relative border-t border-border/50 p-2">
+      <div
+        className="relative border-t border-border/50 p-2"
+        data-testid={buildTestId(testId, 'user-section')}
+      >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -201,6 +230,7 @@ export function Sidebar({
                 'hover:bg-secondary/50',
                 collapsed && 'justify-center'
               )}
+              data-testid={buildTestId(testId, 'user-menu')}
             >
               <Avatar className="h-8 w-8 ring-2 ring-border/50">
                 <AvatarFallback className="bg-primary/20 text-xs font-semibold text-primary">
@@ -215,22 +245,35 @@ export function Sidebar({
               )}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align={collapsed ? 'center' : 'end'} side="top" className="w-56">
-            <div className="px-2 py-1.5">
-              <p className="text-sm font-medium">{userName}</p>
-              <p className="text-xs text-muted-foreground">{userEmail}</p>
+          <DropdownMenuContent
+            align={collapsed ? 'center' : 'end'}
+            side="top"
+            className="w-56"
+            testId={buildTestId(testId, 'user-menu', 'content')}
+          >
+            <div className="px-2 py-1.5" data-testid={buildTestId(testId, 'user-menu', 'info')}>
+              <p className="text-sm font-medium" data-testid={buildTestId(testId, 'user-menu', 'name')}>
+                {userName}
+              </p>
+              <p
+                className="text-xs text-muted-foreground"
+                data-testid={buildTestId(testId, 'user-menu', 'email')}
+              >
+                {userEmail}
+              </p>
             </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
+            <DropdownMenuSeparator testId={buildTestId(testId, 'user-menu', 'separator-1')} />
+            <DropdownMenuItem asChild testId={buildTestId(testId, 'user-menu', 'profile')}>
               <Link href="/settings">
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator testId={buildTestId(testId, 'user-menu', 'separator-2')} />
             <DropdownMenuItem
               onClick={() => signOut()}
               className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+              testId={buildTestId(testId, 'user-menu', 'sign-out')}
             >
               <LogOut className="mr-2 h-4 w-4" />
               Sign out
