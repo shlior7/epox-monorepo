@@ -802,6 +802,10 @@ class ApiClient {
     return this.request<{ flows: GenerationFlow[] }>(`/api/studio?productId=${productId}`);
   }
 
+  async getGenerationFlow(flowId: string): Promise<GenerationFlow> {
+    return this.request<GenerationFlow>(`/api/studio/${flowId}`);
+  }
+
   async updateStudioSettings(
     studioId: string,
     payload: UpdateStudioSettingsPayload

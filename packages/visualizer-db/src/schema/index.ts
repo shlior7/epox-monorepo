@@ -73,6 +73,27 @@ export type { PlanType, AIOperationType } from './usage';
 export { generationJob, generationJobRelations } from './jobs';
 export type { JobType, JobStatus, PromptTags, ImageGenerationPayload, ImageEditPayload, VideoGenerationPayload, JobResult } from './jobs';
 
+// Anton tables (collaborative annotation system)
+export {
+  antonWorkspace,
+  antonWorkspaceMember,
+  antonProject,
+  antonProjectMember,
+  antonPage,
+  antonAnnotation,
+  antonAnnotationReply,
+  antonClaudeTask,
+  antonWorkspaceRelations,
+  antonWorkspaceMemberRelations,
+  antonProjectRelations,
+  antonProjectMemberRelations,
+  antonPageRelations,
+  antonAnnotationRelations,
+  antonAnnotationReplyRelations,
+  antonClaudeTaskRelations,
+} from './anton';
+export type { AnnotationPosition, ElementContext, ClaudeTaskContext } from './anton';
+
 // Re-export types from visualizer-types for convenience
 export type {
   ClientMetadata,

@@ -36,6 +36,19 @@ import {
 } from '@/components/ui/minimal-accordion';
 import { InspirationImageModal } from '@/components/studio/InspirationImageModal';
 import {
+  UnifiedStudioConfigPanel,
+  ConfigPanelProvider,
+  type SceneTypeInfo,
+  type ConfigPanelState,
+  useScrollSync,
+  InspirationPickerModal,
+  StyleExplorerModal,
+  ColorPaletteModal,
+  SceneTypeGroupedView,
+  type ProductItem,
+} from '@/components/studio';
+import { useConfigPanelSettings } from '@/components/studio/hooks/useConfigPanelSettings';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -1781,6 +1794,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
             <div
               ref={mainListRef}
               className={cn('flex-1 overflow-y-auto p-8', viewMode === 'list' && 'p-4 md:p-6')}
+              data-testid="generation-flow-list"
             >
               {filteredFlows.length > 0 ? (
                 viewMode === 'matrix' ? (
@@ -1818,6 +1832,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                           'animate-fade-in cursor-pointer opacity-0',
                           `stagger-${Math.min(index + 1, 6)}`
                         )}
+                        testId={`flow-item--${flow.id}`}
                       />
                     ))}
                   </div>
@@ -1833,6 +1848,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                             sku: flow.product.sku,
                             thumbnailUrl: flow.baseImages[0]?.url,
                           }}
+                          testId={`product-card--${flow.product.id}`}
                           revisions={flow.revisions.map((r) => ({
                             id: r.id,
                             imageUrl: r.imageUrl,
@@ -1876,6 +1892,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                     label: 'Add Products',
                     onClick: () => {},
                   }}
+                  testId="generation-flow-empty"
                 />
               )}
             </div>

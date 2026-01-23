@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { buildTestId } from '@/lib/testing/testid';
 
 interface PageHeaderProps {
   title: string;
@@ -8,6 +9,7 @@ interface PageHeaderProps {
   className?: string;
   /** Breadcrumb or secondary navigation */
   breadcrumb?: ReactNode;
+  testId?: string;
 }
 
 export function PageHeader({
@@ -16,6 +18,7 @@ export function PageHeader({
   actions,
   className,
   breadcrumb,
+  testId,
 }: PageHeaderProps) {
   return (
     <header
@@ -27,15 +30,40 @@ export function PageHeader({
         'sm:flex-row sm:items-center sm:justify-between',
         className
       )}
+      data-testid={testId}
     >
-      <div className="space-y-1">
-        {breadcrumb && <div className="mb-2 text-sm text-muted-foreground">{breadcrumb}</div>}
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
+      <div className="space-y-1" data-testid={buildTestId(testId, 'content')}>
+        {breadcrumb && (
+          <div
+            className="mb-2 text-sm text-muted-foreground"
+            data-testid={buildTestId(testId, 'breadcrumb')}
+          >
+            {breadcrumb}
+          </div>
+        )}
+        <h1
+          className="font-display text-2xl font-semibold tracking-tight text-foreground"
+          data-testid={buildTestId(testId, 'title')}
+        >
           {title}
         </h1>
-        {description && <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>}
+        {description && (
+          <p
+            className="max-w-2xl text-sm text-muted-foreground"
+            data-testid={buildTestId(testId, 'description')}
+          >
+            {description}
+          </p>
+        )}
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-3">{actions}</div>}
+      {actions && (
+        <div
+          className="flex shrink-0 items-center gap-3"
+          data-testid={buildTestId(testId, 'actions')}
+        >
+          {actions}
+        </div>
+      )}
     </header>
   );
 }

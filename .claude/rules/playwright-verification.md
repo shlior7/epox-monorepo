@@ -3,7 +3,7 @@ description: 'Efficient Playwright testing and debugging strategies to minimize 
 alwaysApply: true
 ---
 
-# Playwright Testing Strategy
+# Playwright Verification Strategy
 
 ## Core Principle: Script-First, Screenshots-Last
 

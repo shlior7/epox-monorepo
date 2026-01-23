@@ -7,6 +7,7 @@ interface RadioGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   value?: string;
   onValueChange?: (value: string) => void;
   defaultValue?: string;
+  testId?: string;
 }
 
 const RadioGroupContext = React.createContext<{
@@ -15,7 +16,7 @@ const RadioGroupContext = React.createContext<{
 }>({});
 
 const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
-  ({ className, value, onValueChange, defaultValue, children, ...props }, ref) => {
+  ({ className, value, onValueChange, defaultValue, children, testId, ...props }, ref) => {
     const [internalValue, setInternalValue] = React.useState(defaultValue);
     const currentValue = value ?? internalValue;
 
@@ -32,7 +33,13 @@ const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
 
     return (
       <RadioGroupContext.Provider value={{ value: currentValue, onValueChange: handleValueChange }}>
-        <div ref={ref} role="radiogroup" className={cn('grid gap-2', className)} {...props}>
+        <div
+          ref={ref}
+          role="radiogroup"
+          className={cn('grid gap-2', className)}
+          data-testid={testId}
+          {...props}
+        >
           {children}
         </div>
       </RadioGroupContext.Provider>
@@ -43,10 +50,11 @@ RadioGroup.displayName = 'RadioGroup';
 
 interface RadioGroupItemProps extends React.InputHTMLAttributes<HTMLInputElement> {
   value: string;
+  testId?: string;
 }
 
 const RadioGroupItem = React.forwardRef<HTMLInputElement, RadioGroupItemProps>(
-  ({ className, value, ...props }, ref) => {
+  ({ className, value, testId, ...props }, ref) => {
     const context = React.useContext(RadioGroupContext);
     const isChecked = context.value === value;
 
@@ -61,6 +69,7 @@ const RadioGroupItem = React.forwardRef<HTMLInputElement, RadioGroupItemProps>(
         checked={isChecked}
         onChange={() => context.onValueChange?.(value)}
         value={value}
+        data-testid={testId}
         {...props}
       />
     );

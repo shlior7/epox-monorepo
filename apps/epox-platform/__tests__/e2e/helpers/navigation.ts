@@ -190,18 +190,18 @@ export class NavigationHelper {
       if (!list) return null;
 
       // Get all flow items
-      const flowItems = Array.from(list.querySelectorAll('[data-testid*="flow-item"]'));
+      const flowItems = Array.from(list.querySelectorAll('[data-testid^="flow-item--"]'));
       const flows = flowItems.map((item) => ({
         id: item.getAttribute('data-flow-id'),
-        name: item.querySelector('[data-testid="flow-name"]')?.textContent?.trim(),
-        status: item.querySelector('[data-testid="flow-status"]')?.textContent?.trim(),
-        productCount: item.querySelectorAll('[data-testid*="product"]').length,
+        name: item.querySelector('[data-testid$="--name"]')?.textContent?.trim(),
+        status: item.querySelector('[data-testid$="--status"]')?.textContent?.trim(),
+        productCount: item.querySelectorAll('[data-testid^="product-card--"]').length,
       }));
 
       return {
         totalFlows: flowItems.length,
         flows,
-        emptyState: list.querySelector('[data-testid="empty-state"]')?.textContent?.trim(),
+        emptyState: list.querySelector('[data-testid="generation-flow-empty"]')?.textContent?.trim(),
       };
     }, listSelector);
 
@@ -222,10 +222,12 @@ export class NavigationHelper {
       }
     });
 
-    // Listen to network failures
+    // Listen to network failures (exclude 304 Not Modified - cached responses)
     this.page.on('response', (response) => {
-      if (!response.ok()) {
-        networkFailures.push(`${response.status()} ${response.url()}`);
+      const status = response.status();
+      // Only count actual failures (>= 400), not 304 (cached) or other 3xx redirects
+      if (status >= 400 && !response.url().includes('_next/static')) {
+        networkFailures.push(`${status} ${response.url()}`);
       }
     });
 
@@ -312,24 +314,24 @@ export function createNavigationHelper(page: Page, clientId: string): Navigation
 export const SELECTORS = {
   // Config panel
   configPanel: '[data-testid="config-panel"]',
-  configPanelHeading: '[data-testid="config-panel-heading"]',
+  configPanelHeading: '[data-testid="config-panel--heading"]',
 
   // Generation flows
   genFlowList: '[data-testid="generation-flow-list"]',
-  genFlowItem: '[data-testid="flow-item"]',
-  genFlowName: '[data-testid="flow-name"]',
-  genFlowStatus: '[data-testid="flow-status"]',
+  genFlowItem: '[data-testid^="flow-item--"]',
+  genFlowName: '[data-testid$="--name"]',
+  genFlowStatus: '[data-testid$="--status"]',
 
   // Products
-  productCard: '[data-testid="product-card"]',
-  productName: '[data-testid="product-name"]',
+  productCard: '[data-testid^="product-card--"]',
+  productName: '[data-testid$="--name"]',
 
   // Collections
-  collectionCard: '[data-testid="collection-card"]',
-  collectionName: '[data-testid="collection-name"]',
+  collectionCard: '[data-testid^="collection-card--"]',
+  collectionName: '[data-testid$="--name"]',
 
   // Common
-  userMenu: '[data-testid="user-menu"]',
+  userMenu: '[data-testid="app-shell--sidebar--user-menu"]',
   errorAlert: '[role="alert"]',
-  loadingSpinner: '[data-testid="loading"]',
+  loadingSpinner: '[data-testid*="loading"]',
 } as const;

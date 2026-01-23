@@ -72,9 +72,10 @@ export interface Product extends VersionedEntity {
   isFavorite: boolean;
   source: ProductSource;
   storeConnectionId: string | null;
-  erpId: string | null;
-  erpSku: string | null;
-  erpUrl: string | null;
+  storeId: string | null;
+  storeSku: string | null;
+  storeUrl: string | null;
+  storeName: string | null;
   importedAt: Date | null;
   analysisData: ProductAnalysis | null;
   analysisVersion: string | null;

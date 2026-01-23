@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { buildTestId } from '@/lib/testing/testid';
 import type { AssetStatus, ApprovalStatus } from '@/lib/types';
 import type { ImageAspectRatio } from 'visualizer-types';
 
@@ -71,6 +72,7 @@ interface GenerationFlowCardProps {
   onDeleteRevision?: (revisionId: string) => void;
   onClick?: () => void;
   className?: string;
+  testId?: string;
 }
 
 const statusConfig: Record<
@@ -110,6 +112,7 @@ export function GenerationFlowCard({
   onDeleteRevision,
   onClick,
   className,
+  testId,
 }: GenerationFlowCardProps) {
   const [currentRevisionIndex, setCurrentRevisionIndex] = useState(0);
   const [showBaseImageSelector, setShowBaseImageSelector] = useState(false);
@@ -135,9 +138,11 @@ export function GenerationFlowCard({
         className
       )}
       onClick={onClick}
+      testId={testId}
+      data-flow-id={flowId}
     >
       {/* Product Info Header */}
-      <div className="border-b border-border bg-card/50 p-3">
+      <div className="border-b border-border bg-card/50 p-3" data-testid={buildTestId(testId, 'header')}>
         <div className="flex items-center gap-3">
           {/* Base Image Thumbnail with selector */}
           <div className="relative">
@@ -149,6 +154,7 @@ export function GenerationFlowCard({
                 setShowBaseImageSelector(!showBaseImageSelector);
               }}
               className="flex h-10 w-10 items-center justify-center overflow-hidden rounded bg-secondary ring-2 ring-border transition-all hover:ring-primary"
+              data-testid={buildTestId(testId, 'base-image')}
             >
               {selectedBaseImage?.url ? (
                 <Image
@@ -209,35 +215,50 @@ export function GenerationFlowCard({
 
           {/* Product Name */}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{product.name}</p>
+            <p className="truncate text-sm font-medium" data-testid={buildTestId(testId, 'name')}>
+              {product.name}
+            </p>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1" data-testid={buildTestId(testId, 'actions')}>
             {isPinned && <Pin className="h-4 w-4 text-primary" />}
-            <Badge variant={approvalConfig[approvalStatus].variant} className="text-[10px]">
+            <Badge
+              variant={approvalConfig[approvalStatus].variant}
+              className="text-[10px]"
+              testId={buildTestId(testId, 'status')}
+            >
               {approvalConfig[approvalStatus].label}
             </Badge>
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  testId={buildTestId(testId, 'menu')}
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                <DropdownMenuItem onClick={onApprove}>
+              <DropdownMenuContent
+                align="end"
+                onClick={(e) => e.stopPropagation()}
+                testId={buildTestId(testId, 'menu', 'content')}
+              >
+                <DropdownMenuItem onClick={onApprove} testId={buildTestId(testId, 'menu', 'approve')}>
                   <Check className="mr-2 h-4 w-4 text-success" />
                   Approve
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onReject}>
+                <DropdownMenuItem onClick={onReject} testId={buildTestId(testId, 'menu', 'reject')}>
                   <X className="mr-2 h-4 w-4 text-destructive" />
                   Reject
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onPin}>
+                <DropdownMenuItem onClick={onPin} testId={buildTestId(testId, 'menu', 'pin')}>
                   <Pin className="mr-2 h-4 w-4" />
                   {isPinned ? 'Unpin' : 'Pin'}
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem testId={buildTestId(testId, 'menu', 'regenerate')}>
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Regenerate
                 </DropdownMenuItem>
@@ -270,7 +291,7 @@ export function GenerationFlowCard({
         </div>
       ) : currentRevision ? (
         // Current revision preview (show even when generating if we have revisions)
-        <div className="relative aspect-video bg-black/20">
+        <div className="relative aspect-video bg-black/20" data-testid={buildTestId(testId, 'preview')}>
           <Image
             src={currentRevision.imageUrl}
             alt="Generated"
@@ -302,6 +323,7 @@ export function GenerationFlowCard({
                   'absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 transition-opacity',
                   canNavigatePrev ? 'opacity-0 hover:bg-black/70 group-hover:opacity-100' : 'hidden'
                 )}
+                data-testid={buildTestId(testId, 'nav', 'prev')}
               >
                 <ChevronLeft className="h-5 w-5 text-white" />
               </button>
@@ -316,6 +338,7 @@ export function GenerationFlowCard({
                   'absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 transition-opacity',
                   canNavigateNext ? 'opacity-0 hover:bg-black/70 group-hover:opacity-100' : 'hidden'
                 )}
+                data-testid={buildTestId(testId, 'nav', 'next')}
               >
                 <ChevronRight className="h-5 w-5 text-white" />
               </button>
@@ -330,12 +353,16 @@ export function GenerationFlowCard({
               setFullscreenImage(currentRevision.imageUrl);
             }}
             className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
+            data-testid={buildTestId(testId, 'fullscreen')}
           >
             <Maximize2 className="h-4 w-4 text-white" />
           </button>
           {/* Revision counter */}
           {revisions.length > 1 && (
-            <div className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
+            <div
+              className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white"
+              data-testid={buildTestId(testId, 'counter')}
+            >
               {currentRevisionIndex + 1}/{revisions.length}
             </div>
           )}
@@ -358,10 +385,14 @@ export function GenerationFlowCard({
 
       {/* Horizontal Revision Gallery - show whenever there are revisions */}
       {hasRevisions && (
-        <div className="border-t border-border bg-card/30 p-2">
+        <div className="border-t border-border bg-card/30 p-2" data-testid={buildTestId(testId, 'revisions')}>
           <div className="flex gap-1.5 overflow-x-auto pb-1">
             {revisions.map((rev, idx) => (
-              <div key={rev.id} className="group/revision relative flex-shrink-0">
+              <div
+                key={rev.id}
+                className="group/revision relative flex-shrink-0"
+                data-testid={buildTestId(testId, 'revision', rev.id)}
+              >
                 <button
                   type="button"
                   onClick={(e) => {
@@ -375,6 +406,7 @@ export function GenerationFlowCard({
                       ? 'ring-primary'
                       : 'ring-transparent hover:ring-primary/50'
                   )}
+                  data-testid={buildTestId(testId, 'revision', rev.id, 'select')}
                 >
                   <Image
                     src={rev.imageUrl}
@@ -398,6 +430,7 @@ export function GenerationFlowCard({
                       }
                     }}
                     className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 shadow-sm transition-opacity group-hover/revision:opacity-100"
+                    data-testid={buildTestId(testId, 'revision', rev.id, 'delete')}
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>

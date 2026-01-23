@@ -36,9 +36,10 @@ export const product = pgTable(
 
     // Store import fields (for bidirectional sync - only for source='imported')
     storeConnectionId: text('store_connection_id'),
-    erpId: text('erp_id'), // Original product ID in store
-    erpSku: text('erp_sku'), // Store SKU
-    erpUrl: text('erp_url'), // Product URL in store
+    storeId: text('store_id'), // Original product ID in store
+    storeSku: text('store_sku'), // Store SKU
+    storeUrl: text('store_url'), // Product URL in store
+    storeName: text('store_name'), // Product name in store (for display)
     importedAt: timestamp('imported_at', { mode: 'date' }),
 
     // Product analysis (for prompt engineering)
@@ -58,7 +59,7 @@ export const product = pgTable(
     index('product_client_id_idx').on(table.clientId),
     index('product_favorite_idx').on(table.clientId, table.isFavorite),
     index('product_source_idx').on(table.clientId, table.source),
-    index('product_erp_idx').on(table.storeConnectionId, table.erpId),
+    index('product_store_idx').on(table.storeConnectionId, table.storeId),
     index('product_analyzed_idx').on(table.clientId, table.analyzedAt),
   ]
 );

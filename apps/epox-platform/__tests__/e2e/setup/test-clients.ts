@@ -12,13 +12,28 @@ export const TEST_CLIENTS = [
     password: 'testtest',
     userName: 'test-client',
     products: [
-      { name: 'Modern Sofa', description: 'A comfortable modern sofa', category: 'Furniture' },
-      { name: 'Oak Dining Table', description: 'Solid oak dining table', category: 'Furniture' },
-      { name: 'LED Floor Lamp', description: 'Adjustable LED floor lamp', category: 'Lighting' },
+      {
+        id: 'prod-001',
+        name: 'Modern Sofa',
+        description: 'A comfortable modern sofa',
+        category: 'Furniture',
+        baseImages: ['modern sofa.webp'],
+      },
+      {
+        id: 'prod-002',
+        name: 'Oak Dining Table',
+        description: 'Solid oak dining table',
+        category: 'Furniture',
+      },
+      {
+        id: 'prod-003',
+        name: 'LED Floor Lamp',
+        description: 'Adjustable LED floor lamp',
+        category: 'Lighting',
+      },
     ],
     collections: [
-      { name: 'Living Room Collection', status: 'draft' },
-      { name: 'Dining Room Set', status: 'completed' },
+      { name: 'Living Room Collection', products: ['prod-001', 'prod-003'], status: 'pending' },
     ],
   },
 ] as const;

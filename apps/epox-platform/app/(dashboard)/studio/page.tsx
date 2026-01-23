@@ -1,297 +1,351 @@
 'use client';
 
-import { PageHeader } from '@/components/layout';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { apiClient } from '@/lib/api-client';
-import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
-import {
-  ArrowRight,
-  FolderKanban,
-  Loader2,
-  Package,
-  Pencil,
-  Plus,
-  Sparkles,
-  Video,
-  Wand2,
-} from 'lucide-react';
-import Image from 'next/image';
+import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Loader2,
+  X,
+  Download,
+  Heart,
+  CheckCircle,
+  Trash2,
+  Eye,
+  EyeOff,
+  Sparkles,
+  Filter,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/layout';
+import {
+  UnifiedStudioConfigPanel,
+  ConfigPanelProvider,
+  ProductGrid,
+  type SceneTypeInfo,
+} from '@/components/studio';
+import { apiClient, type Product } from '@/lib/api-client';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import type {
+  InspirationImage,
+  InspirationBubbleValue,
+} from 'visualizer-types';
 
-const STUDIO_FEATURES = [
-  {
-    id: 'generate-images',
-    icon: Sparkles,
-    title: 'Generate Product Images',
-    description: 'Create stunning room visualizations for your products using AI',
-    color: 'from-primary to-accent',
-    action: 'Select Product',
-    href: '/products',
-  },
-  {
-    id: 'generate-video',
-    icon: Video,
-    title: 'Generate Product Videos',
-    description: 'Create dynamic video content showcasing your products',
-    color: 'from-violet-500 to-purple-600',
-    action: 'Coming Soon',
-    disabled: true,
-  },
-  {
-    id: 'generate-collection',
-    icon: FolderKanban,
-    title: 'Generate Collection',
-    description: 'Create a cohesive set of visualizations for multiple products',
-    color: 'from-emerald-500 to-teal-600',
-    action: 'Create Collection',
-    href: '/collections/new',
-  },
-  {
-    id: 'edit-images',
-    icon: Pencil,
-    title: 'Edit Product Images',
-    description: 'Fine-tune base or generated images with our built-in editor',
-    color: 'from-orange-500 to-amber-600',
-    action: 'Select Image',
-    href: '/products',
-  },
-];
+type StudioTab = 'images' | 'video';
 
 export default function StudioPage() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
-  // Fetch recent products for quick access
-  const { data: productsData, isLoading: isLoadingProducts } = useQuery({
-    queryKey: ['products', { limit: 6 }],
-    queryFn: () => apiClient.getProducts({ limit: 6 }),
+  // Selection state
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+
+  // Collection filter state
+  const [activeCollectionFilter, setActiveCollectionFilter] = useState<string | null>(null);
+
+  // Fetch collections for filter tags
+  const { data: collectionsData } = useQuery({
+    queryKey: ['collections', { limit: 20 }],
+    queryFn: () => apiClient.getCollections({ limit: 20 }),
   });
 
-  // Fetch recent collections
-  const { data: collectionsData, isLoading: isLoadingCollections } = useQuery({
-    queryKey: ['collections', { limit: 4 }],
-    queryFn: () => apiClient.getCollections({ limit: 4 }),
+  const collections = collectionsData?.collections ?? [];
+
+  // Fetch products for getting product names
+  const { data: productsData } = useQuery({
+    queryKey: ['products', { limit: 100 }],
+    queryFn: () => apiClient.listProducts({ limit: 100 }),
   });
 
-  const recentProducts = productsData?.products || [];
-  const recentCollections = collectionsData?.collections || [];
+  const products = productsData?.products ?? [];
+
+  // Create flow/collection mutation
+  const createFlowMutation = useMutation({
+    mutationFn: async (productIds: string[]) => {
+      if (productIds.length === 1) {
+        // Single product - create generation flow
+        const product = products.find((p) => p.id === productIds[0]);
+        const flow = await apiClient.createGenerationFlow({
+          productId: productIds[0],
+          productName: product?.name,
+          mode: 'generate',
+        });
+        return { type: 'flow' as const, id: flow.id };
+      } else {
+        // Multiple products - create collection
+        const collection = await apiClient.createCollection({
+          name: `Collection ${new Date().toLocaleDateString()}`,
+          productIds,
+        });
+        return { type: 'collection' as const, id: collection.id };
+      }
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+      queryClient.invalidateQueries({ queryKey: ['studio'] });
+
+      if (result.type === 'flow') {
+        toast.success('Opening product in studio');
+        router.push(`/studio/${result.id}`);
+      } else {
+        toast.success('Collection created');
+        router.push(`/studio/collections/${result.id}`);
+      }
+    },
+    onError: (error) => {
+      toast.error('Failed to create');
+      console.error('Failed to create:', error);
+    },
+  });
+
+  const handleCreateCollection = () => {
+    if (selectedProductIds.length === 0) {
+      toast.error('Please select at least one product');
+      return;
+    }
+    createFlowMutation.mutate(selectedProductIds);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedProductIds([]);
+    setShowSelectedOnly(false);
+  };
+
+  const handleDownloadSelected = () => {
+    toast.info('Download functionality coming soon');
+  };
+
+  const handlePinSelected = () => {
+    toast.info('Pin functionality coming soon');
+  };
+
+  const handleApproveSelected = () => {
+    toast.info('Approve functionality coming soon');
+  };
+
+  const handleDeleteSelected = () => {
+    toast.info('Delete functionality coming soon');
+  };
+
+  // Derive scene types from selected products
+  const sceneTypes: SceneTypeInfo[] = [];
 
   return (
-    <>
-      <PageHeader title="Studio" description="Create stunning AI-powered product visualizations" />
-
-      <div className="space-y-8 p-8">
-        {/* Studio Features Grid */}
-        <section>
-          <h2 className="mb-4 text-lg font-semibold">What would you like to create?</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {STUDIO_FEATURES.map((feature) => (
-              <Card
-                key={feature.id}
-                className={cn(
-                  'group relative overflow-hidden transition-all',
-                  feature.disabled
-                    ? 'cursor-not-allowed opacity-60'
-                    : 'cursor-pointer hover:ring-2 hover:ring-primary/50'
-                )}
-              >
-                {/* Gradient background */}
-                <div
-                  className={cn(
-                    'absolute inset-0 bg-gradient-to-br opacity-5 transition-opacity',
-                    `${feature.color}`,
-                    !feature.disabled && 'group-hover:opacity-10'
-                  )}
-                />
-                <CardHeader className="relative pb-2">
-                  <div
-                    className={cn(
-                      'mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br',
-                      feature.color
-                    )}
-                  >
-                    <feature.icon className="h-6 w-6 text-white" />
-                  </div>
-                  <CardTitle className="text-base">{feature.title}</CardTitle>
-                  <CardDescription className="text-sm">{feature.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="relative pt-0">
-                  {feature.disabled ? (
-                    <Badge variant="muted">Coming Soon</Badge>
-                  ) : feature.href ? (
-                    <Link href={feature.href}>
-                      <Button variant="ghost" size="sm" className="group/btn -ml-2 px-2">
-                        {feature.action}
-                        <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Button variant="ghost" size="sm" className="group/btn -ml-2 px-2">
-                      {feature.action}
-                      <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover/btn:translate-x-1" />
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+    <ConfigPanelProvider
+      initialState={{
+        sceneTypeBubbles: {},
+        userPrompt: '',
+        applyCollectionPrompt: true,
+        outputSettings: {
+          aspectRatio: '1:1',
+          quality: '2k',
+          variantsCount: 1,
+        },
+        inspirationImages: [],
+      }}
+    >
+      <div className="flex h-full flex-col">
+        {/* Header */}
+      <div className="flex-none border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-14 items-center justify-between px-6">
+          <div>
+            <h1 className="text-lg font-semibold">Studio</h1>
+            <p className="text-xs text-muted-foreground">
+              Select products to create a collection
+            </p>
           </div>
-        </section>
-
-        {/* Quick Access: Recent Products */}
-        <section>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Quick Start with a Product</h2>
-            <Link href="/products">
-              <Button variant="ghost" size="sm">
-                View All
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="glow"
+              onClick={handleCreateCollection}
+              disabled={selectedProductIds.length === 0 || createFlowMutation.isPending}
+            >
+              {createFlowMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  {selectedProductIds.length === 1 ? 'Open in Studio' : `Create Collection (${selectedProductIds.length})`}
+                </>
+              )}
+            </Button>
           </div>
-
-          {isLoadingProducts ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : recentProducts.length === 0 ? (
-            <Card className="flex flex-col items-center justify-center py-12">
-              <Package className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="mb-4 text-muted-foreground">No products yet</p>
-              <Link href="/products">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Products
-                </Button>
-              </Link>
-            </Card>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-              {recentProducts.map((product) => {
-                const imageUrl =
-                  product.images?.[0]?.previewUrl ||
-                  product.images?.[0]?.baseUrl ||
-                  product.imageUrl;
-                return (
-                  <Link
-                    key={product.id}
-                    href={`/studio/new?productId=${product.id}`}
-                    className="group"
-                  >
-                    <Card className="overflow-hidden transition-all hover:ring-2 hover:ring-primary/50">
-                      <div className="relative aspect-square bg-secondary">
-                        {imageUrl ? (
-                          <Image
-                            src={imageUrl}
-                            alt={product.name}
-                            fill
-                            className="object-cover transition-transform group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <Package className="h-8 w-8 text-muted-foreground" />
-                          </div>
-                        )}
-                        {/* Hover overlay */}
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-                          <Button size="sm" variant="secondary">
-                            <Wand2 className="mr-1 h-4 w-4" />
-                            Open in Studio
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="p-3">
-                        <p className="truncate text-sm font-medium">{product.name}</p>
-                        <p className="text-xs text-muted-foreground">{product.category}</p>
-                      </div>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* Quick Access: Recent Collections */}
-        <section>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Continue with a Collection</h2>
-            <Link href="/collections">
-              <Button variant="ghost" size="sm">
-                View All
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-
-          {isLoadingCollections ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : recentCollections.length === 0 ? (
-            <Card className="flex flex-col items-center justify-center py-12">
-              <FolderKanban className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="mb-4 text-muted-foreground">No collections yet</p>
-              <Link href="/collections/new">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Collection
-                </Button>
-              </Link>
-            </Card>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {recentCollections.map((collection) => (
-                <Link
-                  key={collection.id}
-                  href={`/studio/collections/${collection.id}`}
-                  className="group"
-                >
-                  <Card className="overflow-hidden transition-all hover:ring-2 hover:ring-primary/50">
-                    <div className="relative aspect-video bg-secondary">
-                      {collection.thumbnailUrl ? (
-                        <Image
-                          src={collection.thumbnailUrl}
-                          alt={collection.name}
-                          fill
-                          className="object-cover transition-transform group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <FolderKanban className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                      )}
-                      {/* Status badge */}
-                      <Badge
-                        className="absolute right-2 top-2"
-                        variant={
-                          collection.status === 'completed'
-                            ? 'success'
-                            : collection.status === 'generating'
-                              ? 'default'
-                              : 'secondary'
-                        }
-                      >
-                        {collection.status}
-                      </Badge>
-                    </div>
-                    <div className="p-4">
-                      <p className="truncate font-medium">{collection.name}</p>
-                      <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>{collection.productCount} products</span>
-                        <span>•</span>
-                        <span>{collection.generatedCount} generated</span>
-                      </div>
-                    </div>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
+        </div>
       </div>
-    </>
+
+      {/* Main Content */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Config Panel Sidebar */}
+        <UnifiedStudioConfigPanel
+          mode="studio-home"
+          sceneTypes={sceneTypes}
+          onGenerate={handleCreateCollection}
+          isGenerating={createFlowMutation.isPending}
+        />
+
+        {/* Products Grid Area */}
+        <main className="flex flex-1 flex-col overflow-hidden">
+          {/* Collection Filter Tags */}
+          {collections.length > 0 && (
+            <div className="flex items-center gap-2 border-b border-border bg-card/30 px-6 py-3">
+              <span className="text-xs font-medium text-muted-foreground">Collections:</span>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={activeCollectionFilter === null ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setActiveCollectionFilter(null)}
+                >
+                  All Products
+                </Button>
+                {collections.slice(0, 6).map((collection) => (
+                  <Button
+                    key={collection.id}
+                    variant={activeCollectionFilter === collection.id ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setActiveCollectionFilter(collection.id)}
+                  >
+                    {collection.name}
+                  </Button>
+                ))}
+                {collections.length > 6 && (
+                  <Link href="/collections">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs">
+                      +{collections.length - 6} more
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Products Grid */}
+          <div className="flex-1 overflow-y-auto p-6">
+            <ProductGrid
+              selectedIds={selectedProductIds}
+              onSelectionChange={setSelectedProductIds}
+              filterToIds={showSelectedOnly ? selectedProductIds : undefined}
+              selectionMode="card"
+              showGeneratedAssets={true}
+              showFilters={true}
+              showViewToggle={true}
+              className="h-full"
+              testId="studio-product-grid"
+            />
+          </div>
+        </main>
+      </div>
+
+      {/* Selection Action Island */}
+      {selectedProductIds.length > 0 && (
+        <SelectionActionIsland
+          selectedCount={selectedProductIds.length}
+          showSelectedOnly={showSelectedOnly}
+          onShowSelectedToggle={() => setShowSelectedOnly(!showSelectedOnly)}
+          onDownload={handleDownloadSelected}
+          onPin={handlePinSelected}
+          onApprove={handleApproveSelected}
+          onDelete={handleDeleteSelected}
+          onClear={handleClearSelection}
+        />
+      )}
+      </div>
+    </ConfigPanelProvider>
+  );
+}
+
+// Selection Action Island Component
+function SelectionActionIsland({
+  selectedCount,
+  showSelectedOnly,
+  onShowSelectedToggle,
+  onDownload,
+  onPin,
+  onApprove,
+  onDelete,
+  onClear,
+}: {
+  selectedCount: number;
+  showSelectedOnly: boolean;
+  onShowSelectedToggle: () => void;
+  onDownload: () => void;
+  onPin: () => void;
+  onApprove: () => void;
+  onDelete: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2" data-testid="selection-island">
+      <div
+        className={cn(
+          'flex items-center gap-4 rounded-full border border-border',
+          'bg-card/95 px-6 py-3 shadow-xl backdrop-blur',
+          'animate-in fade-in slide-in-from-bottom-4 duration-300'
+        )}
+      >
+        {/* Close button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-full"
+          onClick={onClear}
+          data-testid="selection-island-clear"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+
+        {/* Selection count */}
+        <div className="flex items-center gap-2 border-r border-border pr-4">
+          <span className="text-sm font-medium" data-testid="selection-island-count">
+            {selectedCount} selected
+          </span>
+        </div>
+
+        {/* Show selected toggle */}
+        <Button
+          variant={showSelectedOnly ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={onShowSelectedToggle}
+          data-testid="selection-island-show-toggle"
+        >
+          {showSelectedOnly ? (
+            <Filter className="mr-2 h-4 w-4" />
+          ) : (
+            <Eye className="mr-2 h-4 w-4" />
+          )}
+          {showSelectedOnly ? 'Show All' : 'Show Selected'}
+        </Button>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1 border-l border-border pl-4">
+          <Button variant="ghost" size="sm" onClick={onDownload} data-testid="selection-island-download">
+            <Download className="mr-2 h-4 w-4" />
+            Download
+          </Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onPin} data-testid="selection-island-pin">
+            <Heart className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onApprove} data-testid="selection-island-approve">
+            <CheckCircle className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={onDelete}
+            data-testid="selection-island-delete"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

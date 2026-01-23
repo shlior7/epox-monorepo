@@ -32,7 +32,7 @@ async function globalSetup(config: FullConfig) {
 
       // Check if already logged in (from previous session)
       const isLoggedIn = await page
-        .locator('[data-testid="user-menu"]')
+        .locator('[data-testid="app-shell--sidebar--user-menu"]')
         .isVisible({ timeout: 2000 })
         .catch(() => false);
 

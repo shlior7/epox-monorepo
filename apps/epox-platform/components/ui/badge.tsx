@@ -2,6 +2,7 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
+import { buildTestId } from '@/lib/testing/testid';
 
 const badgeVariants = cva(
   [
@@ -73,6 +74,7 @@ export interface BadgeProps
   onRemove?: () => void;
   /** Optional dot indicator before text */
   dot?: boolean;
+  testId?: string;
 }
 
 function Badge({
@@ -83,11 +85,21 @@ function Badge({
   onRemove,
   dot,
   children,
+  testId,
   ...props
 }: BadgeProps) {
   return (
-    <div className={cn(badgeVariants({ variant, size }), className)} {...props}>
-      {dot && <span className={cn('h-1.5 w-1.5 rounded-full', 'bg-current opacity-80')} />}
+    <div
+      className={cn(badgeVariants({ variant, size }), className)}
+      data-testid={testId}
+      {...props}
+    >
+      {dot && (
+        <span
+          className={cn('h-1.5 w-1.5 rounded-full', 'bg-current opacity-80')}
+          data-testid={buildTestId(testId, 'dot')}
+        />
+      )}
       {children}
       {removable && (
         <button
@@ -103,6 +115,7 @@ function Badge({
             'hover:bg-current/20',
             'transition-colors duration-150'
           )}
+          data-testid={buildTestId(testId, 'remove')}
         >
           <X className="h-2.5 w-2.5" />
         </button>

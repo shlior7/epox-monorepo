@@ -47,9 +47,10 @@ export interface ProductCreate {
   isFavorite?: boolean;
   source?: ProductSource;
   storeConnectionId?: string;
-  erpId?: string;
-  erpSku?: string;
-  erpUrl?: string;
+  storeId?: string;
+  storeSku?: string;
+  storeUrl?: string;
+  storeName?: string;
   importedAt?: Date;
   analysisData?: ProductAnalysis;
   analysisVersion?: string;
@@ -67,9 +68,10 @@ export interface ProductUpdate {
   isFavorite?: boolean;
   source?: ProductSource;
   storeConnectionId?: string | null;
-  erpId?: string | null;
-  erpSku?: string | null;
-  erpUrl?: string | null;
+  storeId?: string | null;
+  storeSku?: string | null;
+  storeUrl?: string | null;
+  storeName?: string | null;
   importedAt?: Date | null;
   analysisData?: ProductAnalysis | null;
   analysisVersion?: string | null;

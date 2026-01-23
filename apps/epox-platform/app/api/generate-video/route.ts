@@ -96,7 +96,7 @@ export const POST = withGenerationSecurity(async (request, context) => {
       sessionId,
       productIds: [productId],
       settings: settings ? { ...settings } : undefined,
-      ...{ inspirationNote: inspirationNote ? inspirationNote : undefined },
+       inspirationNote: inspirationNote ? inspirationNote : undefined,
     },
     {
       priority: urgent ? 50 : 100,

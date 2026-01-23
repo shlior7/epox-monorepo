@@ -350,3 +350,28 @@ export const LIGHTING_PRESETS: LightingPreset[] = [
   'Moody Low-Key',
   'Cool Overcast',
 ];
+
+// ===== INSPIRATION BUBBLE TYPES (for Unified Config Panel) =====
+
+export type InspirationBubbleType = 'style' | 'inspiration' | 'color-palette' | 'lighting' | 'custom';
+
+export interface InspirationBubbleValue {
+  type: InspirationBubbleType;
+  image?: InspirationImage;
+  colorPalette?: string[]; // For color-palette type
+  preset?: string; // For lighting/style preset
+  customLabel?: string; // For custom bubble type
+}
+
+// Per scene type bubble configuration
+export interface SceneTypeBubbleConfig {
+  bubbles: InspirationBubbleValue[];
+}
+
+// Bubble configuration map keyed by scene type
+export type SceneTypeBubbleMap = Record<string, SceneTypeBubbleConfig>;
+
+// Default empty bubble config
+export const DEFAULT_SCENE_TYPE_BUBBLE_CONFIG: SceneTypeBubbleConfig = {
+  bubbles: [],
+};

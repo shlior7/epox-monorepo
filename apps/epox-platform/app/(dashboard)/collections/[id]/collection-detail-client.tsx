@@ -24,6 +24,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/spinner';
 import { apiClient } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
+import { buildTestId } from '@/lib/testing/testid';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -148,13 +149,16 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" data-testid="collection-detail-page">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-card/80 px-8 py-4 backdrop-blur-xl">
+      <header
+        className="sticky top-0 z-30 border-b border-border bg-card/80 px-8 py-4 backdrop-blur-xl"
+        data-testid="collection-detail-header"
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/collections">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" testId="collection-detail-back">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
@@ -166,21 +170,29 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                     onChange={(e) => setEditedName(e.target.value)}
                     className="h-8 w-64"
                     autoFocus
+                    testId="collection-detail-name-input"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleSaveName();
                       if (e.key === 'Escape') setIsEditingName(false);
                     }}
                   />
-                  <Button size="sm" onClick={handleSaveName}>
+                  <Button size="sm" onClick={handleSaveName} testId="collection-detail-save-name">
                     Save
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setIsEditingName(false)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setIsEditingName(false)}
+                    testId="collection-detail-cancel-edit"
+                  >
                     Cancel
                   </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-semibold">{collection.name}</h1>
+                  <h1 className="text-lg font-semibold" data-testid="collection-detail-name">
+                    {collection.name}
+                  </h1>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -189,19 +201,25 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                       setEditedName(collection.name);
                       setIsEditingName(true);
                     }}
+                    testId="collection-detail-edit-name"
                   >
                     <Edit2 className="h-3 w-3" />
                   </Button>
                 </div>
               )}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Badge variant={statusConfig[collection.status].variant}>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="collection-detail-meta">
+                <Badge
+                  variant={statusConfig[collection.status].variant}
+                  testId={buildTestId('collection-detail', 'status')}
+                >
                   {statusConfig[collection.status].label}
                 </Badge>
                 <span>•</span>
-                <span>{collection.productCount} products</span>
+                <span data-testid={buildTestId('collection-detail', 'product-count')}>
+                  {collection.productCount} products
+                </span>
                 <span>•</span>
-                <span>
+                <span data-testid={buildTestId('collection-detail', 'generated-count')}>
                   {collection.generatedCount}/{collection.totalImages || collection.productCount}{' '}
                   generated
                 </span>
@@ -209,22 +227,23 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="glow" onClick={handleOpenStudio}>
+            <Button variant="glow" onClick={handleOpenStudio} testId="collection-detail-open-studio">
               <Sparkles className="mr-2 h-4 w-4" />
               Open Studio
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" testId="collection-detail-actions">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" testId="collection-detail-actions-menu">
                 <DropdownMenuItem
                   onClick={() => {
                     setDeleteAssetPolicy('keep_pinned_approved');
                     setIsDeleteDialogOpen(true);
                   }}
+                  testId="collection-detail-delete"
                 >
                   <Trash2 className="mr-2 h-4 w-4 text-destructive" />
                   Delete Collection
@@ -236,19 +255,24 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
       </header>
 
       {/* Main Content */}
-      <div className="p-8">
+      <div className="p-8" data-testid="collection-detail-content">
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Left Column - Collection Info */}
           <div className="space-y-6">
             {/* Collection Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Collection Details</CardTitle>
+            <Card testId="collection-detail-stats">
+              <CardHeader testId={buildTestId('collection-detail-stats', 'header')}>
+                <CardTitle className="text-base" testId={buildTestId('collection-detail-stats', 'title')}>
+                  Collection Details
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4" testId={buildTestId('collection-detail-stats', 'content')}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Status</span>
-                  <Badge variant={statusConfig[collection.status].variant}>
+                  <Badge
+                    variant={statusConfig[collection.status].variant}
+                    testId={buildTestId('collection-detail-stats', 'status')}
+                  >
                     {statusConfig[collection.status].label}
                   </Badge>
                 </div>
@@ -274,20 +298,28 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
             </Card>
 
             {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Quick Actions</CardTitle>
+            <Card testId="collection-detail-actions-card">
+              <CardHeader testId={buildTestId('collection-detail-actions-card', 'header')}>
+                <CardTitle className="text-base" testId={buildTestId('collection-detail-actions-card', 'title')}>
+                  Quick Actions
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-2" testId={buildTestId('collection-detail-actions-card', 'content')}>
                 <Button
                   className="w-full justify-start"
                   variant="outline"
                   onClick={handleOpenStudio}
+                  testId={buildTestId('collection-detail-actions-card', 'open-studio')}
                 >
                   <Sparkles className="mr-2 h-4 w-4" />
                   Open Generation Studio
                 </Button>
-                <Button className="w-full justify-start" variant="outline" disabled>
+                <Button
+                  className="w-full justify-start"
+                  variant="outline"
+                  disabled
+                  testId={buildTestId('collection-detail-actions-card', 'start-generation')}
+                >
                   <Play className="mr-2 h-4 w-4" />
                   Start Generation
                 </Button>
@@ -297,16 +329,25 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
 
           {/* Right Column - Products */}
           <div className="lg:col-span-2">
-            <Card className="h-full">
-              <CardHeader>
+            <Card className="h-full" testId="collection-detail-products">
+              <CardHeader testId={buildTestId('collection-detail-products', 'header')}>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Products in Collection</CardTitle>
-                  <div className="flex items-center gap-1 rounded-lg border p-1">
+                  <CardTitle
+                    className="text-base"
+                    testId={buildTestId('collection-detail-products', 'title')}
+                  >
+                    Products in Collection
+                  </CardTitle>
+                  <div
+                    className="flex items-center gap-1 rounded-lg border p-1"
+                    data-testid={buildTestId('collection-detail-products', 'view-toggle')}
+                  >
                     <Button
                       variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                       size="icon"
                       className="h-7 w-7"
                       onClick={() => setViewMode('grid')}
+                      testId={buildTestId('collection-detail-products', 'view-grid')}
                     >
                       <Grid className="h-3.5 w-3.5" />
                     </Button>
@@ -315,13 +356,14 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                       size="icon"
                       className="h-7 w-7"
                       onClick={() => setViewMode('list')}
+                      testId={buildTestId('collection-detail-products', 'view-list')}
                     >
                       <List className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent testId={buildTestId('collection-detail-products', 'content')}>
                 {collectionProducts.length === 0 ? (
                   <EmptyState
                     icon={Package}
@@ -329,13 +371,23 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                     description="This collection doesn't have any products. Add products to get started."
                   />
                 ) : viewMode === 'grid' ? (
-                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                  <div
+                    className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+                    data-testid={buildTestId('collection-detail-products', 'grid')}
+                  >
                     {collectionProducts.map((product) => {
                       const imageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
+                      const productTestId = buildTestId('product-card', product.id);
                       return (
                         <Link key={product.id} href={`/products/${product.id}`}>
-                          <Card className="group cursor-pointer overflow-hidden transition-all hover:ring-2 hover:ring-primary/50">
-                            <div className="flex aspect-square items-center justify-center overflow-hidden bg-secondary">
+                          <Card
+                            className="group cursor-pointer overflow-hidden transition-all hover:ring-2 hover:ring-primary/50"
+                            testId={productTestId}
+                          >
+                            <div
+                              className="flex aspect-square items-center justify-center overflow-hidden bg-secondary"
+                              data-testid={buildTestId(productTestId, 'image')}
+                            >
                               {imageUrl ? (
                                 <Image
                                   src={imageUrl}
@@ -348,9 +400,17 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                                 <Package className="h-8 w-8 text-muted-foreground" />
                               )}
                             </div>
-                            <div className="p-3">
-                              <p className="truncate text-sm font-medium">{product.name}</p>
-                              <p className="truncate text-xs text-muted-foreground">
+                            <div className="p-3" data-testid={buildTestId(productTestId, 'content')}>
+                              <p
+                                className="truncate text-sm font-medium"
+                                data-testid={buildTestId(productTestId, 'name')}
+                              >
+                                {product.name}
+                              </p>
+                              <p
+                                className="truncate text-xs text-muted-foreground"
+                                data-testid={buildTestId(productTestId, 'category')}
+                              >
                                 {product.category}
                               </p>
                             </div>
@@ -360,13 +420,20 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                     })}
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2" data-testid={buildTestId('collection-detail-products', 'list')}>
                     {collectionProducts.map((product) => {
                       const imageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
+                      const productTestId = buildTestId('product-card', product.id);
                       return (
                         <Link key={product.id} href={`/products/${product.id}`}>
-                          <div className="flex items-center gap-4 rounded-lg border border-border p-3 transition-colors hover:bg-secondary/50">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded bg-secondary">
+                          <div
+                            className="flex items-center gap-4 rounded-lg border border-border p-3 transition-colors hover:bg-secondary/50"
+                            data-testid={productTestId}
+                          >
+                            <div
+                              className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded bg-secondary"
+                              data-testid={buildTestId(productTestId, 'image')}
+                            >
                               {imageUrl ? (
                                 <Image
                                   src={imageUrl}
@@ -379,11 +446,18 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                                 <Package className="h-5 w-5 text-muted-foreground" />
                               )}
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate font-medium">{product.name}</p>
-                              <p className="text-sm text-muted-foreground">{product.category}</p>
+                            <div className="min-w-0 flex-1" data-testid={buildTestId(productTestId, 'content')}>
+                              <p className="truncate font-medium" data-testid={buildTestId(productTestId, 'name')}>
+                                {product.name}
+                              </p>
+                              <p
+                                className="text-sm text-muted-foreground"
+                                data-testid={buildTestId(productTestId, 'category')}
+                              >
+                                {product.category}
+                              </p>
                             </div>
-                            <Badge variant="secondary">
+                            <Badge variant="secondary" testId={buildTestId(productTestId, 'scene-type')}>
                               {(product.sceneTypes ?? product.sceneTypes)?.[0] || 'General'}
                             </Badge>
                           </div>
@@ -400,10 +474,12 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Collection</DialogTitle>
-            <DialogDescription>
+        <DialogContent testId="collection-delete-dialog">
+          <DialogHeader testId={buildTestId('collection-delete-dialog', 'header')}>
+            <DialogTitle testId={buildTestId('collection-delete-dialog', 'title')}>
+              Delete Collection
+            </DialogTitle>
+            <DialogDescription testId={buildTestId('collection-delete-dialog', 'description')}>
               Choose what to do with assets created by "{collection.name}". This action cannot be
               undone.
             </DialogDescription>
@@ -414,14 +490,26 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
               setDeleteAssetPolicy(value as 'delete_all' | 'keep_pinned_approved')
             }
             className="space-y-3"
+            testId={buildTestId('collection-delete-dialog', 'options')}
           >
             <div className="flex items-start gap-3 rounded-lg border border-border p-3">
-              <RadioGroupItem id="delete-collection-assets" value="delete_all" className="mt-0.5" />
+              <RadioGroupItem
+                id="delete-collection-assets"
+                value="delete_all"
+                className="mt-0.5"
+                testId={buildTestId('collection-delete-dialog', 'delete-all')}
+              />
               <div className="space-y-1">
-                <Label htmlFor="delete-collection-assets">
+                <Label
+                  htmlFor="delete-collection-assets"
+                  testId={buildTestId('collection-delete-dialog', 'delete-all-label')}
+                >
                   Remove all assets in this collection
                 </Label>
-                <p className="text-xs text-muted-foreground">
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-testid={buildTestId('collection-delete-dialog', 'delete-all-description')}
+                >
                   Deletes every generated asset owned by this collection.
                 </p>
               </div>
@@ -431,23 +519,37 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                 id="keep-collection-assets"
                 value="keep_pinned_approved"
                 className="mt-0.5"
+                testId={buildTestId('collection-delete-dialog', 'keep-approved')}
               />
               <div className="space-y-1">
-                <Label htmlFor="keep-collection-assets">Keep pinned and approved assets</Label>
-                <p className="text-xs text-muted-foreground">
+                <Label
+                  htmlFor="keep-collection-assets"
+                  testId={buildTestId('collection-delete-dialog', 'keep-approved-label')}
+                >
+                  Keep pinned and approved assets
+                </Label>
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-testid={buildTestId('collection-delete-dialog', 'keep-approved-description')}
+                >
                   Only deletes assets that are not pinned and not approved.
                 </p>
               </div>
             </div>
           </RadioGroup>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+          <DialogFooter testId={buildTestId('collection-delete-dialog', 'footer')}>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              testId={buildTestId('collection-delete-dialog', 'cancel')}
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={() => deleteCollectionMutation.mutate()}
               disabled={deleteCollectionMutation.isPending}
+              testId={buildTestId('collection-delete-dialog', 'confirm')}
             >
               {deleteCollectionMutation.isPending ? (
                 <>

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import { Search, Eye, EyeOff } from 'lucide-react';
+import { buildTestId } from '@/lib/testing/testid';
 
 const inputVariants = cva(
   [
@@ -60,17 +61,24 @@ export interface InputProps
   error?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  testId?: string;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, variant, inputSize, error, leftIcon, rightIcon, ...props }, ref) => {
+  (
+    { className, type, variant, inputSize, error, leftIcon, rightIcon, testId, ...props },
+    ref
+  ) => {
     const [showPassword, setShowPassword] = React.useState(false);
     const isPassword = type === 'password';
 
     return (
-      <div className="relative">
+      <div className="relative" data-testid={testId}>
         {leftIcon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+          <div
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            data-testid={buildTestId(testId, 'left-icon')}
+          >
             {leftIcon}
           </div>
         )}
@@ -84,6 +92,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             className
           )}
           ref={ref}
+          data-testid={buildTestId(testId, 'input')}
           {...props}
         />
         {isPassword && (
@@ -92,16 +101,27 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
             onClick={() => setShowPassword(!showPassword)}
             tabIndex={-1}
+            data-testid={buildTestId(testId, 'toggle-password')}
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         )}
         {rightIcon && !isPassword && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+          <div
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            data-testid={buildTestId(testId, 'right-icon')}
+          >
             {rightIcon}
           </div>
         )}
-        {error && <p className="mt-1.5 animate-fade-in text-sm text-destructive">{error}</p>}
+        {error && (
+          <p
+            className="mt-1.5 animate-fade-in text-sm text-destructive"
+            data-testid={buildTestId(testId, 'error')}
+          >
+            {error}
+          </p>
+        )}
       </div>
     );
   }

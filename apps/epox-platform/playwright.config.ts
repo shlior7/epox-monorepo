@@ -14,7 +14,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
-    video: 'on-first-retry',
+    video: 'on',
     screenshot: 'only-on-failure',
   },
 
@@ -28,7 +28,7 @@ export default defineConfig({
 
   // Run your local dev server before starting the tests
   webServer: {
-    command: 'yarn dev',
+    command: 'yarn build && yarn start:test',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

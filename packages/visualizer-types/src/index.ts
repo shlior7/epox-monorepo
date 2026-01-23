@@ -35,6 +35,11 @@ export type {
   SceneTypeInspirationMap,
   StylePreset,
   LightingPreset,
+  // Inspiration bubble types (for Unified Config Panel)
+  InspirationBubbleType,
+  InspirationBubbleValue,
+  SceneTypeBubbleConfig,
+  SceneTypeBubbleMap,
 } from './settings';
 
 export {
@@ -54,6 +59,8 @@ export {
   // Utility functions
   normalizeImageQuality,
   formatAspectRatioDisplay,
+  // Inspiration bubble defaults
+  DEFAULT_SCENE_TYPE_BUBBLE_CONFIG,
 } from './settings';
 
 // Message types

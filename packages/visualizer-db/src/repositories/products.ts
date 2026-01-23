@@ -45,9 +45,10 @@ export class ProductRepository extends BaseRepository<Product> {
         isFavorite: data.isFavorite ?? false,
         source: data.source ?? 'uploaded',
         storeConnectionId: data.storeConnectionId ?? null,
-        erpId: data.erpId ?? null,
-        erpSku: data.erpSku ?? null,
-        erpUrl: data.erpUrl ?? null,
+        storeId: data.storeId ?? null,
+        storeSku: data.storeSku ?? null,
+        storeUrl: data.storeUrl ?? null,
+        storeName: data.storeName ?? null,
         importedAt: data.importedAt ?? null,
         analysisData: data.analysisData ?? null,
         analysisVersion: data.analysisVersion ?? null,
@@ -145,7 +146,7 @@ export class ProductRepository extends BaseRepository<Product> {
         or(
           ilike(product.name, `%${options.search}%`),
           ilike(product.description, `%${options.search}%`),
-          ilike(product.erpSku, `%${options.search}%`)
+          ilike(product.storeSku, `%${options.search}%`)
         )!
       );
     }
