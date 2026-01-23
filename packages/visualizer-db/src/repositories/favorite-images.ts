@@ -36,4 +36,48 @@ export class FavoriteImageRepository extends BaseRepository<FavoriteImage> {
 
     return rows.map((row) => this.mapToEntity(row));
   }
+
+  async getByAsset(clientId: string, generatedAssetId: string): Promise<FavoriteImage | null> {
+    const rows = await this.drizzle
+      .select()
+      .from(favoriteImage)
+      .where(eq(favoriteImage.generatedAssetId, generatedAssetId))
+      .limit(1);
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const row = rows[0];
+    // Verify it belongs to the client
+    if (row.clientId !== clientId) {
+      return null;
+    }
+
+    return this.mapToEntity(row);
+  }
+
+  async deleteByAsset(clientId: string, generatedAssetId: string): Promise<void> {
+    await this.drizzle
+      .delete(favoriteImage)
+      .where(eq(favoriteImage.generatedAssetId, generatedAssetId));
+  }
+
+  /**
+   * Toggle favorite status for an asset
+   * Returns true if favorited, false if unfavorited
+   */
+  async toggle(clientId: string, generatedAssetId: string): Promise<boolean> {
+    const existing = await this.getByAsset(clientId, generatedAssetId);
+
+    if (existing) {
+      // Remove favorite
+      await this.deleteByAsset(clientId, generatedAssetId);
+      return false;
+    } else {
+      // Add favorite
+      await this.create(clientId, generatedAssetId);
+      return true;
+    }
+  }
 }

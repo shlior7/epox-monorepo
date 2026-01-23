@@ -21,6 +21,7 @@ import {
   QuotaLimitRepository,
   AICostTrackingRepository,
   StoreConnectionRepository,
+  StoreSyncLogRepository,
   AntonWorkspaceRepository,
   AntonWorkspaceMemberRepository,
   AntonProjectRepository,
@@ -55,6 +56,7 @@ export interface DatabaseFacade {
   readonly quotaLimits: QuotaLimitRepository;
   readonly aiCostTracking: AICostTrackingRepository;
   readonly storeConnections: StoreConnectionRepository;
+  readonly storeSyncLogs: StoreSyncLogRepository;
   readonly antonWorkspaces: AntonWorkspaceRepository;
   readonly antonWorkspaceMembers: AntonWorkspaceMemberRepository;
   readonly antonProjects: AntonProjectRepository;
@@ -97,6 +99,7 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
   const quotaLimits = new QuotaLimitRepository(drizzle);
   const aiCostTracking = new AICostTrackingRepository(drizzle);
   const storeConnections = new StoreConnectionRepository(drizzle);
+  const storeSyncLogs = new StoreSyncLogRepository(drizzle);
   const antonWorkspaces = new AntonWorkspaceRepository(drizzle);
   const antonWorkspaceMembers = new AntonWorkspaceMemberRepository(drizzle);
   const antonProjects = new AntonProjectRepository(drizzle);
@@ -157,6 +160,7 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
     quotaLimits,
     aiCostTracking,
     storeConnections,
+    storeSyncLogs,
     antonWorkspaces,
     antonWorkspaceMembers,
     antonProjects,
