@@ -5,6 +5,7 @@ export {
   type ProviderCredentials,
   type ProviderProduct,
   type ProviderCategory,
+  type ProductImage,
   type AuthState,
   type AuthParams,
   type FetchOptions,

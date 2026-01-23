@@ -141,6 +141,14 @@ export class ShopifyProvider extends BaseProvider {
     }));
   }
 
+  async updateProductImages(): Promise<never> {
+    throw new Error('Shopify image sync not implemented yet (V2 feature)');
+  }
+
+  async deleteProductImage(): Promise<never> {
+    throw new Error('Shopify image sync not implemented yet (V2 feature)');
+  }
+
   private extractShopDomain(url: string): string {
     let domain = url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     if (!domain.includes('.')) {

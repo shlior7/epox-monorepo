@@ -69,6 +69,10 @@ export {
 // Gemini Service
 export { GeminiService, getGeminiService } from './gemini-service';
 
+// Claude Service
+export { ClaudeService, getClaudeService, resetClaudeService } from './claude-service';
+export type { ClaudeTaskRequest, ClaudeTaskResponse } from './claude-service';
+
 // Logging
 export { createLogger, defaultLogger, initSentry, Logger } from './logger';
 export type { LogContext, LogLevel } from './logger';

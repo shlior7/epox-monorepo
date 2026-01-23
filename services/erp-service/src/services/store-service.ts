@@ -90,6 +90,16 @@ export class StoreService {
     return creds ? providers.require(creds.provider).testConnection(creds.credentials) : false;
   }
 
+  async updateProductImages(clientId: string, productId: string | number, imageUrls: string[]) {
+    const creds = await this.requireCredentials(clientId);
+    return providers.require(creds.provider).updateProductImages(creds.credentials, productId, imageUrls);
+  }
+
+  async deleteProductImage(clientId: string, productId: string | number, imageId: string | number) {
+    const creds = await this.requireCredentials(clientId);
+    return providers.require(creds.provider).deleteProductImage(creds.credentials, productId, imageId);
+  }
+
   // Connection Management
 
   getConnection(clientId: string): Promise<StoreConnectionInfo | null> {

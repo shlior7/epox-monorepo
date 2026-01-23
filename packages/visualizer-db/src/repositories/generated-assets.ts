@@ -1,7 +1,19 @@
 import { and, desc, asc, eq, inArray, isNull, isNotNull, lt, sql, type SQL } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
-import { generatedAsset, generatedAssetProduct } from '../schema/generated-images';
-import type { GeneratedAsset, GeneratedAssetCreate, GeneratedAssetUpdate, AssetStatus, ApprovalStatus, FlowGenerationSettings } from 'visualizer-types';
+import { generatedAsset, generatedAssetProduct, favoriteImage } from '../schema/generated-images';
+import { product } from '../schema/products';
+import { storeSyncLog } from '../schema/store-sync';
+import type {
+  GeneratedAsset,
+  GeneratedAssetCreate,
+  GeneratedAssetUpdate,
+  AssetStatus,
+  ApprovalStatus,
+  FlowGenerationSettings,
+  ProductAssetGroup,
+  GeneratedAssetWithSync,
+  AssetSyncStatus,
+} from 'visualizer-types';
 import { NotFoundError } from '../errors';
 import { BaseRepository } from './base';
 
@@ -826,5 +838,162 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
       .where(eq(generatedAsset.id, existingAsset.id));
 
     return existingAsset.id;
+  }
+
+  // ===== LIST WITH SYNC STATUS (for Store page) =====
+
+  /**
+   * List assets grouped by product with sync status information
+   * Includes latest sync log, favorite status, and product store mapping
+   * Default sort: synced + favorited assets first, then newest
+   */
+  async listWithSyncStatus(clientId: string, storeConnectionId: string): Promise<ProductAssetGroup[]> {
+    const result = await this.drizzle.execute(sql`
+      WITH asset_sync_status AS (
+        SELECT DISTINCT ON (ga.id)
+          ga.*,
+          p.id as product_id,
+          p.name as product_name,
+          p.store_id,
+          p.store_url,
+          p.store_name,
+          ssl.status as sync_status,
+          ssl.external_image_url,
+          ssl.error_message as sync_error,
+          ssl.completed_at as last_synced_at,
+          CASE WHEN fi.id IS NOT NULL THEN true ELSE false END as is_favorite
+        FROM ${generatedAsset} ga
+        -- Extract first product ID from productIds JSONB array
+        CROSS JOIN LATERAL (
+          SELECT jsonb_array_elements_text(ga.product_ids) as product_id
+          LIMIT 1
+        ) AS first_product
+        -- Join with product table
+        LEFT JOIN ${product} p ON p.id = first_product.product_id AND p.client_id = ${clientId}
+        -- Get latest sync log for this asset
+        LEFT JOIN LATERAL (
+          SELECT *
+          FROM ${storeSyncLog}
+          WHERE generated_asset_id = ga.id
+            AND store_connection_id = ${storeConnectionId}
+          ORDER BY started_at DESC
+          LIMIT 1
+        ) ssl ON true
+        -- Check if favorited
+        LEFT JOIN ${favoriteImage} fi ON fi.generated_asset_id = ga.id AND fi.client_id = ${clientId}
+        WHERE ga.client_id = ${clientId}
+          AND ga.deleted_at IS NULL
+          AND p.id IS NOT NULL
+      )
+      SELECT
+        product_id,
+        product_name,
+        store_id,
+        store_url,
+        store_name,
+        json_agg(
+          json_build_object(
+            'id', id,
+            'clientId', client_id,
+            'generationFlowId', generation_flow_id,
+            'chatSessionId', chat_session_id,
+            'assetUrl', asset_url,
+            'assetType', asset_type,
+            'status', status,
+            'prompt', prompt,
+            'settings', settings,
+            'productIds', product_ids,
+            'jobId', job_id,
+            'error', error,
+            'assetAnalysis', asset_analysis,
+            'analysisVersion', analysis_version,
+            'approvalStatus', approval_status,
+            'approvedAt', approved_at,
+            'approvedBy', approved_by,
+            'completedAt', completed_at,
+            'pinned', pinned,
+            'createdAt', created_at,
+            'updatedAt', updated_at,
+            'deletedAt', deleted_at,
+            'syncStatus', COALESCE(sync_status, 'not_synced'),
+            'lastSyncedAt', last_synced_at,
+            'externalImageUrl', external_image_url,
+            'syncError', sync_error,
+            'isFavorite', is_favorite,
+            'product', json_build_object(
+              'id', product_id,
+              'name', product_name,
+              'storeId', store_id,
+              'storeUrl', store_url,
+              'storeName', store_name
+            )
+          )
+          ORDER BY
+            CASE WHEN sync_status = 'success' THEN 0 ELSE 1 END,
+            CASE WHEN is_favorite = true THEN 0 ELSE 1 END,
+            created_at DESC
+        ) as assets,
+        COUNT(*)::int as total_count,
+        COUNT(*) FILTER (WHERE sync_status = 'success')::int as synced_count,
+        COUNT(*) FILTER (WHERE is_favorite = true)::int as favorite_count
+      FROM asset_sync_status
+      GROUP BY product_id, product_name, store_id, store_url, store_name
+      ORDER BY synced_count DESC, favorite_count DESC, product_name
+    `);
+
+    return (
+      result.rows as Array<{
+        product_id: string;
+        product_name: string;
+        store_id: string | null;
+        store_url: string | null;
+        store_name: string | null;
+        assets: GeneratedAssetWithSync[];
+        total_count: number;
+        synced_count: number;
+        favorite_count: number;
+      }>
+    ).map((row) => ({
+      product: {
+        id: row.product_id,
+        name: row.product_name,
+        // Note: Product type uses null, not undefined
+        storeId: row.store_id,
+        storeUrl: row.store_url,
+        storeName: row.store_name,
+        // Add minimal required Product fields (these won't be used by UI)
+        clientId,
+        description: null,
+        category: null,
+        sceneTypes: null,
+        modelFilename: null,
+        isFavorite: false,
+        source: 'uploaded' as const,
+        storeConnectionId: null,
+        storeSku: null,
+        importedAt: null,
+        analysisData: null,
+        analysisVersion: null,
+        analyzedAt: null,
+        price: null,
+        metadata: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        version: 0,
+      },
+      assets: row.assets.map((asset) => ({
+        ...asset,
+        syncStatus: (asset.syncStatus ?? 'not_synced') as AssetSyncStatus,
+        createdAt: new Date(asset.createdAt),
+        updatedAt: new Date(asset.updatedAt),
+        completedAt: asset.completedAt ? new Date(asset.completedAt) : null,
+        approvedAt: asset.approvedAt ? new Date(asset.approvedAt) : null,
+        lastSyncedAt: asset.lastSyncedAt ? new Date(asset.lastSyncedAt) : undefined,
+        deletedAt: asset.deletedAt ? new Date(asset.deletedAt) : null,
+      })),
+      totalCount: row.total_count,
+      syncedCount: row.synced_count,
+      favoriteCount: row.favorite_count,
+    }));
   }
 }

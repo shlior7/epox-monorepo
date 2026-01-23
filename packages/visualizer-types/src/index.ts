@@ -113,6 +113,9 @@ export type {
   GenerationFlowWithAssets,
   GenerationFlowWithDetails,
   FlowGeneratedImage,
+  AssetSyncStatus,
+  GeneratedAssetWithSync,
+  ProductAssetGroup,
 } from './domain';
 
 // Queue types (for scenergy-queue)

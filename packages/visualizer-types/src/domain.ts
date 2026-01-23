@@ -311,3 +311,31 @@ export interface FlowGeneratedImage {
   jobId?: string;
   error?: string;
 }
+
+// ===== STORE SYNC TYPES =====
+
+export type AssetSyncStatus = 'synced' | 'not_synced' | 'failed' | 'pending';
+
+export interface GeneratedAssetWithSync extends GeneratedAsset {
+  syncStatus: AssetSyncStatus;
+  lastSyncedAt?: Date;
+  externalImageUrl?: string;
+  syncError?: string;
+  isFavorite?: boolean;
+
+  product?: {
+    id: string;
+    name: string;
+    storeId?: string;
+    storeUrl?: string;
+    storeName?: string;
+  };
+}
+
+export interface ProductAssetGroup {
+  product: Product;
+  assets: GeneratedAssetWithSync[];
+  syncedCount: number;
+  favoriteCount: number;
+  totalCount: number;
+}

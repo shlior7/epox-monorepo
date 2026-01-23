@@ -134,6 +134,46 @@ export class WooCommerceProvider extends BaseProvider {
     return (response.data as WooCategory[]).map((c) => ({ id: c.id, name: c.name, slug: c.slug, count: c.count }));
   }
 
+  async updateProductImages(
+    credentials: ProviderCredentials,
+    productId: string | number,
+    imageUrls: string[]
+  ): Promise<Array<{ id: number; src: string; alt?: string }>> {
+    const client = this.createClient(credentials);
+
+    // WooCommerce expects images as array of objects with src property
+    const newImages = imageUrls.map((src) => ({ src }));
+
+    // Update product with new images (appends to existing images)
+    const response = await client.put(`products/${productId}`, {
+      images: newImages,
+    });
+
+    const product = response.data as WooProduct;
+    // Return the newly added images (last N items)
+    return product.images.slice(-newImages.length).map((img) => ({
+      id: img.id,
+      src: img.src,
+      alt: img.alt,
+    }));
+  }
+
+  async deleteProductImage(credentials: ProviderCredentials, productId: string | number, imageId: string | number): Promise<void> {
+    const client = this.createClient(credentials);
+
+    // Get current product to retrieve existing images
+    const productResponse = await client.get(`products/${productId}`);
+    const product = productResponse.data as WooProduct;
+
+    // Filter out the image to delete
+    const updatedImages = product.images.filter((img) => img.id !== Number(imageId));
+
+    // Update product with filtered images
+    await client.put(`products/${productId}`, {
+      images: updatedImages,
+    });
+  }
+
   private createClient(credentials: ProviderCredentials): WooCommerceRestApi {
     const c = credentials as WooCommerceCredentials;
     return createWooCommerceApi({ url: c.baseUrl, consumerKey: c.consumerKey, consumerSecret: c.consumerSecret });

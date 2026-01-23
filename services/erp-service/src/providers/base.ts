@@ -70,6 +70,12 @@ export interface PaginatedResult<T> {
   hasMore: boolean;
 }
 
+export interface ProductImage {
+  id: string | number;
+  src: string;
+  alt?: string;
+}
+
 export abstract class BaseProvider {
   abstract readonly config: ProviderConfig;
 
@@ -79,6 +85,31 @@ export abstract class BaseProvider {
   abstract getProducts(credentials: ProviderCredentials, options?: FetchOptions): Promise<PaginatedResult<ProviderProduct>>;
   abstract getProduct(credentials: ProviderCredentials, productId: string | number): Promise<ProviderProduct | null>;
   abstract getCategories(credentials: ProviderCredentials): Promise<ProviderCategory[]>;
+
+  /**
+   * Update product images by uploading new image URLs to the store
+   * @param credentials Store credentials
+   * @param productId External product ID in store
+   * @param imageUrls Array of image URLs to add to the product
+   * @returns Array of created images in the store
+   */
+  abstract updateProductImages(
+    credentials: ProviderCredentials,
+    productId: string | number,
+    imageUrls: string[]
+  ): Promise<ProductImage[]>;
+
+  /**
+   * Delete an image from a product in the store
+   * @param credentials Store credentials
+   * @param productId External product ID in store
+   * @param imageId Image ID in the store to delete
+   */
+  abstract deleteProductImage(
+    credentials: ProviderCredentials,
+    productId: string | number,
+    imageId: string | number
+  ): Promise<void>;
 
   createAuthState(params: AuthParams, stateId: string, expiresAt: Date): AuthState {
     return {
