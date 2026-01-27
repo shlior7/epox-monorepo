@@ -10,6 +10,7 @@ vi.mock('@/lib/services/db', () => ({
   db: {
     products: {
       count: vi.fn(),
+      getByIds: vi.fn(),
     },
     collectionSessions: {
       count: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('@/lib/services/db', () => ({
       countByStatus: vi.fn(),
       countByGenerationFlowIds: vi.fn(),
       getFirstByGenerationFlowIds: vi.fn(),
+      listWithFilters: vi.fn(),
     },
   },
 }));
@@ -49,6 +51,9 @@ describe('Dashboard API - GET /api/dashboard', () => {
         thumbnails: ['https://cdn.example.com/assets/asset-1.jpg'],
       },
     ] as any);
+    // Mock recent generated assets
+    vi.mocked(db.generatedAssets.listWithFilters).mockResolvedValue([]);
+    vi.mocked(db.products.getByIds).mockResolvedValue(new Map());
   });
 
   it('should return aggregated stats and recent collections', async () => {

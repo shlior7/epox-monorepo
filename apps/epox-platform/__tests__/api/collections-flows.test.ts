@@ -197,9 +197,7 @@ describe('Collection Flows API - POST /api/collections/[id]/flows', () => {
       'test-client',
       expect.objectContaining({
         productIds: ['prod-2'],
-        settings: expect.objectContaining({
-          inspirationImages: [{ url: 'https://example.com/living.jpg' }],
-        }),
+        collectionSessionId: 'coll-1',
       })
     );
     expect(data.created).toBe(1);

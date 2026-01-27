@@ -31,6 +31,12 @@ vi.mock('@/lib/services/db', () => ({
       listByCollectionSessionIds: vi.fn(),
       listByCollectionSession: vi.fn(),
     },
+    products: {
+      listByIds: vi.fn(),
+    },
+    productImages: {
+      list: vi.fn(),
+    },
     generatedAssets: {
       list: vi.fn(),
       countByGenerationFlowIds: vi.fn(),
@@ -134,6 +140,10 @@ describe('Collections API - POST /api/collections', () => {
       selectedBaseImages: {},
       updatedAt: new Date(),
     } as any);
+    // Mock products.listByIds (used to get selectedSceneType for each product)
+    vi.mocked(db.products.listByIds).mockResolvedValue([]);
+    // Mock productImages.list (used to get thumbnails)
+    vi.mocked(db.productImages.list).mockResolvedValue([]);
   });
 
   it('should create a new collection with valid data', async () => {

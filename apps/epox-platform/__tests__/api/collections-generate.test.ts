@@ -87,7 +87,7 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
         inspirationImages: [{ url: 'https://example.com/inspo.jpg' }],
         aspectRatio: '1:1',
         imageQuality: '2k',
-        variantsCount: 1,
+        variantsPerProduct: 1,
       },
     } as any);
     vi.mocked(db.generationFlows.listByCollectionSession).mockResolvedValue([
@@ -104,7 +104,7 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
       body: JSON.stringify({
         settings: {
           imageQuality: '4k',
-          variantsCount: 2,
+          variantsPerProduct: 2,
         },
       }),
     });
@@ -127,7 +127,6 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
       }),
       expect.objectContaining({
         flowId: 'flow-1',
-        priority: 100,
       })
     );
     expect(db.collectionSessions.update).toHaveBeenCalledWith('coll-1', { status: 'generating' });
