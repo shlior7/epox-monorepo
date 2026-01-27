@@ -7,7 +7,7 @@ import { pgTable, text, timestamp, jsonb, integer, index, check, boolean, unique
 import { relations, sql } from 'drizzle-orm';
 import { client } from './auth';
 import { product } from './products';
-import type { FlowGenerationSettings, FlowStatus, MessagePart } from 'visualizer-types';
+import type { FlowGenerationSettings, CollectionGenerationSettings, FlowStatus, MessagePart } from 'visualizer-types';
 
 // Re-export types for schema consumers
 
@@ -41,7 +41,8 @@ export const collectionSession = pgTable(
     productIds: jsonb('product_ids').$type<string[]>().notNull().default([]),
     selectedBaseImages: jsonb('selected_base_images').$type<Record<string, string>>().notNull().default({}),
     // Collection-level generation settings (shared across all products in collection)
-    settings: jsonb('settings').$type<FlowGenerationSettings>(),
+    // Support both types for backwards compatibility during migration
+    settings: jsonb('settings').$type<CollectionGenerationSettings | FlowGenerationSettings>(),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
@@ -86,6 +87,7 @@ export const generationFlow = pgTable(
       .notNull()
       .references(() => client.id, { onDelete: 'cascade' }),
     name: text('name'),
+    sceneType: text('scene_type'), // Scene type for this generation flow
     productIds: jsonb('product_ids').$type<string[]>().notNull().default([]),
     selectedBaseImages: jsonb('selected_base_images').$type<Record<string, string>>().notNull().default({}),
     status: text('status').$type<FlowStatus>().notNull().default('empty'),

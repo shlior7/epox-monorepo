@@ -15,8 +15,8 @@ export class NavigationHelper {
   /**
    * Navigate to the dashboard
    */
-  async goToDashboard() {
-    await this.page.goto('/dashboard');
+  async goToHome() {
+    await this.page.goto('/home');
     await this.page.waitForLoadState('networkidle');
   }
 
@@ -105,6 +105,111 @@ export class NavigationHelper {
   }
 
   /**
+   * Navigate to store page
+   */
+  async goToStore() {
+    await this.page.goto('/store');
+    await this.page.waitForLoadState('networkidle');
+  }
+
+  /**
+   * Get store page state (text-only, efficient)
+   */
+  async getStorePageState() {
+    return await this.page.evaluate(() => {
+      // Check if connection wizard is shown
+      const wizardVisible = !!document.querySelector('[data-testid="store-page-not-connected"]');
+      const connectedVisible = !!document.querySelector('[data-testid="store-page-connected"]');
+      const loadingVisible = !!document.querySelector('[data-testid="store-page-loading"]');
+      const errorVisible = !!document.querySelector('[data-testid="store-page-error"]');
+
+      // Get product groups if connected
+      const productGroups = Array.from(
+        document.querySelectorAll('[data-testid^="store-product-group-"]')
+      ).map((group) => {
+        const header = group.querySelector('[data-testid$="-header"]');
+        const name = group.querySelector('[data-testid$="-name"]')?.textContent?.trim();
+        const isMapped = !!group.querySelector('[data-testid$="-mapped-badge"]');
+        const syncedCount = group
+          .querySelector('[data-testid$="-synced-count"]')
+          ?.textContent?.trim();
+        const unsyncedCount = group
+          .querySelector('[data-testid$="-unsynced-count"]')
+          ?.textContent?.trim();
+
+        // Count images in each section
+        const syncedSection = group.querySelector('[data-testid$="-synced-section"]');
+        const unsyncedSection = group.querySelector('[data-testid$="-unsynced-section"]');
+        const baseImageCount = group.querySelectorAll('[data-testid*="-base-image-"]').length;
+        const syncedAssetCount = group.querySelectorAll('[data-testid*="-synced-asset-"]').length;
+        const unsyncedAssetCount = group.querySelectorAll(
+          '[data-testid*="-unsynced-asset-"]'
+        ).length;
+
+        return {
+          name,
+          isMapped,
+          syncedCount,
+          unsyncedCount,
+          baseImageCount,
+          syncedAssetCount,
+          unsyncedAssetCount,
+          hasSyncedSection: !!syncedSection,
+          hasUnsyncedSection: !!unsyncedSection,
+        };
+      });
+
+      // Get filter state
+      const searchInput = document.querySelector(
+        '[data-testid="store-search-input"]'
+      ) as HTMLInputElement | null;
+      const syncStatusFilter = document
+        .querySelector('[data-testid="store-sync-status-filter"]')
+        ?.textContent?.trim();
+
+      // Get bulk action bar
+      const bulkActionBar = document.querySelector('[data-testid="store-bulk-action-bar"]');
+      const selectedCount = bulkActionBar
+        ?.querySelector('[data-testid*="selected-count"]')
+        ?.textContent?.trim();
+
+      // Get header info
+      const headerTitle = document
+        .querySelector('[data-testid="store-header"] h1')
+        ?.textContent?.trim();
+      const headerDescription = document
+        .querySelector('[data-testid="store-header"] p')
+        ?.textContent?.trim();
+
+      return {
+        state: wizardVisible
+          ? 'wizard'
+          : connectedVisible
+            ? 'connected'
+            : loadingVisible
+              ? 'loading'
+              : errorVisible
+                ? 'error'
+                : 'unknown',
+        headerTitle,
+        headerDescription,
+        productGroups,
+        productGroupCount: productGroups.length,
+        filters: {
+          searchValue: searchInput?.value,
+          syncStatusFilter,
+        },
+        bulkSelection: {
+          isVisible: !!bulkActionBar && getComputedStyle(bulkActionBar).display !== 'none',
+          selectedCount,
+        },
+        hasImportButton: !!document.querySelector('[data-testid="store-import-btn"]'),
+        hasSettingsButton: !!document.querySelector('[data-testid="store-settings-btn"]'),
+      };
+    });
+  }
+
+  /**
    * Check if a specific panel/section exists on the page
    * Returns text-based data instead of screenshot
    * @param selector - CSS selector for the panel
@@ -190,18 +295,20 @@ export class NavigationHelper {
       if (!list) return null;
 
       // Get all flow items
-      const flowItems = Array.from(list.querySelectorAll('[data-testid*="flow-item"]'));
+      const flowItems = Array.from(list.querySelectorAll('[data-testid^="flow-item--"]'));
       const flows = flowItems.map((item) => ({
         id: item.getAttribute('data-flow-id'),
-        name: item.querySelector('[data-testid="flow-name"]')?.textContent?.trim(),
-        status: item.querySelector('[data-testid="flow-status"]')?.textContent?.trim(),
-        productCount: item.querySelectorAll('[data-testid*="product"]').length,
+        name: item.querySelector('[data-testid$="--name"]')?.textContent?.trim(),
+        status: item.querySelector('[data-testid$="--status"]')?.textContent?.trim(),
+        productCount: item.querySelectorAll('[data-testid^="product-card--"]').length,
       }));
 
       return {
         totalFlows: flowItems.length,
         flows,
-        emptyState: list.querySelector('[data-testid="empty-state"]')?.textContent?.trim(),
+        emptyState: list
+          .querySelector('[data-testid="generation-flow-empty"]')
+          ?.textContent?.trim(),
       };
     }, listSelector);
 
@@ -222,10 +329,12 @@ export class NavigationHelper {
       }
     });
 
-    // Listen to network failures
+    // Listen to network failures (exclude 304 Not Modified - cached responses)
     this.page.on('response', (response) => {
-      if (!response.ok()) {
-        networkFailures.push(`${response.status()} ${response.url()}`);
+      const status = response.status();
+      // Only count actual failures (>= 400), not 304 (cached) or other 3xx redirects
+      if (status >= 400 && !response.url().includes('_next/static')) {
+        networkFailures.push(`${status} ${response.url()}`);
       }
     });
 
@@ -312,24 +421,27 @@ export function createNavigationHelper(page: Page, clientId: string): Navigation
 export const SELECTORS = {
   // Config panel
   configPanel: '[data-testid="config-panel"]',
-  configPanelHeading: '[data-testid="config-panel-heading"]',
+  configPanelHeading: '[data-testid="config-panel--heading"]',
 
   // Generation flows
   genFlowList: '[data-testid="generation-flow-list"]',
-  genFlowItem: '[data-testid="flow-item"]',
-  genFlowName: '[data-testid="flow-name"]',
-  genFlowStatus: '[data-testid="flow-status"]',
+  genFlowItem: '[data-testid^="flow-item--"]',
+  genFlowName: '[data-testid$="--name"]',
+  genFlowStatus: '[data-testid$="--status"]',
 
   // Products
-  productCard: '[data-testid="product-card"]',
-  productName: '[data-testid="product-name"]',
+  productCard: '[data-testid^="product-card--"]',
+  productName: '[data-testid$="--name"]',
 
   // Collections
-  collectionCard: '[data-testid="collection-card"]',
-  collectionName: '[data-testid="collection-name"]',
+  collectionCard: '[data-testid^="collection-card--"]',
+  collectionName: '[data-testid$="--name"]',
 
   // Common
-  userMenu: '[data-testid="user-menu"]',
+  userMenu: '[data-testid="app-shell--sidebar--user-menu"]',
   errorAlert: '[role="alert"]',
-  loadingSpinner: '[data-testid="loading"]',
+  loadingSpinner: '[data-testid*="loading"]',
 } as const;
+
+// Re-export helper utilities
+export { hideNextDevOverlay } from './hide-next-dev-overlay';

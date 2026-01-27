@@ -15,7 +15,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/spinner';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, GeneratedAsset } from '@/lib/api-client';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -576,7 +576,7 @@ export function ProductDetailClient({ productId }: ProductDetailClientProps) {
                   />
                 ) : viewMode === 'grid' ? (
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                    {filteredAssets.map((asset: any) => (
+                    {filteredAssets.map((asset: GeneratedAsset) => (
                       <AssetCard
                         key={asset.id}
                         asset={asset}
@@ -656,7 +656,7 @@ function AssetCard({
   productName,
   onClick,
 }: {
-  asset: any;
+  asset: GeneratedAsset;
   productName: string;
   onClick: () => void;
 }) {
@@ -687,7 +687,7 @@ function AssetCard({
           )}
         </div>
         {/* Rating */}
-        {asset.rating > 0 && (
+        {asset.rating && asset.rating > 0 && (
           <div className="absolute right-2 top-2 flex items-center gap-0.5 rounded-full bg-black/60 px-2 py-0.5">
             <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
             <span className="text-xs text-white">{asset.rating}</span>

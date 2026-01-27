@@ -39,11 +39,7 @@ export const GET = withSecurity(async (_request, context, routeContext) => {
       return forbiddenResponse();
     }
 
-    const r2PublicUrl = process.env.R2_PUBLIC_URL || 'https://pub-xxx.r2.dev';
-    const flowsWithDetails = await db.generationFlows.listByCollectionSessionWithDetails(
-      collectionId,
-      r2PublicUrl
-    );
+    const flowsWithDetails = await db.generationFlows.listByCollectionSessionWithDetails(collectionId);
 
     // Map to API response format
     const flows = flowsWithDetails.map((flow) => {
@@ -113,7 +109,7 @@ export const POST = withSecurity(async (_request, context, routeContext) => {
 
     // Get collection settings
     const collectionSettings = collection.settings;
-    const sceneTypeInspirations = collectionSettings?.sceneTypeInspirations;
+    const sceneTypeInspiration = collectionSettings?.sceneTypeInspiration;
 
     // Get existing flows for this collection
     const existingFlows = await db.generationFlows.listByCollectionSession(collectionId);
@@ -143,32 +139,21 @@ export const POST = withSecurity(async (_request, context, routeContext) => {
       const product = productsMap.get(productId);
       const productSceneTypes = product?.sceneTypes || [];
 
-      // Find matching inspiration from collection settings based on product's scene types
-      let matchedInspiration: FlowGenerationSettings['inspirationImages'] = [];
+      // Find matching scene type from collection settings based on product's scene types
       let matchedSceneType: string | undefined;
-
-      if (sceneTypeInspirations && productSceneTypes.length > 0) {
-        // Find the first matching scene type
+      if (sceneTypeInspiration && productSceneTypes.length > 0) {
         for (const sceneType of productSceneTypes) {
-          if (sceneTypeInspirations[sceneType]) {
-            matchedInspiration = sceneTypeInspirations[sceneType].inspirationImages;
+          if (sceneTypeInspiration[sceneType]) {
             matchedSceneType = sceneType;
             break;
           }
         }
       }
 
-      // If no scene type match, use all collection inspiration images
-      if (matchedInspiration.length === 0 && collectionSettings?.inspirationImages) {
-        matchedInspiration = collectionSettings.inspirationImages;
-      }
-
-      // Build flow settings with matched inspiration
+      // Build flow settings - scene type specific bubbles are resolved at generation time
       const flowSettings: Partial<FlowGenerationSettings> = {
         ...collectionSettings,
-        inspirationImages: matchedInspiration,
-        // Keep the scene type inspirations for reference
-        sceneTypeInspirations,
+        ...(matchedSceneType && { sceneType: matchedSceneType }),
       };
 
       // Create the flow

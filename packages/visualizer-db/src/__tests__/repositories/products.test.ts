@@ -44,9 +44,10 @@ describe('ProductRepository', () => {
         isFavorite: true,
         source: 'imported',
         storeConnectionId: 'store-123',
-        erpId: 'erp-001',
-        erpSku: 'SKU-001',
-        erpUrl: 'https://shop.com/product',
+        storeId: 'store-001',
+        storeSku: 'SKU-001',
+        storeUrl: 'https://shop.com/product',
+        storeName: 'Product in Store',
         importedAt: new Date(),
         analysisData: {
           analyzedAt: new Date().toISOString(),
@@ -72,7 +73,7 @@ describe('ProductRepository', () => {
       expect(product.modelFilename).toBe('model.glb');
       expect(product.isFavorite).toBe(true);
       expect(product.source).toBe('imported');
-      expect(product.erpSku).toBe('SKU-001');
+      expect(product.storeSku).toBe('SKU-001');
       expect(product.price).toBe('199.99');
       expect(product.metadata).toMatchObject({ custom: 'value' });
     });
@@ -135,8 +136,8 @@ describe('ProductRepository', () => {
   describe('listWithImages', () => {
     it('should return products with images', async () => {
       const product = await repo.create(testClientId, { name: 'Product With Images' });
-      await imageRepo.create(product.id, { r2KeyBase: 'images/test1.png' });
-      await imageRepo.create(product.id, { r2KeyBase: 'images/test2.png' });
+      await imageRepo.create(product.id, { imageUrl: 'images/test1.png' });
+      await imageRepo.create(product.id, { imageUrl: 'images/test2.png' });
 
       const productsWithImages = await repo.listWithImages(testClientId);
 
@@ -157,7 +158,7 @@ describe('ProductRepository', () => {
   describe('getWithImages', () => {
     it('should return product with images by ID', async () => {
       const product = await repo.create(testClientId, { name: 'Single Product' });
-      await imageRepo.create(product.id, { r2KeyBase: 'images/single.png' });
+      await imageRepo.create(product.id, { imageUrl: 'images/single.png' });
 
       const result = await repo.getWithImages(product.id);
 

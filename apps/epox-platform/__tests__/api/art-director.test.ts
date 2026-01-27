@@ -1,11 +1,12 @@
 /**
  * Art Director API Tests
+ * Tests both legacy and new bubble-based prompt generation
  */
 
 import { describe, it, expect } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST as artDirector } from '@/app/api/art-director/route';
-import type { VisionAnalysisResult, SubjectAnalysis } from 'visualizer-types';
+import type { VisionAnalysisResult, SubjectAnalysis, BubbleValue } from 'visualizer-types';
 
 const visionAnalysis: VisionAnalysisResult = {
   json: {
@@ -71,49 +72,256 @@ describe('Art Director API - POST /api/art-director', () => {
     expect(data.error).toContain('subjectAnalysis');
   });
 
-  it('should reject missing inspiration images', async () => {
-    const request = new NextRequest('http://localhost:3000/api/art-director', {
-      method: 'POST',
-      body: JSON.stringify({
-        subjectAnalysis,
-        sceneTypeInspirations: {},
-      }),
+  describe('Bubble-based prompt generation', () => {
+    it('should extract style bubble context', async () => {
+      const bubbles: BubbleValue[] = [
+        {
+          type: 'style',
+          preset: 'Modern Minimalist',
+        },
+      ];
+
+      const request = new NextRequest('http://localhost:3000/api/art-director', {
+        method: 'POST',
+        body: JSON.stringify({
+          subjectAnalysis,
+          bubbles,
+          sceneType: 'Living Room',
+        }),
+      });
+
+      const response = await artDirector(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.finalPrompt).toContain('Modern Minimalist');
     });
 
-    const response = await artDirector(request);
-
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error).toContain('No inspiration images');
-  });
-
-  it('should build prompt with matched scene type and user additions', async () => {
-    const request = new NextRequest('http://localhost:3000/api/art-director', {
-      method: 'POST',
-      body: JSON.stringify({
-        subjectAnalysis: {
-          ...subjectAnalysis,
-          nativeSceneTypes: ['living room'],
+    it('should extract lighting bubble context', async () => {
+      const bubbles: BubbleValue[] = [
+        {
+          type: 'lighting',
+          preset: 'Natural Daylight',
         },
-        sceneTypeInspirations: {
-          'Living Room': {
-            inspirationImages: [],
-            mergedAnalysis: visionAnalysis,
-          },
-        },
-        stylePreset: 'Scandinavian',
-        lightingPreset: 'Golden Hour',
-        userPrompt: 'Add a green plant in the corner.',
-      }),
+      ];
+
+      const request = new NextRequest('http://localhost:3000/api/art-director', {
+        method: 'POST',
+        body: JSON.stringify({
+          subjectAnalysis,
+          bubbles,
+          sceneType: 'Living Room',
+        }),
+      });
+
+      const response = await artDirector(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.finalPrompt).toContain('Natural Daylight');
     });
 
-    const response = await artDirector(request);
-    const data = await response.json();
+    it('should extract camera angle bubble context', async () => {
+      const bubbles: BubbleValue[] = [
+        {
+          type: 'camera-angle',
+          preset: 'Eye Level',
+        },
+      ];
 
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(data.matchedSceneType).toBe('Living Room');
-    expect(data.segments.introAnchor).toContain('Dining-Chair');
-    expect(data.finalPrompt).toContain('Add a green plant in the corner.');
+      const request = new NextRequest('http://localhost:3000/api/art-director', {
+        method: 'POST',
+        body: JSON.stringify({
+          subjectAnalysis,
+          bubbles,
+          sceneType: 'Living Room',
+        }),
+      });
+
+      const response = await artDirector(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.finalPrompt.toLowerCase()).toContain('eye level');
+    });
+
+    it('should extract mood bubble context', async () => {
+      const bubbles: BubbleValue[] = [
+        {
+          type: 'mood',
+          preset: 'Calm & Peaceful',
+        },
+      ];
+
+      const request = new NextRequest('http://localhost:3000/api/art-director', {
+        method: 'POST',
+        body: JSON.stringify({
+          subjectAnalysis,
+          bubbles,
+          sceneType: 'Living Room',
+        }),
+      });
+
+      const response = await artDirector(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.finalPrompt.toLowerCase()).toContain('calm');
+    });
+
+    it('should extract custom bubble context', async () => {
+      const bubbles: BubbleValue[] = [
+        {
+          type: 'custom',
+          value: 'with plants and natural elements',
+        },
+      ];
+
+      const request = new NextRequest('http://localhost:3000/api/art-director', {
+        method: 'POST',
+        body: JSON.stringify({
+          subjectAnalysis,
+          bubbles,
+          sceneType: 'Living Room',
+        }),
+      });
+
+      const response = await artDirector(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.finalPrompt).toContain('with plants and natural elements');
+    });
+
+    it('should extract color palette bubble context', async () => {
+      const bubbles: BubbleValue[] = [
+        {
+          type: 'color-palette',
+          colors: ['#FFFFFF', '#000000', '#808080'],
+        },
+      ];
+
+      const request = new NextRequest('http://localhost:3000/api/art-director', {
+        method: 'POST',
+        body: JSON.stringify({
+          subjectAnalysis,
+          bubbles,
+          sceneType: 'Living Room',
+        }),
+      });
+
+      const response = await artDirector(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.finalPrompt).toMatch(/#FFFFFF/);
+    });
+
+    it('should extract multiple bubble contexts together', async () => {
+      const bubbles: BubbleValue[] = [
+        {
+          type: 'style',
+          preset: 'Modern Minimalist',
+        },
+        {
+          type: 'lighting',
+          preset: 'Natural Daylight',
+        },
+        {
+          type: 'camera-angle',
+          preset: 'Eye Level',
+        },
+        {
+          type: 'mood',
+          preset: 'Calm & Peaceful',
+        },
+        {
+          type: 'custom',
+          value: 'with plants',
+        },
+      ];
+
+      const request = new NextRequest('http://localhost:3000/api/art-director', {
+        method: 'POST',
+        body: JSON.stringify({
+          subjectAnalysis,
+          bubbles,
+          sceneType: 'Living Room',
+        }),
+      });
+
+      const response = await artDirector(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+
+      // All contexts should be present in the final prompt
+      const prompt = data.finalPrompt.toLowerCase();
+      expect(prompt).toContain('modern minimalist');
+      expect(prompt).toContain('natural daylight');
+      expect(prompt).toContain('eye level');
+      expect(prompt).toContain('calm');
+      expect(prompt).toContain('with plants');
+    });
+
+    it('should work with at least one non-empty bubble', async () => {
+      // Empty bubbles would fail without inspiration images,
+      // but with at least one bubble with content, it should work
+      const bubbles: BubbleValue[] = [
+        { type: 'style' }, // Empty
+        { type: 'custom', value: 'minimal setup' }, // Has content
+      ];
+
+      const request = new NextRequest('http://localhost:3000/api/art-director', {
+        method: 'POST',
+        body: JSON.stringify({
+          subjectAnalysis,
+          bubbles,
+          sceneType: 'Living Room',
+        }),
+      });
+
+      const response = await artDirector(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.finalPrompt).toBeDefined();
+      expect(data.finalPrompt).toContain('minimal setup');
+    });
+
+    it('should build prompt with user additions', async () => {
+      const bubbles: BubbleValue[] = [
+        {
+          type: 'style',
+          preset: 'Industrial',
+        },
+      ];
+
+      const request = new NextRequest('http://localhost:3000/api/art-director', {
+        method: 'POST',
+        body: JSON.stringify({
+          subjectAnalysis,
+          bubbles,
+          userPrompt: 'Add a green plant in the corner.',
+          sceneType: 'Living Room',
+        }),
+      });
+
+      const response = await artDirector(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.finalPrompt).toContain('Industrial');
+      expect(data.finalPrompt).toContain('Add a green plant in the corner.');
+    });
   });
 });

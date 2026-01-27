@@ -19,10 +19,13 @@ import {
   type ImageEditPayload,
   type ImageGenerationPayload,
   type VideoGenerationPayload,
+  type SyncProductPayload,
   type JobResult,
   generatedAsset,
   generatedAssetProduct,
+  productImage,
 } from 'visualizer-db/schema';
+import { providers } from '@scenergy/erp-service';
 import { storage, storagePaths } from 'visualizer-storage';
 import { logger, logJobClaimed, logJobProgress, logJobSuccess, logJobFailed, logWorkerStarted, logWorkerStopped } from './logger';
 import { DistributedRateLimiter } from './rate-limiter';
@@ -293,6 +296,12 @@ export class GenerationWorker {
         case 'video_generation':
           result = await this.processVideoGeneration(job);
           break;
+        case 'sync_product':
+          result = await this.processSyncProduct(job);
+          break;
+        case 'sync_all_products':
+          // Not implemented yet - would iterate over all products
+          throw new Error('sync_all_products not implemented');
         default:
           throw new Error(`Unknown job type: ${job.type}`);
       }
@@ -361,6 +370,11 @@ export class GenerationWorker {
       throw new Error('No images generated');
     }
 
+    // Check if collection is complete and update status
+    if (job.flowId) {
+      await this.checkAndUpdateCollectionStatus(job.flowId);
+    }
+
     return {
       imageUrls: savedImages.map((s) => s.url),
       imageIds: savedImages.map((s) => s.id),
@@ -370,8 +384,53 @@ export class GenerationWorker {
   private async processImageEdit(job: GenerationJob): Promise<JobResult> {
     const payload = job.payload as ImageEditPayload;
 
+    const isR2Url = !payload.sourceImageUrl.startsWith('data:');
+
+    logger.info(
+      {
+        jobId: job.id,
+        promptLength: payload.editPrompt?.length,
+        sourceUrlLength: payload.sourceImageUrl?.length,
+        isR2Url,
+        aspectRatio: payload.aspectRatio,
+        quality: payload.settings?.imageQuality ?? '2k',
+        previewOnly: payload.previewOnly ?? true,
+        hasTempStoragePrefix: !!payload.tempStoragePrefix,
+      },
+      'Processing image edit'
+    );
+
+    // Update progress
+    await this.jobs.updateProgress(job.id, 10);
+
+    // If source is R2 URL, fetch and convert to data URL for processing
+    let sourceDataUrl: string;
+    if (isR2Url) {
+      logger.debug({ jobId: job.id, url: payload.sourceImageUrl }, 'Fetching source image from R2');
+      sourceDataUrl = await this.fetchImageAsDataUrl(payload.sourceImageUrl);
+    } else {
+      sourceDataUrl = payload.sourceImageUrl;
+    }
+
+    // Get the source image dimensions to calculate aspect ratio
+    const sourceDimensions = await this.getImageDimensions(sourceDataUrl);
+    const aspectRatio = payload.aspectRatio || this.calculateAspectRatio(sourceDimensions.width, sourceDimensions.height);
+
+    logger.debug(
+      {
+        jobId: job.id,
+        sourceWidth: sourceDimensions.width,
+        sourceHeight: sourceDimensions.height,
+        aspectRatio,
+      },
+      'Source image dimensions'
+    );
+
+    await this.jobs.updateProgress(job.id, 30);
+
+    // Call Gemini to edit the image
     const result = await this.gemini.editImage({
-      baseImageDataUrl: payload.sourceImageUrl,
+      baseImageDataUrl: sourceDataUrl,
       prompt: payload.editPrompt,
       referenceImages: payload.referenceImages,
     });
@@ -380,12 +439,145 @@ export class GenerationWorker {
       throw new Error('Edit returned no image');
     }
 
-    const saved = await this.saveImage(job, result.editedImageDataUrl, payload);
+    await this.jobs.updateProgress(job.id, 70);
+
+    // Resize to 2K quality while preserving aspect ratio
+    const resizedImage = await this.resizeTo2K(result.editedImageDataUrl, aspectRatio);
+
+    await this.jobs.updateProgress(job.id, 90);
+
+    // Preview mode (default) - upload to temp storage if prefix provided
+    if (payload.previewOnly !== false) {
+      // If temp storage prefix is provided, upload to R2 and return URL
+      if (payload.tempStoragePrefix) {
+        const revisionId = `rev_${Date.now().toString(36)}_${Math.random().toString(16).slice(2, 6)}`;
+        const tempKey = `${payload.tempStoragePrefix}${revisionId}.webp`;
+
+        const { buffer } = this.base64ToBuffer(resizedImage);
+        await storage.upload(tempKey, buffer, 'image/webp');
+        const editedImageUrl = storage.getPublicUrl(tempKey);
+
+        logger.info({ jobId: job.id, tempKey, editedImageUrl }, 'Preview mode - uploaded to R2 temp storage');
+        return {
+          editedImageUrl,
+        };
+      }
+
+      // Fallback: return data URL (for backwards compatibility)
+      logger.info({ jobId: job.id }, 'Preview mode - returning data URL (no temp storage prefix)');
+      return {
+        editedImageDataUrl: resizedImage,
+      };
+    }
+
+    // Non-preview mode - save to R2 (used when applying edit)
+    const saved = await this.saveImage(job, resizedImage, payload);
 
     return {
       imageUrls: [saved.url],
       imageIds: [saved.id],
     };
+  }
+
+  /**
+   * Get dimensions from a base64 image
+   */
+  private async getImageDimensions(dataUrl: string): Promise<{ width: number; height: number }> {
+    try {
+      // Dynamically import sharp
+      const { default: sharp } = await import('sharp');
+
+      const { buffer } = this.base64ToBuffer(dataUrl);
+      const metadata = await sharp(buffer).metadata();
+
+      return {
+        width: metadata.width ?? 1024,
+        height: metadata.height ?? 1024,
+      };
+    } catch (err) {
+      logger.warn({ err }, 'Failed to get image dimensions, using defaults');
+      return { width: 1024, height: 1024 };
+    }
+  }
+
+  /**
+   * Calculate aspect ratio string from dimensions
+   */
+  private calculateAspectRatio(width: number, height: number): string {
+    const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+    const divisor = gcd(width, height);
+    const ratioW = width / divisor;
+    const ratioH = height / divisor;
+
+    // Common aspect ratios
+    const ratio = width / height;
+    if (Math.abs(ratio - 1) < 0.05) return '1:1';
+    if (Math.abs(ratio - 16 / 9) < 0.05) return '16:9';
+    if (Math.abs(ratio - 9 / 16) < 0.05) return '9:16';
+    if (Math.abs(ratio - 4 / 3) < 0.05) return '4:3';
+    if (Math.abs(ratio - 3 / 4) < 0.05) return '3:4';
+    if (Math.abs(ratio - 3 / 2) < 0.05) return '3:2';
+    if (Math.abs(ratio - 2 / 3) < 0.05) return '2:3';
+
+    return `${ratioW}:${ratioH}`;
+  }
+
+  /**
+   * Resize image to 2K quality while preserving aspect ratio
+   * 2K = 2048px on the longest side
+   */
+  private async resizeTo2K(dataUrl: string, aspectRatio: string): Promise<string> {
+    try {
+      const { default: sharp } = await import('sharp');
+
+      const { buffer, mimeType } = this.base64ToBuffer(dataUrl);
+      const metadata = await sharp(buffer).metadata();
+
+      const currentWidth = metadata.width ?? 1024;
+      const currentHeight = metadata.height ?? 1024;
+
+      // Calculate 2K dimensions (2048px on longest side)
+      const targetLongSide = 2048;
+      let newWidth: number;
+      let newHeight: number;
+
+      if (currentWidth >= currentHeight) {
+        // Landscape or square
+        newWidth = targetLongSide;
+        newHeight = Math.round((currentHeight / currentWidth) * targetLongSide);
+      } else {
+        // Portrait
+        newHeight = targetLongSide;
+        newWidth = Math.round((currentWidth / currentHeight) * targetLongSide);
+      }
+
+      logger.debug(
+        {
+          originalWidth: currentWidth,
+          originalHeight: currentHeight,
+          newWidth,
+          newHeight,
+          aspectRatio,
+        },
+        'Resizing to 2K'
+      );
+
+      // Resize the image
+      const resizedBuffer = await sharp(buffer)
+        .resize(newWidth, newHeight, {
+          fit: 'fill',
+          withoutEnlargement: false, // Allow upscaling if needed
+        })
+        .png({ quality: 90 })
+        .toBuffer();
+
+      // Convert back to base64 data URL
+      const base64 = resizedBuffer.toString('base64');
+      return `data:image/png;base64,${base64}`;
+    } catch (err) {
+      logger.warn({ err }, 'Failed to resize image to 2K, using original');
+      return dataUrl;
+    }
   }
 
   private async processVideoGeneration(job: GenerationJob): Promise<JobResult | null> {
@@ -460,6 +652,186 @@ export class GenerationWorker {
     };
   }
 
+  /**
+   * Process sync_product job - sync images from store to local DB
+   */
+  private async processSyncProduct(job: GenerationJob): Promise<JobResult> {
+    // Type guard to ensure this is a sync_product job
+    if (job.type !== 'sync_product') {
+      throw new Error(`Invalid job type for processSyncProduct: ${job.type}`);
+    }
+    const payload = job.payload as SyncProductPayload;
+
+    // TODO: Implement credential decryption
+    // This feature requires implementing a decryptCredentials function
+    throw new Error(
+      'Product sync not yet implemented. ' +
+      'Need to implement credential decryption for store connections.'
+    );
+
+    /* Implementation skeleton (commented out until credential decryption is available):
+
+    logger.info(
+      {
+        jobId: job.id,
+        connectionId: payload.connectionId,
+        externalProductId: payload.externalProductId,
+      },
+      'Processing product sync'
+    );
+
+    await this.jobs.updateProgress(job.id, 10);
+
+    // 1. Get the store connection
+    const connection = await db.storeConnections.getById(payload.connectionId);
+    if (!connection) {
+      throw new Error(`Store connection not found: ${payload.connectionId}`);
+    }
+
+    // 2. Get credentials and provider
+    const encryptedCreds = db.storeConnections.getEncryptedCredentials(connection);
+    // const { credentials, provider: providerType } = decryptCredentials(encryptedCreds);
+    // const provider = providers.require(providerType);
+
+    await this.jobs.updateProgress(job.id, 20);
+
+    // 3. Get current images from store
+    // const storeImages = await provider.getProductImages(credentials, payload.externalProductId);
+
+    logger.debug(
+      {
+        jobId: job.id,
+        storeImageCount: storeImages.length,
+        storeImageIds: storeImages.map((i) => i.id),
+      },
+      'Fetched images from store'
+    );
+
+    await this.jobs.updateProgress(job.id, 40);
+
+    // 4. Find our product by external ID (storeId)
+    const product = await db.products.findByStoreConnection(payload.connectionId, payload.externalProductId);
+
+    if (!product) {
+      logger.warn(
+        {
+          jobId: job.id,
+          connectionId: payload.connectionId,
+          externalProductId: payload.externalProductId,
+        },
+        'Product not found in database, skipping sync'
+      );
+      return { imageUrls: [], imageIds: [] };
+    }
+
+    // 5. Get existing product images
+    const existingImages = await db.productImages.list(product.id);
+    const existingExternalIds = new Set(
+      existingImages.map((i: { externalImageId: string | null }) => i.externalImageId).filter(Boolean) as string[]
+    );
+
+    logger.debug(
+      {
+        jobId: job.id,
+        productId: product.id,
+        existingImageCount: existingImages.length,
+        existingExternalIds: Array.from(existingExternalIds),
+      },
+      'Existing images in database'
+    );
+
+    await this.jobs.updateProgress(job.id, 50);
+
+    // 6. Find new images (in store but not in our DB)
+    const newImages = storeImages.filter((img) => !existingExternalIds.has(img.id));
+
+    if (newImages.length === 0) {
+      logger.info({ jobId: job.id, productId: product.id }, 'No new images to sync');
+      return { imageUrls: [], imageIds: [] };
+    }
+
+    logger.info(
+      {
+        jobId: job.id,
+        productId: product.id,
+        newImageCount: newImages.length,
+        newImageIds: newImages.map((i) => i.id),
+      },
+      'Found new images to sync'
+    );
+
+    // 7. Download and save new images
+    const syncedImages: Array<{ id: string; url: string }> = [];
+    const progressPerImage = 40 / newImages.length;
+
+    for (let i = 0; i < newImages.length; i++) {
+      const storeImage = newImages[i];
+
+      try {
+        // Download image from store
+        const imageBuffer = await provider.downloadImage(storeImage.url);
+
+        // Generate storage path
+        const imageId = `img_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+        const storagePath = storagePaths.productImageBase(product.clientId, product.id, imageId);
+
+        // Upload to R2
+        await storage.upload(storagePath, imageBuffer, 'image/webp');
+        const imageUrl = storage.getPublicUrl(storagePath);
+
+        // Create product_image record
+        await this.db.insert(productImage).values({
+          id: imageId,
+          productId: product.id,
+          r2KeyBase: storagePath,
+          sortOrder: existingImages.length + i,
+          isPrimary: existingImages.length === 0 && i === 0 && storeImage.isPrimary,
+          syncStatus: 'synced',
+          originalStoreUrl: storeImage.url,
+          externalImageId: storeImage.id,
+        });
+
+        syncedImages.push({ id: imageId, url: imageUrl });
+
+        logger.debug(
+          {
+            jobId: job.id,
+            imageId,
+            externalImageId: storeImage.id,
+          },
+          'Synced image from store'
+        );
+      } catch (error) {
+        logger.error(
+          {
+            jobId: job.id,
+            externalImageId: storeImage.id,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+          'Failed to sync image'
+        );
+        // Continue with other images
+      }
+
+      await this.jobs.updateProgress(job.id, 50 + Math.round((i + 1) * progressPerImage));
+    }
+
+    logger.info(
+      {
+        jobId: job.id,
+        productId: product.id,
+        syncedCount: syncedImages.length,
+      },
+      'Product sync complete'
+    );
+
+    return {
+      imageUrls: syncedImages.map((i) => i.url),
+      imageIds: syncedImages.map((i) => i.id),
+    };
+    */
+  }
+
   private async saveImage(
     job: GenerationJob,
     base64Data: string,
@@ -476,11 +848,15 @@ export class GenerationWorker {
 
     // Determine storage path - use flowId or sessionId as the generation flow identifier
     const sessionId = payload.sessionId;
-    const productIds = payload.productIds ?? [];
-    const flowId = job.flowId ?? sessionId;
+    // Handle both productIds array and single productId (from image edit)
+    const editPayload = payload as ImageEditPayload;
+    const productIds = payload.productIds ?? (editPayload.productId ? [editPayload.productId] : []);
 
-    // Use storagePaths for consistent path generation
-    const storagePath = storagePaths.generationAsset(clientId, flowId, assetId, ext);
+    // For database FK: only use job.flowId (null for standalone edits)
+    // For storage path: use flowId or sessionId for organization
+    const dbFlowId = job.flowId; // This is the actual generation_flow ID or null
+    const storageFlowId = (job.flowId ?? sessionId) || 'adhoc';
+    const storagePath = storagePaths.generationAsset(clientId, storageFlowId, assetId, ext);
 
     // Upload to R2 storage
     await storage.upload(storagePath, buffer, mimeType);
@@ -519,7 +895,7 @@ export class GenerationWorker {
       await this.db.insert(generatedAsset).values({
         id: assetId,
         clientId,
-        generationFlowId: flowId,
+        generationFlowId: dbFlowId || null, // Use null if no valid flow ID (standalone edits)
         assetUrl,
         assetType: 'image',
         status: 'completed',
@@ -566,9 +942,12 @@ export class GenerationWorker {
 
     const sessionId = payload.sessionId;
     const productIds = payload.productIds ?? [];
-    const flowId = job.flowId ?? sessionId;
 
-    const storagePath = storagePaths.generationAsset(clientId, flowId, assetId, ext);
+    // For database FK: only use job.flowId (null for standalone operations)
+    // For storage path: use flowId or sessionId for organization
+    const dbFlowId = job.flowId;
+    const storageFlowId = (job.flowId ?? sessionId) || 'adhoc';
+    const storagePath = storagePaths.generationAsset(clientId, storageFlowId, assetId, ext);
 
     await storage.upload(storagePath, buffer, mimeType);
     const assetUrl = storage.getPublicUrl(storagePath);
@@ -579,7 +958,7 @@ export class GenerationWorker {
       await this.db.insert(generatedAsset).values({
         id: assetId,
         clientId,
-        generationFlowId: flowId,
+        generationFlowId: dbFlowId || null, // Use null if no valid flow ID (standalone operations)
         assetUrl,
         assetType: 'video',
         status: 'completed',
@@ -612,6 +991,59 @@ export class GenerationWorker {
     return { id: assetId, url: assetUrl };
   }
 
+  /**
+   * Check if all assets in a collection are completed and update collection status
+   */
+  private async checkAndUpdateCollectionStatus(flowId: string): Promise<void> {
+    try {
+      // Get the flow to find the collection ID
+      const flow = await db.generationFlows.getById(flowId);
+      if (!flow?.collectionSessionId) {
+        return; // Not part of a collection
+      }
+
+      const collectionId = flow.collectionSessionId;
+
+      // Get all flows in this collection
+      const flows = await db.generationFlows.listByCollectionSession(collectionId);
+      const flowIds = flows.map((f) => f.id);
+
+      if (flowIds.length === 0) {
+        return;
+      }
+
+      // Count assets by status for all flows in the collection using facade method
+      const stats = await db.generatedAssets.getStatusCountsByFlowIds(flowIds);
+
+      if (stats.total === 0) {
+        logger.debug({ collectionId, flowIds }, 'No assets found for collection');
+        return;
+      }
+
+      logger.debug(
+        {
+          collectionId,
+          total: stats.total,
+          completed: stats.completed,
+          generating: stats.generating,
+        },
+        'Collection asset stats'
+      );
+
+      // If all assets are completed, update collection status
+      if (stats.total > 0 && stats.completed === stats.total && stats.generating === 0) {
+        await db.collectionSessions.update(collectionId, { status: 'completed' });
+        logger.info(
+          { collectionId, totalAssets: stats.total },
+          'Collection generation completed - updated status'
+        );
+      }
+    } catch (error) {
+      // Don't fail the job if status update fails
+      logger.warn({ err: error, flowId }, 'Failed to check/update collection status');
+    }
+  }
+
   private base64ToBuffer(base64: string): { buffer: Buffer; mimeType: string } {
     if (base64.startsWith('data:')) {
       const matches = /^data:(.+);base64,(.+)$/.exec(base64);
@@ -621,6 +1053,25 @@ export class GenerationWorker {
       return { buffer: Buffer.from(matches[2], 'base64'), mimeType: matches[1] };
     }
     return { buffer: Buffer.from(base64, 'base64'), mimeType: 'image/png' };
+  }
+
+  private bufferToDataUrl(buffer: Buffer, mimeType: string): string {
+    return `data:${mimeType};base64,${buffer.toString('base64')}`;
+  }
+
+  /**
+   * Fetch image from URL and convert to data URL
+   * Used for R2 URLs that need to be converted for Gemini
+   */
+  private async fetchImageAsDataUrl(url: string): Promise<string> {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const contentType = response.headers.get('content-type') || 'image/png';
+    return this.bufferToDataUrl(buffer, contentType);
   }
 
   private async handleJobError(job: GenerationJob, errorMsg: string, error?: unknown): Promise<void> {

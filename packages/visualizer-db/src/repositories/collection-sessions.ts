@@ -1,7 +1,8 @@
 import { and, asc, desc, eq, ilike, sql, type SQL } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
 import { collectionSession, generationFlow, message } from '../schema/sessions';
-import { generatedAsset } from '../schema/generated-images';
+import { generatedAsset, favoriteImage } from '../schema/generated-images';
+import { productImage } from '../schema/products';
 import type {
   CollectionSession,
   CollectionSessionCreate,
@@ -227,7 +228,7 @@ export class CollectionSessionRepository extends BaseRepository<CollectionSessio
     clientId: string,
     options: CollectionSessionListOptions = {}
   ): Promise<
-    Array<CollectionSession & { totalImages: number; completedCount: number; generatingCount: number; thumbnailUrl: string | null }>
+    Array<CollectionSession & { totalImages: number; completedCount: number; generatingCount: number; thumbnails: string[] }>
   > {
 
     // Single query with JOINs and aggregation
@@ -253,25 +254,105 @@ export class CollectionSessionRepository extends BaseRepository<CollectionSessio
         LEFT JOIN generated_asset ga ON ga.generation_flow_id = ANY(cf.flow_ids) AND ga.deleted_at IS NULL
         GROUP BY cf.collection_id
       ),
-      first_thumbnail AS (
-        SELECT DISTINCT ON (cf.collection_id)
-          cf.collection_id,
-          ga.asset_url as thumbnail_url
-        FROM collection_flows cf
-        INNER JOIN generated_asset ga ON ga.generation_flow_id = ANY(cf.flow_ids)
-          AND ga.deleted_at IS NULL
-          AND ga.status = 'completed'
-        ORDER BY cf.collection_id, ga.created_at DESC
+      collection_thumbnails AS (
+        -- Get up to 4 thumbnails: prioritize generated assets, then product base images
+        SELECT
+          collection_id,
+          array_agg(thumbnail_url) as thumbnails
+        FROM (
+          SELECT
+            collection_id,
+            thumbnail_url,
+            row_number() OVER (PARTITION BY collection_id ORDER BY priority, created_at DESC) as rn
+          FROM (
+            -- Priority 1: Synced assets
+            SELECT
+              cf.collection_id,
+              ga.asset_url as thumbnail_url,
+              1 as priority,
+              ga.created_at
+            FROM collection_flows cf
+            INNER JOIN generated_asset ga ON ga.generation_flow_id = ANY(cf.flow_ids)
+            WHERE ga.deleted_at IS NULL
+              AND ga.status = 'completed'
+              AND ga.synced_at IS NOT NULL
+
+            UNION ALL
+
+            -- Priority 2: Approved assets (not synced)
+            SELECT
+              cf.collection_id,
+              ga.asset_url as thumbnail_url,
+              2 as priority,
+              ga.created_at
+            FROM collection_flows cf
+            INNER JOIN generated_asset ga ON ga.generation_flow_id = ANY(cf.flow_ids)
+            WHERE ga.deleted_at IS NULL
+              AND ga.status = 'completed'
+              AND ga.synced_at IS NULL
+              AND ga.approval_status = 'approved'
+
+            UNION ALL
+
+            -- Priority 3: Favorite assets (not synced, not approved)
+            SELECT
+              cf.collection_id,
+              ga.asset_url as thumbnail_url,
+              3 as priority,
+              ga.created_at
+            FROM collection_flows cf
+            INNER JOIN generated_asset ga ON ga.generation_flow_id = ANY(cf.flow_ids)
+            INNER JOIN favorite_image fi ON fi.generated_asset_id = ga.id
+            WHERE ga.deleted_at IS NULL
+              AND ga.status = 'completed'
+              AND ga.synced_at IS NULL
+              AND ga.approval_status != 'approved'
+
+            UNION ALL
+
+            -- Priority 4: Regular unrated assets
+            SELECT
+              cf.collection_id,
+              ga.asset_url as thumbnail_url,
+              4 as priority,
+              ga.created_at
+            FROM collection_flows cf
+            INNER JOIN generated_asset ga ON ga.generation_flow_id = ANY(cf.flow_ids)
+            LEFT JOIN favorite_image fi ON fi.generated_asset_id = ga.id
+            WHERE ga.deleted_at IS NULL
+              AND ga.status = 'completed'
+              AND ga.synced_at IS NULL
+              AND ga.approval_status != 'approved'
+              AND fi.id IS NULL
+
+            UNION ALL
+
+            -- Priority 5: Product base images as fallback
+            SELECT
+              cf.collection_id,
+              pi.image_url as thumbnail_url,
+              5 as priority,
+              pi.created_at
+            FROM collection_flows cf
+            CROSS JOIN LATERAL jsonb_array_elements_text(
+              (SELECT cs.product_ids FROM ${collectionSession} cs WHERE cs.id = cf.collection_id)
+            ) AS product_id
+            INNER JOIN product_image pi ON pi.product_id = product_id::text
+            WHERE pi.is_primary = true
+          ) combined
+        ) ranked
+        WHERE rn <= 4
+        GROUP BY collection_id
       )
       SELECT
         cs.*,
         COALESCE(ast.total_images, 0) as total_images,
         COALESCE(ast.completed_count, 0) as completed_count,
         COALESCE(ast.generating_count, 0) as generating_count,
-        ft.thumbnail_url
+        COALESCE(ct.thumbnails, ARRAY[]::text[]) as thumbnails
       FROM ${collectionSession} cs
       LEFT JOIN asset_stats ast ON cs.id = ast.collection_id
-      LEFT JOIN first_thumbnail ft ON cs.id = ft.collection_id
+      LEFT JOIN collection_thumbnails ct ON cs.id = ct.collection_id
       WHERE cs.client_id = ${clientId}
         ${options.search ? sql`AND cs.name ILIKE ${`%${options.search}%`}` : sql``}
         ${options.status && options.status !== 'all' ? sql`AND cs.status = ${options.status}` : sql``}
@@ -300,7 +381,7 @@ export class CollectionSessionRepository extends BaseRepository<CollectionSessio
       totalImages: row.total_images,
       completedCount: row.completed_count,
       generatingCount: row.generating_count,
-      thumbnailUrl: row.thumbnail_url,
+      thumbnails: row.thumbnails ?? [],
     }));
   }
 }

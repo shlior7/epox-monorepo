@@ -112,24 +112,45 @@ export interface VideoGenerationSettings {
   presetId?: string | null;
 }
 
-// ===== FLOW GENERATION SETTINGS =====
+// ===== COLLECTION GENERATION SETTINGS =====
 
-export interface FlowGenerationSettings {
-  // ===== SCENE STYLE (Section 1) =====
-  inspirationImages: InspirationImage[]; // Multiple images (raw uploads)
-  sceneTypeInspirations?: SceneTypeInspirationMap; // Grouped by detected scene type
-  stylePreset?: string; // Simple Mode dropdown or custom value
-  lightingPreset?: string; // Simple Mode dropdown or custom value
-  sceneType?: string; // Scene type selection or custom value
+export interface CollectionGenerationSettings {
+  // General inspiration bubbles (apply to all scene types)
+  generalInspiration?: import('./bubbles').BubbleValue[];
 
-  // ===== USER PROMPT (Section 3) =====
-  // User's additional details - gets APPENDED to generated prompt, not replacing it
+  // Inspiration bubbles organized by scene type
+  sceneTypeInspiration: SceneTypeInspirationMap;
+
+  // Whether to use scene-type-specific inspiration (vs only general)
+  useSceneTypeInspiration?: boolean;
+
+  // Shared settings
   userPrompt?: string;
-
-  // ===== OUTPUT SETTINGS (Section 4) =====
   aspectRatio: ImageAspectRatio;
   imageQuality?: ImageQuality;
-  variantsCount?: number;
+  variantsPerProduct?: number;
+  videoSettings?: VideoGenerationSettings;
+  imageModel?: string;
+}
+
+// ===== FLOW GENERATION SETTINGS (matches API payload) =====
+
+export interface FlowGenerationSettings {
+  // Scene
+  selectedSceneType?: string; // e.g., "Living Room" (from product analysis)
+  sceneType?: string; // Per-flow scene type override
+
+  // ===== INSPIRATION =====
+  generalInspiration?: import('./bubbles').BubbleValue[];
+  sceneTypeInspiration?: SceneTypeInspirationMap;
+
+  // ===== USER PROMPT =====
+  userPrompt?: string;
+
+  // ===== OUTPUT SETTINGS =====
+  aspectRatio: ImageAspectRatio;
+  imageQuality?: ImageQuality;
+  variantsPerProduct?: number;
 
   // ===== VIDEO SETTINGS =====
   video?: VideoGenerationSettings;
@@ -140,10 +161,6 @@ export interface FlowGenerationSettings {
 }
 
 export const DEFAULT_FLOW_SETTINGS: FlowGenerationSettings = {
-  inspirationImages: [],
-  sceneTypeInspirations: {},
-  stylePreset: 'Modern Minimalist',
-  lightingPreset: 'Studio Soft Light',
   aspectRatio: '1:1',
   imageQuality: '2k',
   userPrompt: '',
@@ -296,57 +313,17 @@ export interface InspirationImage {
   sourceType: InspirationSourceType;
 }
 
-// ===== SCENE-TYPE GROUPED INSPIRATION (stored in flow settings) =====
+// ===== SCENE-TYPE INSPIRATION ENTRY =====
 
-export interface SceneTypeInspiration {
-  inspirationImages: InspirationImage[]; // Images that match this scene type
-  mergedAnalysis: VisionAnalysisResult; // Combined/dominant analysis for this scene type
+// Per scene type inspiration configuration
+export interface SceneTypeInspirationEntry {
+  bubbles: import('./bubbles').BubbleValue[];
 }
 
-export type SceneTypeInspirationMap = Record<string, SceneTypeInspiration>;
+// Inspiration configuration map keyed by scene type
+export type SceneTypeInspirationMap = Record<string, SceneTypeInspirationEntry>;
 
-// ===== STYLE PRESET (for Simple Mode) =====
-
-export type StylePreset =
-  | 'Modern Minimalist'
-  | 'Scandinavian'
-  | 'Industrial'
-  | 'Bohemian'
-  | 'Mid-Century'
-  | 'Rustic'
-  | 'Coastal'
-  | 'Luxurious'
-  | 'Studio Clean';
-
-export const STYLE_PRESETS: StylePreset[] = [
-  'Modern Minimalist',
-  'Scandinavian',
-  'Industrial',
-  'Bohemian',
-  'Mid-Century',
-  'Rustic',
-  'Coastal',
-  'Luxurious',
-  'Studio Clean',
-];
-
-// ===== LIGHTING PRESET (for Simple Mode) =====
-
-export type LightingPreset =
-  | 'Natural Daylight'
-  | 'Studio Soft Light'
-  | 'Golden Hour'
-  | 'Dramatic Shadow'
-  | 'Bright & Airy'
-  | 'Moody Low-Key'
-  | 'Cool Overcast';
-
-export const LIGHTING_PRESETS: LightingPreset[] = [
-  'Natural Daylight',
-  'Studio Soft Light',
-  'Golden Hour',
-  'Dramatic Shadow',
-  'Bright & Airy',
-  'Moody Low-Key',
-  'Cool Overcast',
-];
+// Default empty inspiration entry
+export const DEFAULT_SCENE_TYPE_INSPIRATION_ENTRY: SceneTypeInspirationEntry = {
+  bubbles: [],
+};

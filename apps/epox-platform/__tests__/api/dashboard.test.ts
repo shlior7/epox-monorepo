@@ -10,6 +10,7 @@ vi.mock('@/lib/services/db', () => ({
   db: {
     products: {
       count: vi.fn(),
+      getByIds: vi.fn(),
     },
     collectionSessions: {
       count: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('@/lib/services/db', () => ({
       countByStatus: vi.fn(),
       countByGenerationFlowIds: vi.fn(),
       getFirstByGenerationFlowIds: vi.fn(),
+      listWithFilters: vi.fn(),
     },
   },
 }));
@@ -46,9 +48,12 @@ describe('Dashboard API - GET /api/dashboard', () => {
         // Pre-aggregated stats from optimized query
         totalImages: 6,
         completedCount: 4,
-        thumbnailUrl: 'https://cdn.example.com/assets/asset-1.jpg',
+        thumbnails: ['https://cdn.example.com/assets/asset-1.jpg'],
       },
     ] as any);
+    // Mock recent generated assets
+    vi.mocked(db.generatedAssets.listWithFilters).mockResolvedValue([]);
+    vi.mocked(db.products.getByIds).mockResolvedValue(new Map());
   });
 
   it('should return aggregated stats and recent collections', async () => {
@@ -68,7 +73,7 @@ describe('Dashboard API - GET /api/dashboard', () => {
       productCount: 2,
       generatedCount: 4,
       totalImages: 6,
-      thumbnailUrl: 'https://cdn.example.com/assets/asset-1.jpg',
+      thumbnails: expect.arrayContaining(['https://cdn.example.com/assets/asset-1.jpg']),
     });
   });
 

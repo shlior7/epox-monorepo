@@ -17,7 +17,19 @@ export function proxy(request: NextRequest) {
 
   // Check for session cookie using Better Auth's helper
   const sessionCookie = getSessionCookie(request);
+
+  // getSessionCookie returns the cookie value directly (string), not an object
   const hasSession = !!sessionCookie;
+
+  // Debug logging (only in development)
+  if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_IS_E2E !== 'true') {
+    console.log('[Proxy]', {
+      pathname,
+      hasSessionCookie: !!sessionCookie,
+      sessionCookieType: typeof sessionCookie,
+      hasSession,
+    });
+  }
 
   // Check if this is a public path
   const isPublicPath = PUBLIC_PATHS.some(
@@ -29,7 +41,8 @@ export function proxy(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages to dashboard
   if (isAuthPath && hasSession) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    console.log('[Proxy] Redirecting authenticated user to /home');
+    return NextResponse.redirect(new URL('/home', request.url));
   }
 
   // Allow access to public paths without authentication
@@ -39,6 +52,7 @@ export function proxy(request: NextRequest) {
 
   // All other routes require authentication
   if (!hasSession) {
+    console.log('[Proxy] No session, redirecting to /login from:', pathname);
     const loginUrl = new URL('/login', request.url);
     // Store the original URL to redirect back after login
     loginUrl.searchParams.set('callbackUrl', pathname);

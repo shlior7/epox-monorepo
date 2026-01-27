@@ -20,6 +20,8 @@ export interface EncryptedCredentials {
 export type StoreType = 'shopify' | 'woocommerce' | 'bigcommerce';
 export type ConnectionStatus = 'active' | 'disconnected' | 'error';
 
+export type WebhookEvent = 'product.created' | 'product.updated' | 'product.deleted';
+
 export interface StoreConnectionRow {
   id: string;
   clientId: string;
@@ -34,6 +36,12 @@ export interface StoreConnectionRow {
   tokenExpiresAt: Date | null;
   autoSyncEnabled: boolean;
   syncOnApproval: boolean;
+  // Webhook fields
+  webhookSecret: string | null;
+  webhookId: string | null;
+  webhookEvents: WebhookEvent[];
+  lastWebhookAt: Date | null;
+  // Status
   status: ConnectionStatus;
   lastSyncAt: Date | null;
   createdAt: Date;
@@ -267,6 +275,72 @@ export class StoreConnectionRepository extends BaseRepository<StoreConnectionRow
       .limit(1);
 
     return rows.length > 0;
+  }
+
+  /**
+   * Get store connection by ID
+   */
+  async getById(id: string): Promise<StoreConnectionRow | null> {
+    const rows = await this.drizzle.select().from(storeConnection).where(eq(storeConnection.id, id)).limit(1);
+
+    return rows[0] ? this.mapToEntity(rows[0]) : null;
+  }
+
+  /**
+   * Update last webhook received timestamp
+   */
+  async updateLastWebhookAt(id: string): Promise<void> {
+    const now = new Date();
+    await this.drizzle
+      .update(storeConnection)
+      .set({
+        lastWebhookAt: now,
+        updatedAt: now,
+      })
+      .where(eq(storeConnection.id, id));
+  }
+
+  /**
+   * Update webhook configuration
+   */
+  async updateWebhookConfig(
+    id: string,
+    config: {
+      webhookSecret?: string;
+      webhookId?: string;
+      webhookEvents?: WebhookEvent[];
+    }
+  ): Promise<void> {
+    const now = new Date();
+    const updateData: Record<string, unknown> = { updatedAt: now };
+
+    if (config.webhookSecret !== undefined) {
+      updateData.webhookSecret = config.webhookSecret;
+    }
+    if (config.webhookId !== undefined) {
+      updateData.webhookId = config.webhookId;
+    }
+    if (config.webhookEvents !== undefined) {
+      updateData.webhookEvents = config.webhookEvents;
+    }
+
+    await this.drizzle.update(storeConnection).set(updateData).where(eq(storeConnection.id, id));
+  }
+
+  /**
+   * Clear webhook configuration (for webhook deletion)
+   */
+  async clearWebhookConfig(id: string): Promise<void> {
+    const now = new Date();
+    await this.drizzle
+      .update(storeConnection)
+      .set({
+        webhookSecret: null,
+        webhookId: null,
+        webhookEvents: [],
+        updatedAt: now,
+      })
+      .where(eq(storeConnection.id, id));
   }
 
   /**

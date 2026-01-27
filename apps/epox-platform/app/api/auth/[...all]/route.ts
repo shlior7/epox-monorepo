@@ -10,7 +10,7 @@
  * - OAuth flows
  */
 
-import { auth } from '@/lib/services/auth';
+import { auth } from 'visualizer-auth/server';
 import { toNextJsHandler } from 'better-auth/next-js';
 
 export const { GET, POST } = toNextJsHandler(auth);

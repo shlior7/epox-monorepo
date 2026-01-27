@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { authClient } from '@/lib/services/auth';
+import { authClient } from 'visualizer-auth/client';
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -31,6 +31,22 @@ export default function LoginPage() {
         toast.error(error.message || 'Login failed');
         setIsLoading(false);
         return;
+      }
+
+      // Try to trigger browser password save using Credential Management API
+      if (typeof (window as any).PasswordCredential !== 'undefined' && navigator.credentials) {
+        try {
+          const PasswordCredential = (window as any).PasswordCredential;
+          const cred = new PasswordCredential({
+            id: email,
+            password: password,
+            name: email,
+          });
+          await navigator.credentials.store(cred);
+        } catch (credError) {
+          // Silently fail - not all browsers support this
+          console.debug('Credential Management API not available:', credError);
+        }
       }
 
       toast.success('Welcome back!');

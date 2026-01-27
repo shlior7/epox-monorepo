@@ -3,7 +3,7 @@
  * Create and Update types for database operations
  */
 
-import type { FlowGenerationSettings, ClientMetadata, FlowStatus } from './settings';
+import type { FlowGenerationSettings, CollectionGenerationSettings, ClientMetadata, FlowStatus } from './settings';
 import type { MessagePart, MessageRole } from './messages';
 import type {
   ProductSource,
@@ -47,9 +47,10 @@ export interface ProductCreate {
   isFavorite?: boolean;
   source?: ProductSource;
   storeConnectionId?: string;
-  erpId?: string;
-  erpSku?: string;
-  erpUrl?: string;
+  storeId?: string;
+  storeSku?: string;
+  storeUrl?: string;
+  storeName?: string;
   importedAt?: Date;
   analysisData?: ProductAnalysis;
   analysisVersion?: string;
@@ -67,9 +68,10 @@ export interface ProductUpdate {
   isFavorite?: boolean;
   source?: ProductSource;
   storeConnectionId?: string | null;
-  erpId?: string | null;
-  erpSku?: string | null;
-  erpUrl?: string | null;
+  storeId?: string | null;
+  storeSku?: string | null;
+  storeUrl?: string | null;
+  storeName?: string | null;
   importedAt?: Date | null;
   analysisData?: ProductAnalysis | null;
   analysisVersion?: string | null;
@@ -81,16 +83,22 @@ export interface ProductUpdate {
 // ===== PRODUCT IMAGE =====
 
 export interface ProductImageCreate {
-  r2KeyBase: string;
-  r2KeyPreview?: string;
+  imageUrl: string;
+  previewUrl?: string;
   sortOrder?: number;
   isPrimary?: boolean;
+  syncStatus?: 'synced' | 'unsynced' | 'local';
+  originalStoreUrl?: string | null;
+  externalImageId?: string | null;
 }
 
 export interface ProductImageUpdate {
-  r2KeyPreview?: string;
+  previewUrl?: string;
   sortOrder?: number;
   isPrimary?: boolean;
+  syncStatus?: 'synced' | 'unsynced' | 'local';
+  originalStoreUrl?: string | null;
+  externalImageId?: string | null;
 }
 
 // ===== CHAT SESSION =====
@@ -112,7 +120,8 @@ export interface CollectionSessionCreate {
   status?: CollectionSessionStatus;
   productIds?: string[];
   selectedBaseImages?: Record<string, string>;
-  settings?: FlowGenerationSettings;
+  // Support both types for backwards compatibility during migration
+  settings?: CollectionGenerationSettings | FlowGenerationSettings;
 }
 
 export interface CollectionSessionUpdate {
@@ -120,7 +129,8 @@ export interface CollectionSessionUpdate {
   status?: CollectionSessionStatus;
   productIds?: string[];
   selectedBaseImages?: Record<string, string>;
-  settings?: FlowGenerationSettings;
+  // Support both types for backwards compatibility during migration
+  settings?: CollectionGenerationSettings | FlowGenerationSettings;
 }
 
 // ===== MESSAGE =====
@@ -196,6 +206,9 @@ export interface GeneratedAssetUpdate {
   approvedBy?: string | null;
   completedAt?: Date | null;
   pinned?: boolean;
+  // Store sync tracking
+  externalImageId?: string | null;
+  syncedAt?: Date | null;
   deletedAt?: Date | null;
 }
 

@@ -21,6 +21,7 @@ import {
   QuotaLimitRepository,
   AICostTrackingRepository,
   StoreConnectionRepository,
+  StoreSyncLogRepository,
 } from './repositories/index';
 
 /**
@@ -47,6 +48,7 @@ export interface DatabaseFacade {
   readonly quotaLimits: QuotaLimitRepository;
   readonly aiCostTracking: AICostTrackingRepository;
   readonly storeConnections: StoreConnectionRepository;
+  readonly storeSyncLogs: StoreSyncLogRepository;
   /**
    * Execute multiple operations in a transaction.
    *
@@ -81,6 +83,7 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
   const quotaLimits = new QuotaLimitRepository(drizzle);
   const aiCostTracking = new AICostTrackingRepository(drizzle);
   const storeConnections = new StoreConnectionRepository(drizzle);
+  const storeSyncLogs = new StoreSyncLogRepository(drizzle);
 
   async function transaction<T>(fn: (tx: DatabaseFacade) => Promise<T>): Promise<T> {
     // Check if the drizzle client supports transactions
@@ -133,6 +136,7 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
     quotaLimits,
     aiCostTracking,
     storeConnections,
+    storeSyncLogs,
     transaction,
   };
 }

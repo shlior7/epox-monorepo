@@ -5,22 +5,33 @@
 
 import { db } from '../services/db';
 import { storage } from '../services/storage';
+import { resolveStorageUrl } from 'visualizer-storage';
 import type { DashboardResponse, Product, Collection } from '../api-client';
 import type { CollectionSessionStatus, ProductSource } from 'visualizer-types';
 
 // ===== Dashboard =====
 
 export async function fetchDashboardData(clientId: string): Promise<DashboardResponse> {
-  const [productCount, collectionCount, completedAssetsCount, recentCollectionsWithStats] =
-    await Promise.all([
-      db.products.count(clientId),
-      db.collectionSessions.count(clientId),
-      db.generatedAssets.countByStatus(clientId, 'completed'),
-      db.collectionSessions.listWithAssetStats(clientId, {
-        sort: 'recent',
-        limit: 3,
-      }),
-    ]);
+  const [
+    productCount,
+    collectionCount,
+    completedAssetsCount,
+    recentCollectionsWithStats,
+    recentGeneratedAssets,
+  ] = await Promise.all([
+    db.products.count(clientId),
+    db.collectionSessions.count(clientId),
+    db.generatedAssets.countByStatus(clientId, 'completed'),
+    db.collectionSessions.listWithAssetStats(clientId, {
+      sort: 'recent',
+      limit: 3,
+    }),
+    db.generatedAssets.listWithFilters(clientId, {
+      sort: 'date',
+      status: 'completed',
+      limit: 6,
+    }),
+  ]);
 
   const stats = {
     totalProducts: productCount,
@@ -29,18 +40,46 @@ export async function fetchDashboardData(clientId: string): Promise<DashboardRes
     creditsRemaining: 500, // TODO: Integrate with quota service
   };
 
-  const recentCollections = recentCollectionsWithStats.map((c) => ({
-    id: c.id,
-    name: c.name,
-    status: c.status as 'draft' | 'generating' | 'completed',
-    productCount: c.productIds.length,
-    generatedCount: c.completedCount,
-    totalImages: c.totalImages,
-    updatedAt: c.updatedAt.toISOString(),
-    thumbnailUrl: c.thumbnailUrl ?? '',
-  }));
+  const recentCollections = recentCollectionsWithStats.map((c) => {
+    // Resolve thumbnail URLs (may be relative storage keys or full URLs)
+    const thumbnails = (c.thumbnails ?? [])
+      .map((url) => resolveStorageUrl(url))
+      .filter((url): url is string => url !== null);
 
-  return { stats, recentCollections };
+    return {
+      id: c.id,
+      name: c.name,
+      status: c.status as 'draft' | 'generating' | 'completed',
+      productCount: c.productIds.length,
+      generatedCount: c.completedCount,
+      totalImages: c.totalImages,
+      updatedAt: c.updatedAt.toISOString(),
+      thumbnails,
+    };
+  });
+
+  // Fetch product names for recent assets
+  const productIds = [...new Set(recentGeneratedAssets.flatMap((a) => a.productIds ?? []))];
+  const productsMap =
+    productIds.length > 0 ? await db.products.getByIds(productIds) : new Map();
+
+  const recentAssets = recentGeneratedAssets.map((a) => {
+    const productId = a.productIds?.[0] ?? '';
+    const product = productsMap.get(productId);
+    const sceneTypes = (a.settings as { promptTags?: { sceneType?: string[] } } | null)?.promptTags
+      ?.sceneType;
+
+    return {
+      id: a.id,
+      imageUrl: a.assetUrl,
+      productId,
+      productName: product?.name ?? 'Unknown Product',
+      prompt: sceneTypes?.[0] ?? 'Unknown Scene',
+      createdAt: a.createdAt.toISOString(),
+    };
+  });
+
+  return { stats, recentCollections, recentAssets };
 }
 
 // ===== Products =====
@@ -110,7 +149,7 @@ export async function fetchProducts(
   const mappedProducts: Product[] = products.map((p) => ({
     id: p.id,
     name: p.name,
-    sku: p.erpSku || `SKU-${p.id.slice(0, 8)}`,
+    sku: p.storeSku || `SKU-${p.id.slice(0, 8)}`,
     category: p.category || 'Uncategorized',
     description: p.description || '',
     sceneTypes: p.sceneTypes ?? [],
@@ -120,14 +159,14 @@ export async function fetchProducts(
     isFavorite: p.isFavorite,
     images: p.images.map((img) => ({
       id: img.id,
-      baseUrl: storage.getPublicUrl(img.r2KeyBase),
-      previewUrl: img.r2KeyPreview ? storage.getPublicUrl(img.r2KeyPreview) : null,
+      baseUrl: storage.getPublicUrl(img.imageUrl),
+      previewUrl: img.previewUrl ? storage.getPublicUrl(img.previewUrl) : null,
       sortOrder: img.sortOrder,
       isPrimary: img.isPrimary,
     })),
     imageUrl: (() => {
       const primary = p.images.find((img) => img.isPrimary) ?? p.images[0];
-      return primary ? storage.getPublicUrl(primary.r2KeyBase) : '';
+      return primary ? storage.getPublicUrl(primary.imageUrl) : '';
     })(),
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
@@ -195,6 +234,11 @@ export async function fetchCollections(
 
   const mappedCollections: Collection[] = collectionsWithStats.map((c) => {
     const productIds = c.productIds as string[];
+    // Resolve thumbnail URLs (may be relative storage keys or full URLs)
+    const thumbnails = (c.thumbnails ?? [])
+      .map((url) => resolveStorageUrl(url))
+      .filter((url): url is string => url !== null);
+
     return {
       id: c.id,
       name: c.name,
@@ -205,7 +249,7 @@ export async function fetchCollections(
       totalImages: c.totalImages,
       createdAt: c.createdAt.toISOString(),
       updatedAt: c.updatedAt.toISOString(),
-      thumbnailUrl: c.thumbnailUrl ?? '',
+      thumbnails,
     };
   });
 
@@ -303,7 +347,7 @@ export async function fetchProductDetail(clientId: string, productId: string) {
   return {
     id: product.id,
     name: product.name,
-    sku: product.erpSku || `SKU-${product.id.slice(0, 8)}`,
+    sku: product.storeSku || `SKU-${product.id.slice(0, 8)}`,
     category: product.category || 'Uncategorized',
     description: product.description || '',
     sceneTypes: product.sceneTypes ?? [],
@@ -311,7 +355,7 @@ export async function fetchProductDetail(clientId: string, productId: string) {
     price: product.price ? parseFloat(product.price) : 0,
     baseImages: product.images.map((img) => ({
       id: img.id,
-      url: storage.getPublicUrl(img.r2KeyBase),
+      url: storage.getPublicUrl(img.imageUrl),
       isPrimary: img.isPrimary,
       sortOrder: img.sortOrder,
     })),
@@ -381,16 +425,16 @@ export async function fetchCollectionDetail(clientId: string, collectionId: stri
     productsWithImages = collectionProducts.map((p) => ({
       id: p.id,
       name: p.name,
-      sku: p.erpSku || `SKU-${p.id.slice(0, 8)}`,
+      sku: p.storeSku || `SKU-${p.id.slice(0, 8)}`,
       category: p.category || 'Uncategorized',
       imageUrl:
         (p.images.find((img) => img.isPrimary) ?? p.images[0])
-          ? storage.getPublicUrl((p.images.find((img) => img.isPrimary) ?? p.images[0]).r2KeyBase)
+          ? storage.getPublicUrl((p.images.find((img) => img.isPrimary) ?? p.images[0]).imageUrl)
           : '',
       images: p.images.map((img) => ({
         id: img.id,
-        baseUrl: storage.getPublicUrl(img.r2KeyBase),
-        previewUrl: img.r2KeyPreview ? storage.getPublicUrl(img.r2KeyPreview) : null,
+        baseUrl: storage.getPublicUrl(img.imageUrl),
+        previewUrl: img.previewUrl ? storage.getPublicUrl(img.previewUrl) : null,
         sortOrder: img.sortOrder,
       })),
     }));

@@ -51,7 +51,7 @@ describe('Studio Settings API - PATCH /api/studio/[id]/settings', () => {
       settings: {
         aspectRatio: '16:9',
         imageQuality: '4k',
-        variantsCount: 3,
+        variantsPerProduct: 3,
         userPrompt: 'Warm lighting',
       },
     } as any);
@@ -61,7 +61,7 @@ describe('Studio Settings API - PATCH /api/studio/[id]/settings', () => {
       body: JSON.stringify({
         aspectRatio: '16:9',
         imageQuality: '4k',
-        variantsCount: 3,
+        variantsPerProduct: 3,
         userPrompt: 'Warm lighting',
       }),
     });
@@ -73,7 +73,7 @@ describe('Studio Settings API - PATCH /api/studio/[id]/settings', () => {
     expect(db.generationFlows.updateSettings).toHaveBeenCalledWith('flow-1', {
       aspectRatio: '16:9',
       imageQuality: '4k',
-      variantsCount: 3,
+      variantsPerProduct: 3,
       userPrompt: 'Warm lighting',
     });
     expect(data.success).toBe(true);

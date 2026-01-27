@@ -87,7 +87,7 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
         inspirationImages: [{ url: 'https://example.com/inspo.jpg' }],
         aspectRatio: '1:1',
         imageQuality: '2k',
-        variantsCount: 1,
+        variantsPerProduct: 1,
       },
     } as any);
     vi.mocked(db.generationFlows.listByCollectionSession).mockResolvedValue([
@@ -95,7 +95,7 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
     ] as any);
     vi.mocked(db.productImages.listByProductIds).mockResolvedValue(
       new Map([
-        ['prod-1', [{ id: 'img-1', r2KeyBase: 'clients/test-client/products/prod-1/img-1.jpg', isPrimary: true }]],
+        ['prod-1', [{ id: 'img-1', imageUrl: 'clients/test-client/products/prod-1/img-1.jpg', isPrimary: true }]],
       ]) as any
     );
 
@@ -104,7 +104,7 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
       body: JSON.stringify({
         settings: {
           imageQuality: '4k',
-          variantsCount: 2,
+          variantsPerProduct: 2,
         },
       }),
     });
@@ -127,7 +127,6 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
       }),
       expect.objectContaining({
         flowId: 'flow-1',
-        priority: 100,
       })
     );
     expect(db.collectionSessions.update).toHaveBeenCalledWith('coll-1', { status: 'generating' });

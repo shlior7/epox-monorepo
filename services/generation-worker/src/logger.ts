@@ -81,7 +81,15 @@ export function logJobProgress(jobId: string, progress: number, details?: Record
 }
 
 export function logJobSuccess(jobId: string, durationMs: number, result: JobResult) {
-  logger.info({ jobId, durationMs, event: 'job_success', ...result }, `Job completed in ${durationMs}ms`);
+  // Sanitize result to avoid logging huge base64 data URLs
+  const sanitizedResult = {
+    ...result,
+    // Truncate data URLs to just show type and length
+    editedImageDataUrl: result.editedImageDataUrl
+      ? `[data URL: ${result.editedImageDataUrl.length} chars]`
+      : undefined,
+  };
+  logger.info({ jobId, durationMs, event: 'job_success', ...sanitizedResult }, `Job completed in ${durationMs}ms`);
 }
 
 export function logJobFailed(jobId: string, error: Error | string, attempt: number, maxAttempts: number, willRetry: boolean) {

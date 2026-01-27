@@ -26,39 +26,39 @@ describe('ProductImageRepository', () => {
   describe('create', () => {
     it('should create a product image', async () => {
       const image = await repo.create(testProductId, {
-        r2KeyBase: 'images/product/test.png',
+        imageUrl: 'images/product/test.png',
       });
 
       expect(image).toBeDefined();
       expect(image.id).toBeDefined();
       expect(image.productId).toBe(testProductId);
-      expect(image.r2KeyBase).toBe('images/product/test.png');
+      expect(image.imageUrl).toBe('images/product/test.png');
       expect(image.version).toBe(1);
     });
 
     it('should set first image as primary automatically', async () => {
       const firstImage = await repo.create(testProductId, {
-        r2KeyBase: 'images/first.png',
+        imageUrl: 'images/first.png',
       });
 
       expect(firstImage.isPrimary).toBe(true);
     });
 
     it('should not set subsequent images as primary', async () => {
-      await repo.create(testProductId, { r2KeyBase: 'images/first.png' });
+      await repo.create(testProductId, { imageUrl: 'images/first.png' });
       const secondImage = await repo.create(testProductId, {
-        r2KeyBase: 'images/second.png',
+        imageUrl: 'images/second.png',
       });
 
       expect(secondImage.isPrimary).toBe(false);
     });
 
     it('should explicitly set primary and clear others', async () => {
-      const first = await repo.create(testProductId, { r2KeyBase: 'images/first.png' });
+      const first = await repo.create(testProductId, { imageUrl: 'images/first.png' });
       expect(first.isPrimary).toBe(true);
 
       const second = await repo.create(testProductId, {
-        r2KeyBase: 'images/second.png',
+        imageUrl: 'images/second.png',
         isPrimary: true,
       });
 
@@ -69,18 +69,18 @@ describe('ProductImageRepository', () => {
       expect(updatedFirst?.isPrimary).toBe(false);
     });
 
-    it('should set r2KeyPreview if provided', async () => {
+    it('should set previewUrl if provided', async () => {
       const image = await repo.create(testProductId, {
-        r2KeyBase: 'images/base.png',
-        r2KeyPreview: 'images/preview.png',
+        imageUrl: 'images/base.png',
+        previewUrl: 'images/preview.png',
       });
 
-      expect(image.r2KeyPreview).toBe('images/preview.png');
+      expect(image.previewUrl).toBe('images/preview.png');
     });
 
     it('should set sortOrder if provided', async () => {
       const image = await repo.create(testProductId, {
-        r2KeyBase: 'images/test.png',
+        imageUrl: 'images/test.png',
         sortOrder: 5,
       });
 
@@ -90,8 +90,8 @@ describe('ProductImageRepository', () => {
 
   describe('setPrimary', () => {
     it('should set an image as primary', async () => {
-      const first = await repo.create(testProductId, { r2KeyBase: 'images/first.png' });
-      const second = await repo.create(testProductId, { r2KeyBase: 'images/second.png' });
+      const first = await repo.create(testProductId, { imageUrl: 'images/first.png' });
+      const second = await repo.create(testProductId, { imageUrl: 'images/second.png' });
 
       expect(first.isPrimary).toBe(true);
       expect(second.isPrimary).toBe(false);
@@ -111,7 +111,7 @@ describe('ProductImageRepository', () => {
 
     it('should throw if image belongs to different product', async () => {
       const otherProduct = await createTestProduct(testDb as any, testClientId, { name: 'Other Product' });
-      const otherImage = await repo.create(otherProduct.id, { r2KeyBase: 'images/other.png' });
+      const otherImage = await repo.create(otherProduct.id, { imageUrl: 'images/other.png' });
 
       await expect(repo.setPrimary(testProductId, otherImage.id)).rejects.toThrow();
     });
@@ -119,8 +119,8 @@ describe('ProductImageRepository', () => {
 
   describe('getPrimary', () => {
     it('should return primary image', async () => {
-      const first = await repo.create(testProductId, { r2KeyBase: 'images/first.png' });
-      await repo.create(testProductId, { r2KeyBase: 'images/second.png' });
+      const first = await repo.create(testProductId, { imageUrl: 'images/first.png' });
+      await repo.create(testProductId, { imageUrl: 'images/second.png' });
 
       const primary = await repo.getPrimary(testProductId);
 
@@ -130,8 +130,8 @@ describe('ProductImageRepository', () => {
 
     it('should fallback to first by sort order if no primary', async () => {
       // Create images without isPrimary (first image gets isPrimary by default)
-      const first = await repo.create(testProductId, { r2KeyBase: 'images/first.png', sortOrder: 0 });
-      const second = await repo.create(testProductId, { r2KeyBase: 'images/second.png', sortOrder: 1 });
+      const first = await repo.create(testProductId, { imageUrl: 'images/first.png', sortOrder: 0 });
+      const second = await repo.create(testProductId, { imageUrl: 'images/second.png', sortOrder: 1 });
 
       // Manually clear primary (simulate edge case)
       await testDb.execute(sql`UPDATE product_image SET is_primary = false WHERE id = ${first.id}`);
@@ -150,9 +150,9 @@ describe('ProductImageRepository', () => {
 
   describe('list', () => {
     it('should return images ordered by sortOrder', async () => {
-      await repo.create(testProductId, { r2KeyBase: 'images/third.png', sortOrder: 2 });
-      await repo.create(testProductId, { r2KeyBase: 'images/first.png', sortOrder: 0 });
-      await repo.create(testProductId, { r2KeyBase: 'images/second.png', sortOrder: 1 });
+      await repo.create(testProductId, { imageUrl: 'images/third.png', sortOrder: 2 });
+      await repo.create(testProductId, { imageUrl: 'images/first.png', sortOrder: 0 });
+      await repo.create(testProductId, { imageUrl: 'images/second.png', sortOrder: 1 });
 
       const images = await repo.list(testProductId);
 
@@ -172,9 +172,9 @@ describe('ProductImageRepository', () => {
     it('should batch fetch images grouped by productId', async () => {
       const product2 = await createTestProduct(testDb as any, testClientId, { name: 'Product 2' });
 
-      await repo.create(testProductId, { r2KeyBase: 'images/p1-1.png' });
-      await repo.create(testProductId, { r2KeyBase: 'images/p1-2.png' });
-      await repo.create(product2.id, { r2KeyBase: 'images/p2-1.png' });
+      await repo.create(testProductId, { imageUrl: 'images/p1-1.png' });
+      await repo.create(testProductId, { imageUrl: 'images/p1-2.png' });
+      await repo.create(product2.id, { imageUrl: 'images/p2-1.png' });
 
       const imagesMap = await repo.listByProductIds([testProductId, product2.id]);
 
@@ -200,20 +200,20 @@ describe('ProductImageRepository', () => {
 
   describe('update', () => {
     it('should update image fields', async () => {
-      const created = await repo.create(testProductId, { r2KeyBase: 'images/original.png' });
+      const created = await repo.create(testProductId, { imageUrl: 'images/original.png' });
 
       const updated = await repo.update(created.id, {
-        r2KeyPreview: 'images/new-preview.png',
+        previewUrl: 'images/new-preview.png',
         sortOrder: 10,
       });
 
-      expect(updated.r2KeyPreview).toBe('images/new-preview.png');
+      expect(updated.previewUrl).toBe('images/new-preview.png');
       expect(updated.sortOrder).toBe(10);
       expect(updated.version).toBe(created.version + 1);
     });
 
     it('should support optimistic locking', async () => {
-      const created = await repo.create(testProductId, { r2KeyBase: 'images/lock.png' });
+      const created = await repo.create(testProductId, { imageUrl: 'images/lock.png' });
 
       const updated = await repo.update(created.id, { sortOrder: 5 }, created.version);
       expect(updated.sortOrder).toBe(5);
@@ -224,9 +224,9 @@ describe('ProductImageRepository', () => {
 
   describe('reorder', () => {
     it('should reorder images by ID list', async () => {
-      const img1 = await repo.create(testProductId, { r2KeyBase: 'images/1.png', sortOrder: 0 });
-      const img2 = await repo.create(testProductId, { r2KeyBase: 'images/2.png', sortOrder: 1 });
-      const img3 = await repo.create(testProductId, { r2KeyBase: 'images/3.png', sortOrder: 2 });
+      const img1 = await repo.create(testProductId, { imageUrl: 'images/1.png', sortOrder: 0 });
+      const img2 = await repo.create(testProductId, { imageUrl: 'images/2.png', sortOrder: 1 });
+      const img3 = await repo.create(testProductId, { imageUrl: 'images/3.png', sortOrder: 2 });
 
       // Reverse the order
       await repo.reorder(testProductId, [img3.id, img2.id, img1.id]);
@@ -242,13 +242,13 @@ describe('ProductImageRepository', () => {
     });
 
     it('should throw for missing image IDs', async () => {
-      const img1 = await repo.create(testProductId, { r2KeyBase: 'images/1.png' });
+      const img1 = await repo.create(testProductId, { imageUrl: 'images/1.png' });
 
       await expect(repo.reorder(testProductId, [img1.id, 'non-existent'])).rejects.toThrow();
     });
 
     it('should do nothing for empty array', async () => {
-      await repo.create(testProductId, { r2KeyBase: 'images/1.png', sortOrder: 5 });
+      await repo.create(testProductId, { imageUrl: 'images/1.png', sortOrder: 5 });
 
       await repo.reorder(testProductId, []);
 
@@ -259,22 +259,22 @@ describe('ProductImageRepository', () => {
 
   describe('reorderByImageIds', () => {
     it('should reorder by filename-derived IDs', async () => {
-      await repo.create(testProductId, { r2KeyBase: 'images/product/img-001.png', sortOrder: 0 });
-      await repo.create(testProductId, { r2KeyBase: 'images/product/img-002.png', sortOrder: 1 });
-      await repo.create(testProductId, { r2KeyBase: 'images/product/img-003.png', sortOrder: 2 });
+      await repo.create(testProductId, { imageUrl: 'images/product/img-001.png', sortOrder: 0 });
+      await repo.create(testProductId, { imageUrl: 'images/product/img-002.png', sortOrder: 1 });
+      await repo.create(testProductId, { imageUrl: 'images/product/img-003.png', sortOrder: 2 });
 
       // Reorder by filename IDs (without extension)
       await repo.reorderByImageIds(testProductId, ['img-003', 'img-001', 'img-002']);
 
       const images = await repo.list(testProductId);
 
-      expect(images[0].r2KeyBase).toBe('images/product/img-003.png');
-      expect(images[1].r2KeyBase).toBe('images/product/img-001.png');
-      expect(images[2].r2KeyBase).toBe('images/product/img-002.png');
+      expect(images[0].imageUrl).toBe('images/product/img-003.png');
+      expect(images[1].imageUrl).toBe('images/product/img-001.png');
+      expect(images[2].imageUrl).toBe('images/product/img-002.png');
     });
 
     it('should do nothing for empty array', async () => {
-      await repo.create(testProductId, { r2KeyBase: 'images/1.png', sortOrder: 5 });
+      await repo.create(testProductId, { imageUrl: 'images/1.png', sortOrder: 5 });
 
       await repo.reorderByImageIds(testProductId, []);
 
@@ -285,7 +285,7 @@ describe('ProductImageRepository', () => {
 
   describe('getById', () => {
     it('should return image by ID', async () => {
-      const created = await repo.create(testProductId, { r2KeyBase: 'images/find.png' });
+      const created = await repo.create(testProductId, { imageUrl: 'images/find.png' });
       const found = await repo.getById(created.id);
 
       expect(found).toBeDefined();
@@ -300,7 +300,7 @@ describe('ProductImageRepository', () => {
 
   describe('delete', () => {
     it('should delete an image', async () => {
-      const created = await repo.create(testProductId, { r2KeyBase: 'images/delete.png' });
+      const created = await repo.create(testProductId, { imageUrl: 'images/delete.png' });
       await repo.delete(created.id);
 
       const found = await repo.getById(created.id);

@@ -3,12 +3,38 @@
  * Consolidated types for the visualizer application
  */
 
+// Bubble types (extensible system)
+export type {
+  BaseBubbleValue,
+  BubbleValue,
+  BubbleType,
+  StyleBubbleValue,
+  LightingBubbleValue,
+  CameraAngleBubbleValue,
+  ReferenceBubbleValue,
+  ColorPaletteBubbleValue,
+  MoodBubbleValue,
+  CustomBubbleValue,
+} from './bubbles';
+
+export { isBubbleType } from './bubbles';
+
+// Bubble utility functions
+export {
+  getBubblesForSceneType,
+  hasNewBubbleFormat,
+  isBubbleEmpty,
+  filterEmptyBubbles,
+  extractBubbleFromInspiration,
+} from './bubble-utils';
+
 // Settings types
 export type {
   LightAdjustments,
   ColorAdjustments,
   EffectsAdjustments,
   PostAdjustments,
+  CollectionGenerationSettings,
   FlowGenerationSettings,
   VideoPromptSettings,
   VideoGenerationSettings,
@@ -31,10 +57,8 @@ export type {
   VisionAnalysisResult,
   InspirationSourceType,
   InspirationImage,
-  SceneTypeInspiration,
+  SceneTypeInspirationEntry,
   SceneTypeInspirationMap,
-  StylePreset,
-  LightingPreset,
 } from './settings';
 
 export {
@@ -48,12 +72,11 @@ export {
   VIDEO_ASPECT_RATIO_OPTIONS,
   VIDEO_RESOLUTION_OPTIONS,
   IMAGE_ASPECT_RATIO_OPTIONS,
-  // New presets for studio settings
-  STYLE_PRESETS,
-  LIGHTING_PRESETS,
   // Utility functions
   normalizeImageQuality,
   formatAspectRatioDisplay,
+  // Inspiration defaults
+  DEFAULT_SCENE_TYPE_INSPIRATION_ENTRY,
 } from './settings';
 
 // Message types
@@ -78,6 +101,7 @@ export type {
   ProductSource,
   ProductAnalysis,
   ProductImage,
+  ImageSyncStatus,
   ChatSession,
   CollectionSession,
   CollectionSessionStatus,
@@ -106,6 +130,10 @@ export type {
   GenerationFlowWithAssets,
   GenerationFlowWithDetails,
   FlowGeneratedImage,
+  AssetSyncStatus,
+  GeneratedAssetWithSync,
+  ProductAssetGroup,
+  StoreProductView,
 } from './domain';
 
 // Queue types (for scenergy-queue)

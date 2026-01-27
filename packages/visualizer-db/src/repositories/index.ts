@@ -34,4 +34,12 @@ export {
   type EncryptedCredentials,
   type StoreType,
   type ConnectionStatus,
+  type WebhookEvent,
 } from './store-connections';
+export {
+  StoreSyncLogRepository,
+  type StoreSyncLog,
+  type StoreSyncLogCreate,
+  type StoreSyncLogUpdate,
+  type StoreSyncLogListOptions,
+} from './store-sync-logs';

@@ -83,7 +83,7 @@ export const POST = withUploadSecurity(async (request, context) => {
 
       // Create product_image record in database
       productImageRecord = await db.productImages.create(productId, {
-        r2KeyBase: storageKey,
+        imageUrl: storageKey,
         sortOrder,
       });
 

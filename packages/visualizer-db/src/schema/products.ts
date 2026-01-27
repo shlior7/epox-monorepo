@@ -10,6 +10,9 @@ import { client } from './auth';
 // Product source type
 export type ProductSource = 'imported' | 'uploaded';
 
+// Image sync status (for tracking local edits vs store images)
+export type ImageSyncStatus = 'synced' | 'unsynced' | 'local';
+
 // Product analysis data for prompt engineering
 // NOTE: This is re-exported from visualizer-types for consistency
 import type { ProductAnalysis } from 'visualizer-types';
@@ -26,6 +29,7 @@ export const product = pgTable(
     description: text('description'),
     category: text('category'),
     sceneTypes: jsonb('scene_types').$type<string[]>(),
+    selectedSceneType: text('selected_scene_type'), // Default scene type for this product (first in sceneTypes by default)
     modelFilename: text('model_filename'),
 
     // Favorites tracking
@@ -36,9 +40,10 @@ export const product = pgTable(
 
     // Store import fields (for bidirectional sync - only for source='imported')
     storeConnectionId: text('store_connection_id'),
-    erpId: text('erp_id'), // Original product ID in store
-    erpSku: text('erp_sku'), // Store SKU
-    erpUrl: text('erp_url'), // Product URL in store
+    storeId: text('store_id'), // Original product ID in store
+    storeSku: text('store_sku'), // Store SKU
+    storeUrl: text('store_url'), // Product URL in store
+    storeName: text('store_product_name'), // Product name in store (for display)
     importedAt: timestamp('imported_at', { mode: 'date' }),
 
     // Product analysis (for prompt engineering)
@@ -58,7 +63,7 @@ export const product = pgTable(
     index('product_client_id_idx').on(table.clientId),
     index('product_favorite_idx').on(table.clientId, table.isFavorite),
     index('product_source_idx').on(table.clientId, table.source),
-    index('product_erp_idx').on(table.storeConnectionId, table.erpId),
+    index('product_store_idx').on(table.storeConnectionId, table.storeId),
     index('product_analyzed_idx').on(table.clientId, table.analyzedAt),
   ]
 );
@@ -71,10 +76,16 @@ export const productImage = pgTable(
     productId: text('product_id')
       .notNull()
       .references(() => product.id, { onDelete: 'cascade' }),
-    r2KeyBase: text('r2_key_base').notNull(),
-    r2KeyPreview: text('r2_key_preview'),
+    imageUrl: text('image_url').notNull(),
+    previewUrl: text('preview_url'),
     sortOrder: integer('sort_order').notNull().default(0),
     isPrimary: boolean('is_primary').notNull().default(false),
+    // Sync status: 'synced' = from store, 'unsynced' = edited locally, 'local' = uploaded directly
+    syncStatus: text('sync_status').$type<ImageSyncStatus>().notNull().default('local'),
+    // Original store URL (for reference when unsynced)
+    originalStoreUrl: text('original_store_url'),
+    // External image ID from store (for bidirectional sync)
+    externalImageId: text('external_image_id'),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
@@ -83,6 +94,7 @@ export const productImage = pgTable(
     index('product_image_product_id_idx').on(table.productId),
     index('product_image_sort_order_idx').on(table.productId, table.sortOrder),
     index('product_image_primary_idx').on(table.productId, table.isPrimary),
+    index('product_image_external_id_idx').on(table.externalImageId),
   ]
 );
 

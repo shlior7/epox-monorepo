@@ -3,10 +3,10 @@
  * Gets the current user and client from the request headers
  *
  * ⚠️ SECURITY NOTICE:
- * - getServerAuthWithFallback() allows test-client fallback ONLY in development
- * - Production builds MUST have NODE_ENV=production to disable fallback
- * - Fallback attempt in production logs security violation and throws error
- * - Pre-deployment verification required to ensure fallback is unreachable
+ * - getServerAuthWithFallback() allows test-client fallback ONLY in E2E tests
+ * - Fallback is DISABLED in production AND development
+ * - Only active when NEXT_PUBLIC_IS_E2E=true
+ * - Production and development builds throw error if not authenticated
  */
 
 import { auth } from './auth';
@@ -32,14 +32,22 @@ const DEV_FALLBACK_CLIENT_ID = 'test-client';
  */
 export async function getServerAuth(request: Request): Promise<ServerAuthInfo | null> {
   try {
+    // PRIORITY 1: Query session table directly for activeClientId
+    // This works for test sessions created directly in the database
+    const sessionData = await getSessionFromDatabase(request);
+
+    if (sessionData) {
+      return sessionData;
+    }
+
+    // PRIORITY 2: Use Better Auth API (for production sessions)
     const session = await auth.api.getSession({ headers: request.headers });
 
     if (!session?.user) {
       return null;
     }
 
-    // Get the user's active organization (client)
-    // The organization ID is the client ID in our data model
+    // Get the user's active organization (client) from members table
     const activeOrg = await getActiveOrganization(session.user.id);
 
     if (!activeOrg) {
@@ -54,18 +62,18 @@ export async function getServerAuth(request: Request): Promise<ServerAuthInfo | 
       clientName: activeOrg.name,
     };
   } catch (error) {
-    console.error('Failed to get server auth:', error);
+    console.error('[getServerAuth] Failed to get server auth:', error);
     return null;
   }
 }
 
 /**
- * Get auth info from request headers, with dev fallback.
- * In development, returns a test client if not authenticated.
- * In production, returns null if not authenticated.
+ * Get auth info from request headers, with E2E test fallback.
+ * In production and development, throws if not authenticated.
+ * Only uses fallback in E2E tests.
  *
- * ⚠️ SECURITY: This function allows a fallback in development only.
- * The fallback is COMPLETELY DISABLED in production builds.
+ * ⚠️ SECURITY: This function allows a fallback in E2E tests only.
+ * The fallback is COMPLETELY DISABLED in production and development builds.
  */
 export async function getServerAuthWithFallback(request: Request): Promise<ServerAuthInfo> {
   const authInfo = await getServerAuth(request);
@@ -74,18 +82,20 @@ export async function getServerAuthWithFallback(request: Request): Promise<Serve
     return authInfo;
   }
 
-  // Production safety check - fail fast if somehow reached
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  if (isProduction) {
-    // Double-check: production should NEVER use fallback
-    console.error('🚨 SECURITY VIOLATION: Attempted to use dev fallback in production!');
+  // Defense-in-depth: Block fallback in production (even if E2E flag is accidentally set)
+  if (process.env.NODE_ENV === 'production') {
     throw new Error('Unauthorized - no valid session');
   }
 
-  // Development/test fallback - only reachable in development
-  console.warn('⚠️ DEV MODE: Using fallback auth (test-client) - no session found');
-  console.warn('⚠️ This fallback is DISABLED in production builds');
+  // Only use fallback in E2E tests
+  const isE2E = process.env.NEXT_PUBLIC_IS_E2E === 'true';
+
+  if (!isE2E) {
+    throw new Error('Unauthorized - no valid session');
+  }
+
+  // E2E test fallback only
+  console.warn('⚠️ E2E MODE: Using fallback auth (test-client) - no session found');
 
   return {
     userId: 'dev-user',
@@ -103,6 +113,76 @@ export async function getServerAuthWithFallback(request: Request): Promise<Serve
 export async function getClientId(request: Request): Promise<string> {
   const authInfo = await getServerAuthWithFallback(request);
   return authInfo.clientId;
+}
+
+/**
+ * Get full session data from the database directly.
+ * This is needed because test sessions are created directly in the database,
+ * bypassing Better Auth's API.
+ */
+async function getSessionFromDatabase(request: Request): Promise<ServerAuthInfo | null> {
+  try {
+    // Extract session token from cookie
+    const cookieHeader = request.headers.get('cookie');
+
+    if (!cookieHeader) {
+      return null;
+    }
+
+    const sessionToken = cookieHeader
+      .split(';')
+      .map((c) => c.trim())
+      .find((c) => c.startsWith('better-auth.session_token='))
+      ?.split('=')[1];
+
+    if (!sessionToken) {
+      return null;
+    }
+
+    // Query session table directly using Drizzle
+    const { getDb } = await import('visualizer-db');
+    const { session, user } = await import('visualizer-db/schema');
+    const { eq, and, gt } = await import('drizzle-orm');
+
+    const dbInstance = getDb();
+
+    // Join session with user to get full user data
+    const sessions = await dbInstance
+      .select({
+        userId: session.userId,
+        activeClientId: session.activeClientId,
+        userName: user.name,
+        userEmail: user.email,
+      })
+      .from(session)
+      .innerJoin(user, eq(session.userId, user.id))
+      .where(and(eq(session.token, sessionToken), gt(session.expiresAt, new Date())))
+      .limit(1);
+
+    if (sessions.length === 0) {
+      return null;
+    }
+
+    const sessionRow = sessions[0];
+
+    if (!sessionRow.activeClientId) {
+      return null;
+    }
+
+    // Get client info
+    const client = await db.clients.getById(sessionRow.activeClientId);
+
+    return {
+      userId: sessionRow.userId,
+      userEmail: sessionRow.userEmail,
+      userName: sessionRow.userName,
+      clientId: sessionRow.activeClientId,
+      clientName: client?.name,
+    };
+  } catch (error) {
+    console.error('[getSessionFromDatabase] Failed to get session:', error);
+    return null;
+  }
 }
 
 /**

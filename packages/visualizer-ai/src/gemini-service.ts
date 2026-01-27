@@ -102,7 +102,7 @@ const VISION_SCANNER_PROMPT = `You are a Forensic Interior Architecture Scanner.
 ### OUTPUT SCHEMA (JSON)
 {
   "styleSummary": "A concise, one-sentence visual hook describing the overall vibe (e.g., 'A serene, cream-white Japandi bedroom with soft organic curves.')",
-  "detectedSceneType": "The type of scene/room detected (e.g., 'Bedroom', 'Living-Room', 'Office', 'Kitchen', 'Garden', 'Studio'). Use hyphenated format for multi-word types.",
+  "detectedSceneType": "The type of scene/room detected (e.g., 'Bedroom', 'Living Room', 'Office', 'Kitchen', 'Garden', 'Studio').",
   "heroObjectAccessories": {
     "description": "If the reference image contains a main object (like a bed, sofa, or table) with decor ON it, describe it here. If none, return null.",
     "identity": "String (e.g., 'Chunky Knit Throw Blanket', 'Ceramic Vase with dried flowers')",

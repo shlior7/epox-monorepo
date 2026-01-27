@@ -376,4 +376,68 @@ describe('GeneratedAssetRepository', () => {
       expect(stats.size).toBe(0);
     });
   });
+
+  describe('getStatusCountsByFlowIds', () => {
+    it('should return status breakdown for multiple flows', async () => {
+      // Create multiple flows
+      const flow1 = createTestId('flow');
+      const flow2 = createTestId('flow');
+      await testDb.execute(sql`
+        INSERT INTO generation_flow (id, client_id, name, status, product_ids, selected_base_images, settings, version, created_at, updated_at)
+        VALUES
+          (${flow1}, ${testClientId}, 'Flow 1', 'pending', ${JSON.stringify([testProductId])}::jsonb, '{}'::jsonb, '{}'::jsonb, 1, NOW(), NOW()),
+          (${flow2}, ${testClientId}, 'Flow 2', 'pending', ${JSON.stringify([testProductId])}::jsonb, '{}'::jsonb, '{}'::jsonb, 1, NOW(), NOW())
+      `);
+
+      // Create assets with different statuses directly
+      await testDb.execute(sql`
+        INSERT INTO generated_asset (id, client_id, generation_flow_id, asset_url, asset_type, status, created_at, updated_at)
+        VALUES
+          (${createTestId('asset')}, ${testClientId}, ${flow1}, 'https://example.com/1.png', 'image', 'completed', NOW(), NOW()),
+          (${createTestId('asset')}, ${testClientId}, ${flow1}, 'https://example.com/2.png', 'image', 'completed', NOW(), NOW()),
+          (${createTestId('asset')}, ${testClientId}, ${flow1}, 'https://example.com/3.png', 'image', 'pending', NOW(), NOW()),
+          (${createTestId('asset')}, ${testClientId}, ${flow2}, 'https://example.com/4.png', 'image', 'generating', NOW(), NOW()),
+          (${createTestId('asset')}, ${testClientId}, ${flow2}, 'https://example.com/5.png', 'image', 'completed', NOW(), NOW())
+      `);
+
+      const stats = await repo.getStatusCountsByFlowIds([flow1, flow2]);
+
+      expect(stats.total).toBe(5);
+      expect(stats.completed).toBe(3);
+      expect(stats.generating).toBe(2); // pending + generating
+    });
+
+    it('should exclude deleted assets', async () => {
+      await createTestAsset({ status: 'completed', jobId: testFlowId });
+
+      // Create a deleted asset
+      const deletedAssetId = createTestId('asset');
+      await testDb.execute(sql`
+        INSERT INTO generated_asset
+        (id, client_id, generation_flow_id, asset_url, asset_type, status, created_at, updated_at, deleted_at)
+        VALUES (${deletedAssetId}, ${testClientId}, ${testFlowId}, 'https://example.com/deleted.png', 'image', 'completed', NOW(), NOW(), NOW())
+      `);
+
+      const stats = await repo.getStatusCountsByFlowIds([testFlowId]);
+
+      expect(stats.total).toBe(1);
+      expect(stats.completed).toBe(1);
+    });
+
+    it('should return zero counts for empty flow IDs', async () => {
+      const stats = await repo.getStatusCountsByFlowIds([]);
+
+      expect(stats.total).toBe(0);
+      expect(stats.completed).toBe(0);
+      expect(stats.generating).toBe(0);
+    });
+
+    it('should return zero counts for non-existent flows', async () => {
+      const stats = await repo.getStatusCountsByFlowIds(['non-existent-flow']);
+
+      expect(stats.total).toBe(0);
+      expect(stats.completed).toBe(0);
+      expect(stats.generating).toBe(0);
+    });
+  });
 });

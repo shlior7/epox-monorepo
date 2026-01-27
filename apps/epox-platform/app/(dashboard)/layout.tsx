@@ -4,7 +4,7 @@ import { AuthGuard } from '../../components/auth';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <AppShell>{children}</AppShell>
+      <AppShell testId="app-shell">{children}</AppShell>
     </AuthGuard>
   );
 }

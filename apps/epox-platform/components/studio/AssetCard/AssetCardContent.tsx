@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { buildTestId } from '@/lib/testing/testid';
 import type { InspirationImage, ImageAspectRatio } from 'visualizer-types';
 import { formatAspectRatioDisplay } from 'visualizer-types';
 
@@ -34,8 +35,6 @@ import { formatAspectRatioDisplay } from 'visualizer-types';
 
 export interface AssetConfiguration {
   sceneType?: string;
-  stylePreset?: string;
-  lightingPreset?: string;
   aspectRatio?: string;
   quality?: string;
   prompt?: string;
@@ -59,6 +58,7 @@ interface ImageThumbnailProps {
   size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
   fallback?: React.ReactNode;
+  testId?: string;
 }
 
 const sizeClasses = {
@@ -74,6 +74,7 @@ export function ImageThumbnail({
   size = 'sm',
   className,
   fallback,
+  testId,
 }: ImageThumbnailProps) {
   return (
     <div
@@ -82,6 +83,7 @@ export function ImageThumbnail({
         sizeClasses[size],
         className
       )}
+      data-testid={testId}
     >
       {src ? (
         <Image src={src} alt={alt} fill sizes="64px" className="object-cover" unoptimized />
@@ -104,9 +106,15 @@ interface InspirationStackProps {
   images: InspirationImage[];
   maxVisible?: number;
   size?: 'xs' | 'sm' | 'md';
+  testId?: string;
 }
 
-export function InspirationStack({ images, maxVisible = 3, size = 'sm' }: InspirationStackProps) {
+export function InspirationStack({
+  images,
+  maxVisible = 3,
+  size = 'sm',
+  testId,
+}: InspirationStackProps) {
   if (images.length === 0) return null;
 
   const visibleImages = images.slice(0, maxVisible);
@@ -114,7 +122,7 @@ export function InspirationStack({ images, maxVisible = 3, size = 'sm' }: Inspir
   const stackSizes = { xs: 'h-5 w-5', sm: 'h-7 w-7', md: 'h-9 w-9' };
 
   return (
-    <div className="flex -space-x-2">
+    <div className="flex -space-x-2" data-testid={testId}>
       {visibleImages.map((img, idx) => (
         <TooltipProvider key={idx}>
           <Tooltip>
@@ -124,6 +132,7 @@ export function InspirationStack({ images, maxVisible = 3, size = 'sm' }: Inspir
                   'relative shrink-0 overflow-hidden rounded-md border-2 border-background bg-background ring-1 ring-border',
                   stackSizes[size]
                 )}
+                data-testid={buildTestId(testId, 'item', idx)}
               >
                 <Image
                   src={img.url}
@@ -162,14 +171,14 @@ export function InspirationStack({ images, maxVisible = 3, size = 'sm' }: Inspir
 interface ConfigBadgesProps {
   configuration?: AssetConfiguration;
   maxVisible?: number;
+  testId?: string;
 }
 
-export function ConfigBadges({ configuration, maxVisible = 2 }: ConfigBadgesProps) {
+export function ConfigBadges({ configuration, maxVisible = 2, testId }: ConfigBadgesProps) {
   if (!configuration) return null;
 
   const badges = [
     configuration.sceneType,
-    configuration.stylePreset,
     configuration.quality ? configuration.quality.toUpperCase() : null,
   ].filter(Boolean) as string[];
 
@@ -179,9 +188,14 @@ export function ConfigBadges({ configuration, maxVisible = 2 }: ConfigBadgesProp
   const remaining = badges.length - maxVisible;
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5" data-testid={testId}>
       {visibleBadges.map((badge, idx) => (
-        <Badge key={idx} variant="outline" className="text-[10px] font-normal">
+        <Badge
+          key={idx}
+          variant="outline"
+          className="text-[10px] font-normal"
+          testId={buildTestId(testId, 'badge', idx)}
+        >
           {badge}
         </Badge>
       ))}
@@ -189,14 +203,16 @@ export function ConfigBadges({ configuration, maxVisible = 2 }: ConfigBadgesProp
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="outline" className="text-[10px] font-normal">
+              <Badge
+                variant="outline"
+                className="text-[10px] font-normal"
+                testId={buildTestId(testId, 'more')}
+              >
                 +{remaining}
               </Badge>
             </TooltipTrigger>
             <TooltipContent side="bottom">
               <div className="space-y-1 text-xs">
-                {configuration.stylePreset && <p>Style: {configuration.stylePreset}</p>}
-                {configuration.lightingPreset && <p>Lighting: {configuration.lightingPreset}</p>}
                 {configuration.aspectRatio && <p>Aspect: {configuration.aspectRatio}</p>}
               </div>
             </TooltipContent>
@@ -215,19 +231,26 @@ interface StatusBadgesProps {
   isPinned?: boolean;
   isApproved?: boolean;
   isRejected?: boolean;
+  testId?: string;
 }
 
-export function StatusBadges({ isPinned, isApproved, isRejected }: StatusBadgesProps) {
+export function StatusBadges({ isPinned, isApproved, isRejected, testId }: StatusBadgesProps) {
   return (
-    <div className="flex items-center gap-2">
-      {isPinned && <Pin className="h-4 w-4 text-primary" />}
+    <div className="flex items-center gap-2" data-testid={testId}>
+      {isPinned && (
+        <Pin className="h-4 w-4 text-primary" data-testid={buildTestId(testId, 'pinned')} />
+      )}
       {isApproved && (
-        <Badge variant="success" className="text-[10px]">
+        <Badge variant="success" className="text-[10px]" testId={buildTestId(testId, 'approved')}>
           Approved
         </Badge>
       )}
       {isRejected && (
-        <Badge variant="destructive" className="text-[10px]">
+        <Badge
+          variant="destructive"
+          className="text-[10px]"
+          testId={buildTestId(testId, 'rejected')}
+        >
           Rejected
         </Badge>
       )}
@@ -245,6 +268,7 @@ interface AssetActionBarProps extends AssetActionHandlers {
   showLabels?: boolean;
   additionalActions?: React.ReactNode;
   className?: string;
+  testId?: string;
 }
 
 export function AssetActionBar({
@@ -258,15 +282,17 @@ export function AssetActionBar({
   onDelete,
   additionalActions,
   className,
+  testId,
 }: AssetActionBarProps) {
   return (
-    <div className={cn('flex items-center justify-between', className)}>
-      <div className="flex items-center gap-1">
+    <div className={cn('flex items-center justify-between', className)} data-testid={testId}>
+      <div className="flex items-center gap-1" data-testid={buildTestId(testId, 'primary')}>
         <Button
           variant="ghost"
           size="sm"
           className={cn('h-8 gap-1.5', isPinned && 'text-primary')}
           onClick={onPin}
+          testId={buildTestId(testId, 'pin')}
         >
           <Pin className="h-3.5 w-3.5" />
           {showLabels && <span className="text-xs">{isPinned ? 'Pinned' : 'Pin'}</span>}
@@ -277,37 +303,53 @@ export function AssetActionBar({
           size="sm"
           className={cn('h-8 gap-1.5', isApproved && 'bg-green-600 hover:bg-green-700')}
           onClick={onApprove}
+          testId={buildTestId(testId, 'approve')}
         >
           <Check className="h-3.5 w-3.5" />
           {showLabels && <span className="text-xs">{isApproved ? 'Approved' : 'Approve'}</span>}
         </Button>
 
-        <Button variant="ghost" size="sm" className="h-8 gap-1.5" onClick={onDownload}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 gap-1.5"
+          onClick={onDownload}
+          testId={buildTestId(testId, 'download')}
+        >
           <Download className="h-3.5 w-3.5" />
           {showLabels && <span className="text-xs">Download</span>}
         </Button>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1" data-testid={buildTestId(testId, 'secondary')}>
         {additionalActions}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              testId={buildTestId(testId, 'menu')}
+            >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" testId={buildTestId(testId, 'menu', 'content')}>
             {!isApproved && onReject && (
-              <DropdownMenuItem onClick={onReject}>
+              <DropdownMenuItem onClick={onReject} testId={buildTestId(testId, 'menu', 'reject')}>
                 <X className="mr-2 h-4 w-4 text-destructive" />
                 Reject
               </DropdownMenuItem>
             )}
             {onDelete && (
               <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                <DropdownMenuSeparator testId={buildTestId(testId, 'menu', 'separator')} />
+                <DropdownMenuItem
+                  onClick={onDelete}
+                  className="text-destructive"
+                  testId={buildTestId(testId, 'menu', 'delete')}
+                >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
@@ -332,6 +374,7 @@ interface GalleryNavigationProps {
   currentIndex: number;
   totalCount: number;
   showOnHover?: boolean;
+  testId?: string;
 }
 
 export function GalleryNavigation({
@@ -342,6 +385,7 @@ export function GalleryNavigation({
   currentIndex,
   totalCount,
   showOnHover = true,
+  testId,
 }: GalleryNavigationProps) {
   if (totalCount <= 1) return null;
 
@@ -361,6 +405,7 @@ export function GalleryNavigation({
           hoverClass,
           !canPrev && 'hidden'
         )}
+        data-testid={buildTestId(testId, 'prev')}
       >
         <ChevronLeft className="h-6 w-6" />
       </button>
@@ -377,12 +422,16 @@ export function GalleryNavigation({
           hoverClass,
           !canNext && 'hidden'
         )}
+        data-testid={buildTestId(testId, 'next')}
       >
         <ChevronRight className="h-6 w-6" />
       </button>
 
       {/* Counter Badge */}
-      <div className="absolute bottom-3 right-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white">
+      <div
+        className="absolute bottom-3 right-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-medium text-white"
+        data-testid={buildTestId(testId, 'counter')}
+      >
         {currentIndex + 1} / {totalCount}
       </div>
     </>
@@ -431,6 +480,7 @@ interface ThumbnailStripProps {
   currentIndex: number;
   onSelect: (index: number) => void;
   maxVisible?: number;
+  testId?: string;
 }
 
 export function ThumbnailStrip({
@@ -438,6 +488,7 @@ export function ThumbnailStrip({
   currentIndex,
   onSelect,
   maxVisible = 5,
+  testId,
 }: ThumbnailStripProps) {
   if (thumbnails.length <= 1) return null;
 
@@ -445,7 +496,7 @@ export function ThumbnailStrip({
   const remaining = thumbnails.length - maxVisible;
 
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1" data-testid={testId}>
       {visibleThumbnails.map((thumb, idx) => (
         <button
           key={thumb.id}
@@ -459,6 +510,7 @@ export function ThumbnailStrip({
               ? 'border-primary ring-1 ring-primary/50'
               : 'border-border hover:border-primary/50'
           )}
+          data-testid={buildTestId(testId, 'thumbnail', thumb.id)}
         >
           <Image
             src={thumb.url}
@@ -471,7 +523,10 @@ export function ThumbnailStrip({
         </button>
       ))}
       {remaining > 0 && (
-        <div className="flex h-6 w-6 items-center justify-center rounded border border-border bg-muted text-[9px] font-medium">
+        <div
+          className="flex h-6 w-6 items-center justify-center rounded border border-border bg-muted text-[9px] font-medium"
+          data-testid={buildTestId(testId, 'more')}
+        >
           +{remaining}
         </div>
       )}
@@ -486,16 +541,18 @@ export function ThumbnailStrip({
 interface AssetCardWrapperProps {
   children: React.ReactNode;
   className?: string;
+  testId?: string;
 }
 
 export const AssetCardWrapper = forwardRef<HTMLDivElement, AssetCardWrapperProps>(
-  ({ children, className }, ref) => (
+  ({ children, className, testId }, ref) => (
     <div
       ref={ref}
       className={cn(
         'group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:shadow-md',
         className
       )}
+      data-testid={testId}
     >
       {children}
     </div>
@@ -510,15 +567,17 @@ AssetCardWrapper.displayName = 'AssetCardWrapper';
 interface AssetCardHeaderProps {
   children: React.ReactNode;
   className?: string;
+  testId?: string;
 }
 
-export function AssetCardHeader({ children, className }: AssetCardHeaderProps) {
+export function AssetCardHeader({ children, className, testId }: AssetCardHeaderProps) {
   return (
     <div
       className={cn(
         'flex items-center gap-3 border-b border-border bg-muted/30 px-4 py-3',
         className
       )}
+      data-testid={testId}
     >
       {children}
     </div>
@@ -537,12 +596,14 @@ interface AssetCardContentProps {
   /** Accepts both colon format (ImageAspectRatio) and slash format */
   aspectRatio?: ImageAspectRatio | AspectRatioDisplay;
   className?: string;
+  testId?: string;
 }
 
 export function AssetCardContent({
   children,
   aspectRatio = '1/1',
   className,
+  testId,
 }: AssetCardContentProps) {
   // Normalize aspect ratio to slash format for Tailwind
   const normalizedRatio = formatAspectRatioDisplay(aspectRatio);
@@ -560,5 +621,9 @@ export function AssetCardContent({
 
   const aspectClass = aspectClasses[normalizedRatio] || 'aspect-square';
 
-  return <div className={cn('relative bg-black/5', aspectClass, className)}>{children}</div>;
+  return (
+    <div className={cn('relative bg-black/5', aspectClass, className)} data-testid={testId}>
+      {children}
+    </div>
+  );
 }

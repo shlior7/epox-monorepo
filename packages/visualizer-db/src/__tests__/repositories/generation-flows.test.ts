@@ -224,7 +224,7 @@ describe('GenerationFlowRepository', () => {
         productIds: [testProductId],
       });
 
-      const flows = await repo.listByCollectionSessionWithDetails(testCollectionSessionId, 'https://r2.example.com');
+      const flows = await repo.listByCollectionSessionWithDetails(testCollectionSessionId);
 
       expect(flows.length).toBe(1);
       expect(flows[0].product).toBeDefined();
@@ -233,7 +233,7 @@ describe('GenerationFlowRepository', () => {
     });
 
     it('should return empty array for collection with no flows', async () => {
-      const flows = await repo.listByCollectionSessionWithDetails(testCollectionSessionId, 'https://r2.example.com');
+      const flows = await repo.listByCollectionSessionWithDetails(testCollectionSessionId);
       expect(flows).toEqual([]);
     });
   });

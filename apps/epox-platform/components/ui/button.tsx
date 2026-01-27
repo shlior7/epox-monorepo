@@ -110,6 +110,7 @@ export interface ButtonProps
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  testId?: string;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -124,6 +125,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       rightIcon,
       children,
       disabled,
+      testId,
       ...props
     },
     ref
@@ -138,6 +140,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           className={cn(buttonVariants({ variant, size, className }))}
           ref={ref}
           disabled={disabled || isLoading}
+          data-testid={testId}
           {...props}
         >
           <span className="inline-flex items-center justify-center gap-2">
@@ -156,6 +159,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         disabled={disabled || isLoading}
+        data-testid={testId}
         {...props}
       >
         {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}

@@ -30,10 +30,13 @@ export class ProductImageRepository extends BaseRepository<ProductImage> {
       .values({
         id,
         productId,
-        r2KeyBase: data.r2KeyBase,
-        r2KeyPreview: data.r2KeyPreview ?? null,
+        imageUrl: data.imageUrl,
+        previewUrl: data.previewUrl ?? null,
         sortOrder: data.sortOrder ?? 0,
         isPrimary: shouldBePrimary,
+        syncStatus: data.syncStatus ?? 'local',
+        originalStoreUrl: data.originalStoreUrl ?? null,
+        externalImageId: data.externalImageId ?? null,
         version: 1,
         createdAt: now,
         updatedAt: now,
@@ -145,7 +148,7 @@ export class ProductImageRepository extends BaseRepository<ProductImage> {
     const imageMap = new Map<string, ProductImage>();
 
     rows.forEach((row) => {
-      const filename = row.r2KeyBase.split('/').pop() ?? row.r2KeyBase;
+      const filename = row.imageUrl.split('/').pop() ?? row.imageUrl;
       const imageId = filename.replace(/\.[^/.]+$/, '');
       imageMap.set(imageId, row as ProductImage);
     });
@@ -196,5 +199,33 @@ export class ProductImageRepository extends BaseRepository<ProductImage> {
           .where(and(eq(productImage.id, imageId), eq(productImage.productId, productId)));
       }
     });
+  }
+
+  /**
+   * Update product image with new R2 key and sync status
+   * Used when editing images in the editor
+   */
+  async updateImageAndSyncStatus(
+    imageId: string,
+    imageUrl: string,
+    syncStatus: 'synced' | 'unsynced' | 'local'
+  ): Promise<ProductImage> {
+    const now = new Date();
+    const [updated] = await this.drizzle
+      .update(productImage)
+      .set({
+        imageUrl,
+        syncStatus,
+        updatedAt: now,
+        version: sql`${productImage.version} + 1`,
+      })
+      .where(eq(productImage.id, imageId))
+      .returning();
+
+    if (!updated) {
+      throw new NotFoundError('product_image', imageId);
+    }
+
+    return this.mapToEntity(updated);
   }
 }

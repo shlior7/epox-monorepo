@@ -20,6 +20,13 @@ export const storagePaths = {
   userPhoto: (userId: string, extension = 'jpg') => `users/${userId}/photo.${extension.replace(/^\./, '')}`,
   // Bulk download ZIPs
   downloadZip: (clientId: string, jobId: string) => `${CLIENT_PREFIX}/${clientId}/downloads/${jobId}.zip`,
+  // Temporary edit session files (cleaned up after save/cancel)
+  editSessionBase: (clientId: string, sessionId: string) =>
+    `tmp/edit-sessions/${clientId}/${sessionId}/base.webp`,
+  editSessionRevision: (clientId: string, sessionId: string, revisionId: string) =>
+    `tmp/edit-sessions/${clientId}/${sessionId}/${revisionId}.webp`,
+  editSessionPrefix: (clientId: string, sessionId: string) =>
+    `tmp/edit-sessions/${clientId}/${sessionId}/`,
 } as const;
 
 export type StoragePaths = typeof storagePaths;

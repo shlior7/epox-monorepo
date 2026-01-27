@@ -34,9 +34,9 @@ export default function NotFound() {
             </Link>
           </Button>
           <Button asChild variant="glow">
-            <Link href="/dashboard" className="inline-flex items-center justify-center gap-2">
+            <Link href="/home" className="inline-flex items-center justify-center gap-2">
               <Home className="mr-2 h-4 w-4" />
-              Dashboard
+              Home
             </Link>
           </Button>
         </div>

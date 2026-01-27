@@ -2,12 +2,11 @@
  * Flow Orchestration Service
  * Coordinates flow creation, settings building, and image generation triggering
  *
- * NOTE: This service is being updated to work with the new FlowGenerationSettings structure.
- * The new structure uses inspiration images with Vision Scanner analysis and Art Director
- * for prompt construction.
+ * Uses the bubble-based inspiration system where FlowGenerationSettings contains
+ * generalInspiration (BubbleValue[]) and sceneTypeInspiration for prompt construction.
  */
 
-import type { FlowGenerationSettings, StylePreset, LightingPreset } from 'visualizer-types';
+import type { FlowGenerationSettings, BubbleValue } from 'visualizer-types';
 import { DEFAULT_FLOW_SETTINGS } from 'visualizer-types';
 import { getInspirationService } from '../inspiration';
 import type { MergedInspirationSettings } from '../inspiration/types';
@@ -25,37 +24,41 @@ export class FlowOrchestrationService {
   }
 
   /**
-   * Build base settings from inspiration images
-   * Updated to work with new FlowGenerationSettings structure
+   * Build base settings from inspiration analysis.
+   * Maps MergedInspirationSettings into bubble-based generalInspiration.
    */
   buildBaseSettings(
     inspirationSettings: MergedInspirationSettings,
     advancedSettings?: Partial<FlowGenerationSettings>
   ): FlowGenerationSettings {
-    // Map old style names to new StylePreset
-    const stylePreset = this.mapToStylePreset(inspirationSettings.style);
-    const lightingPreset = this.mapToLightingPreset(inspirationSettings.lighting);
+    // Convert merged inspiration into bubbles
+    const generalInspiration: BubbleValue[] = [];
+
+    if (inspirationSettings.style) {
+      generalInspiration.push({ type: 'style', preset: inspirationSettings.style });
+    }
+    if (inspirationSettings.lighting) {
+      generalInspiration.push({ type: 'lighting', preset: inspirationSettings.lighting });
+    }
+    if (inspirationSettings.primaryImageUrl) {
+      generalInspiration.push({
+        type: 'reference',
+        image: {
+          url: inspirationSettings.primaryImageUrl,
+          addedAt: new Date().toISOString(),
+          sourceType: 'upload' as const,
+        },
+      });
+    }
 
     const settings: FlowGenerationSettings = {
       ...DEFAULT_FLOW_SETTINGS,
+      generalInspiration,
 
-      // Scene Style (Section 1)
-      inspirationImages: inspirationSettings.primaryImageUrl
-        ? [
-            {
-              url: inspirationSettings.primaryImageUrl,
-              addedAt: new Date().toISOString(),
-              sourceType: 'upload' as const,
-            },
-          ]
-        : [],
-      stylePreset,
-      lightingPreset,
-
-      // Output Settings (Section 4)
+      // Output Settings
       aspectRatio: advancedSettings?.aspectRatio ?? '1:1',
       imageQuality: advancedSettings?.imageQuality ?? '2k',
-      variantsCount: advancedSettings?.variantsCount ?? 4,
+      variantsPerProduct: advancedSettings?.variantsPerProduct ?? 4,
 
       // Model settings
       imageModel: advancedSettings?.imageModel,
@@ -66,57 +69,7 @@ export class FlowOrchestrationService {
   }
 
   /**
-   * Map old style string to new StylePreset
-   */
-  private mapToStylePreset(style?: string): StylePreset {
-    if (!style) return 'Modern Minimalist';
-
-    const styleMap: Record<string, StylePreset> = {
-      'Modern Minimalist': 'Modern Minimalist',
-      Scandinavian: 'Scandinavian',
-      Industrial: 'Industrial',
-      'Industrial Loft': 'Industrial',
-      Bohemian: 'Bohemian',
-      'Bohemian Chic': 'Bohemian',
-      'Mid-Century': 'Mid-Century',
-      'Mid-Century Modern': 'Mid-Century',
-      Rustic: 'Rustic',
-      'Rustic / Natural': 'Rustic',
-      Coastal: 'Coastal',
-      'Coastal / Mediterranean': 'Coastal',
-      Luxurious: 'Luxurious',
-      'Luxury / Premium': 'Luxurious',
-      'Studio Clean': 'Studio Clean',
-    };
-
-    return styleMap[style] ?? 'Modern Minimalist';
-  }
-
-  /**
-   * Map old lighting string to new LightingPreset
-   */
-  private mapToLightingPreset(lighting?: string): LightingPreset {
-    if (!lighting) return 'Studio Soft Light';
-
-    const lightingMap: Record<string, LightingPreset> = {
-      'Natural Daylight': 'Natural Daylight',
-      'Studio Soft Light': 'Studio Soft Light',
-      'Golden Hour': 'Golden Hour',
-      'Golden Hour / Sunset Glow': 'Golden Hour',
-      'Dramatic Shadow': 'Dramatic Shadow',
-      'Bright & Airy': 'Bright & Airy',
-      'Bright Noon Sunlight': 'Bright & Airy',
-      'Moody Low-Key': 'Moody Low-Key',
-      'Cool Overcast': 'Cool Overcast',
-      'Overcast Ambient': 'Cool Overcast',
-    };
-
-    return lightingMap[lighting] ?? 'Studio Soft Light';
-  }
-
-  /**
    * Build per-product settings with room assignments
-   * Updated for new settings structure
    */
   buildPerProductSettings(
     productId: string,
@@ -125,14 +78,18 @@ export class FlowOrchestrationService {
     baseImageId: string,
     baseSettings: FlowGenerationSettings
   ): PerProductSettings {
-    // In the new system, per-product settings are simpler
-    // The Art Director handles prompt construction based on product's subject analysis
     const settings: FlowGenerationSettings = {
       ...baseSettings,
+      sceneType: roomAssignment,
     };
 
-    // Generate a simple prompt text for backward compatibility
-    const promptText = `Professional product photography of ${productName} in a ${roomAssignment} setting, ${baseSettings.stylePreset} style, ${baseSettings.lightingPreset} lighting.`;
+    // Extract style/lighting from generalInspiration bubbles for prompt text
+    const styleBubble = baseSettings.generalInspiration?.find((b) => b.type === 'style');
+    const lightingBubble = baseSettings.generalInspiration?.find((b) => b.type === 'lighting');
+    const style = (styleBubble as { preset?: string } | undefined)?.preset ?? 'modern';
+    const lighting = (lightingBubble as { preset?: string } | undefined)?.preset ?? 'natural';
+
+    const promptText = `Professional product photography of ${productName} in a ${roomAssignment} setting, ${style} style, ${lighting} lighting.`;
 
     return {
       productId,

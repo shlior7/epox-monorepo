@@ -135,7 +135,7 @@ async function seedTestData() {
 
     // 7. Create products
     const productIds: string[] = [];
-    for (const productData of testClient.products) {
+    for (const productData of testClient.products || []) {
       const productId = uuidv4();
       await drizzle.insert(product).values({
         id: productId,
@@ -153,7 +153,7 @@ async function seedTestData() {
     }
 
     // 8. Create collections
-    for (const collectionData of testClient.collections) {
+    for (const collectionData of testClient.collections || []) {
       const collectionId = uuidv4();
       await drizzle.insert(collectionSession).values({
         id: collectionId,

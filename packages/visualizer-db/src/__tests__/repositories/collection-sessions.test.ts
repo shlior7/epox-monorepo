@@ -77,7 +77,7 @@ describe('CollectionSessionRepository', () => {
       const collection = await repo.create(testClientId, {
         name: 'With Settings',
         productIds: testProductIds,
-        settings: { inspirationImages: [], aspectRatio: '16:9' },
+        settings: { generalInspiration: [], aspectRatio: '16:9' },
       });
 
       expect(collection.settings).toMatchObject({ aspectRatio: '16:9' });
@@ -237,8 +237,9 @@ describe('CollectionSessionRepository', () => {
       const results = await repo.listWithAssetStats(testClientId);
       const found = results.find(c => c.id === collection.id);
 
-      expect(found?.thumbnailUrl).toBeDefined();
-      expect(found?.thumbnailUrl).toContain('https://example.com/');
+      expect(found?.thumbnails).toBeDefined();
+      expect(found?.thumbnails.length).toBeGreaterThan(0);
+      expect(found?.thumbnails[0]).toContain('https://example.com/');
     });
 
     it('should respect limit and offset', async () => {

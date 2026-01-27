@@ -12,7 +12,7 @@ import { generationFlow } from './sessions';
 // TYPES
 // ============================================================================
 
-export type JobType = 'image_generation' | 'image_edit' | 'video_generation';
+export type JobType = 'image_generation' | 'image_edit' | 'video_generation' | 'sync_product' | 'sync_all_products';
 export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
 export interface PromptTags {
@@ -63,6 +63,21 @@ export interface ImageEditPayload {
   sessionId: string;
   productIds?: string[];
   referenceImages?: Array<{ url: string; componentName: string }>;
+  /** Original image aspect ratio (will be preserved in output) */
+  aspectRatio?: string;
+  /** Output settings */
+  settings?: {
+    /** Output quality - default is '2k' */
+    imageQuality?: '1k' | '2k' | '4k';
+  };
+  /** For tracking which asset is being edited */
+  sourceAssetId?: string;
+  /** For tracking which product the edit is for */
+  productId?: string;
+  /** Preview mode - return R2 URL without saving permanently */
+  previewOnly?: boolean;
+  /** R2 prefix for temporary storage (for preview mode results) */
+  tempStoragePrefix?: string;
 }
 
 export interface VideoGenerationPayload {
@@ -80,12 +95,29 @@ export interface VideoGenerationPayload {
   };
 }
 
+export interface SyncProductPayload {
+  connectionId: string;
+  externalProductId: string;
+  /** Optional: force full sync even if product images haven't changed */
+  forceSync?: boolean;
+}
+
+export interface SyncAllProductsPayload {
+  connectionId: string;
+  /** Optional: limit to specific product IDs */
+  productIds?: string[];
+}
+
 export interface JobResult {
   imageUrls?: string[];
   imageIds?: string[];
   videoUrls?: string[];
   videoIds?: string[];
   duration?: number;
+  /** For preview mode - contains the edited image as data URL (deprecated, use editedImageUrl) */
+  editedImageDataUrl?: string;
+  /** For preview mode - contains the edited image R2 URL (temp storage) */
+  editedImageUrl?: string;
 }
 
 // ============================================================================
@@ -107,7 +139,7 @@ export const generationJob = pgTable(
 
     // Job type and payload
     type: text('type').$type<JobType>().notNull(),
-    payload: jsonb('payload').$type<ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload>().notNull(),
+    payload: jsonb('payload').$type<ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload | SyncProductPayload | SyncAllProductsPayload>().notNull(),
 
     // Status
     status: text('status').$type<JobStatus>().notNull().default('pending'),

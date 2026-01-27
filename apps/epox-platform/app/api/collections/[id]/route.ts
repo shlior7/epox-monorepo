@@ -36,26 +36,7 @@ export const GET = withSecurity(async (request, context, { params }) => {
       db.generatedAssets.countByGenerationFlowIds(clientId, flowIds, 'completed'),
     ]);
 
-    // Migrate old selectedBaseImages format to new settings.inspirationImages if needed
-    let settings = collection.settings;
-    if (!settings?.inspirationImages && Object.keys(collection.selectedBaseImages).length > 0) {
-      // Legacy collection: convert selectedBaseImages to settings format
-      const inspirationImagesArray = Object.values(collection.selectedBaseImages).map((url) => ({
-        url,
-        thumbnailUrl: url,
-        tags: [],
-        addedAt: collection.createdAt.toISOString(),
-        sourceType: 'upload' as const,
-      }));
-
-      settings = {
-        ...settings,
-        inspirationImages: inspirationImagesArray,
-        aspectRatio: settings?.aspectRatio ?? '1:1',
-        imageQuality: settings?.imageQuality ?? '2k',
-        variantsCount: settings?.variantsCount ?? 1,
-      };
-    }
+    const settings = collection.settings;
 
     // Map to frontend format
     const response = {

@@ -90,7 +90,7 @@ export type {
 
 // Generation Queue Facade
 export { enqueueImageGeneration, enqueueVideoGeneration, enqueueImageEdit, getJobStatus, getJobsByFlow } from './generation-queue';
-export type { EnqueueImageResult, EnqueueVideoResult, JobStatusResult } from './generation-queue';
+export type { EnqueueImageResult, EnqueueVideoResult, EnqueueImageEditResult, JobStatusResult } from './generation-queue';
 export type {
   ImageGenerationPayload,
   ImageEditPayload,

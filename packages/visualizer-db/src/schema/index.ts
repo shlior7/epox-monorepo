@@ -59,7 +59,7 @@ export type { GenerationEventType } from './analytics';
 
 // Store sync tables
 export { storeConnection, storeSyncLog, storeConnectionRelations, storeSyncLogRelations } from './store-sync';
-export type { StoreType, StoreConnectionStatus, SyncAction, SyncStatus } from './store-sync';
+export type { StoreType, StoreConnectionStatus, SyncAction, SyncStatus, WebhookEvent } from './store-sync';
 
 // User settings tables
 export { userSettings, userSettingsRelations, DEFAULT_NOTIFICATION_SETTINGS, DEFAULT_GENERATION_DEFAULTS } from './user-settings';
@@ -71,7 +71,17 @@ export type { PlanType, AIOperationType } from './usage';
 
 // Generation Jobs (PostgreSQL queue)
 export { generationJob, generationJobRelations } from './jobs';
-export type { JobType, JobStatus, PromptTags, ImageGenerationPayload, ImageEditPayload, VideoGenerationPayload, JobResult } from './jobs';
+export type {
+  JobType,
+  JobStatus,
+  PromptTags,
+  ImageGenerationPayload,
+  ImageEditPayload,
+  VideoGenerationPayload,
+  SyncProductPayload,
+  SyncAllProductsPayload,
+  JobResult,
+} from './jobs';
 
 // Re-export types from visualizer-types for convenience
 export type {
