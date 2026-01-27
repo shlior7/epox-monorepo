@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Loader2, Sparkles, Save, Check, Minus, Plus } from 'lucide-react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { Loader2, Sparkles, Save, Check, Minus, Plus, Image as ImageIcon, Video } from 'lucide-react';
 import { buildTestId } from '@/lib/testing/testid';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfigPanelProvider, useConfigPanelContext, type ConfigPanelState } from './ConfigPanelContext';
 import { InspireSection } from './InspireSection';
-import type { ImageAspectRatio, ImageQuality, InspirationBubbleValue } from 'visualizer-types';
+import { ProductSection } from './ProductSection';
+import { CollectionSettingsSection } from './CollectionSettingsSection';
+import { OutputSettingsPanel } from './OutputSettings';
+import type { ImageAspectRatio, ImageQuality, BubbleValue, SceneTypeInspirationMap } from 'visualizer-types';
 
 // ===== MODE TYPES =====
 
@@ -45,8 +48,16 @@ export interface UnifiedStudioConfigPanelProps {
   // For single-flow mode
   selectedSceneType?: string;
   onSceneTypeChange?: (sceneType: string) => void;
-  // Collection prompt (for single-flow mode, read-only display)
-  collectionPrompt?: string;
+  // Collection settings (for single-flow mode when flow belongs to collection)
+  collectionSessionId?: string; // ID of the collection
+  collectionName?: string; // Name of the collection
+  collectionSettings?: {
+    userPrompt?: string;
+    generalInspiration?: BubbleValue[];
+    sceneTypeInspiration?: SceneTypeInspirationMap;
+  };
+  flowSceneType?: string; // The scene type of this flow in the collection
+  collectionPrompt?: string; // Deprecated - use collectionSettings.userPrompt
   // Initial state
   initialState?: ConfigPanelState;
   // Actions
@@ -61,11 +72,13 @@ export interface UnifiedStudioConfigPanelProps {
   // Product badge click
   onProductBadgeClick?: (sceneType: string) => void;
   // Bubble click (opens modal)
-  onBubbleClick?: (sceneType: string, index: number, bubble: InspirationBubbleValue) => void;
+  onBubbleClick?: (sceneType: string, index: number, bubble: BubbleValue) => void;
   // Base image selection (single-flow mode)
   baseImages?: Array<{ id: string; url: string; thumbnailUrl?: string }>;
   selectedBaseImageId?: string;
   onBaseImageSelect?: (imageId: string) => void;
+  // State change callback (bridges inner context to outer page state)
+  onStateChange?: (state: ConfigPanelState) => void;
   // Style
   className?: string;
 }
@@ -98,6 +111,10 @@ function ConfigPanelContent({
   sceneTypes,
   selectedSceneType,
   onSceneTypeChange,
+  collectionSessionId,
+  collectionName,
+  collectionSettings,
+  flowSceneType,
   collectionPrompt,
   onSave,
   onGenerate,
@@ -110,6 +127,7 @@ function ConfigPanelContent({
   baseImages = [],
   selectedBaseImageId,
   onBaseImageSelect,
+  onStateChange,
   className,
 }: Omit<UnifiedStudioConfigPanelProps, 'initialState'>) {
   const {
@@ -118,7 +136,36 @@ function ConfigPanelContent({
     setUserPrompt,
     setApplyCollectionPrompt,
     setOutputSettings,
+    migrateBubbles,
+    markClean,
   } = useConfigPanelContext();
+
+  const [activeTab, setActiveTab] = useState<'image' | 'video'>('image');
+  const prevSelectedSceneType = useRef<string | undefined>(selectedSceneType);
+
+  // Migrate bubbles when scene type changes in single-flow mode
+  useEffect(() => {
+    if (mode === 'single-flow' && selectedSceneType !== prevSelectedSceneType.current) {
+      const prev = prevSelectedSceneType.current || '';
+      const next = selectedSceneType || '';
+
+      // If we're moving from empty to a real scene type, migrate the bubbles
+      if (prev === '' && next !== '') {
+        migrateBubbles(prev, next);
+      }
+
+      prevSelectedSceneType.current = selectedSceneType;
+    }
+  }, [mode, selectedSceneType, migrateBubbles]);
+
+  // Notify parent of state changes (use ref to avoid infinite re-render loop
+  // from inline callback creating new references each render)
+  const onStateChangeRef = useRef(onStateChange);
+  onStateChangeRef.current = onStateChange;
+
+  useEffect(() => {
+    onStateChangeRef.current?.(state);
+  }, [state]);
 
   // Determine which scene types to show based on mode
   const displaySceneTypes = useMemo(() => {
@@ -131,46 +178,88 @@ function ConfigPanelContent({
   // Whether to show product badges
   const showProductBadges = mode !== 'single-flow';
 
-  // Whether to show base image selector
-  const showBaseImageSelector = mode === 'single-flow';
+  // Whether to show product section (single-flow mode only)
+  const showProductSection = mode === 'single-flow';
 
-  // Whether to show collection prompt (read-only)
+  // Whether to show collection settings section (single-flow mode when flow belongs to collection)
+  const showCollectionSettings = mode === 'single-flow' && !!collectionSettings && !!collectionName;
+
+  // Whether to show collection prompt (read-only) - DEPRECATED, use showCollectionSettings
   const showCollectionPrompt = mode === 'single-flow' && !!collectionPrompt;
-
-  // Whether to show scene type selector dropdown
-  const showSceneTypeSelector = mode === 'single-flow' && sceneTypes.length > 1;
 
   return (
     <aside
-      className={cn('flex w-80 shrink-0 flex-col border-r border-border bg-card/30', className)}
+      className={cn('flex h-full w-80 shrink-0 flex-col border-r border-border bg-card/30', className)}
       data-testid={buildTestId('unified-config-panel')}
     >
-      {/* Header */}
+      {/* Header with Tabs */}
       <div
-        className="flex items-center justify-between border-b border-border p-3"
+        className="flex-none border-b border-border"
         data-testid={buildTestId('unified-config-panel', 'header')}
       >
-        <h2 className="text-sm font-semibold">Configuration</h2>
-        <button
-          onClick={() => isDirty && onSave?.()}
-          disabled={isSaving || !isDirty}
-          className={cn(
-            'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
-            isDirty
-              ? 'text-amber-500 hover:bg-amber-500/10'
-              : 'text-green-500 hover:bg-green-500/10'
-          )}
-          data-testid={buildTestId('unified-config-panel', 'save-indicator')}
-          title={isDirty ? 'Unsaved changes' : 'Saved'}
-        >
-          {isSaving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : isDirty ? (
-            <Save className="h-4 w-4" />
-          ) : (
-            <Check className="h-4 w-4" />
-          )}
-        </button>
+        <div className="flex items-center justify-between p-3">
+          <h2 className="text-sm font-semibold">Configuration</h2>
+          <button
+            onClick={async () => {
+              if (isDirty && onSave) {
+                try {
+                  await onSave();
+                  markClean(); // Reset dirty state after successful save
+                } catch (error) {
+                  // onSave failed, keep dirty state
+                  console.error('Save failed:', error);
+                }
+              }
+            }}
+            disabled={isSaving || !isDirty}
+            className={cn(
+              'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
+              isDirty
+                ? 'text-amber-500 hover:bg-amber-500/10'
+                : 'text-green-500 hover:bg-green-500/10'
+            )}
+            data-testid={buildTestId('unified-config-panel', 'save-indicator')}
+            title={isDirty ? 'Unsaved changes' : 'Saved'}
+          >
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isDirty ? (
+              <Save className="h-4 w-4" />
+            ) : (
+              <Check className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-t border-border">
+          <button
+            onClick={() => setActiveTab('image')}
+            className={cn(
+              'flex flex-1 items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors',
+              activeTab === 'image'
+                ? 'border-b-2 border-primary bg-primary/5 text-primary'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+            )}
+            data-testid={buildTestId('unified-config-panel', 'tab-image')}
+          >
+            <ImageIcon className="h-4 w-4" />
+            Image
+          </button>
+          <button
+            onClick={() => setActiveTab('video')}
+            className={cn(
+              'flex flex-1 items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors',
+              activeTab === 'video'
+                ? 'border-b-2 border-primary bg-primary/5 text-primary'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+            )}
+            data-testid={buildTestId('unified-config-panel', 'tab-video')}
+          >
+            <Video className="h-4 w-4" />
+            Video
+          </button>
+        </div>
       </div>
 
       {/* Scrollable Content */}
@@ -178,26 +267,35 @@ function ConfigPanelContent({
         className="flex-1 overflow-y-auto px-3 py-4"
         data-testid={buildTestId('unified-config-panel', 'content')}
       >
-        {/* Scene Type Selector (single-flow mode only) */}
-        {showSceneTypeSelector && (
-          <div className="mb-4" data-testid={buildTestId('unified-config-panel', 'scene-type-selector')}>
-            <p className="mb-1.5 text-xs text-muted-foreground">Scene Type</p>
-            <Select value={selectedSceneType || ''} onValueChange={(v) => onSceneTypeChange?.(v)}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Select scene type" />
-              </SelectTrigger>
-              <SelectContent>
-                {sceneTypes.map((st) => (
-                  <SelectItem key={st.sceneType} value={st.sceneType}>
-                    {st.sceneType}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Collection Settings Section (single-flow mode when flow belongs to collection) */}
+        {showCollectionSettings && collectionSessionId && (
+          <CollectionSettingsSection
+            collectionSessionId={collectionSessionId}
+            collectionName={collectionName!}
+            collectionPrompt={collectionSettings?.userPrompt}
+            generalInspiration={collectionSettings?.generalInspiration}
+            sceneTypeInspiration={collectionSettings?.sceneTypeInspiration}
+            flowSceneType={flowSceneType}
+            applyCollectionSettings={state.applyCollectionPrompt ?? false}
+            onToggleApply={setApplyCollectionPrompt}
+            className="mb-6"
+          />
         )}
 
-        {/* Inspire Section (Top) */}
+        {/* Product Section (single-flow mode only) */}
+        {showProductSection && baseImages.length > 0 && (
+          <ProductSection
+            baseImages={baseImages}
+            selectedBaseImageId={selectedBaseImageId}
+            onBaseImageSelect={onBaseImageSelect}
+            sceneTypes={sceneTypes}
+            selectedSceneType={selectedSceneType}
+            onSceneTypeChange={onSceneTypeChange}
+            className="mb-6"
+          />
+        )}
+
+        {/* Inspire Section */}
         <InspireSection
           sceneTypes={displaySceneTypes}
           activeSceneType={activeSceneType}
@@ -205,10 +303,12 @@ function ConfigPanelContent({
           onProductBadgeClick={onProductBadgeClick}
           onBubbleClick={onBubbleClick}
           showProductBadges={showProductBadges}
-          showBaseImageSelector={showBaseImageSelector}
-          baseImages={baseImages}
-          selectedBaseImageId={selectedBaseImageId}
-          onBaseImageSelect={onBaseImageSelect}
+          showBaseImageSelector={false}
+          baseImages={[]}
+          selectedBaseImageId=""
+          onBaseImageSelect={undefined}
+          isSingleFlowMode={mode === 'single-flow'}
+          selectedSceneType={selectedSceneType}
         />
 
         {/* Prompt Section (Bottom) */}
@@ -254,108 +354,7 @@ function ConfigPanelContent({
         </section>
 
         {/* Output Settings */}
-        <section className="mt-6" data-testid={buildTestId('unified-config-panel', 'output-settings')}>
-          <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Output
-          </h3>
-
-          <div className="flex flex-col gap-2">
-            {/* Variants Counter */}
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Variants</span>
-              <div className="flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1">
-                <button
-                  onClick={() =>
-                    setOutputSettings({
-                      variantsCount: Math.max(1, state.outputSettings.variantsCount - 1),
-                    })
-                  }
-                  disabled={state.outputSettings.variantsCount <= 1}
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                  data-testid={buildTestId('unified-config-panel', 'variants-decrease')}
-                >
-                  <Minus className="h-3.5 w-3.5" />
-                </button>
-                <span
-                  className="min-w-[20px] text-center text-sm font-medium"
-                  data-testid={buildTestId('unified-config-panel', 'variants-count')}
-                >
-                  {state.outputSettings.variantsCount}
-                </span>
-                <button
-                  onClick={() =>
-                    setOutputSettings({
-                      variantsCount: Math.min(4, state.outputSettings.variantsCount + 1),
-                    })
-                  }
-                  disabled={state.outputSettings.variantsCount >= 4}
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                  data-testid={buildTestId('unified-config-panel', 'variants-increase')}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Aspect Ratio Dropdown */}
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Aspect Ratio</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className="flex min-w-[100px] items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-sm hover:bg-accent"
-                    data-testid={buildTestId('unified-config-panel', 'aspect-ratio-trigger')}
-                  >
-                    <span className="font-medium">{state.outputSettings.aspectRatio}</span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[200px]">
-                  {ASPECT_RATIO_OPTIONS.map((opt) => (
-                    <DropdownMenuItem
-                      key={opt.value}
-                      onClick={() => setOutputSettings({ aspectRatio: opt.value })}
-                      className="flex items-center justify-between"
-                      data-testid={buildTestId('unified-config-panel', 'aspect-ratio', opt.value)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs">{opt.value}</span>
-                        <span className="text-sm">{opt.label}</span>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* Quality Dropdown */}
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Quality</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className="flex min-w-[100px] items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-sm hover:bg-accent"
-                    data-testid={buildTestId('unified-config-panel', 'quality-trigger')}
-                  >
-                    <span className="font-medium">{state.outputSettings.quality.toUpperCase()}</span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[200px]">
-                  {QUALITY_OPTIONS.map((opt) => (
-                    <DropdownMenuItem
-                      key={opt.value}
-                      onClick={() => setOutputSettings({ quality: opt.value })}
-                      className="flex items-center justify-between"
-                      data-testid={buildTestId('unified-config-panel', 'quality', opt.value)}
-                    >
-                      <span>{opt.label}</span>
-                      <span className="text-xs text-muted-foreground">{opt.description}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </section>
+        <OutputSettingsPanel />
       </div>
 
       {/* Footer - Generate Button */}

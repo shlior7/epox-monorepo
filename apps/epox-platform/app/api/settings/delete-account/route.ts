@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/services/auth';
+import { auth } from 'visualizer-auth/server';
 import { getDb } from 'visualizer-db';
 import {
   user,
@@ -56,7 +56,7 @@ export async function DELETE(request: NextRequest) {
     // Verify password before deletion
     const { compare } = await import('bcrypt');
     const accounts = await drizzle.select().from(account).where(eq(account.userId, userId));
-    const credentialAccount = accounts.find((acc) => acc.providerId === 'credential');
+    const credentialAccount = accounts.find((acc: { providerId: string; password?: string | null }) => acc.providerId === 'credential');
 
     if (!credentialAccount || !credentialAccount.password) {
       return NextResponse.json({ error: 'Password authentication not available' }, { status: 400 });
@@ -73,8 +73,8 @@ export async function DELETE(request: NextRequest) {
 
     const ownedClients = await Promise.all(
       members
-        .filter((m) => m.role === 'owner')
-        .map(async (m) => {
+        .filter((m: { role: string }) => m.role === 'owner')
+        .map(async (m: { clientId: string }) => {
           const clients = await drizzle.select().from(client).where(eq(client.id, m.clientId));
           return clients[0];
         })

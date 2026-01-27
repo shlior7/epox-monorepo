@@ -1,7 +1,19 @@
-import { and, asc, desc, eq, ilike, inArray, isNotNull, or, sql, type SQL } from 'drizzle-orm';
-import type { Product, ProductCreate, ProductImage, ProductSource, ProductUpdate, ProductWithImages } from 'visualizer-types';
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, or, sql, type SQL } from 'drizzle-orm';
+import type {
+  Product,
+  ProductCreate,
+  ProductImage,
+  ProductSource,
+  ProductUpdate,
+  ProductWithImages,
+  StoreProductView,
+  GeneratedAssetWithSync,
+  AssetSyncStatus,
+} from 'visualizer-types';
 import type { DrizzleClient } from '../client';
 import { product, productImage } from '../schema/products';
+import { generatedAsset, favoriteImage } from '../schema/generated-images';
+import { storeSyncLog } from '../schema/store-sync';
 import { updateWithVersion } from '../utils/optimistic-lock';
 import { BaseRepository } from './base';
 
@@ -97,6 +109,50 @@ export class ProductRepository extends BaseRepository<Product> {
       ...this.mapToEntity(row),
       images: row.images.map((image) => image as ProductImage),
     };
+  }
+
+  async listByIds(productIds: string[]): Promise<ProductWithImages[]> {
+    if (productIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.drizzle.query.product.findMany({
+      where: inArray(product.id, productIds),
+      with: { images: true },
+    });
+
+    return rows.map((row) => ({
+      ...this.mapToEntity(row),
+      images: row.images.map((image) => image as ProductImage),
+    }));
+  }
+
+  async findByStoreId(clientId: string, storeId: string): Promise<Product | null> {
+    const row = await this.drizzle.query.product.findFirst({
+      where: and(eq(product.clientId, clientId), eq(product.storeId, storeId)),
+    });
+
+    if (!row) {
+      return null;
+    }
+
+    return this.mapToEntity(row);
+  }
+
+  /**
+   * Find product by store connection ID and external store product ID.
+   * Uses the optimized index on (store_connection_id, store_id).
+   */
+  async findByStoreConnection(storeConnectionId: string, externalStoreId: string): Promise<Product | null> {
+    const row = await this.drizzle.query.product.findFirst({
+      where: and(eq(product.storeConnectionId, storeConnectionId), eq(product.storeId, externalStoreId)),
+    });
+
+    if (!row) {
+      return null;
+    }
+
+    return this.mapToEntity(row);
   }
 
   async update(id: string, data: Partial<ProductUpdate>, expectedVersion?: number): Promise<Product> {
@@ -251,5 +307,207 @@ export class ProductRepository extends BaseRepository<Product> {
       .where(eq(product.clientId, clientId));
 
     return result.count;
+  }
+
+  // ===== LIST FOR STORE PAGE =====
+
+  /**
+   * List ALL products with their base images and generated assets for the Store page.
+   * Returns products with:
+   * - baseImages: The product's original images (from product_image table)
+   * - syncedAssets: Generated assets that have been successfully synced to store
+   * - unsyncedAssets: Generated assets not yet synced (pending, failed, or not_synced)
+   *
+   * Products are ordered by: mapped products first, then by name
+   */
+  async listForStorePage(clientId: string, storeConnectionId: string): Promise<StoreProductView[]> {
+    // Fetch all products with their images
+    const productsWithImages = await this.drizzle.query.product.findMany({
+      where: eq(product.clientId, clientId),
+      with: {
+        images: {
+          orderBy: asc(productImage.sortOrder),
+        },
+      },
+      orderBy: [
+        // Mapped products first (those with storeId)
+        sql`CASE WHEN ${product.storeId} IS NOT NULL THEN 0 ELSE 1 END`,
+        asc(product.name),
+      ],
+    });
+
+    if (productsWithImages.length === 0) {
+      return [];
+    }
+
+    const productIds = productsWithImages.map((p) => p.id);
+
+    // Fetch all generated assets for these products with their sync status
+    const assetsResult = await this.drizzle.execute(sql`
+      WITH asset_sync_status AS (
+        SELECT DISTINCT ON (ga.id)
+          ga.*,
+          ssl.status as sync_status,
+          ssl.external_image_url,
+          ssl.error_message as sync_error,
+          ssl.completed_at as last_synced_at,
+          CASE WHEN fi.id IS NOT NULL THEN true ELSE false END as is_favorite
+        FROM ${generatedAsset} ga
+        -- Get latest sync log for this asset
+        LEFT JOIN LATERAL (
+          SELECT *
+          FROM ${storeSyncLog}
+          WHERE generated_asset_id = ga.id
+            AND store_connection_id = ${storeConnectionId}
+          ORDER BY started_at DESC
+          LIMIT 1
+        ) ssl ON true
+        -- Check if favorited
+        LEFT JOIN ${favoriteImage} fi ON fi.generated_asset_id = ga.id AND fi.client_id = ${clientId}
+        WHERE ga.client_id = ${clientId}
+          AND ga.deleted_at IS NULL
+          AND ga.status = 'completed'
+      )
+      SELECT
+        id,
+        client_id as "clientId",
+        generation_flow_id as "generationFlowId",
+        chat_session_id as "chatSessionId",
+        asset_url as "assetUrl",
+        asset_type as "assetType",
+        status,
+        prompt,
+        settings,
+        product_ids as "productIds",
+        job_id as "jobId",
+        error,
+        asset_analysis as "assetAnalysis",
+        analysis_version as "analysisVersion",
+        approval_status as "approvalStatus",
+        approved_at as "approvedAt",
+        approved_by as "approvedBy",
+        completed_at as "completedAt",
+        pinned,
+        created_at as "createdAt",
+        updated_at as "updatedAt",
+        deleted_at as "deletedAt",
+        COALESCE(sync_status, 'not_synced') as "syncStatus",
+        last_synced_at as "lastSyncedAt",
+        external_image_url as "externalImageUrl",
+        external_image_id as "externalImageId",
+        sync_error as "syncError",
+        is_favorite as "isFavorite"
+      FROM asset_sync_status
+      ORDER BY
+        CASE WHEN sync_status = 'success' THEN 0 ELSE 1 END,
+        CASE WHEN is_favorite = true THEN 0 ELSE 1 END,
+        created_at DESC
+    `);
+
+    // Type the raw result
+    type RawAssetRow = {
+      id: string;
+      clientId: string;
+      generationFlowId: string | null;
+      chatSessionId: string | null;
+      assetUrl: string;
+      assetType: string;
+      status: string;
+      prompt: string | null;
+      settings: unknown;
+      productIds: string[] | null;
+      jobId: string | null;
+      error: string | null;
+      assetAnalysis: unknown;
+      analysisVersion: string | null;
+      approvalStatus: string;
+      approvedAt: string | null;
+      approvedBy: string | null;
+      completedAt: string | null;
+      pinned: boolean;
+      createdAt: string;
+      updatedAt: string;
+      deletedAt: string | null;
+      syncStatus: string;
+      lastSyncedAt: string | null;
+      externalImageUrl: string | null;
+      externalImageId: string | null;
+      syncError: string | null;
+      isFavorite: boolean;
+    };
+
+    const rawAssets = assetsResult.rows as RawAssetRow[];
+
+    // Create a map of productId -> assets
+    const assetsByProductId = new Map<string, GeneratedAssetWithSync[]>();
+    for (const asset of rawAssets) {
+      if (!asset.productIds) continue;
+      for (const productId of asset.productIds) {
+        if (!assetsByProductId.has(productId)) {
+          assetsByProductId.set(productId, []);
+        }
+        assetsByProductId.get(productId)!.push({
+          id: asset.id,
+          clientId: asset.clientId,
+          generationFlowId: asset.generationFlowId,
+          chatSessionId: asset.chatSessionId,
+          assetUrl: asset.assetUrl,
+          assetType: asset.assetType as 'image' | 'video',
+          status: asset.status as 'pending' | 'generating' | 'completed' | 'error',
+          prompt: asset.prompt,
+          settings: asset.settings as any,
+          productIds: asset.productIds,
+          jobId: asset.jobId,
+          error: asset.error,
+          assetAnalysis: asset.assetAnalysis as any,
+          analysisVersion: asset.analysisVersion,
+          approvalStatus: asset.approvalStatus as 'pending' | 'approved' | 'rejected',
+          approvedAt: asset.approvedAt ? new Date(asset.approvedAt) : null,
+          approvedBy: asset.approvedBy,
+          completedAt: asset.completedAt ? new Date(asset.completedAt) : null,
+          pinned: asset.pinned,
+          createdAt: new Date(asset.createdAt),
+          updatedAt: new Date(asset.updatedAt),
+          deletedAt: asset.deletedAt ? new Date(asset.deletedAt) : null,
+          syncStatus: (asset.syncStatus === 'success' ? 'synced' : asset.syncStatus) as AssetSyncStatus,
+          lastSyncedAt: asset.lastSyncedAt ? new Date(asset.lastSyncedAt) : undefined,
+          externalImageUrl: asset.externalImageUrl ?? undefined,
+          syncError: asset.syncError ?? undefined,
+          isFavorite: asset.isFavorite,
+          externalImageId: asset.externalImageId ?? null,
+        });
+      }
+    }
+
+    // Build the StoreProductView array
+    return productsWithImages.map((p) => {
+      const assets = assetsByProductId.get(p.id) ?? [];
+      const syncedAssets = assets.filter((a) => a.syncStatus === 'synced');
+      const unsyncedAssets = assets.filter((a) => a.syncStatus !== 'synced');
+
+      return {
+        product: this.mapToEntity(p),
+        baseImages: p.images.map((img) => ({
+          id: img.id,
+          productId: img.productId,
+          imageUrl: img.imageUrl,
+          previewUrl: img.previewUrl,
+          sortOrder: img.sortOrder,
+          isPrimary: img.isPrimary,
+          syncStatus: img.syncStatus ?? 'local',
+          originalStoreUrl: img.originalStoreUrl ?? null,
+          externalImageId: img.externalImageId ?? null,
+          version: img.version,
+          createdAt: img.createdAt,
+          updatedAt: img.updatedAt,
+        })),
+        isMappedToStore: p.storeId !== null,
+        syncedAssets,
+        unsyncedAssets,
+        syncedCount: syncedAssets.length,
+        unsyncedCount: unsyncedAssets.length,
+        totalAssetCount: assets.length,
+      };
+    });
   }
 }

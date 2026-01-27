@@ -5,3 +5,4 @@
 export { StyleExplorerModal, type StyleExplorerModalProps } from './StyleExplorerModal';
 export { InspirationPickerModal, type InspirationPickerModalProps } from './InspirationPickerModal';
 export { ColorPaletteModal, type ColorPaletteModalProps } from './ColorPaletteModal';
+export { ImageEditorModal, type ImageEditorModalProps } from './ImageEditorModal';

@@ -2,13 +2,13 @@
  * Gemini-powered API route tests
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { NextRequest } from 'next/server';
 import { POST as analyzeImage } from '@/app/api/analyze-image/route';
-import { POST as editImage } from '@/app/api/edit-image/route';
+import { POST as editImage, EditImageApiRequest } from '@/app/api/edit-image/route';
 import { POST as removeBackground } from '@/app/api/remove-background/route';
 import { POST as upscaleImage } from '@/app/api/upscale-image/route';
 import { POST as visionScanner } from '@/app/api/vision-scanner/route';
+import { NextRequest } from 'next/server';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGemini = {
   analyzeComponents: vi.fn(),
@@ -26,9 +26,14 @@ vi.mock('visualizer-ai', () => {
 
   return {
     getGeminiService: vi.fn(() => mockGemini),
+    enqueueImageEdit: vi.fn(),
     RateLimitError,
   };
 });
+
+// Import after mock to get the mocked version
+import { enqueueImageEdit } from 'visualizer-ai';
+const mockEnqueueImageEdit = vi.mocked(enqueueImageEdit);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -76,6 +81,11 @@ beforeEach(() => {
       shadowQuality: 'soft shadows',
       colorTemperature: 'warm',
     },
+  });
+
+  mockEnqueueImageEdit.mockResolvedValue({
+    jobId: 'job-123',
+    expectedImageId: 'image-456',
   });
 });
 
@@ -148,12 +158,14 @@ describe('Edit Image API - POST /api/edit-image', () => {
   });
 
   it('should return edited image data', async () => {
+    const body: EditImageApiRequest = {
+      baseImageDataUrl: 'data:image/png;base64,abc',
+      prompt: 'Make it brighter',
+      editSessionId: 'session-123',
+    };
     const request = new NextRequest('http://localhost:3000/api/edit-image', {
       method: 'POST',
-      body: JSON.stringify({
-        baseImageDataUrl: 'data:image/png;base64,abc',
-        prompt: 'Make it brighter',
-      }),
+      body: JSON.stringify(body),
     });
 
     const response = await editImage(request);
@@ -161,25 +173,30 @@ describe('Edit Image API - POST /api/edit-image', () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.editedImageDataUrl).toContain('data:image');
+    expect(data.jobId).toBe('job-123');
+    expect(data.status).toBe('queued');
+    expect(data.expectedImageId).toBe('image-456');
+    expect(data.message).toContain('queued');
   });
 
   it('should handle edit failures', async () => {
-    mockGemini.editImage.mockRejectedValueOnce(new Error('Edit failed'));
+    mockEnqueueImageEdit.mockRejectedValueOnce(new Error('Edit failed'));
 
+    const body: EditImageApiRequest = {
+      baseImageDataUrl: 'data:image/png;base64,abc',
+      prompt: 'Make it brighter',
+      editSessionId: 'session-123',
+    };
     const request = new NextRequest('http://localhost:3000/api/edit-image', {
       method: 'POST',
-      body: JSON.stringify({
-        baseImageDataUrl: 'data:image/png;base64,abc',
-        prompt: 'Make it brighter',
-      }),
+      body: JSON.stringify(body),
     });
 
     const response = await editImage(request);
 
     expect(response.status).toBe(500);
     const data = await response.json();
-    expect(data.error).toBe('Internal server error');
+    expect(data.error).toContain('Failed to queue');
   });
 });
 
@@ -196,6 +213,10 @@ describe('Remove Background API - POST /api/remove-background', () => {
   });
 
   it('should request shadow preservation when keepShadow is true', async () => {
+    mockGemini.editImage.mockResolvedValueOnce({
+      editedImageDataUrl: 'data:image/png;base64,edited',
+    });
+
     const request = new NextRequest('http://localhost:3000/api/remove-background', {
       method: 'POST',
       body: JSON.stringify({ imageDataUrl: 'data:image/png;base64,abc', keepShadow: true }),
@@ -204,6 +225,9 @@ describe('Remove Background API - POST /api/remove-background', () => {
     const response = await removeBackground(request);
 
     expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.success).toBe(true);
+    expect(data.imageDataUrl).toContain('data:image');
     expect(mockGemini.editImage).toHaveBeenCalledWith(
       expect.objectContaining({
         prompt: expect.stringContaining('Keep natural shadows'),

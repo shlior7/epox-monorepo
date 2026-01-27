@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { apiClient, type UpdateStudioSettingsPayload } from '@/lib/api-client';
 import { useConfigPanelContext, type ConfigPanelState } from '../config-panel';
-import type { FlowGenerationSettings, SceneTypeBubbleMap, SceneTypeInspirationMap } from 'visualizer-types';
+import type { FlowGenerationSettings, SceneTypeInspirationMap } from 'visualizer-types';
 
 // ===== TYPES =====
 
@@ -45,7 +45,7 @@ export interface UseConfigPanelSettingsResult {
 
 /**
  * Hook to manage persisting ConfigPanelContext state to the server.
- * Bridges the new unified config panel with existing API endpoints.
+ * Bridges the unified config panel with existing API endpoints.
  */
 export function useConfigPanelSettings({
   mode,
@@ -58,24 +58,25 @@ export function useConfigPanelSettings({
   // Convert ConfigPanelState to API payload
   const toApiPayload = useCallback((): UpdateStudioSettingsPayload => {
     return {
-      inspirationImages: state.inspirationImages,
-      sceneTypeInspirations: convertBubblesToApiFormat(state.sceneTypeBubbles),
+      generalInspiration: state.generalInspiration,
+      sceneTypeInspiration: state.sceneTypeInspiration,
+      useSceneTypeInspiration: state.useSceneTypeInspiration,
       userPrompt: state.userPrompt,
       aspectRatio: state.outputSettings.aspectRatio,
       imageQuality: state.outputSettings.quality,
-      variantsCount: state.outputSettings.variantsCount,
+      variantsPerProduct: state.outputSettings.variantsCount,
     };
   }, [state]);
 
   // Convert ConfigPanelState to FlowGenerationSettings
   const toFlowSettings = useCallback((): FlowGenerationSettings => {
     return {
-      inspirationImages: state.inspirationImages,
-      sceneTypeInspirations: convertBubblesToInspirations(state.sceneTypeBubbles),
+      generalInspiration: state.generalInspiration,
+      sceneTypeInspiration: state.sceneTypeInspiration,
       userPrompt: state.userPrompt,
       aspectRatio: state.outputSettings.aspectRatio,
       imageQuality: state.outputSettings.quality,
-      variantsCount: state.outputSettings.variantsCount,
+      variantsPerProduct: state.outputSettings.variantsCount,
     };
   }, [state]);
 
@@ -107,15 +108,16 @@ export function useConfigPanelSettings({
   const initializeFromSettings = useCallback(
     (settings: FlowGenerationSettings) => {
       const newState: ConfigPanelState = {
-        sceneTypeBubbles: convertInspirationsTooBubbles(settings.sceneTypeInspirations),
+        generalInspiration: settings.generalInspiration || [],
+        sceneTypeInspiration: settings.sceneTypeInspiration || {},
+        useSceneTypeInspiration: true,
         userPrompt: settings.userPrompt || '',
         applyCollectionPrompt: true,
         outputSettings: {
           aspectRatio: settings.aspectRatio || '1:1',
           quality: settings.imageQuality || '2k',
-          variantsCount: settings.variantsCount || 1,
+          variantsCount: settings.variantsPerProduct || 1,
         },
-        inspirationImages: settings.inspirationImages || [],
       };
       resetState(newState);
     },
@@ -128,117 +130,4 @@ export function useConfigPanelSettings({
     toFlowSettings,
     initializeFromSettings,
   };
-}
-
-// ===== HELPER FUNCTIONS =====
-
-/**
- * Convert SceneTypeBubbleMap to API format (with Record<string, unknown> for json).
- */
-function convertBubblesToApiFormat(
-  bubbles: SceneTypeBubbleMap
-): UpdateStudioSettingsPayload['sceneTypeInspirations'] {
-  if (Object.keys(bubbles).length === 0) {
-    return undefined;
-  }
-
-  const result: NonNullable<UpdateStudioSettingsPayload['sceneTypeInspirations']> = {};
-
-  for (const [sceneType, config] of Object.entries(bubbles)) {
-    const images = config.bubbles
-      .filter((b): b is typeof b & { image: NonNullable<typeof b.image> } =>
-        b.type === 'inspiration' && b.image !== undefined
-      )
-      .map((b) => b.image);
-
-    if (images.length > 0) {
-      result[sceneType] = {
-        inspirationImages: images,
-        mergedAnalysis: {
-          json: {
-            styleSummary: '',
-            detectedSceneType: sceneType,
-            sceneInventory: [],
-            lightingPhysics: {
-              sourceDirection: '',
-              shadowQuality: '',
-              colorTemperature: '',
-            },
-          },
-          promptText: '',
-        },
-      };
-    }
-  }
-
-  return Object.keys(result).length > 0 ? result : undefined;
-}
-
-/**
- * Convert SceneTypeBubbleMap to the existing SceneTypeInspirationMap format.
- * Note: This is bridge code - the mergedAnalysis fields are placeholders since
- * the new bubble system doesn't track per-image analysis like the old system.
- */
-function convertBubblesToInspirations(
-  bubbles: SceneTypeBubbleMap
-): SceneTypeInspirationMap | undefined {
-  if (Object.keys(bubbles).length === 0) {
-    return undefined;
-  }
-
-  const result: SceneTypeInspirationMap = {};
-
-  for (const [sceneType, config] of Object.entries(bubbles)) {
-    const images = config.bubbles
-      .filter((b): b is typeof b & { image: NonNullable<typeof b.image> } =>
-        b.type === 'inspiration' && b.image !== undefined
-      )
-      .map((b) => b.image);
-
-    if (images.length > 0) {
-      result[sceneType] = {
-        inspirationImages: images,
-        // Placeholder analysis - the actual analysis will be regenerated server-side
-        mergedAnalysis: {
-          json: {
-            styleSummary: '',
-            detectedSceneType: sceneType,
-            sceneInventory: [],
-            lightingPhysics: {
-              sourceDirection: '',
-              shadowQuality: '',
-              colorTemperature: '',
-            },
-          } as any,
-          promptText: '',
-        },
-      };
-    }
-  }
-
-  return Object.keys(result).length > 0 ? result : undefined;
-}
-
-/**
- * Convert existing SceneTypeInspirationMap to SceneTypeBubbleMap
- */
-function convertInspirationsTooBubbles(
-  inspirations?: Record<string, { inspirationImages: any[]; mergedAnalysis: any }>
-): SceneTypeBubbleMap {
-  if (!inspirations) {
-    return {};
-  }
-
-  const result: SceneTypeBubbleMap = {};
-
-  for (const [sceneType, data] of Object.entries(inspirations)) {
-    result[sceneType] = {
-      bubbles: data.inspirationImages.map((img) => ({
-        type: 'inspiration' as const,
-        image: img,
-      })),
-    };
-  }
-
-  return result;
 }

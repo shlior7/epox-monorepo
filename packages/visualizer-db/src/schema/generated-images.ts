@@ -59,6 +59,10 @@ export const generatedAsset = pgTable(
     approvedAt: timestamp('approved_at', { mode: 'date' }),
     approvedBy: text('approved_by').references(() => user.id, { onDelete: 'set null' }),
 
+    // Store sync tracking (for bidirectional sync)
+    externalImageId: text('external_image_id'), // Image ID in the store after sync
+    syncedAt: timestamp('synced_at', { mode: 'date' }), // When asset was synced to store
+
     // User actions
     pinned: boolean('pinned').notNull().default(false),
 
@@ -78,6 +82,7 @@ export const generatedAsset = pgTable(
     index('generated_asset_approval_status_idx').on(table.clientId, table.approvalStatus),
     index('generated_asset_deleted_at_idx').on(table.deletedAt),
     index('generated_asset_pinned_idx').on(table.clientId, table.pinned),
+    index('generated_asset_external_image_id_idx').on(table.externalImageId),
   ]
 );
 

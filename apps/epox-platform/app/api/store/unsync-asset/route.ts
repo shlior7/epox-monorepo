@@ -48,7 +48,10 @@ export const POST = withSecurity(async (request, context) => {
     }
 
     if (!latestSync.externalImageUrl) {
-      return NextResponse.json({ error: 'No external image URL found in sync log' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'No external image URL found in sync log' },
+        { status: 400 }
+      );
     }
 
     // Extract image ID from external image URL or use latestSync data
@@ -59,7 +62,10 @@ export const POST = withSecurity(async (request, context) => {
     const product = await db.products.getById(productId);
 
     if (!product || !product.storeId) {
-      return NextResponse.json({ error: 'Product not found or not mapped to store' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Product not found or not mapped to store' },
+        { status: 404 }
+      );
     }
 
     // Create sync log entry for deletion
@@ -71,18 +77,49 @@ export const POST = withSecurity(async (request, context) => {
     });
 
     try {
-      // Note: This implementation requires the external image ID to be stored
-      // For WooCommerce, we need to parse it from the URL or store it in the sync log
-      // For now, we'll throw an error indicating this needs to be implemented
-      throw new Error(
-        'Image deletion requires external image ID - not yet implemented in sync log schema'
+      // Remove from product base images if it exists
+      const r2KeyMatch = asset.assetUrl.match(/\/([^/]+\.(jpg|jpeg|png|webp|gif))$/i);
+      const imageUrl = r2KeyMatch ? r2KeyMatch[1] : asset.assetUrl;
+
+      const existingImages = await db.productImages.list(productId);
+      const imageToRemove = existingImages.find((img) =>
+        img.imageUrl === imageUrl ||
+        (asset.externalImageId && img.externalImageId === asset.externalImageId)
       );
 
-      // TODO: Once externalImageId is stored in sync log:
-      // await storeService.deleteProductImage(clientId, product.storeId, externalImageId);
-      // await db.storeSyncLogs.updateStatus(syncLog.id, 'success');
+      if (imageToRemove) {
+        await db.productImages.delete(imageToRemove.id);
+        console.log(`✅ Removed asset from product ${productId} base images`);
+      }
 
-      // return NextResponse.json({ success: true });
+      // Clear external image ID from asset
+      await db.generatedAssets.update(assetId, {
+        externalImageId: null,
+        syncedAt: null,
+      });
+
+      // Try to delete from store if we have the external image ID
+      if (asset.externalImageId) {
+        try {
+          await storeService.deleteProductImage(clientId, product.storeId, asset.externalImageId);
+          await db.storeSyncLogs.updateStatus(syncLog.id, 'success');
+          console.log(`✅ Deleted image from store with external ID: ${asset.externalImageId}`);
+        } catch (storeDeleteError: any) {
+          // Log the failure but still return success since we removed from base images
+          await db.storeSyncLogs.updateStatus(syncLog.id, 'failed', {
+            errorMessage: storeDeleteError.message || 'Failed to delete from store',
+          });
+          console.warn(`⚠️ Failed to delete from store but removed from base images:`, storeDeleteError.message);
+        }
+      } else {
+        // No external ID - just mark as success since we removed from base images
+        await db.storeSyncLogs.updateStatus(syncLog.id, 'success', {
+          errorMessage: 'No external image ID - only removed from base images',
+        });
+        console.log(`✅ Removed from base images (no external ID to delete from store)`);
+      }
+
+      return NextResponse.json({ success: true });
     } catch (deleteError: any) {
       // Update sync log with failure
       await db.storeSyncLogs.updateStatus(syncLog.id, 'failed', {
@@ -90,7 +127,10 @@ export const POST = withSecurity(async (request, context) => {
       });
 
       console.error('❌ Store unsync failed:', deleteError);
-      return NextResponse.json({ error: deleteError.message || 'Failed to unsync asset from store' }, { status: 500 });
+      return NextResponse.json(
+        { error: deleteError.message || 'Failed to unsync asset from store' },
+        { status: 500 }
+      );
     }
   } catch (error: any) {
     console.error('❌ Failed to unsync asset:', error);

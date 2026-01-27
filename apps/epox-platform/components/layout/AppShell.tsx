@@ -16,7 +16,11 @@ interface AppShellProps {
 
 function AppShellContent({ children, className, testId }: AppShellProps) {
   const { isOpen, closeModal } = useModal();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const pathname = usePathname();
+
+  // Collapse sidebar by default on studio pages
+  const isStudioPage = pathname?.startsWith('/studio');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(isStudioPage ?? false);
 
   return (
     <div className="relative min-h-screen bg-background" data-testid={testId}>

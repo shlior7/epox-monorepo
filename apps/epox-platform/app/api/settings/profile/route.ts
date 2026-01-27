@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/services/auth';
+import { auth } from 'visualizer-auth/server';
 import { db } from '@/lib/services/db';
 
 export async function PATCH(request: NextRequest) {

@@ -15,7 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import type { InspirationBubbleValue, InspirationImage } from 'visualizer-types';
+import type { ReferenceBubbleValue, InspirationImage } from 'visualizer-types';
 
 // ===== TABS =====
 
@@ -26,8 +26,8 @@ type PickerTab = 'upload' | 'library' | 'unsplash';
 export interface InspirationPickerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (value: InspirationBubbleValue) => void;
-  currentValue?: InspirationBubbleValue;
+  onSelect: (value: ReferenceBubbleValue) => void;
+  currentValue?: ReferenceBubbleValue;
   onUpload?: (file: File) => Promise<string>; // Returns uploaded URL
 }
 
@@ -84,8 +84,8 @@ export function InspirationPickerModal({
     }
 
     if (image) {
-      const value: InspirationBubbleValue = {
-        type: 'inspiration',
+      const value: ReferenceBubbleValue = {
+        type: 'reference',
         image,
       };
       onSelect(value);

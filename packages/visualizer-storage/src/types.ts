@@ -34,6 +34,9 @@ export interface StorageFacade {
     inspirationImage: (clientId: string, sessionId: string, imageId: string, extension?: string) => string;
     userPhoto: (userId: string, extension?: string) => string;
     downloadZip: (clientId: string, jobId: string) => string;
+    editSessionBase: (clientId: string, sessionId: string) => string;
+    editSessionRevision: (clientId: string, sessionId: string, revisionId: string) => string;
+    editSessionPrefix: (clientId: string, sessionId: string) => string;
   };
   getPublicUrl: (key: string) => string;
 }

@@ -35,8 +35,6 @@ import { formatAspectRatioDisplay } from 'visualizer-types';
 
 export interface AssetConfiguration {
   sceneType?: string;
-  stylePreset?: string;
-  lightingPreset?: string;
   aspectRatio?: string;
   quality?: string;
   prompt?: string;
@@ -181,7 +179,6 @@ export function ConfigBadges({ configuration, maxVisible = 2, testId }: ConfigBa
 
   const badges = [
     configuration.sceneType,
-    configuration.stylePreset,
     configuration.quality ? configuration.quality.toUpperCase() : null,
   ].filter(Boolean) as string[];
 
@@ -216,8 +213,6 @@ export function ConfigBadges({ configuration, maxVisible = 2, testId }: ConfigBa
             </TooltipTrigger>
             <TooltipContent side="bottom">
               <div className="space-y-1 text-xs">
-                {configuration.stylePreset && <p>Style: {configuration.stylePreset}</p>}
-                {configuration.lightingPreset && <p>Lighting: {configuration.lightingPreset}</p>}
                 {configuration.aspectRatio && <p>Aspect: {configuration.aspectRatio}</p>}
               </div>
             </TooltipContent>

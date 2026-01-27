@@ -7,6 +7,7 @@ import type { DatabaseFacade, StoreConnectionInfo, StoreType } from 'visualizer-
 import { providers, type AuthParams, type AuthState, type FetchOptions, type ProviderCredentials, type ProviderType } from '../providers';
 import { encryptCredentials, decryptCredentials } from './credentials-crypto';
 import type { StoreCredentialsPayload } from '../types/credentials';
+import { ImageRequest } from '../types/images';
 
 const AUTH_STATE_EXPIRY_MS = 15 * 60 * 1000;
 
@@ -90,9 +91,9 @@ export class StoreService {
     return creds ? providers.require(creds.provider).testConnection(creds.credentials) : false;
   }
 
-  async updateProductImages(clientId: string, productId: string | number, imageUrls: string[]) {
+  async updateProductImages(clientId: string, productId: string | number, imagesData: ImageRequest[]) {
     const creds = await this.requireCredentials(clientId);
-    return providers.require(creds.provider).updateProductImages(creds.credentials, productId, imageUrls);
+    return providers.require(creds.provider).updateProductImages(creds.credentials, productId, imagesData);
   }
 
   async deleteProductImage(clientId: string, productId: string | number, imageId: string | number) {

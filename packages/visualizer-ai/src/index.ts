@@ -69,10 +69,6 @@ export {
 // Gemini Service
 export { GeminiService, getGeminiService } from './gemini-service';
 
-// Claude Service
-export { ClaudeService, getClaudeService, resetClaudeService } from './claude-service';
-export type { ClaudeTaskRequest, ClaudeTaskResponse } from './claude-service';
-
 // Logging
 export { createLogger, defaultLogger, initSentry, Logger } from './logger';
 export type { LogContext, LogLevel } from './logger';
@@ -94,7 +90,7 @@ export type {
 
 // Generation Queue Facade
 export { enqueueImageGeneration, enqueueVideoGeneration, enqueueImageEdit, getJobStatus, getJobsByFlow } from './generation-queue';
-export type { EnqueueImageResult, EnqueueVideoResult, JobStatusResult } from './generation-queue';
+export type { EnqueueImageResult, EnqueueVideoResult, EnqueueImageEditResult, JobStatusResult } from './generation-queue';
 export type {
   ImageGenerationPayload,
   ImageEditPayload,

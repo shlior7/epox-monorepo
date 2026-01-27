@@ -9,7 +9,6 @@ import { getStoreService } from '@/lib/services/erp';
 
 const APP_NAME = process.env.WOOCOMMERCE_APP_NAME ?? 'Epox Platform';
 
-
 // Force dynamic rendering since security middleware reads headers
 export const dynamic = 'force-dynamic';
 export const POST = withSecurity(async (request, context) => {
@@ -33,7 +32,7 @@ export const POST = withSecurity(async (request, context) => {
       storeUrl,
       appName: APP_NAME,
       callbackUrl: `${baseUrl}/api/store-connection/woocommerce/callback`,
-      returnUrl: returnUrl ?? `${baseUrl}/settings/store`,
+      returnUrl: baseUrl ?? `${baseUrl}/settings/store`,
     });
 
     return NextResponse.json(result);
@@ -48,6 +47,7 @@ function getBaseUrl(request: NextRequest): string {
     return process.env.NEXT_PUBLIC_APP_URL;
   }
   const host = request.headers.get('host');
-  const protocol = request.headers.get('x-forwarded-proto') ?? 'https';
+  const protocol =
+    request.headers.get('x-forwarded-proto') ?? (host?.includes('localhost') ? 'http' : 'https');
   return host ? `${protocol}://${host}` : 'http://localhost:3000';
 }

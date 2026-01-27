@@ -7,6 +7,8 @@ import {
   type ImageGenerationPayload,
   type ImageEditPayload,
   type VideoGenerationPayload,
+  type SyncProductPayload,
+  type SyncAllProductsPayload,
   type JobResult,
 } from '../schema/jobs';
 import { BaseRepository } from './base';
@@ -20,7 +22,7 @@ export interface GenerationJob {
   clientId: string;
   flowId: string | null;
   type: JobType;
-  payload: ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload;
+  payload: ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload | SyncProductPayload | SyncAllProductsPayload;
   status: JobStatus;
   progress: number;
   result: JobResult | null;
@@ -40,7 +42,7 @@ export interface GenerationJobCreate {
   clientId: string;
   flowId?: string;
   type: JobType;
-  payload: ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload;
+  payload: ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload | SyncProductPayload | SyncAllProductsPayload;
   priority?: number;
   maxAttempts?: number;
 }
@@ -49,7 +51,7 @@ export interface GenerationJobUpdate {
   status?: JobStatus;
   progress?: number;
   result?: JobResult;
-  payload?: ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload;
+  payload?: ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload | SyncProductPayload | SyncAllProductsPayload;
   error?: string | null;
   scheduledFor?: Date;
   lockedBy?: string | null;
@@ -77,7 +79,7 @@ export class GenerationJobRepository extends BaseRepository<GenerationJob> {
       clientId: row.client_id as string,
       flowId: row.flow_id as string | null,
       type: row.type as JobType,
-      payload: row.payload as ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload,
+      payload: row.payload as ImageGenerationPayload | ImageEditPayload | VideoGenerationPayload | SyncProductPayload | SyncAllProductsPayload,
       status: row.status as JobStatus,
       progress: row.progress as number,
       result: row.result as JobResult | null,

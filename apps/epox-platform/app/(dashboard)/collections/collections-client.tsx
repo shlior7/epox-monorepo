@@ -24,6 +24,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/spinner';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { CollectionThumbnailGrid } from '@/components/collections/CollectionThumbnailGrid';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -160,7 +161,10 @@ export function CollectionsClient() {
               <SelectItem value="draft" testId={buildTestId('collections-status', 'draft')}>
                 Draft
               </SelectItem>
-              <SelectItem value="generating" testId={buildTestId('collections-status', 'generating')}>
+              <SelectItem
+                value="generating"
+                testId={buildTestId('collections-status', 'generating')}
+              >
                 Generating
               </SelectItem>
               <SelectItem value="completed" testId={buildTestId('collections-status', 'completed')}>
@@ -172,18 +176,37 @@ export function CollectionsClient() {
 
         {/* Collections Grid */}
         {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="collections-loading">
+          <div
+            className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+            data-testid="collections-loading"
+          >
             {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="p-6" testId={buildTestId('collections-loading', `item-${i}`)}>
-                <Skeleton className="mb-4 h-32 w-full rounded-lg" testId={buildTestId('collections-loading', `item-${i}`, 'image')} />
-                <Skeleton className="mb-2 h-5 w-3/4" testId={buildTestId('collections-loading', `item-${i}`, 'title')} />
-                <Skeleton className="h-4 w-1/2" testId={buildTestId('collections-loading', `item-${i}`, 'meta')} />
+              <Card
+                key={i}
+                className="p-6"
+                testId={buildTestId('collections-loading', `item-${i}`)}
+              >
+                <Skeleton
+                  className="mb-4 h-32 w-full rounded-lg"
+                  testId={buildTestId('collections-loading', `item-${i}`, 'image')}
+                />
+                <Skeleton
+                  className="mb-2 h-5 w-3/4"
+                  testId={buildTestId('collections-loading', `item-${i}`, 'title')}
+                />
+                <Skeleton
+                  className="h-4 w-1/2"
+                  testId={buildTestId('collections-loading', `item-${i}`, 'meta')}
+                />
               </Card>
             ))}
           </div>
         ) : error ? (
           <div className="py-12 text-center" data-testid="collections-error">
-            <p className="mb-4 text-destructive" data-testid={buildTestId('collections-error', 'message')}>
+            <p
+              className="mb-4 text-destructive"
+              data-testid={buildTestId('collections-error', 'message')}
+            >
               {error instanceof Error ? error.message : 'Failed to load collections'}
             </p>
             <Button
@@ -196,7 +219,10 @@ export function CollectionsClient() {
           </div>
         ) : (
           <>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-testid="collections-grid">
+            <div
+              className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+              data-testid="collections-grid"
+            >
               {/* Create New Card */}
               <Link href="/collections/new">
                 <Card
@@ -227,7 +253,10 @@ export function CollectionsClient() {
 
             {filteredCollections.length === 0 && searchQuery && (
               <div className="py-12 text-center" data-testid="collections-empty">
-                <p className="text-muted-foreground" data-testid={buildTestId('collections-empty', 'message')}>
+                <p
+                  className="text-muted-foreground"
+                  data-testid={buildTestId('collections-empty', 'message')}
+                >
                   No collections found matching &quot;{searchQuery}&quot;
                 </p>
               </div>
@@ -324,14 +353,14 @@ function CollectionCard({
   const collectionTestId = buildTestId('collection-card', collection.id);
 
   return (
-    <Link href={`/collections/${collection.id}`}>
+    <Link href={`/studio/collections/${collection.id}`}>
       <Card hover className={cn('overflow-hidden p-0', className)} testId={collectionTestId}>
-        {/* Thumbnail placeholder */}
+        {/* Thumbnail grid */}
         <div
           className="relative flex h-32 items-center justify-center bg-gradient-to-br from-primary/10 via-card to-accent/10"
           data-testid={buildTestId(collectionTestId, 'thumbnail')}
         >
-          <FolderKanban className="h-10 w-10 text-muted-foreground/50" />
+          <CollectionThumbnailGrid thumbnails={collection.thumbnails ?? []} />
           <div
             className="absolute right-3 top-3"
             onClick={(e) => e.preventDefault()}
@@ -348,7 +377,10 @@ function CollectionCard({
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" testId={buildTestId(collectionTestId, 'menu', 'content')}>
+              <DropdownMenuContent
+                align="end"
+                testId={buildTestId(collectionTestId, 'menu', 'content')}
+              >
                 <DropdownMenuItem
                   onClick={() => router.push(`/collections/${collection.id}`)}
                   testId={buildTestId(collectionTestId, 'menu', 'edit')}
@@ -356,22 +388,23 @@ function CollectionCard({
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
                 </DropdownMenuItem>
-                {collection.status === 'draft' && (
-                  <DropdownMenuItem
-                    onClick={() => router.push(`/studio/collections/${collection.id}`)}
-                    testId={buildTestId(collectionTestId, 'menu', 'open-studio')}
-                  >
-                    <Play className="mr-2 h-4 w-4" />
-                    Open Studio
-                  </DropdownMenuItem>
-                )}
+
+                <DropdownMenuItem
+                  onClick={() => router.push(`/studio/collections/${collection.id}`)}
+                  testId={buildTestId(collectionTestId, 'menu', 'open-studio')}
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  Open Studio
+                </DropdownMenuItem>
                 {collection.status === 'completed' && (
                   <DropdownMenuItem testId={buildTestId(collectionTestId, 'menu', 'download')}>
                     <Download className="mr-2 h-4 w-4" />
                     Download All
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuSeparator testId={buildTestId(collectionTestId, 'menu', 'separator')} />
+                <DropdownMenuSeparator
+                  testId={buildTestId(collectionTestId, 'menu', 'separator')}
+                />
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"
                   onClick={(e) => {
@@ -391,18 +424,26 @@ function CollectionCard({
 
         <div className="p-4" data-testid={buildTestId(collectionTestId, 'content')}>
           <div className="mb-2 flex items-start justify-between">
-            <h3 className="line-clamp-1 font-medium" data-testid={buildTestId(collectionTestId, 'name')}>
+            <h3
+              className="line-clamp-1 font-medium"
+              data-testid={buildTestId(collectionTestId, 'name')}
+            >
               {collection.name}
             </h3>
-            <Badge
-              variant={statusConfig[collection.status].variant}
-              testId={buildTestId(collectionTestId, 'status')}
-            >
-              {statusConfig[collection.status].label}
-            </Badge>
+            {collection.status === 'generating' && (
+              <Badge
+                variant={statusConfig[collection.status].variant}
+                testId={buildTestId(collectionTestId, 'status')}
+              >
+                {statusConfig[collection.status].label}
+              </Badge>
+            )}
           </div>
 
-          <p className="mb-3 text-sm text-muted-foreground" data-testid={buildTestId(collectionTestId, 'meta')}>
+          <p
+            className="mb-3 text-sm text-muted-foreground"
+            data-testid={buildTestId(collectionTestId, 'meta')}
+          >
             {collection.productCount} products •{' '}
             {collection.generatedCount > 0
               ? `${collection.generatedCount}/${collection.totalImages} images`
@@ -411,14 +452,24 @@ function CollectionCard({
 
           {collection.status === 'generating' && (
             <div className="mb-3" data-testid={buildTestId(collectionTestId, 'progress')}>
-              <Progress value={progress} className="h-1.5" testId={buildTestId(collectionTestId, 'progress', 'bar')} />
-              <p className="mt-1 text-xs text-muted-foreground" data-testid={buildTestId(collectionTestId, 'progress', 'label')}>
+              <Progress
+                value={progress}
+                className="h-1.5"
+                testId={buildTestId(collectionTestId, 'progress', 'bar')}
+              />
+              <p
+                className="mt-1 text-xs text-muted-foreground"
+                data-testid={buildTestId(collectionTestId, 'progress', 'label')}
+              >
                 {Math.round(progress)}% complete
               </p>
             </div>
           )}
 
-          <div className="flex items-center text-xs text-muted-foreground" data-testid={buildTestId(collectionTestId, 'updated')}>
+          <div
+            className="flex items-center text-xs text-muted-foreground"
+            data-testid={buildTestId(collectionTestId, 'updated')}
+          >
             <Clock className="mr-1 h-3.5 w-3.5" />
             {formatRelativeTime(new Date(collection.updatedAt))}
           </div>

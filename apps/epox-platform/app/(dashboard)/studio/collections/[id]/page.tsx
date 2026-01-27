@@ -20,6 +20,7 @@ import {
   Package,
   Wand2,
   RefreshCw,
+  Pin,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,6 @@ import {
   MinimalAccordionTrigger,
   MinimalAccordionContent,
 } from '@/components/ui/minimal-accordion';
-import { InspirationImageModal } from '@/components/studio/InspirationImageModal';
 import {
   UnifiedStudioConfigPanel,
   ConfigPanelProvider,
@@ -64,19 +64,13 @@ import { toast } from '@/components/ui/toast';
 import type { AssetStatus, ApprovalStatus } from '@/lib/types';
 import type {
   FlowGenerationSettings,
-  InspirationImage,
-  InspirationSourceType,
   SceneTypeInspirationMap,
-  StylePreset,
-  LightingPreset,
-  VisionAnalysisResult,
   VideoPromptSettings,
   ImageAspectRatio,
+  BubbleValue,
 } from 'visualizer-types';
 import {
   CAMERA_MOTION_OPTIONS,
-  STYLE_PRESETS,
-  LIGHTING_PRESETS,
   VIDEO_TYPE_OPTIONS,
 } from 'visualizer-types';
 
@@ -135,17 +129,17 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     'video-prompt',
   ]);
 
+  // Bulk selection state
+  const [selectedFlowIds, setSelectedFlowIds] = useState<Set<string>>(new Set());
+
   // List view state
   const mainListRef = useRef<HTMLDivElement>(null);
 
-  // Settings state (mirrors single product studio)
-  const [inspirationImages, setInspirationImages] = useState<InspirationImage[]>([]);
-  const [sceneTypeInspirations, setSceneTypeInspirations] = useState<SceneTypeInspirationMap>({});
-  const [stylePreset, setStylePreset] = useState<StylePreset>('Modern Minimalist');
-  const [lightingPreset, setLightingPreset] = useState<LightingPreset>('Studio Soft Light');
+  // Settings state
+  const [generalInspiration, setGeneralInspiration] = useState<BubbleValue[]>([]);
+  const [sceneTypeInspiration, setSceneTypeInspiration] = useState<SceneTypeInspirationMap>({});
+  const [useSceneTypeInspiration, setUseSceneTypeInspiration] = useState(true);
   const [userPrompt, setUserPrompt] = useState('');
-  const [isAnalyzingInspiration, setIsAnalyzingInspiration] = useState(false);
-  const [isInspirationModalOpen, setIsInspirationModalOpen] = useState(false);
   const [outputSettings, setOutputSettings] = useState({
     aspectRatio: '1:1' as ImageAspectRatio,
     quality: '2k' as '1k' | '2k' | '4k',
@@ -234,17 +228,20 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   // Initialize settings from collection
   useEffect(() => {
     if (collection?.settings) {
-      const s = collection.settings;
-      if (s.inspirationImages) setInspirationImages(s.inspirationImages);
-      if (s.sceneTypeInspirations)
-        setSceneTypeInspirations(s.sceneTypeInspirations as unknown as SceneTypeInspirationMap);
-      if (s.stylePreset) setStylePreset(s.stylePreset as StylePreset);
-      if (s.lightingPreset) setLightingPreset(s.lightingPreset as LightingPreset);
+      const s = collection.settings as any;
+      console.log('📥 Loading collection settings from database:', {
+        generalInspirationCount: Array.isArray(s.generalInspiration) ? s.generalInspiration.length : 0,
+        sceneTypeInspirationKeys: Object.keys(s.sceneTypeInspiration ?? {}),
+      });
+      if (Array.isArray(s.generalInspiration)) setGeneralInspiration(s.generalInspiration);
+      if (s.sceneTypeInspiration)
+        setSceneTypeInspiration(s.sceneTypeInspiration as SceneTypeInspirationMap);
+      if (typeof s.useSceneTypeInspiration === 'boolean') setUseSceneTypeInspiration(s.useSceneTypeInspiration);
       if (s.userPrompt) setUserPrompt(s.userPrompt);
       if (s.aspectRatio) setOutputSettings((prev) => ({ ...prev, aspectRatio: s.aspectRatio! }));
       if (s.imageQuality) setOutputSettings((prev) => ({ ...prev, quality: s.imageQuality! }));
-      if (s.variantsCount)
-        setOutputSettings((prev) => ({ ...prev, variantsCount: s.variantsCount! }));
+      if (s.variantsPerProduct)
+        setOutputSettings((prev) => ({ ...prev, variantsCount: s.variantsPerProduct! }));
       if (s.video) {
         setVideoPrompt(s.video.prompt ?? '');
         setVideoSettings({
@@ -275,23 +272,30 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
 
   // No longer needed - multi-open accordions don't need tab-based reset
 
-  // Scene type groups from inspiration analysis
+  // Scene type groups from inspiration
   const sceneTypeGroups = useMemo(() => {
     const groups: Record<string, number> = {};
-    for (const [sceneType, data] of Object.entries(sceneTypeInspirations)) {
-      groups[sceneType] = data.inspirationImages.length;
+    for (const [sceneType, data] of Object.entries(sceneTypeInspiration)) {
+      groups[sceneType] = data.bubbles?.length ?? 0;
     }
     return groups;
-  }, [sceneTypeInspirations]);
+  }, [sceneTypeInspiration]);
 
   // All available scene types (from flows in the collection)
   const availableSceneTypes = useMemo(() => {
     const types = new Set<string>();
     flowsData?.flows?.forEach((flow) => {
-      flow.productSceneTypes?.forEach((type) => types.add(type));
+      // Normalize scene types: trim whitespace
+      flow.productSceneTypes?.forEach((type) => {
+        const normalized = type.trim();
+        if (normalized) types.add(normalized);
+      });
     });
-    // Also add any scene types from inspiration analysis
-    Object.keys(sceneTypeInspirations).forEach((type) => types.add(type));
+    // Also add any scene types from inspiration
+    Object.keys(sceneTypeInspiration).forEach((type) => {
+      const normalized = type.trim();
+      if (normalized) types.add(normalized);
+    });
     // Add some common defaults if empty
     if (types.size === 0) {
       ['Living Room', 'Bedroom', 'Office', 'Kitchen', 'Dining Room', 'Outdoor', 'Studio'].forEach(
@@ -299,7 +303,38 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       );
     }
     return Array.from(types).sort();
-  }, [flowsData?.flows, sceneTypeInspirations]);
+  }, [flowsData?.flows, sceneTypeInspiration]);
+
+  // Derive scene types for config panel (grouped by sceneType field in flow settings)
+  const configPanelSceneTypes: SceneTypeInfo[] = useMemo(() => {
+    if (!flowsData?.flows) return [];
+
+    const sceneTypeMap = new Map<string, { productIds: string[] }>();
+
+    flowsData.flows.forEach((flow) => {
+      // Normalize scene type to avoid duplicates from whitespace/case differences
+      let rawSceneType =
+        (typeof flow.settings?.sceneType === 'string' ? flow.settings.sceneType : null) ||
+        flow.productSceneTypes?.[0] ||
+        'Living Room';
+
+      // Normalize: trim whitespace and ensure consistent casing
+      const sceneType = rawSceneType.trim();
+
+      if (!sceneTypeMap.has(sceneType)) {
+        sceneTypeMap.set(sceneType, { productIds: [] });
+      }
+      if (flow.productId) {
+        sceneTypeMap.get(sceneType)!.productIds.push(flow.productId);
+      }
+    });
+
+    return Array.from(sceneTypeMap.entries()).map(([sceneType, data]) => ({
+      sceneType,
+      productCount: data.productIds.length,
+      productIds: data.productIds,
+    }));
+  }, [flowsData?.flows]);
 
   // Helper to determine flow status (combines local job state with server flow status)
   const getFlowStatus = useCallback(
@@ -387,6 +422,15 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     });
   }, [generationFlows, searchQuery, statusFilter]);
 
+  // Separate pinned and unpinned flows
+  const pinnedFlows = useMemo(() => {
+    return filteredFlows.filter((flow) => flow.isPinned);
+  }, [filteredFlows]);
+
+  const unpinnedFlows = useMemo(() => {
+    return filteredFlows.filter((flow) => !flow.isPinned);
+  }, [filteredFlows]);
+
   // Flows grouped by scene type
   const flowsBySceneType = useMemo(() => {
     const groups: Record<string, typeof generationFlows> = {};
@@ -440,6 +484,27 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     },
     [productToFlowMap, queryClient, id]
   );
+
+  // Bulk selection handlers
+  const handleSelectFlow = useCallback((flowId: string, selected: boolean) => {
+    setSelectedFlowIds((prev) => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(flowId);
+      } else {
+        next.delete(flowId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    if (selectedFlowIds.size === filteredFlows.length) {
+      setSelectedFlowIds(new Set());
+    } else {
+      setSelectedFlowIds(new Set(filteredFlows.map((f) => f.id)));
+    }
+  }, [selectedFlowIds.size, filteredFlows]);
 
   // Handler to change a flow's selected base image and persist to database
   const handleChangeBaseImage = useCallback(
@@ -578,60 +643,87 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
         soundPrompt: videoSettings.soundPrompt,
       };
       const settings = {
-        inspirationImages,
-        sceneTypeInspirations: sceneTypeInspirations as unknown as Record<
-          string,
-          {
-            inspirationImages: Array<{
-              url: string;
-              thumbnailUrl?: string;
-              tags?: string[];
-              addedAt: string;
-              sourceType: 'upload' | 'library' | 'stock' | 'unsplash';
-            }>;
-            mergedAnalysis: {
-              json: Record<string, unknown>;
-              promptText: string;
-            };
-          }
-        >,
-        stylePreset,
-        lightingPreset,
+        generalInspiration,
+        sceneTypeInspiration,
+        useSceneTypeInspiration,
         userPrompt,
         aspectRatio: outputSettings.aspectRatio,
         imageQuality: outputSettings.quality as '1k' | '2k' | '4k',
-        variantsCount: outputSettings.variantsCount,
+        variantsPerProduct: outputSettings.variantsCount,
         video: {
           prompt: videoPrompt || undefined,
           settings: normalizedVideoSettings,
           presetId: videoPresetId,
         },
       };
+      console.log('📤 Saving collection settings to API:', {
+        generalInspirationCount: settings.generalInspiration.length,
+        sceneTypeInspirationKeys: Object.keys(settings.sceneTypeInspiration),
+      });
       return apiClient.updateCollection(id, { settings });
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
+      console.log('✅ Collection settings saved successfully:', data);
+
+      // After saving collection settings, sync all flows to inherit new settings
+      // This ensures inspiration images propagate to individual flow studios
+      try {
+        console.log('🔄 Syncing flows with updated collection settings...');
+        const syncResult = await apiClient.syncCollectionFlows(id);
+        console.log('✅ Flows synced:', syncResult);
+      } catch (error) {
+        console.error('⚠️ Failed to sync flows, they will update on next access:', error);
+        // Non-critical - flows will be updated when accessed
+      }
+
       queryClient.invalidateQueries({ queryKey: ['collection', id] });
+      queryClient.invalidateQueries({ queryKey: ['collection-flows', id] });
+    },
+    onError: (error) => {
+      console.error('❌ Failed to save collection settings:', error);
+      toast.error('Failed to save settings');
     },
   });
 
-  // Auto-save settings on change
+  // Track if settings have been initialized from collection
+  const hasInitializedSettings = useRef(false);
+
+  // Mark settings as initialized after collection data loads
   useEffect(() => {
+    if (collection?.settings) {
+      hasInitializedSettings.current = true;
+    }
+  }, [collection?.settings]);
+
+  // Auto-save settings on change (skip initial mount)
+  useEffect(() => {
+    // Skip auto-save if settings haven't been initialized yet
+    if (!hasInitializedSettings.current) {
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       if (collection) {
+        console.log('💾 Auto-saving collection settings:', {
+          generalInspirationCount: generalInspiration.length,
+          sceneTypeInspirationKeys: Object.keys(sceneTypeInspiration),
+        });
         saveSettingsMutation.mutate();
       }
     }, 1000);
     return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    inspirationImages,
-    sceneTypeInspirations,
-    stylePreset,
-    lightingPreset,
+    generalInspiration,
+    sceneTypeInspiration,
+    useSceneTypeInspiration,
     userPrompt,
     outputSettings,
     videoPrompt,
     videoSettings,
     videoPresetId,
+    collection?.id, // Only depend on collection ID, not the whole object
+    // Note: saveSettingsMutation is intentionally excluded to prevent infinite loop
   ]);
 
   const persistVideoPresets = (presets: VideoPreset[]) => {
@@ -763,14 +855,13 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       const result = await apiClient.generateCollection(id, {
         productIds,
         settings: {
-          inspirationImages,
-          sceneTypeInspirations: sceneTypeInspirations as any,
-          stylePreset,
-          lightingPreset,
+          generalInspiration,
+          sceneTypeInspiration,
+          useSceneTypeInspiration,
           userPrompt,
           aspectRatio: outputSettings.aspectRatio,
           imageQuality: outputSettings.quality,
-          variantsCount: outputSettings.variantsCount,
+          variantsPerProduct: outputSettings.variantsCount,
         },
       });
 
@@ -906,95 +997,28 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     },
   });
 
-  const analyzeAndAddInspiration = useCallback(
-    async (imageUrl: string, sourceType: InspirationSourceType) => {
-      const analysisResponse = await fetch('/api/vision-scanner', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageUrl,
-          sourceType,
-        }),
+  // Handler for individual flow generation
+  const handleGenerateFlow = useCallback(
+    (productId: string) => {
+      const flow = generationFlows.find((f) => f.product.id === productId);
+      if (!flow || flow.status === 'generating') return;
+
+      // Set optimistic state
+      const newJobStates = new Map<string, FlowJobState>();
+      newJobStates.set(productId, {
+        jobId: '',
+        status: 'generating',
+        progress: 0,
+        startedAt: Date.now(),
       });
+      setFlowJobs(newJobStates);
+      setActiveGenerationType('image');
 
-      if (!analysisResponse.ok) {
-        throw new Error('Vision Scanner analysis failed');
-      }
-
-      const { inspirationImage, analysis } = await analysisResponse.json();
-      const detectedSceneType = analysis?.json?.detectedSceneType || 'General';
-
-      setInspirationImages((prev) => {
-        if (prev.some((img) => img.url === inspirationImage.url)) {
-          return prev;
-        }
-        return [...prev, inspirationImage];
-      });
-
-      setSceneTypeInspirations((prev) => {
-        const existing = prev[detectedSceneType];
-        const nextImages = existing
-          ? [...existing.inspirationImages, inspirationImage]
-          : [inspirationImage];
-        const uniqueImages = nextImages.filter(
-          (img, idx) => nextImages.findIndex((item) => item.url === img.url) === idx
-        );
-
-        return {
-          ...prev,
-          [detectedSceneType]: {
-            inspirationImages: uniqueImages,
-            mergedAnalysis: analysis as VisionAnalysisResult,
-          },
-        };
-      });
-
-      return detectedSceneType;
+      // Call generate mutation for single product
+      generateAllMutation.mutate();
     },
-    []
+    [generationFlows, generateAllMutation]
   );
-
-  const addInspirationFromUrls = useCallback(
-    async (items: Array<{ url: string; sourceType: InspirationSourceType }>) => {
-      if (items.length === 0) return;
-      setIsAnalyzingInspiration(true);
-
-      try {
-        for (const item of items) {
-          try {
-            const detectedSceneType = await analyzeAndAddInspiration(item.url, item.sourceType);
-            toast.success(`Analyzed: ${detectedSceneType} scene detected`);
-          } catch (err) {
-            console.error('Inspiration analysis failed:', err);
-            toast.error('Failed to analyze inspiration image');
-          }
-        }
-      } finally {
-        setIsAnalyzingInspiration(false);
-      }
-    },
-    [analyzeAndAddInspiration]
-  );
-
-  // Remove inspiration image
-  const handleRemoveInspiration = (index: number) => {
-    const imageToRemove = inspirationImages[index];
-    setInspirationImages((prev) => prev.filter((_, i) => i !== index));
-
-    // Also remove from scene type inspirations
-    setSceneTypeInspirations((prev) => {
-      const updated = { ...prev };
-      for (const [sceneType, data] of Object.entries(updated)) {
-        const filtered = data.inspirationImages.filter((img) => img.url !== imageToRemove.url);
-        if (filtered.length === 0) {
-          delete updated[sceneType];
-        } else {
-          updated[sceneType] = { ...data, inspirationImages: filtered };
-        }
-      }
-      return updated;
-    });
-  };
 
   // Navigate to product flow - creates flow if needed
   const handleProductClick = async (productId: string, existingFlowId?: string) => {
@@ -1044,15 +1068,32 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     }
   }, []);
 
-  // Asset action handlers for list view
-  const handlePinAsset = async (flowId: string) => {
-    try {
-      // For now, we'll just show a toast since pinning is per-revision
-      toast.info('Use the individual studio to pin specific revisions');
-    } catch (error) {
-      toast.error('Failed to toggle pin');
-    }
-  };
+  // Pin handler - toggles pin status for a flow
+  const handlePinFlow = useCallback(
+    async (flowId: string, productId: string, currentPinned: boolean) => {
+      try {
+        const realFlowId = productToFlowMap[productId];
+        if (realFlowId) {
+          // Update via API (you'll need to implement this endpoint)
+          // For now, we'll update local state optimistically
+          queryClient.setQueryData(['collection-flows', id], (oldData: any) => {
+            if (!oldData) return oldData;
+            return {
+              ...oldData,
+              flows: oldData.flows.map((flow: any) =>
+                flow.id === realFlowId ? { ...flow, isPinned: !currentPinned } : flow
+              ),
+            };
+          });
+          toast.success(currentPinned ? 'Flow unpinned' : 'Flow pinned');
+        }
+      } catch (error) {
+        toast.error('Failed to toggle pin');
+        console.error('Failed to toggle pin:', error);
+      }
+    },
+    [productToFlowMap, queryClient, id]
+  );
 
   const handleApproveAsset = async (flowId: string) => {
     try {
@@ -1108,9 +1149,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   const isGenerating = hasGeneratingFlows || isGenerationInProgress;
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-border bg-card/80 px-8 py-4 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 flex-none border-b border-border bg-card/80 px-8 py-4 backdrop-blur-xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href={`/collections/${id}`}>
@@ -1121,7 +1162,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
             <div>
               <h1 className="text-lg font-semibold">{collection.name}</h1>
               <p className="text-sm text-muted-foreground">
-                {collection.productCount} products • {inspirationImages.length} inspiration images
+                {collection.productCount} products • {generalInspiration.length} inspiration bubbles
               </p>
             </div>
           </div>
@@ -1194,553 +1235,65 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       </header>
 
       {/* Main Content Area */}
-      <div className="flex flex-1">
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Config Panel Sidebar - LEFT SIDE (matching single studio layout) */}
         {showConfigPanel && (
-          <aside className="flex w-80 shrink-0 flex-col border-r border-border bg-card/30">
-            <div className="border-b border-border p-3">
-              <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted/50 p-1 text-xs font-semibold">
-                <button
-                  onClick={() => setActiveTab('images')}
-                  className={cn(
-                    'rounded-md px-2 py-2 transition-colors',
-                    activeTab === 'images'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Images
-                </button>
-                <button
-                  onClick={() => setActiveTab('video')}
-                  className={cn(
-                    'rounded-md px-2 py-2 transition-colors',
-                    activeTab === 'video'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Video
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-3 py-2">
-              {activeTab === 'images' ? (
-                <MinimalAccordion
-                  value={expandedSections}
-                  onValueChange={setExpandedSections}
-                  defaultValue={['scene-style', 'output-settings']}
-                >
-                  {/* Section 1: Scene Style */}
-                  <MinimalAccordionItem value="scene-style">
-                    <MinimalAccordionTrigger
-                      suffix={
-                        inspirationImages.length > 0 ? (
-                          <Badge variant="secondary" className="text-xs">
-                            {inspirationImages.length}
-                          </Badge>
-                        ) : null
-                      }
-                    >
-                      Scene Style
-                    </MinimalAccordionTrigger>
-                    <MinimalAccordionContent>
-                      <div className="space-y-4">
-                        {/* Inspiration Images Grid */}
-                        <div>
-                          <p className="mb-2 text-xs text-muted-foreground">Inspiration Images</p>
-                          <div className="flex flex-wrap gap-2">
-                            {inspirationImages.map((img, idx) => (
-                              <div
-                                key={idx}
-                                className="group relative aspect-square h-16 w-16 overflow-hidden rounded-lg border"
-                              >
-                                <Image
-                                  src={img.url}
-                                  alt={`Inspiration ${idx + 1}`}
-                                  fill
-                                  sizes="64px"
-                                  className="object-cover"
-                                />
-                                <button
-                                  onClick={() => handleRemoveInspiration(idx)}
-                                  className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                                >
-                                  <X className="h-2.5 w-2.5" />
-                                </button>
-                              </div>
-                            ))}
-                            {inspirationImages.length < 5 && (
-                              <button
-                                onClick={() => setIsInspirationModalOpen(true)}
-                                disabled={isAnalyzingInspiration}
-                                className="flex aspect-square h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 disabled:opacity-50"
-                              >
-                                {isAnalyzingInspiration ? (
-                                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                ) : (
-                                  <Plus className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Detected Scene Types */}
-                        {Object.keys(sceneTypeGroups).length > 0 && (
-                          <div>
-                            <p className="mb-2 text-xs text-muted-foreground">
-                              Detected Scene Types
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {Object.entries(sceneTypeGroups).map(([sceneType, count]) => (
-                                <Badge key={sceneType} variant="outline" className="text-xs">
-                                  {sceneType} ({count})
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Style Preset */}
-                        <div>
-                          <p className="mb-1.5 text-xs text-muted-foreground">Style</p>
-                          <Select
-                            value={stylePreset}
-                            onValueChange={(v) => setStylePreset(v as StylePreset)}
-                          >
-                            <SelectTrigger className="h-9">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {STYLE_PRESETS.map((preset) => (
-                                <SelectItem key={preset} value={preset}>
-                                  {preset}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Lighting Preset */}
-                        <div>
-                          <p className="mb-1.5 text-xs text-muted-foreground">Lighting</p>
-                          <Select
-                            value={lightingPreset}
-                            onValueChange={(v) => setLightingPreset(v as LightingPreset)}
-                          >
-                            <SelectTrigger className="h-9">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {LIGHTING_PRESETS.map((preset) => (
-                                <SelectItem key={preset} value={preset}>
-                                  {preset}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Scene Types Management */}
-                        {Object.keys(flowsBySceneType).length > 0 && (
-                          <div className="pt-2">
-                            <p className="mb-2 text-xs font-medium text-muted-foreground">
-                              Products by Scene Type
-                            </p>
-                            <MinimalAccordion
-                              value={expandedSceneTypes}
-                              onValueChange={setExpandedSceneTypes}
-                            >
-                              {Object.entries(flowsBySceneType).map(([sceneType, flows]) => (
-                                <MinimalAccordionItem
-                                  key={sceneType}
-                                  value={sceneType}
-                                  ref={(el) => {
-                                    sceneTypeAccordionRefs.current[sceneType] = el;
-                                  }}
-                                >
-                                  <MinimalAccordionTrigger
-                                    suffix={
-                                      <Badge variant="secondary" className="text-[10px]">
-                                        {flows.length}
-                                      </Badge>
-                                    }
-                                    className="text-xs"
-                                  >
-                                    {sceneType}
-                                  </MinimalAccordionTrigger>
-                                  <MinimalAccordionContent>
-                                    <div className="space-y-1.5">
-                                      {flows.map((flow) => (
-                                        <div
-                                          key={flow.id}
-                                          className="flex items-center gap-2 rounded-md border border-border bg-muted/30 p-1.5"
-                                        >
-                                          {/* Product Image */}
-                                          <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded bg-secondary">
-                                            {flow.baseImages[0]?.url ? (
-                                              <Image
-                                                src={flow.baseImages[0].url}
-                                                alt={flow.product.name}
-                                                fill
-                                                sizes="32px"
-                                                className="object-cover"
-                                                unoptimized
-                                              />
-                                            ) : (
-                                              <div className="flex h-full w-full items-center justify-center">
-                                                <Package className="h-4 w-4 text-muted-foreground" />
-                                              </div>
-                                            )}
-                                          </div>
-                                          {/* Product Name */}
-                                          <span className="min-w-0 flex-1 truncate text-xs">
-                                            {flow.product.name}
-                                          </span>
-                                          {/* Change Scene Type Button */}
-                                          {editingSceneTypeFlowId === flow.id ? (
-                                            <div className="flex items-center gap-1">
-                                              <Select
-                                                value={newSceneTypeValue || sceneType}
-                                                onValueChange={(value) => {
-                                                  if (value === '__new__') {
-                                                    setNewSceneTypeValue('');
-                                                  } else {
-                                                    handleChangeSceneType(
-                                                      flow.id,
-                                                      flow.product.id,
-                                                      value
-                                                    );
-                                                  }
-                                                }}
-                                              >
-                                                <SelectTrigger className="h-7 w-[100px] text-xs">
-                                                  <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  {availableSceneTypes.map((type) => (
-                                                    <SelectItem
-                                                      key={type}
-                                                      value={type}
-                                                      className="text-xs"
-                                                    >
-                                                      {type}
-                                                    </SelectItem>
-                                                  ))}
-                                                  <SelectItem value="__new__" className="text-xs">
-                                                    + New type...
-                                                  </SelectItem>
-                                                </SelectContent>
-                                              </Select>
-                                              <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-6 w-6"
-                                                onClick={() => {
-                                                  setEditingSceneTypeFlowId(null);
-                                                  setNewSceneTypeValue('');
-                                                }}
-                                              >
-                                                <X className="h-3 w-3" />
-                                              </Button>
-                                            </div>
-                                          ) : (
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-6 gap-1 px-1.5 text-[10px]"
-                                              onClick={() => setEditingSceneTypeFlowId(flow.id)}
-                                            >
-                                              <RefreshCw className="h-3 w-3" />
-                                              Move
-                                            </Button>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </MinimalAccordionContent>
-                                </MinimalAccordionItem>
-                              ))}
-                            </MinimalAccordion>
-                          </div>
-                        )}
-                      </div>
-                    </MinimalAccordionContent>
-                  </MinimalAccordionItem>
-
-                  {/* Section 2: User Prompt */}
-                  <MinimalAccordionItem value="user-prompt">
-                    <MinimalAccordionTrigger
-                      suffix={
-                        userPrompt ? (
-                          <Badge variant="secondary" className="text-xs">
-                            Custom
-                          </Badge>
-                        ) : null
-                      }
-                    >
-                      Collection Prompt
-                    </MinimalAccordionTrigger>
-                    <MinimalAccordionContent>
-                      <div className="space-y-3">
-                        <Textarea
-                          placeholder="Add a prompt that applies to all products..."
-                          value={userPrompt}
-                          onChange={(e) => setUserPrompt(e.target.value)}
-                          className="min-h-[80px] resize-none text-sm"
-                        />
-                        <p className="text-[10px] text-muted-foreground">
-                          This prompt will be applied to all products in the collection.
-                        </p>
-                      </div>
-                    </MinimalAccordionContent>
-                  </MinimalAccordionItem>
-
-                  {/* Section 3: Output Settings */}
-                  <MinimalAccordionItem value="output-settings">
-                    <MinimalAccordionTrigger>Output Settings</MinimalAccordionTrigger>
-                    <MinimalAccordionContent>
-                      <div className="space-y-4">
-                        {/* Quality */}
-                        <div>
-                          <p className="mb-2 text-xs text-muted-foreground">Quality</p>
-                          <div className="flex gap-2">
-                            {QUALITY_OPTIONS.map((opt) => (
-                              <button
-                                key={opt.value}
-                                onClick={() =>
-                                  setOutputSettings((prev) => ({ ...prev, quality: opt.value }))
-                                }
-                                className={cn(
-                                  'flex flex-1 flex-col items-center rounded-lg border p-2 transition-colors',
-                                  outputSettings.quality === opt.value
-                                    ? 'border-primary bg-primary/10'
-                                    : 'border-border hover:border-primary/50'
-                                )}
-                              >
-                                <span className="text-sm font-semibold">{opt.label}</span>
-                                <span className="text-[10px] text-muted-foreground">
-                                  {opt.description}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Aspect Ratio */}
-                        <div>
-                          <p className="mb-2 text-xs text-muted-foreground">Aspect Ratio</p>
-                          <div className="flex gap-1.5">
-                            {ASPECT_OPTIONS.map((opt) => (
-                              <button
-                                key={opt.value}
-                                onClick={() =>
-                                  setOutputSettings((prev) => ({ ...prev, aspectRatio: opt.value }))
-                                }
-                                className={cn(
-                                  'flex flex-1 flex-col items-center rounded-lg border py-2 text-xs transition-colors',
-                                  outputSettings.aspectRatio === opt.value
-                                    ? 'border-primary bg-primary/10 text-primary'
-                                    : 'border-border hover:border-primary/50'
-                                )}
-                              >
-                                <span className="mb-0.5 text-base">{opt.icon}</span>
-                                <span>{opt.label}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Variants per product */}
-                        <div>
-                          <p className="mb-2 text-xs text-muted-foreground">
-                            Variants per product: {outputSettings.variantsCount}
-                          </p>
-                          <div className="flex gap-1">
-                            {[1, 2, 4].map((n) => (
-                              <button
-                                key={n}
-                                onClick={() =>
-                                  setOutputSettings((prev) => ({ ...prev, variantsCount: n }))
-                                }
-                                className={cn(
-                                  'flex-1 rounded-md border py-1 text-sm transition-colors',
-                                  outputSettings.variantsCount === n
-                                    ? 'border-primary bg-primary/10 font-medium text-primary'
-                                    : 'border-border hover:border-primary/50'
-                                )}
-                              >
-                                {n}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </MinimalAccordionContent>
-                  </MinimalAccordionItem>
-                </MinimalAccordion>
-              ) : (
-                <MinimalAccordion
-                  value={videoExpandedSections}
-                  onValueChange={setVideoExpandedSections}
-                  defaultValue={['video-inputs', 'video-prompt']}
-                >
-                  {/* Video Section: Prompt */}
-                  <MinimalAccordionItem value="video-prompt">
-                    <MinimalAccordionTrigger>Video Prompt</MinimalAccordionTrigger>
-                    <MinimalAccordionContent>
-                      <div className="space-y-4">
-                        <Textarea
-                          placeholder="Describe the video you want to generate..."
-                          value={videoPrompt}
-                          onChange={(e) => setVideoPrompt(e.target.value)}
-                          className="min-h-[80px] resize-none text-sm"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleEnhanceVideoPrompt}
-                          disabled={isEnhancingVideoPrompt || !videoPromptSourceUrl}
-                          className="w-full"
-                        >
-                          {isEnhancingVideoPrompt ? (
-                            <>
-                              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                              Enhancing...
-                            </>
-                          ) : (
-                            <>
-                              <Wand2 className="mr-2 h-3.5 w-3.5" />
-                              Enhance Prompt
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </MinimalAccordionContent>
-                  </MinimalAccordionItem>
-
-                  {/* Video Section: Settings */}
-                  <MinimalAccordionItem value="video-settings">
-                    <MinimalAccordionTrigger>Video Settings</MinimalAccordionTrigger>
-                    <MinimalAccordionContent>
-                      <div className="space-y-3">
-                        <Select
-                          value={videoSettings.videoType ?? ''}
-                          onValueChange={(v) => updateVideoSettings({ videoType: v || undefined })}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Video type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {VIDEO_TYPE_OPTIONS.map((option) => (
-                              <SelectItem key={option} value={option}>
-                                {option}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={videoSettings.cameraMotion ?? ''}
-                          onValueChange={(v) =>
-                            updateVideoSettings({ cameraMotion: v || undefined })
-                          }
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Camera motion" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CAMERA_MOTION_OPTIONS.map((option) => (
-                              <SelectItem key={option} value={option}>
-                                {option}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={videoSettings.sound ?? 'automatic'}
-                          onValueChange={(v) =>
-                            updateVideoSettings({ sound: v as VideoPromptSettings['sound'] })
-                          }
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Sound" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="automatic">Automatic sound</SelectItem>
-                            <SelectItem value="with_music">With music</SelectItem>
-                            <SelectItem value="no_sound">No sound</SelectItem>
-                            <SelectItem value="custom">Custom sound prompt</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {videoSettings.sound === 'custom' && (
-                          <Input
-                            placeholder="Sound prompt..."
-                            value={videoSettings.soundPrompt || ''}
-                            onChange={(e) => updateVideoSettings({ soundPrompt: e.target.value })}
-                          />
-                        )}
-                      </div>
-                    </MinimalAccordionContent>
-                  </MinimalAccordionItem>
-                </MinimalAccordion>
-              )}
-            </div>
-
-            {/* Footer - Generate Button */}
-            <div className="shrink-0 border-t border-border bg-card p-3">
-              {activeTab === 'images' ? (
-                <Button
-                  variant="glow"
-                  size="lg"
-                  className="w-full"
-                  onClick={() => generateAllMutation.mutate()}
-                  disabled={
-                    readyToGenerateFlows.length === 0 ||
-                    generateAllMutation.isPending ||
-                    isGenerationInProgress
-                  }
-                >
-                  {generateAllMutation.isPending || isGenerationInProgress ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Generate All ({readyToGenerateFlows.length})
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  variant="glow"
-                  size="lg"
-                  className="w-full"
-                  onClick={() => generateVideosMutation.mutate()}
-                  disabled={
-                    readyToGenerateFlows.length === 0 ||
-                    generateVideosMutation.isPending ||
-                    isGenerationInProgress
-                  }
-                >
-                  {generateVideosMutation.isPending || isGenerationInProgress ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating Videos...
-                    </>
-                  ) : (
-                    <>
-                      <Video className="mr-2 h-4 w-4" />
-                      Generate Videos ({readyToGenerateFlows.length})
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-          </aside>
+          <UnifiedStudioConfigPanel
+            mode="collection-studio"
+            sceneTypes={configPanelSceneTypes}
+            initialState={{
+              generalInspiration,
+              sceneTypeInspiration,
+              useSceneTypeInspiration,
+              userPrompt,
+              applyCollectionPrompt: true,
+              outputSettings: {
+                aspectRatio: outputSettings.aspectRatio,
+                quality: outputSettings.quality,
+                variantsCount: outputSettings.variantsCount,
+              },
+            }}
+            onStateChange={(panelState) => {
+              // Use functional updaters to avoid unnecessary re-renders
+              // when values haven't actually changed
+              setGeneralInspiration((prev) =>
+                prev === panelState.generalInspiration ? prev : panelState.generalInspiration
+              );
+              setSceneTypeInspiration((prev) =>
+                prev === panelState.sceneTypeInspiration ? prev : panelState.sceneTypeInspiration
+              );
+              setUseSceneTypeInspiration(panelState.useSceneTypeInspiration);
+              setUserPrompt(panelState.userPrompt);
+              setOutputSettings((prev) => {
+                const next = panelState.outputSettings;
+                if (
+                  prev.aspectRatio === next.aspectRatio &&
+                  prev.quality === next.quality &&
+                  prev.variantsCount === next.variantsCount
+                ) {
+                  return prev;
+                }
+                return {
+                  aspectRatio: next.aspectRatio,
+                  quality: next.quality,
+                  variantsCount: next.variantsCount,
+                };
+              });
+            }}
+            onSave={async () => {
+              await saveSettingsMutation.mutateAsync();
+            }}
+            onGenerate={() => {
+              if (activeTab === 'images') {
+                generateAllMutation.mutate();
+              } else {
+                generateVideosMutation.mutate();
+              }
+            }}
+            isGenerating={isGenerating}
+            isSaving={saveSettingsMutation.isPending}
+            className="h-full"
+          />
         )}
 
         {/* Main Content */}
@@ -1766,6 +1319,20 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                 <SelectItem value="error">Error</SelectItem>
               </SelectContent>
             </Select>
+            {selectedFlowIds.size > 0 && (
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="gap-1">
+                  {selectedFlowIds.size} selected
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedFlowIds(new Set())}
+                >
+                  Clear
+                </Button>
+              </div>
+            )}
             <div className="ml-auto flex items-center gap-1 rounded-lg border p-1">
               <Button
                 variant={viewMode === 'matrix' ? 'secondary' : 'ghost'}
@@ -1799,87 +1366,162 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
               {filteredFlows.length > 0 ? (
                 viewMode === 'matrix' ? (
                   // Grid View - GenerationFlowCard
-                  <div
-                    className={cn(
-                      'grid gap-4',
-                      showConfigPanel
-                        ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3'
-                        : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                  <div className="space-y-6">
+                    {/* Pinned Section */}
+                    {pinnedFlows.length > 0 && (
+                      <div>
+                        <div className="mb-3 flex items-center gap-2">
+                          <Pin className="h-4 w-4 text-primary" />
+                          <h3 className="text-sm font-medium text-muted-foreground">
+                            Pinned ({pinnedFlows.length})
+                          </h3>
+                        </div>
+                        <div
+                          className={cn(
+                            'grid gap-4',
+                            showConfigPanel
+                              ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3'
+                              : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                          )}
+                        >
+                          {pinnedFlows.map((flow, index) => (
+                            <GenerationFlowCard
+                              key={flow.id}
+                              flowId={flow.id}
+                              collectionId={id}
+                              product={flow.product}
+                              baseImages={flow.baseImages}
+                              selectedBaseImageId={flow.selectedBaseImageId}
+                              revisions={flow.revisions}
+                              status={flow.status}
+                              approvalStatus={flow.approvalStatus}
+                              isPinned={flow.isPinned}
+                              sceneType={flow.sceneType}
+                              availableSceneTypes={availableSceneTypes}
+                              onChangeBaseImage={(imageId) => {
+                                const baseImage = flow.baseImages.find((img) => img.id === imageId);
+                                if (baseImage) {
+                                  handleChangeBaseImage(flow.product.id, imageId, baseImage.url);
+                                }
+                              }}
+                              onChangeSceneType={(newSceneType) => {
+                                handleChangeSceneType(flow.id, flow.product.id, newSceneType);
+                              }}
+                              onPin={() => handlePinFlow(flow.id, flow.product.id, flow.isPinned)}
+                              onGenerate={() => handleGenerateFlow(flow.product.id)}
+                              onDeleteRevision={handleDeleteRevision}
+                              onClick={() => handleProductClick(flow.product.id, flow.realFlowId)}
+                              isSelected={selectedFlowIds.has(flow.id)}
+                              onSelect={(selected) => handleSelectFlow(flow.id, selected)}
+                              className={cn(
+                                'animate-fade-in opacity-0',
+                                `stagger-${Math.min(index + 1, 6)}`
+                              )}
+                              testId={`flow-item--${flow.id}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     )}
-                  >
-                    {filteredFlows.map((flow, index) => (
-                      <GenerationFlowCard
-                        key={flow.id}
-                        flowId={flow.id}
-                        collectionId={id}
-                        product={flow.product}
-                        baseImages={flow.baseImages}
-                        selectedBaseImageId={flow.selectedBaseImageId}
-                        revisions={flow.revisions}
-                        status={flow.status}
-                        approvalStatus={flow.approvalStatus}
-                        isPinned={flow.isPinned}
-                        sceneType={flow.sceneType}
-                        onChangeBaseImage={(imageId) => {
-                          const baseImage = flow.baseImages.find((img) => img.id === imageId);
-                          if (baseImage) {
-                            handleChangeBaseImage(flow.product.id, imageId, baseImage.url);
-                          }
-                        }}
-                        onDeleteRevision={handleDeleteRevision}
-                        onClick={() => handleProductClick(flow.product.id, flow.realFlowId)}
+
+                    {/* Regular Flows Section */}
+                    <div>
+                      {pinnedFlows.length > 0 && (
+                        <div className="mb-3">
+                          <h3 className="text-sm font-medium text-muted-foreground">
+                            All Flows ({unpinnedFlows.length})
+                          </h3>
+                        </div>
+                      )}
+                      <div
                         className={cn(
-                          'animate-fade-in cursor-pointer opacity-0',
-                          `stagger-${Math.min(index + 1, 6)}`
+                          'grid gap-4',
+                          showConfigPanel
+                            ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3'
+                            : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
                         )}
-                        testId={`flow-item--${flow.id}`}
-                      />
-                    ))}
+                      >
+                        {unpinnedFlows.map((flow, index) => (
+                          <GenerationFlowCard
+                            key={flow.id}
+                            flowId={flow.id}
+                            collectionId={id}
+                            product={flow.product}
+                            baseImages={flow.baseImages}
+                            selectedBaseImageId={flow.selectedBaseImageId}
+                            revisions={flow.revisions}
+                            status={flow.status}
+                            approvalStatus={flow.approvalStatus}
+                            isPinned={flow.isPinned}
+                            sceneType={flow.sceneType}
+                            availableSceneTypes={availableSceneTypes}
+                            onChangeBaseImage={(imageId) => {
+                              const baseImage = flow.baseImages.find((img) => img.id === imageId);
+                              if (baseImage) {
+                                handleChangeBaseImage(flow.product.id, imageId, baseImage.url);
+                              }
+                            }}
+                            onChangeSceneType={(newSceneType) => {
+                              handleChangeSceneType(flow.id, flow.product.id, newSceneType);
+                            }}
+                            onPin={() => handlePinFlow(flow.id, flow.product.id, flow.isPinned)}
+                            onGenerate={() => handleGenerateFlow(flow.product.id)}
+                            onDeleteRevision={handleDeleteRevision}
+                            onClick={() => handleProductClick(flow.product.id, flow.realFlowId)}
+                            isSelected={selectedFlowIds.has(flow.id)}
+                            onSelect={(selected) => handleSelectFlow(flow.id, selected)}
+                            className={cn(
+                              'animate-fade-in opacity-0',
+                              `stagger-${Math.min(index + 1, 6)}`
+                            )}
+                            testId={`flow-item--${flow.id}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 ) : (
-                  // List View - ProductAssetCard with gallery navigation
-                  <div className="mx-auto max-w-4xl space-y-6">
+                  // List View - ProductAssetCard with gallery navigation (1.5 cards visible)
+                  <div className="mx-auto flex max-w-3xl flex-col gap-6">
                     {filteredFlows.map((flow) => (
-                      <div key={flow.id} id={`product-${flow.product.id}`}>
-                        <ProductAssetCard
-                          product={{
-                            id: flow.product.id,
-                            name: flow.product.name,
-                            sku: flow.product.sku,
-                            thumbnailUrl: flow.baseImages[0]?.url,
-                          }}
-                          testId={`product-card--${flow.product.id}`}
-                          revisions={flow.revisions.map((r) => ({
-                            id: r.id,
-                            imageUrl: r.imageUrl,
-                            timestamp: r.timestamp,
-                            type: r.type,
-                            isVideo: false,
-                            aspectRatio: r.aspectRatio,
-                          }))}
-                          configuration={{
-                            sceneType: flow.sceneType,
-                            stylePreset,
-                            lightingPreset,
-                            aspectRatio: outputSettings.aspectRatio,
-                            quality: outputSettings.quality,
-                          }}
-                          isPinned={flow.isPinned}
-                          isApproved={flow.approvalStatus === 'approved'}
-                          isGenerating={flow.status === 'generating'}
-                          onPin={() => handlePinAsset(flow.id)}
-                          onApprove={() => handleApproveAsset(flow.id)}
-                          onDownload={() => {
-                            const latestRevision = flow.revisions[0];
-                            if (latestRevision) {
-                              handleDownloadAsset(latestRevision, flow.product.name);
-                            }
-                          }}
-                          onDelete={(revisionId) => handleDeleteRevision(revisionId)}
-                          onGenerate={() => handleProductClick(flow.product.id, flow.realFlowId)}
-                          onOpenStudio={() => handleProductClick(flow.product.id, flow.realFlowId)}
-                        />
-                      </div>
+                      <ProductAssetCard
+                        key={flow.id}
+                        product={{
+                          id: flow.product.id,
+                          name: flow.product.name,
+                          sku: flow.product.sku,
+                          thumbnailUrl: flow.baseImages[0]?.url,
+                        }}
+                        testId={`product-card--${flow.product.id}`}
+                        revisions={flow.revisions.map((r) => ({
+                          id: r.id,
+                          imageUrl: r.imageUrl,
+                          timestamp: r.timestamp,
+                          type: r.type,
+                          isVideo: false,
+                          aspectRatio: r.aspectRatio,
+                        }))}
+                        configuration={{
+                          sceneType: flow.sceneType,
+                          aspectRatio: outputSettings.aspectRatio,
+                          quality: outputSettings.quality,
+                        }}
+                        isPinned={flow.isPinned}
+                        isApproved={flow.approvalStatus === 'approved'}
+                        isGenerating={flow.status === 'generating'}
+                        onPin={() => handlePinFlow(flow.id, flow.product.id, flow.isPinned)}
+                        onApprove={() => handleApproveAsset(flow.id)}
+                        onDownload={() => {
+                          const latestRevision = flow.revisions[0];
+                          if (latestRevision) {
+                            handleDownloadAsset(latestRevision, flow.product.name);
+                          }
+                        }}
+                        onDelete={(revisionId) => handleDeleteRevision(revisionId)}
+                        onGenerate={() => handleProductClick(flow.product.id, flow.realFlowId)}
+                        onOpenStudio={() => handleProductClick(flow.product.id, flow.realFlowId)}
+                        className="shrink-0"
+                      />
                     ))}
                   </div>
                 )
@@ -1915,13 +1557,6 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
         </main>
       </div>
 
-      <InspirationImageModal
-        isOpen={isInspirationModalOpen}
-        onClose={() => setIsInspirationModalOpen(false)}
-        onSubmit={addInspirationFromUrls}
-        existingImages={inspirationImages}
-        isProcessing={isAnalyzingInspiration}
-      />
     </div>
   );
 }

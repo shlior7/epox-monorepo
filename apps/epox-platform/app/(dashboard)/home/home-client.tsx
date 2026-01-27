@@ -103,7 +103,8 @@ export function HomeClient() {
     imageUrl: string;
     productId: string;
     productName: string;
-    prompt?: string;
+    productCategory?: string;
+    sceneType?: string;
     createdAt: string;
   }> = (dashboardData as { recentAssets?: typeof recentAssets })?.recentAssets ?? [];
 
@@ -293,11 +294,14 @@ function RecentAssetCard({
     imageUrl: string;
     productId: string;
     productName: string;
-    prompt?: string;
+    productCategory?: string;
+    sceneType?: string;
     createdAt: string;
   };
   index: number;
 }) {
+  const subtitle = asset.productCategory || asset.sceneType;
+
   return (
     <Link href={`/assets/${asset.id}`}>
       <Card
@@ -307,29 +311,26 @@ function RecentAssetCard({
           'animate-fade-in opacity-0',
           `stagger-${Math.min(index + 1, 8)}`
         )}
+        data-testid={`recent-asset-card-${asset.id}`}
       >
-        {/* Product name above */}
+        {/* Product name + subtitle above */}
         <div className="border-b border-border/50 px-3 py-2">
           <p className="truncate text-sm font-medium text-foreground">{asset.productName}</p>
+          {subtitle && (
+            <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+          )}
         </div>
 
         {/* Image */}
         <div className="relative aspect-square bg-secondary">
           <Image
             src={asset.imageUrl}
-            alt={asset.productName}
+            alt={`${asset.productName}${subtitle ? ` - ${subtitle}` : ''}`}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             sizes="256px"
           />
         </div>
-
-        {/* Prompt below */}
-        {asset.prompt && (
-          <div className="border-t border-border/50 px-3 py-2">
-            <p className="line-clamp-2 text-xs text-muted-foreground">{asset.prompt}</p>
-          </div>
-        )}
       </Card>
     </Link>
   );

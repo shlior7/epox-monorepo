@@ -15,8 +15,8 @@ export class NavigationHelper {
   /**
    * Navigate to the dashboard
    */
-  async goToDashboard() {
-    await this.page.goto('/dashboard');
+  async goToHome() {
+    await this.page.goto('/home');
     await this.page.waitForLoadState('networkidle');
   }
 
@@ -102,6 +102,111 @@ export class NavigationHelper {
   async goToSettings() {
     await this.page.goto('/settings');
     await this.page.waitForLoadState('networkidle');
+  }
+
+  /**
+   * Navigate to store page
+   */
+  async goToStore() {
+    await this.page.goto('/store');
+    await this.page.waitForLoadState('networkidle');
+  }
+
+  /**
+   * Get store page state (text-only, efficient)
+   */
+  async getStorePageState() {
+    return await this.page.evaluate(() => {
+      // Check if connection wizard is shown
+      const wizardVisible = !!document.querySelector('[data-testid="store-page-not-connected"]');
+      const connectedVisible = !!document.querySelector('[data-testid="store-page-connected"]');
+      const loadingVisible = !!document.querySelector('[data-testid="store-page-loading"]');
+      const errorVisible = !!document.querySelector('[data-testid="store-page-error"]');
+
+      // Get product groups if connected
+      const productGroups = Array.from(
+        document.querySelectorAll('[data-testid^="store-product-group-"]')
+      ).map((group) => {
+        const header = group.querySelector('[data-testid$="-header"]');
+        const name = group.querySelector('[data-testid$="-name"]')?.textContent?.trim();
+        const isMapped = !!group.querySelector('[data-testid$="-mapped-badge"]');
+        const syncedCount = group
+          .querySelector('[data-testid$="-synced-count"]')
+          ?.textContent?.trim();
+        const unsyncedCount = group
+          .querySelector('[data-testid$="-unsynced-count"]')
+          ?.textContent?.trim();
+
+        // Count images in each section
+        const syncedSection = group.querySelector('[data-testid$="-synced-section"]');
+        const unsyncedSection = group.querySelector('[data-testid$="-unsynced-section"]');
+        const baseImageCount = group.querySelectorAll('[data-testid*="-base-image-"]').length;
+        const syncedAssetCount = group.querySelectorAll('[data-testid*="-synced-asset-"]').length;
+        const unsyncedAssetCount = group.querySelectorAll(
+          '[data-testid*="-unsynced-asset-"]'
+        ).length;
+
+        return {
+          name,
+          isMapped,
+          syncedCount,
+          unsyncedCount,
+          baseImageCount,
+          syncedAssetCount,
+          unsyncedAssetCount,
+          hasSyncedSection: !!syncedSection,
+          hasUnsyncedSection: !!unsyncedSection,
+        };
+      });
+
+      // Get filter state
+      const searchInput = document.querySelector(
+        '[data-testid="store-search-input"]'
+      ) as HTMLInputElement | null;
+      const syncStatusFilter = document
+        .querySelector('[data-testid="store-sync-status-filter"]')
+        ?.textContent?.trim();
+
+      // Get bulk action bar
+      const bulkActionBar = document.querySelector('[data-testid="store-bulk-action-bar"]');
+      const selectedCount = bulkActionBar
+        ?.querySelector('[data-testid*="selected-count"]')
+        ?.textContent?.trim();
+
+      // Get header info
+      const headerTitle = document
+        .querySelector('[data-testid="store-header"] h1')
+        ?.textContent?.trim();
+      const headerDescription = document
+        .querySelector('[data-testid="store-header"] p')
+        ?.textContent?.trim();
+
+      return {
+        state: wizardVisible
+          ? 'wizard'
+          : connectedVisible
+            ? 'connected'
+            : loadingVisible
+              ? 'loading'
+              : errorVisible
+                ? 'error'
+                : 'unknown',
+        headerTitle,
+        headerDescription,
+        productGroups,
+        productGroupCount: productGroups.length,
+        filters: {
+          searchValue: searchInput?.value,
+          syncStatusFilter,
+        },
+        bulkSelection: {
+          isVisible: !!bulkActionBar && getComputedStyle(bulkActionBar).display !== 'none',
+          selectedCount,
+        },
+        hasImportButton: !!document.querySelector('[data-testid="store-import-btn"]'),
+        hasSettingsButton: !!document.querySelector('[data-testid="store-settings-btn"]'),
+      };
+    });
   }
 
   /**
@@ -201,7 +306,9 @@ export class NavigationHelper {
       return {
         totalFlows: flowItems.length,
         flows,
-        emptyState: list.querySelector('[data-testid="generation-flow-empty"]')?.textContent?.trim(),
+        emptyState: list
+          .querySelector('[data-testid="generation-flow-empty"]')
+          ?.textContent?.trim(),
       };
     }, listSelector);
 
@@ -335,3 +442,6 @@ export const SELECTORS = {
   errorAlert: '[role="alert"]',
   loadingSpinner: '[data-testid*="loading"]',
 } as const;
+
+// Re-export helper utilities
+export { hideNextDevOverlay } from './hide-next-dev-overlay';

@@ -19,23 +19,22 @@ export const POST = withSecurity(async (request, context) => {
 
   try {
     const body = await request.json();
-    const { assetId } = body;
+    const { assetId, productId } = body;
 
     // Validate request
     if (!assetId || typeof assetId !== 'string') {
       return NextResponse.json({ error: 'assetId is required' }, { status: 400 });
     }
 
+    // Get first product ID from asset
+    if (!productId) {
+      return NextResponse.json({ error: 'productId is required' }, { status: 400 });
+    }
+
     // Get asset
     const asset = await db.generatedAssets.getById(assetId);
     if (!asset || asset.clientId !== clientId) {
       return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
-    }
-
-    // Get first product ID from asset
-    const productId = asset.productIds?.[0];
-    if (!productId) {
-      return NextResponse.json({ error: 'Asset has no associated product' }, { status: 400 });
     }
 
     // Get product with store mapping
@@ -70,18 +69,59 @@ export const POST = withSecurity(async (request, context) => {
     try {
       // Sync to store (upload image)
       const uploadedImages = await storeService.updateProductImages(clientId, product.storeId, [
-        asset.assetUrl,
+        { src: asset.assetUrl, name: '', alt: '' },
       ]);
+
+      const externalImageId = uploadedImages[0]?.id?.toString();
+      const externalImageUrl = uploadedImages[0]?.src;
 
       // Update sync log with success
       const updatedLog = await db.storeSyncLogs.updateStatus(syncLog.id, 'success', {
-        externalImageUrl: uploadedImages[0]?.src,
+        externalImageUrl,
       });
+
+      // Store the external image ID in the asset for bidirectional sync tracking
+      if (externalImageId) {
+        await db.generatedAssets.update(assetId, {
+          externalImageId,
+          syncedAt: new Date(),
+        });
+
+        console.log(
+          `✅ Synced asset ${assetId} to store with external image ID: ${externalImageId}`
+        );
+      }
+
+      // Add the synced asset to the product's base images if not already there
+      // Extract R2 key from asset URL (assuming format: https://domain/path/to/r2Key)
+      const r2KeyMatch = asset.assetUrl.match(/\/([^/]+\.(jpg|jpeg|png|webp|gif))$/i);
+      const imageUrl = r2KeyMatch ? r2KeyMatch[1] : asset.assetUrl;
+
+      // Check if this asset is already in the product's base images
+      const existingImages = await db.productImages.list(productId);
+      const alreadyExists = existingImages.some((img) =>
+        img.imageUrl === imageUrl ||
+        (externalImageId && img.externalImageId === externalImageId)
+      );
+
+      if (!alreadyExists) {
+        // Add as a base image
+        await db.productImages.create(productId, {
+          imageUrl,
+          syncStatus: 'synced',
+          externalImageId: externalImageId || null,
+          originalStoreUrl: externalImageUrl || null,
+          sortOrder: existingImages.length,
+          isPrimary: existingImages.length === 0, // Make it primary if it's the first image
+        });
+
+        console.log(`✅ Added synced asset to product ${productId} base images`);
+      }
 
       return NextResponse.json({
         success: true,
         syncId: updatedLog.id,
-        externalImageId: uploadedImages[0]?.id?.toString(),
+        externalImageId,
       });
     } catch (syncError: any) {
       // Update sync log with failure

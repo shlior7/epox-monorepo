@@ -6,6 +6,8 @@ const nextConfig = {
     'visualizer-types',
     'visualizer-db',
     'visualizer-ai',
+    'visualizer-auth',
+    'visualizer-storage',
     '@scenergy/erp-service',
   ],
   output: 'standalone',
@@ -22,6 +24,30 @@ const nextConfig = {
         hostname: 'pub-b173dd19ec2840a5b068d4748260373f.r2.dev',
       },
     ],
+  },
+  // Increase body size limit for API routes handling large image data URLs
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '12mb',
+    },
+  },
+  // Webpack configuration to exclude server-only modules from browser bundle
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Don't bundle pg and its dependencies for the browser
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        pg: false,
+        'pg-native': false,
+        'pg-hstore': false,
+        dns: false,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+      };
+    }
+    return config;
   },
 };
 

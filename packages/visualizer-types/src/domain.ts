@@ -3,7 +3,7 @@
  * Core business domain types for the visualizer application
  */
 
-import type { FlowGenerationSettings, FlowStatus, ClientMetadata, SubjectAnalysis } from './settings';
+import type { FlowGenerationSettings, CollectionGenerationSettings, FlowStatus, ClientMetadata, SubjectAnalysis } from './settings';
 import type { MessagePart, MessageRole } from './messages';
 
 // ===== BASE TYPES =====
@@ -68,6 +68,7 @@ export interface Product extends VersionedEntity {
   description: string | null;
   category: string | null;
   sceneTypes: string[] | null;
+  selectedSceneType: string | null;
   modelFilename: string | null;
   isFavorite: boolean;
   source: ProductSource;
@@ -86,12 +87,20 @@ export interface Product extends VersionedEntity {
 
 // ===== PRODUCT IMAGE =====
 
+export type ImageSyncStatus = 'synced' | 'unsynced' | 'local';
+
+// NOTE: This interface should match the DB schema (product_image table)
+// If you change the DB schema, update this interface accordingly
 export interface ProductImage extends VersionedEntity {
   productId: string;
-  r2KeyBase: string;
-  r2KeyPreview: string | null;
+  imageUrl: string;
+  previewUrl: string | null;
   sortOrder: number;
   isPrimary: boolean;
+  // Sync status for bidirectional store sync
+  syncStatus: ImageSyncStatus;
+  originalStoreUrl: string | null;
+  externalImageId: string | null;
 }
 
 // ===== CHAT SESSION (Single Product) =====
@@ -112,7 +121,7 @@ export interface CollectionSession extends VersionedEntity {
   status: CollectionSessionStatus;
   productIds: string[];
   selectedBaseImages: Record<string, string>;
-  settings: FlowGenerationSettings | null;
+  settings: CollectionGenerationSettings | FlowGenerationSettings | null; // Support both for migration
 }
 
 // ===== MESSAGE =====
@@ -148,11 +157,10 @@ export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 
 export interface AssetAnalysis {
   analyzedAt: string;
-  objects?: Array<{ name: string; confidence: number; bounds?: { x: number; y: number; width: number; height: number } }>;
   colors?: { dominant: string[]; palette: string[] };
-  lighting?: { type: string; direction?: string; intensity?: string };
-  composition?: { style: string; focalPoints?: Array<{ x: number; y: number }> };
-  masks?: Array<{ name: string; path: string }>;
+  alt?: string;
+  name?: string;
+  description?: string;
   version: string;
 }
 
@@ -176,6 +184,7 @@ export interface GeneratedAsset extends BaseEntity {
   completedAt: Date | null;
   pinned: boolean;
   deletedAt: Date | null;
+  externalImageId: string | null; // Store's image ID when synced
 }
 
 // ===== GENERATED ASSET PRODUCT (Junction table) =====
@@ -338,4 +347,24 @@ export interface ProductAssetGroup {
   syncedCount: number;
   favoriteCount: number;
   totalCount: number;
+}
+
+/**
+ * Store page product view - shows products with their base images and generated assets
+ * separated into synced (top section) and unsynced (bottom section)
+ */
+export interface StoreProductView {
+  product: Product;
+  /** Base images from the store (for imported products, these are the original store images) */
+  baseImages: ProductImage[];
+  /** Whether this product is linked to a store product (has storeId) */
+  isMappedToStore: boolean;
+  /** Generated assets that have been synced to the store */
+  syncedAssets: GeneratedAssetWithSync[];
+  /** Generated assets not yet synced (or failed/pending) */
+  unsyncedAssets: GeneratedAssetWithSync[];
+  /** Counts for display */
+  syncedCount: number;
+  unsyncedCount: number;
+  totalAssetCount: number;
 }

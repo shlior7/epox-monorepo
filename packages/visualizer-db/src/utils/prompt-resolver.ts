@@ -22,16 +22,6 @@ export function resolvePrompt(settings: FlowGenerationSettings): string {
 export function buildPromptFromSettings(settings: FlowGenerationSettings): string {
   const parts: string[] = [];
 
-  // Style preset
-  if (settings.stylePreset) {
-    parts.push(`Style: ${settings.stylePreset}`);
-  }
-
-  // Lighting preset
-  if (settings.lightingPreset) {
-    parts.push(`Lighting: ${settings.lightingPreset}`);
-  }
-
   // Aspect ratio
   if (settings.aspectRatio) {
     parts.push(`Aspect ratio: ${settings.aspectRatio}`);
@@ -42,9 +32,9 @@ export function buildPromptFromSettings(settings: FlowGenerationSettings): strin
     parts.push(settings.userPrompt.trim());
   }
 
-  // If we have inspiration images, mention them
-  if (settings.inspirationImages?.length) {
-    parts.push(`Using ${settings.inspirationImages.length} inspiration image(s)`);
+  // If we have inspiration bubbles, mention them
+  if (settings.generalInspiration?.length) {
+    parts.push(`Using ${settings.generalInspiration.length} inspiration bubble(s)`);
   }
 
   return parts.join('. ');

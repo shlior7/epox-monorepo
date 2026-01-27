@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, ImageIcon, Palette, Sun, Sparkles, MoreHorizontal } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTestId } from '@/lib/testing/testid';
 import {
@@ -10,55 +10,26 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { InspirationBubbleType } from 'visualizer-types';
+import type { BubbleType } from 'visualizer-types';
+import { getAllBubbleDefinitions } from '../bubbles/registry';
 
-// ===== BUBBLE TYPE OPTIONS =====
+// ===== BUBBLE DESCRIPTIONS =====
 
-interface BubbleTypeOption {
-  type: InspirationBubbleType;
-  icon: React.ElementType;
-  label: string;
-  description: string;
-}
-
-const BUBBLE_TYPE_OPTIONS: BubbleTypeOption[] = [
-  {
-    type: 'inspiration',
-    icon: ImageIcon,
-    label: 'Inspiration Image',
-    description: 'Upload or select an inspiration image',
-  },
-  {
-    type: 'style',
-    icon: Sparkles,
-    label: 'Style Reference',
-    description: 'Choose a style preset or image',
-  },
-  {
-    type: 'color-palette',
-    icon: Palette,
-    label: 'Color Palette',
-    description: 'Extract or select colors',
-  },
-  {
-    type: 'lighting',
-    icon: Sun,
-    label: 'Lighting',
-    description: 'Set lighting conditions',
-  },
-  {
-    type: 'custom',
-    icon: MoreHorizontal,
-    label: 'Custom',
-    description: 'Add a custom reference',
-  },
-];
+const BUBBLE_DESCRIPTIONS: Record<string, string> = {
+  style: 'Define the artistic style',
+  lighting: 'Set lighting conditions',
+  'camera-angle': 'Choose camera perspective',
+  mood: 'Set emotional atmosphere',
+  inspiration: 'Add reference images',
+  'color-palette': 'Define color scheme',
+  custom: 'Add custom inspiration',
+};
 
 // ===== PROPS =====
 
 export interface AddBubbleButtonProps {
   sceneType: string;
-  onAddBubble: (type: InspirationBubbleType) => void;
+  onAddBubble: (type: BubbleType) => void;
   disabled?: boolean;
   maxBubbles?: number;
   currentCount?: number;
@@ -78,7 +49,17 @@ export function AddBubbleButton({
   const [isOpen, setIsOpen] = useState(false);
   const isMaxReached = currentCount >= maxBubbles;
 
-  const handleSelect = (type: InspirationBubbleType) => {
+  // Get bubble options from registry
+  const bubbleOptions = useMemo(() => {
+    return getAllBubbleDefinitions().map((def) => ({
+      type: def.type as BubbleType,
+      icon: def.icon,
+      label: def.label,
+      description: BUBBLE_DESCRIPTIONS[def.type] || `Add ${def.label.toLowerCase()}`,
+    }));
+  }, []);
+
+  const handleSelect = (type: BubbleType) => {
     onAddBubble(type);
     setIsOpen(false);
   };
@@ -101,7 +82,7 @@ export function AddBubbleButton({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56">
-          {BUBBLE_TYPE_OPTIONS.map((option) => (
+          {bubbleOptions.map((option) => (
             <DropdownMenuItem
               key={option.type}
               onClick={() => handleSelect(option.type)}

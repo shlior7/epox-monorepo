@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     // 2. Find all clients this user is a member of
     const members = await drizzle.select().from(member).where(eq(member.userId, userId));
 
-    const clientIds = members.map((m) => m.clientId);
+    const clientIds = members.map((m: { clientId: string }) => m.clientId);
     console.log(`   Found ${clientIds.length} client(s)`);
 
     // 3. Delete all data for each client

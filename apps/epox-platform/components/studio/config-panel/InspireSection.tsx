@@ -4,9 +4,12 @@ import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { buildTestId } from '@/lib/testing/testid';
+import { Checkbox } from '@/components/ui/checkbox';
 import { SceneTypeAccordion } from './SceneTypeAccordion';
+import { GeneralBubblesSection } from './GeneralBubblesSection';
+import { useConfigPanelContext } from './ConfigPanelContext';
 import type { SceneTypeInfo } from './UnifiedStudioConfigPanel';
-import type { InspirationBubbleValue } from 'visualizer-types';
+import type { BubbleValue } from 'visualizer-types';
 
 // ===== PROPS =====
 
@@ -18,7 +21,7 @@ export interface InspireSectionProps {
   // Product badge click
   onProductBadgeClick?: (sceneType: string) => void;
   // Bubble click (opens modal)
-  onBubbleClick?: (sceneType: string, index: number, bubble: InspirationBubbleValue) => void;
+  onBubbleClick?: (sceneType: string, index: number, bubble: BubbleValue) => void;
   // Whether to show product badges
   showProductBadges?: boolean;
   // Base image section (single-flow mode)
@@ -26,6 +29,10 @@ export interface InspireSectionProps {
   baseImages?: Array<{ id: string; url: string; thumbnailUrl?: string }>;
   selectedBaseImageId?: string;
   onBaseImageSelect?: (imageId: string) => void;
+  // Single-flow mode (show simple title instead of accordion)
+  isSingleFlowMode?: boolean;
+  // Selected scene type (for single-flow mode to show bubbles even when no scene type)
+  selectedSceneType?: string;
   className?: string;
 }
 
@@ -42,8 +49,12 @@ export function InspireSection({
   baseImages = [],
   selectedBaseImageId,
   onBaseImageSelect,
+  isSingleFlowMode = false,
+  selectedSceneType = '',
   className,
 }: InspireSectionProps) {
+  const { state, setUseSceneTypeInspiration } = useConfigPanelContext();
+
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     () => new Set(sceneTypes.slice(0, 1).map((st) => st.sceneType))
   );
@@ -102,27 +113,72 @@ export function InspireSection({
         </div>
       )}
 
-      {/* Scene Type Accordions */}
-      <div className="space-y-2" data-testid={buildTestId('inspire-section', 'scene-types')}>
-        {sortedSceneTypes.map((st) => (
-          <SceneTypeAccordion
-            key={st.sceneType}
-            sceneType={st.sceneType}
-            productCount={st.productCount}
-            productIds={st.productIds}
-            isExpanded={expandedSections.has(st.sceneType)}
-            isActive={activeSceneType === st.sceneType}
-            onToggle={() => toggleSection(st.sceneType)}
-            onSceneTypeClick={() => onSceneTypeClick?.(st.sceneType)}
-            onProductBadgeClick={() => onProductBadgeClick?.(st.sceneType)}
-            onBubbleClick={(index, bubble) => onBubbleClick?.(st.sceneType, index, bubble)}
-            showProductBadge={showProductBadges}
+      {/* General Bubbles Section (collection studio mode only) */}
+      {!isSingleFlowMode && (
+        <GeneralBubblesSection className="mb-4" />
+      )}
+
+      {/* Scene Type Inspiration Toggle (collection studio mode only) */}
+      {!isSingleFlowMode && sortedSceneTypes.length > 0 && (
+        <div
+          className="mb-3 flex items-center gap-2"
+          data-testid={buildTestId('inspire-section', 'scene-type-toggle')}
+        >
+          <Checkbox
+            id="use-scene-type-inspiration"
+            checked={state.useSceneTypeInspiration}
+            onCheckedChange={(checked) => setUseSceneTypeInspiration(!!checked)}
           />
-        ))}
+          <label
+            htmlFor="use-scene-type-inspiration"
+            className="cursor-pointer text-xs font-medium text-muted-foreground"
+          >
+            Per-scene-type inspiration
+          </label>
+        </div>
+      )}
+
+      {/* Scene Type Display */}
+      <div className="space-y-2" data-testid={buildTestId('inspire-section', 'scene-types')}>
+        {isSingleFlowMode ? (
+          // Single-flow mode: just bubbles, no title - always show using selectedSceneType
+          <div data-testid={buildTestId('inspire-section', 'scene-type-simple', selectedSceneType || 'none')}>
+            <SceneTypeAccordion
+              sceneType={selectedSceneType || ''}
+              productCount={sortedSceneTypes[0]?.productCount || 1}
+              productIds={sortedSceneTypes[0]?.productIds || []}
+              isExpanded={true}
+              isActive={false}
+              onToggle={() => {}}
+              onSceneTypeClick={() => onSceneTypeClick?.(selectedSceneType || '')}
+              onProductBadgeClick={() => onProductBadgeClick?.(selectedSceneType || '')}
+              onBubbleClick={(index, bubble) => onBubbleClick?.(selectedSceneType || '', index, bubble)}
+              showProductBadge={false}
+              hideHeader={true}
+            />
+          </div>
+        ) : state.useSceneTypeInspiration ? (
+          // Collection studio mode: accordions
+          sortedSceneTypes.map((st) => (
+            <SceneTypeAccordion
+              key={st.sceneType}
+              sceneType={st.sceneType}
+              productCount={st.productCount}
+              productIds={st.productIds}
+              isExpanded={expandedSections.has(st.sceneType)}
+              isActive={activeSceneType === st.sceneType}
+              onToggle={() => toggleSection(st.sceneType)}
+              onSceneTypeClick={() => onSceneTypeClick?.(st.sceneType)}
+              onProductBadgeClick={() => onProductBadgeClick?.(st.sceneType)}
+              onBubbleClick={(index, bubble) => onBubbleClick?.(st.sceneType, index, bubble)}
+              showProductBadge={showProductBadges}
+            />
+          ))
+        ) : null}
       </div>
 
       {/* Empty state */}
-      {sceneTypes.length === 0 && (
+      {sceneTypes.length === 0 && !isSingleFlowMode && (
         <div
           className="rounded-lg border border-dashed border-border p-6 text-center"
           data-testid={buildTestId('inspire-section', 'empty')}

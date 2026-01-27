@@ -34,6 +34,7 @@ export {
   type EncryptedCredentials,
   type StoreType,
   type ConnectionStatus,
+  type WebhookEvent,
 } from './store-connections';
 export {
   StoreSyncLogRepository,
@@ -42,39 +43,3 @@ export {
   type StoreSyncLogUpdate,
   type StoreSyncLogListOptions,
 } from './store-sync-logs';
-
-// Anton repositories
-export {
-  AntonWorkspaceRepository,
-  AntonWorkspaceMemberRepository,
-  AntonProjectRepository,
-  AntonProjectMemberRepository,
-  AntonPageRepository,
-  AntonAnnotationRepository,
-  AntonAnnotationReplyRepository,
-  AntonClaudeTaskRepository,
-  type AntonWorkspace,
-  type AntonWorkspaceCreate,
-  type AntonWorkspaceUpdate,
-  type AntonWorkspaceMember,
-  type AntonWorkspaceMemberCreate,
-  type AntonWorkspaceMemberUpdate,
-  type AntonProject,
-  type AntonProjectCreate,
-  type AntonProjectUpdate,
-  type AntonProjectMember,
-  type AntonProjectMemberCreate,
-  type AntonProjectMemberUpdate,
-  type AntonPage,
-  type AntonPageCreate,
-  type AntonPageUpdate,
-  type AntonAnnotation,
-  type AntonAnnotationCreate,
-  type AntonAnnotationUpdate,
-  type AntonAnnotationReply,
-  type AntonAnnotationReplyCreate,
-  type AntonAnnotationReplyUpdate,
-  type AntonClaudeTask,
-  type AntonClaudeTaskCreate,
-  type AntonClaudeTaskUpdate,
-} from './anton';

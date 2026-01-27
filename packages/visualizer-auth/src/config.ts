@@ -1,7 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { nextCookies } from 'better-auth/next-js';
-import { organization } from 'better-auth/plugins';
 import { getDb } from 'visualizer-db';
 import * as schema from 'visualizer-db/schema';
 
@@ -16,6 +15,26 @@ function requireEnv(name: string): string {
 export function createAuth() {
   const secret = requireEnv('BETTER_AUTH_SECRET');
   const baseURL = process.env.BETTER_AUTH_URL;
+  // Check NEXT_PUBLIC_IS_E2E first because yarn dev always sets NODE_ENV=development
+  const isE2E = process.env.NEXT_PUBLIC_IS_E2E === 'true';
+  const isProduction = process.env.NODE_ENV === 'production' && !isE2E;
+
+  // Debug logging (disabled by default)
+  if (process.env.DEBUG_AUTH) {
+    console.log('[SERVER AUTH INIT] NODE_ENV:', process.env.NODE_ENV);
+    console.log('[SERVER AUTH INIT] isProduction:', isProduction);
+    console.log('[SERVER AUTH INIT] Will enable org plugin:', isProduction);
+  }
+
+  // Get plugins - only load organization plugin in production
+  const getPlugins = () => {
+    if (isProduction) {
+      // Dynamically import organization plugin only in production
+      const { organization } = require('better-auth/plugins');
+      return [organization(), nextCookies()];
+    }
+    return [nextCookies()];
+  };
 
   return betterAuth({
     secret,
@@ -28,16 +47,17 @@ export function createAuth() {
       enabled: true,
     },
     session: {
-      // Enable cookie cache to reduce database queries
+      // Disable cookie cache in test/dev to avoid stale sessions
       cookieCache: {
-        enabled: true,
+        enabled: isProduction,
         maxAge: 5 * 60, // Cache for 5 minutes
       },
     },
     experimental: {
       joins: true,
     },
-    plugins: [organization(), nextCookies()],
+    // Only enable organization plugin in production to avoid WebSocket issues
+    plugins: getPlugins(),
     // Database hooks to auto-create organization on user creation
     databaseHooks: {
       user: {

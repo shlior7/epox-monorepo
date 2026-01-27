@@ -26,9 +26,19 @@ export interface RecentCollection {
   thumbnailUrl?: string;
 }
 
+export interface RecentAsset {
+  id: string;
+  imageUrl: string;
+  productId: string;
+  productName: string;
+  prompt?: string;
+  createdAt: string;
+}
+
 export interface DashboardResponse {
   stats: DashboardStats;
   recentCollections: RecentCollection[];
+  recentAssets: RecentAsset[];
 }
 
 export interface ProductImage {
@@ -46,6 +56,7 @@ export interface Product {
   category: string;
   description: string;
   sceneTypes: string[];
+  selectedSceneType?: string; // The currently selected scene type for this product
   source: 'imported' | 'uploaded';
   analyzed: boolean;
   price: number;
@@ -54,6 +65,11 @@ export interface Product {
   imageUrl: string;
   createdAt: string;
   updatedAt: string;
+  // Store-related fields (for imported products)
+  storeId?: string;
+  storeUrl?: string;
+  storeName?: string;
+  storeSku?: string;
 }
 
 export interface ProductCollection {
@@ -129,6 +145,7 @@ export interface UpdateProductPayload {
   description?: string;
   category?: string;
   sceneTypes?: string[];
+  selectedSceneType?: string;
   price?: number;
 }
 
@@ -141,41 +158,18 @@ export interface Collection {
   totalImages: number;
   createdAt: string;
   updatedAt: string;
-  thumbnailUrl?: string;
+  thumbnails?: string[];
   productIds?: string[];
   inspirationImages?: string[];
   promptTags?: Partial<PromptTags>;
-  // New settings structure
   settings?: {
-    inspirationImages?: Array<{
-      url: string;
-      thumbnailUrl?: string;
-      tags?: string[];
-      addedAt: string;
-      sourceType: 'upload' | 'library' | 'stock' | 'unsplash';
-    }>;
-    sceneTypeInspirations?: Record<
-      string,
-      {
-        inspirationImages: Array<{
-          url: string;
-          thumbnailUrl?: string;
-          tags?: string[];
-          addedAt: string;
-          sourceType: 'upload' | 'library' | 'stock' | 'unsplash';
-        }>;
-        mergedAnalysis: {
-          json: Record<string, unknown>;
-          promptText: string;
-        };
-      }
-    >;
-    stylePreset?: string;
-    lightingPreset?: string;
+    generalInspiration?: any[];
+    sceneTypeInspiration?: Record<string, any>;
+    useSceneTypeInspiration?: boolean;
     userPrompt?: string;
     aspectRatio?: ImageAspectRatio;
     imageQuality?: '1k' | '2k' | '4k';
-    variantsCount?: number;
+    variantsPerProduct?: number;
     video?: {
       prompt?: string;
       inspirationImageUrl?: string;
@@ -223,37 +217,14 @@ export interface UpdateCollectionPayload {
   productIds?: string[];
   inspirationImages?: Record<string, string>;
   promptTags?: Partial<PromptTags>;
-  // New settings structure
   settings?: {
-    inspirationImages?: Array<{
-      url: string;
-      thumbnailUrl?: string;
-      tags?: string[];
-      addedAt: string;
-      sourceType: 'upload' | 'library' | 'stock' | 'unsplash';
-    }>;
-    sceneTypeInspirations?: Record<
-      string,
-      {
-        inspirationImages: Array<{
-          url: string;
-          thumbnailUrl?: string;
-          tags?: string[];
-          addedAt: string;
-          sourceType: 'upload' | 'library' | 'stock' | 'unsplash';
-        }>;
-        mergedAnalysis: {
-          json: Record<string, unknown>;
-          promptText: string;
-        };
-      }
-    >;
-    stylePreset?: string;
-    lightingPreset?: string;
+    generalInspiration?: any[];
+    sceneTypeInspiration?: Record<string, any>;
+    useSceneTypeInspiration?: boolean;
     userPrompt?: string;
     aspectRatio?: ImageAspectRatio;
     imageQuality?: '1k' | '2k' | '4k';
-    variantsCount?: number;
+    variantsPerProduct?: number;
     video?: {
       prompt?: string;
       inspirationImageUrl?: string;
@@ -280,12 +251,11 @@ export interface GenerationFlow {
   status: string;
   settings: {
     aspectRatio: ImageAspectRatio;
-    variantsCount: number;
-    varietyLevel: number;
-    matchProductColors: boolean;
+    variantsPerProduct: number;
+    generalInspiration?: any[];
+    sceneTypeInspiration?: Record<string, any>;
+    useSceneTypeInspiration?: boolean;
   };
-  promptTags: PromptTags;
-  inspirationImages: string[];
   generatedAssets: GeneratedAsset[];
   createdAt: string;
   updatedAt: string;
@@ -300,32 +270,10 @@ export interface CreateGenerationFlowPayload {
 }
 
 export interface UpdateStudioSettingsPayload {
-  // Scene Style (Section 1)
-  inspirationImages?: Array<{
-    url: string;
-    thumbnailUrl?: string;
-    tags?: string[];
-    addedAt: string;
-    sourceType: 'upload' | 'library' | 'stock' | 'unsplash';
-  }>;
-  sceneTypeInspirations?: Record<
-    string,
-    {
-      inspirationImages: Array<{
-        url: string;
-        thumbnailUrl?: string;
-        tags?: string[];
-        addedAt: string;
-        sourceType: 'upload' | 'library' | 'stock' | 'unsplash';
-      }>;
-      mergedAnalysis: {
-        json: Record<string, unknown>;
-        promptText: string;
-      };
-    }
-  >;
-  stylePreset?: string;
-  lightingPreset?: string;
+  // Inspiration (Section 1)
+  generalInspiration?: any[];
+  sceneTypeInspiration?: Record<string, any>;
+  useSceneTypeInspiration?: boolean;
   sceneType?: string;
 
   // User Prompt (Section 3)
@@ -334,7 +282,7 @@ export interface UpdateStudioSettingsPayload {
   // Output Settings (Section 4)
   aspectRatio?: ImageAspectRatio;
   imageQuality?: '1k' | '2k' | '4k' | '1K' | '2K' | '4K';
-  variantsCount?: number;
+  variantsPerProduct?: number;
   video?: {
     prompt?: string;
     inspirationImageUrl?: string;
@@ -349,12 +297,6 @@ export interface UpdateStudioSettingsPayload {
     };
     presetId?: string | null;
   };
-
-  // Legacy fields (for backward compat during transition)
-  promptTags?: Partial<PromptTags>;
-  customPrompt?: string;
-  inspirationImageUrls?: string[];
-  selectedBaseImageId?: string;
 }
 
 export interface StudioSettingsResponse {
@@ -369,9 +311,11 @@ export interface GeneratedAsset {
   assetType?: 'image' | 'video' | '3d_model';
   productId: string;
   productName: string;
-  collectionId: string;
+  flowId?: string;
+  collectionId?: string;
   sceneType: string;
-  rating: number;
+  prompt?: string;
+  rating?: number;
   isPinned: boolean;
   approvalStatus: 'pending' | 'approved' | 'rejected';
   status: 'pending' | 'generating' | 'completed' | 'error';
@@ -574,6 +518,21 @@ export interface UnsplashSearchResponse {
   total_pages: number;
 }
 
+export interface StoreConnection {
+  id: string;
+  provider: 'shopify' | 'woocommerce';
+  storeUrl: string;
+  storeName: string;
+  status: 'active' | 'inactive' | 'error';
+  lastSyncAt: string | null;
+  createdAt: string;
+}
+
+export interface StoreConnectionStatusResponse {
+  connected: boolean;
+  connection: StoreConnection | null;
+}
+
 // ===== API Client Class =====
 
 class ApiClient {
@@ -665,6 +624,12 @@ class ApiClient {
     });
   }
 
+  async toggleProductFavorite(productId: string): Promise<{ success: boolean; isFavorite: boolean }> {
+    return this.request(`/api/products/${productId}/favorite`, {
+      method: 'POST',
+    });
+  }
+
   // ===== Collections =====
   async listCollections(params?: CollectionsParams): Promise<CollectionsResponse> {
     const searchParams = new URLSearchParams();
@@ -722,6 +687,20 @@ class ApiClient {
       method: 'DELETE',
       headers: body ? { 'Content-Type': 'application/json' } : undefined,
       body,
+    });
+  }
+
+  async syncCollectionFlows(
+    collectionId: string
+  ): Promise<{
+    success: boolean;
+    updated: number;
+    total: number;
+    message: string;
+  }> {
+    return this.request(`/api/collections/${collectionId}/sync-flows`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 
@@ -1012,6 +991,11 @@ class ApiClient {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ imageDataUrl, targetResolution }),
     });
+  }
+
+  // ===== Store Connection =====
+  async getStoreConnectionStatus(): Promise<StoreConnectionStatusResponse> {
+    return this.request<StoreConnectionStatusResponse>('/api/store-connection/status');
   }
 
   // ===== Explore (Unsplash) =====

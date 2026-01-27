@@ -101,7 +101,7 @@ export function Sidebar({
         data-testid={buildTestId(testId, 'logo')}
       >
         <Link
-          href="/dashboard"
+          href="/home"
           className={cn(
             'flex items-center gap-2.5',
             'transition-all duration-300',
@@ -109,22 +109,11 @@ export function Sidebar({
           )}
           data-testid={buildTestId(testId, 'logo-link')}
         >
-          <div className="relative h-8 w-8">
-            <Image
-              src="/media/logo-white.png"
-              alt="Epox Logo"
-              width={32}
-              height={32}
-              className="object-contain"
-              unoptimized
-              data-testid={buildTestId(testId, 'logo-image')}
-            />
-          </div>
-          {!collapsed && (
+          {
             <span className="text-gradient font-display text-lg font-semibold tracking-tight">
               EPOX
             </span>
-          )}
+          }
         </Link>
 
         <Button
@@ -252,7 +241,10 @@ export function Sidebar({
             testId={buildTestId(testId, 'user-menu', 'content')}
           >
             <div className="px-2 py-1.5" data-testid={buildTestId(testId, 'user-menu', 'info')}>
-              <p className="text-sm font-medium" data-testid={buildTestId(testId, 'user-menu', 'name')}>
+              <p
+                className="text-sm font-medium"
+                data-testid={buildTestId(testId, 'user-menu', 'name')}
+              >
                 {userName}
               </p>
               <p

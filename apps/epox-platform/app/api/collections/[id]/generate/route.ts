@@ -8,8 +8,10 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { withGenerationSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
-import type { FlowGenerationSettings, ProductImage } from 'visualizer-types';
+import { resolveStorageUrl } from 'visualizer-storage';
+import type { FlowGenerationSettings, ProductImage, BubbleValue, SceneTypeInspirationMap } from 'visualizer-types';
 import { enqueueImageGeneration } from 'visualizer-ai';
+import { buildBubblePromptSection } from '@/lib/services/bubble-prompt-extractor';
 
 interface GenerateRequest {
   productIds?: string[]; // Optional: specific products to generate (defaults to all)
@@ -56,22 +58,38 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
         : new Map<string, ProductImage[]>();
 
     // Merge settings: request settings override collection settings
-    const mergedSettings: Partial<FlowGenerationSettings> = {
-      inspirationImages: [],
+    const mergedSettings: Record<string, any> = {
       aspectRatio: '1:1',
       imageQuality: '2k',
-      variantsCount: 1,
+      variantsPerProduct: 1,
       ...collection.settings,
       ...body.settings,
     };
 
-    // Get inspiration image URLs from settings
-    const inspirationImageUrls = mergedSettings.inspirationImages?.map((img) => img.url) || [];
+    // Extract general inspiration bubbles
+    const generalInspiration: BubbleValue[] = Array.isArray(mergedSettings.generalInspiration)
+      ? mergedSettings.generalInspiration
+      : [];
+    const sceneTypeInspiration: SceneTypeInspirationMap = mergedSettings.sceneTypeInspiration || {};
+    const useSceneTypeInspiration: boolean = mergedSettings.useSceneTypeInspiration !== false;
+
+    // Build prompt from bubbles
+    const promptParts: string[] = [];
+    const generalPrompt = buildBubblePromptSection(generalInspiration);
+    if (generalPrompt) promptParts.push(generalPrompt);
+    if (mergedSettings.userPrompt) promptParts.push(mergedSettings.userPrompt);
+    const basePrompt = promptParts.join('\n');
+
+    // Extract reference image URLs from reference bubbles
+    const inspirationImageUrls: string[] = [];
+    for (const bubble of generalInspiration) {
+      if (bubble.type === 'reference' && bubble.image?.url) {
+        inspirationImageUrls.push(bubble.image.url);
+      }
+    }
 
     // Build collection settings for Art Director context
     const collectionSettings = {
-      stylePreset: mergedSettings.stylePreset as string | undefined,
-      lightingPreset: mergedSettings.lightingPreset as string | undefined,
       userPrompt: mergedSettings.userPrompt as string | undefined,
     };
 
@@ -89,26 +107,45 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
           const productImages = productImagesMap.get(productId) || [];
           // Use explicitly marked primary image, or fall back to first by sort order
           const primaryImage = productImages.find((img) => img.isPrimary) ?? productImages[0];
-          if (primaryImage?.r2KeyBase) {
-            const baseUrl = `${process.env.R2_PUBLIC_URL || 'https://pub-xxx.r2.dev'}/${primaryImage.r2KeyBase}`;
-            flow.selectedBaseImages[productId] = baseUrl;
+          if (primaryImage?.imageUrl) {
+            const fullUrl = resolveStorageUrl(primaryImage.imageUrl);
+            if (fullUrl) {
+              flow.selectedBaseImages[productId] = fullUrl;
+            }
           }
         }
       });
       // Use stored selectedBaseImages (productId -> imageUrl)
       productImageUrls = Object.values(flow.selectedBaseImages);
 
+      // Build per-flow prompt: base prompt + scene-type-specific bubbles
+      let flowPrompt = basePrompt;
+      const flowSceneType = (flow.settings as any)?.sceneType;
+      if (useSceneTypeInspiration && flowSceneType && sceneTypeInspiration[flowSceneType]) {
+        const stBubbles = sceneTypeInspiration[flowSceneType].bubbles || [];
+        const stPrompt = buildBubblePromptSection(stBubbles);
+        if (stPrompt) {
+          flowPrompt = flowPrompt ? `${flowPrompt}\n${stPrompt}` : stPrompt;
+        }
+        // Also extract reference images from scene-type bubbles
+        for (const bubble of stBubbles) {
+          if (bubble.type === 'reference' && bubble.image?.url) {
+            inspirationImageUrls.push(bubble.image.url);
+          }
+        }
+      }
+
       // Create a job for this product
       const { jobId } = await enqueueImageGeneration(
         clientId,
         {
-          prompt: '', // Will be built by the worker using Art Director
+          prompt: flowPrompt,
           productIds: flow.productIds,
           sessionId: flowId,
           settings: {
             aspectRatio: mergedSettings.aspectRatio,
             imageQuality: mergedSettings.imageQuality,
-            numberOfVariants: mergedSettings.variantsCount ?? 1,
+            numberOfVariants: mergedSettings.variantsPerProduct ?? 1,
           },
           productImageUrls,
           inspirationImageUrls,

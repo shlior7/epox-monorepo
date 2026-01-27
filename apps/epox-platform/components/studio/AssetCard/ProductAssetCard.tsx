@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Settings2, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ import {
 import { MoreHorizontal, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTestId } from '@/lib/testing/testid';
+import { ImageEditOverlay } from '@/components/ui/image-edit-overlay';
+import { ImageEditorModal } from '@/components/studio/modals/ImageEditorModal';
 import {
   type AssetConfiguration,
   AssetCardWrapper,
@@ -58,6 +60,7 @@ interface ProductAssetCardProps {
   onDelete?: (revisionId: string) => void;
   onGenerate?: () => void;
   onOpenStudio?: () => void;
+  onImageEdited?: (revisionId: string, result: { mode: 'overwrite' | 'copy'; imageDataUrl: string; imageUrl?: string; assetId?: string }) => void;
   className?: string;
   testId?: string;
 }
@@ -77,10 +80,12 @@ export function ProductAssetCard({
   onDelete,
   onGenerate,
   onOpenStudio,
+  onImageEdited,
   className,
   testId,
 }: ProductAssetCardProps) {
   const [internalIndex, setInternalIndex] = useState(0);
+  const [editorOpen, setEditorOpen] = useState(false);
   const currentIndex = controlledIndex ?? internalIndex;
 
   const currentRevision = revisions[currentIndex];
@@ -95,6 +100,12 @@ export function ProductAssetCard({
   const handleNext = () => {
     if (canNavigateNext) setInternalIndex(currentIndex + 1);
   };
+
+  const handleImageSave = useCallback((result: { mode: 'overwrite' | 'copy'; imageDataUrl: string; imageUrl?: string; assetId?: string }) => {
+    if (currentRevision && onImageEdited) {
+      onImageEdited(currentRevision.id, result);
+    }
+  }, [currentRevision, onImageEdited]);
 
   return (
     <AssetCardWrapper className={className} testId={testId}>
@@ -167,14 +178,20 @@ export function ProductAssetCard({
                 playsInline
               />
             ) : (
-              <Image
-                src={currentRevision.imageUrl}
-                alt={`${product.name} - Revision ${currentIndex + 1}`}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-contain"
-                unoptimized
-              />
+              <ImageEditOverlay
+                onEdit={() => setEditorOpen(true)}
+                className="h-full w-full"
+                testId={buildTestId(testId, 'image', 'edit-overlay')}
+              >
+                <Image
+                  src={currentRevision.imageUrl}
+                  alt={`${product.name} - Revision ${currentIndex + 1}`}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-contain"
+                  unoptimized
+                />
+              </ImageEditOverlay>
             )}
 
             {/* Gallery Navigation */}
@@ -278,6 +295,19 @@ export function ProductAssetCard({
           </div>
         )}
       </AssetCardFooter>
+
+      {/* Image Editor Modal */}
+      {currentRevision && !currentRevision.isVideo && (
+        <ImageEditorModal
+          open={editorOpen}
+          onOpenChange={setEditorOpen}
+          imageUrl={currentRevision.imageUrl}
+          imageType="generated"
+          imageId={currentRevision.id}
+          productId={product.id}
+          onSave={handleImageSave}
+        />
+      )}
     </AssetCardWrapper>
   );
 }

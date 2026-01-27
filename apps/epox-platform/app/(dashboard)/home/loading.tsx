@@ -1,12 +1,12 @@
 import { PageHeader } from '@/components/layout';
 import { DashboardSkeleton } from '@/components/ui/skeleton-loaders';
 
-export default function DashboardLoading() {
+export default function HomeLoading() {
   return (
     <>
       <PageHeader
-        title="Dashboard"
-        description="Welcome back! Here's what's happening with your visualizations."
+        title="Home"
+        description="Welcome back! What would you like to create today?"
       />
       <DashboardSkeleton />
     </>

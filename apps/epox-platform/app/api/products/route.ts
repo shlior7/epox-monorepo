@@ -77,10 +77,11 @@ export const GET = withSecurity(async (request, context) => {
     const mappedProducts = products.map((p) => ({
       id: p.id,
       name: p.name,
-      sku: p.erpSku || `SKU-${p.id.slice(0, 8)}`,
+      sku: p.storeSku || `SKU-${p.id.slice(0, 8)}`,
       category: p.category || 'Uncategorized',
       description: p.description || '',
       sceneTypes: p.sceneTypes ?? [],
+      selectedSceneType: p.selectedSceneType,
       source: p.source,
       analyzed: p.analyzedAt !== null,
       price: p.price ? parseFloat(p.price) : 0,
@@ -89,8 +90,8 @@ export const GET = withSecurity(async (request, context) => {
       // Return ALL images with proper URLs converted from storage keys
       images: p.images.map((img) => ({
         id: img.id,
-        baseUrl: storage.getPublicUrl(img.r2KeyBase),
-        previewUrl: img.r2KeyPreview ? storage.getPublicUrl(img.r2KeyPreview) : null,
+        baseUrl: storage.getPublicUrl(img.imageUrl),
+        previewUrl: img.previewUrl ? storage.getPublicUrl(img.previewUrl) : null,
         sortOrder: img.sortOrder,
         isPrimary: img.isPrimary,
       })),
@@ -98,7 +99,7 @@ export const GET = withSecurity(async (request, context) => {
       // Backward compatibility: primary image URL (or first if none marked)
       imageUrl: (() => {
         const primary = p.images.find((img) => img.isPrimary) ?? p.images[0];
-        return primary ? storage.getPublicUrl(primary.r2KeyBase) : '';
+        return primary ? storage.getPublicUrl(primary.imageUrl) : '';
       })(),
 
       createdAt: p.createdAt.toISOString(),
@@ -168,7 +169,7 @@ export const POST = withSecurity(async (request, context) => {
       name: name.trim(),
       category: category?.trim() || null,
       sceneTypes: Array.isArray(sceneTypes) ? sceneTypes : undefined,
-      erpSku: sku?.trim() || null,
+      storeSku: sku?.trim() || null,
       price: price !== undefined && price !== null ? price.toString() : null,
       description: description?.trim() || null,
       source: 'uploaded',
@@ -178,7 +179,7 @@ export const POST = withSecurity(async (request, context) => {
     const responseProduct = {
       id: product.id,
       name: product.name,
-      sku: product.erpSku || `SKU-${product.id.slice(0, 8)}`,
+      sku: product.storeSku || `SKU-${product.id.slice(0, 8)}`,
       category: product.category || 'Uncategorized',
       description: product.description || '',
       sceneTypes: product.sceneTypes ?? [],

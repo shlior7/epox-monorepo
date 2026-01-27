@@ -10,16 +10,17 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   const queryClient = getQueryClient();
 
-  try {
-    const auth = await getServerComponentAuthRequired();
+  // Get auth - automatically redirects to /login if not authenticated
+  const auth = await getServerComponentAuthRequired();
 
+  try {
     // Prefetch dashboard data on the server
     await queryClient.prefetchQuery({
       queryKey: ['dashboard'],
       queryFn: () => fetchDashboardData(auth.clientId),
     });
   } catch (error) {
-    // Auth failed or data fetch failed - client will handle loading/error states
+    // Data fetch failed - client will handle loading/error states
     console.error('Home prefetch failed:', error);
   }
 

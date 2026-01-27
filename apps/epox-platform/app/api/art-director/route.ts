@@ -7,20 +7,18 @@
 import { NextResponse } from 'next/server';
 import type {
   SubjectAnalysis,
-  SceneTypeInspirationMap,
-  StylePreset,
-  LightingPreset,
   VisionAnalysisResult,
+  BubbleValue,
 } from 'visualizer-types';
 import { withSecurity } from '@/lib/security';
+import { extractPromptContextFromBubbles, groupBubbleContextByCategory } from '@/lib/services/bubble-prompt-extractor';
 
 // ===== REQUEST/RESPONSE TYPES =====
 
 interface ArtDirectorRequest {
   subjectAnalysis?: SubjectAnalysis;
-  sceneTypeInspirations?: SceneTypeInspirationMap;
-  stylePreset?: StylePreset;
-  lightingPreset?: LightingPreset;
+  bubbles?: BubbleValue[];
+  sceneType?: string;
   userPrompt?: string;
 }
 
@@ -80,125 +78,27 @@ function deriveGeometricDescription(cameraAngle: SubjectAnalysis['inputCameraAng
   }
 }
 
-/**
- * Logic 3: Scene Type Matching
- * Finds the best matching inspiration for the product's native scene types
- */
-function findMatchingInspiration(
-  productSceneTypes: string[],
-  sceneTypeInspirations: SceneTypeInspirationMap | undefined = {}
-): { matchedSceneType: string; analysis: VisionAnalysisResult } | null {
-  const availableSceneTypes = Object.keys(sceneTypeInspirations);
-
-  if (availableSceneTypes.length === 0) {
-    return null;
-  }
-
-  // Find intersection of product scene types and available inspirations
-  for (const productSceneType of productSceneTypes) {
-    // Try exact match first
-    if (sceneTypeInspirations[productSceneType]) {
-      return {
-        matchedSceneType: productSceneType,
-        analysis: sceneTypeInspirations[productSceneType].mergedAnalysis,
-      };
-    }
-
-    // Try case-insensitive match
-    const match = availableSceneTypes.find(
-      (available) => available.toLowerCase() === productSceneType.toLowerCase()
-    );
-    if (match) {
-      return {
-        matchedSceneType: match,
-        analysis: sceneTypeInspirations[match].mergedAnalysis,
-      };
-    }
-  }
-
-  // No match found - use the first available inspiration
-  const firstSceneType = availableSceneTypes[0];
-  return {
-    matchedSceneType: firstSceneType,
-    analysis: sceneTypeInspirations[firstSceneType].mergedAnalysis,
-  };
-}
 
 /**
- * Builds the scene narrative (Segment B) from vision analysis
+ * Extract style and lighting from bubbles for scene narrative
  */
-function buildSceneNarrative(
-  subjectClass: string,
-  nativeSceneType: string,
-  designDiscipline: string,
-  geometricDescription: string,
-  visionAnalysis: VisionAnalysisResult,
-  stylePreset?: StylePreset,
-  lightingPreset?: LightingPreset
-): string {
-  const parts: string[] = [];
+function extractStyleAndLighting(bubbles: BubbleValue[]): {
+  style?: string;
+  lighting?: string;
+} {
+  const result: { style?: string; lighting?: string } = {};
 
-  // The Stage
-  const styleDesc = stylePreset ? `, styled in ${stylePreset} aesthetic` : '';
-  parts.push(
-    `Professional ${designDiscipline} of a ${nativeSceneType}${styleDesc}. ${visionAnalysis.json.styleSummary} Ultra-realistic, 8k resolution, highly detailed texture. ${geometricDescription}`
-  );
-
-  // The Shell (walls and floor from scene inventory)
-  const walls = visionAnalysis.json.sceneInventory.find((item) =>
-    item.identity.toLowerCase().includes('wall')
-  );
-  const floor = visionAnalysis.json.sceneInventory.find(
-    (item) =>
-      item.identity.toLowerCase().includes('floor') ||
-      item.identity.toLowerCase().includes('ground')
-  );
-
-  if (walls || floor) {
-    const shellParts: string[] = [];
-    if (walls) {
-      shellParts.push(`The ${walls.identity} are finished in ${walls.surfacePhysics}`);
+  for (const bubble of bubbles) {
+    if (bubble.type === 'style') {
+      result.style = bubble.preset || bubble.customValue;
+    } else if (bubble.type === 'lighting') {
+      result.lighting = bubble.preset || bubble.customValue;
     }
-    if (floor) {
-      shellParts.push(`the ${floor.identity} is ${floor.surfacePhysics}`);
-    }
-    parts.push(`${shellParts.join(' and ')}.`);
   }
 
-  // The Styling (hero accessories)
-  if (visionAnalysis.json.heroObjectAccessories) {
-    const acc = visionAnalysis.json.heroObjectAccessories;
-    parts.push(
-      `Adorning the ${subjectClass}, ${acc.identity} made of ${acc.materialPhysics} is ${acc.placement}.`
-    );
-  }
-
-  // The Specifics (scene inventory props)
-  const props = visionAnalysis.json.sceneInventory.filter(
-    (item) =>
-      !item.identity.toLowerCase().includes('wall') &&
-      !item.identity.toLowerCase().includes('floor') &&
-      !item.identity.toLowerCase().includes('ground') &&
-      !item.identity.toLowerCase().includes('ceiling')
-  );
-
-  for (const prop of props.slice(0, 5)) {
-    parts.push(
-      `A ${prop.identity} ${prop.geometry} made of ${prop.surfacePhysics} is positioned ${prop.spatialContext}.`
-    );
-  }
-
-  // The Atmosphere
-  const lighting = visionAnalysis.json.lightingPhysics;
-  const lightingDesc = lightingPreset
-    ? `${lightingPreset} lighting with ${lighting.sourceDirection}`
-    : `The lighting is defined by ${lighting.sourceDirection}`;
-  parts.push(
-    `${lightingDesc}, casting ${lighting.shadowQuality}. The atmosphere follows a ${lighting.colorTemperature} palette.`
-  );
-
-  return parts.join(' ');
+  return result;
 }
+
 
 // ===== MAIN HANDLER =====
 
@@ -208,51 +108,32 @@ export const dynamic = 'force-dynamic';
 export const POST = withSecurity(async (request): Promise<NextResponse<ArtDirectorResponse>> => {
   const body: ArtDirectorRequest = await request.json();
 
-  const { subjectAnalysis, sceneTypeInspirations, stylePreset, lightingPreset, userPrompt } = body;
+  const { subjectAnalysis, bubbles, sceneType, userPrompt } = body;
 
   if (!subjectAnalysis) {
     return NextResponse.json({ success: false, error: 'Missing subjectAnalysis' }, { status: 400 });
   }
 
-  // Find matching inspiration for this product
-  const match = findMatchingInspiration(subjectAnalysis.nativeSceneTypes, sceneTypeInspirations);
-
-  if (!match) {
-    return NextResponse.json(
-      { success: false, error: 'No inspiration images available for scene type matching' },
-      { status: 400 }
-    );
+  // Extract bubble context
+  let bubbleContext: string[] = [];
+  if (bubbles && bubbles.length > 0) {
+    bubbleContext = extractPromptContextFromBubbles(bubbles);
   }
 
-  const { matchedSceneType, analysis: visionAnalysis } = match;
+  // Build prompt with bubble context
   const subjectClass = subjectAnalysis.subjectClassHyphenated;
+  const { environmentType } = deriveEnvironmentContext(subjectAnalysis.nativeSceneCategory);
 
-  // Derive context variables
-  const { environmentType, designDiscipline } = deriveEnvironmentContext(
-    subjectAnalysis.nativeSceneCategory
-  );
-  const geometricDescription = deriveGeometricDescription(subjectAnalysis.inputCameraAngle);
+  const introAnchor = `Create an ${environmentType} ${subjectClass} scene with this ${subjectClass} from the attached image and keep the visual integrity of the ${subjectClass} from the attached image exactly as it is.`;
 
-  // Build the 3 segments
-  const introAnchor = `Create an ${environmentType} ${subjectClass} scene with this ${subjectClass} from the attached image and keep the visual integrity of the ${subjectClass} from the attached image exactly as it is in terms of shape and size and proportion and material and color and camera angle, with the exact camera angle as in the attached image, do not change any aspect of the ${subjectClass} as it is in the attached image, and simply place this ${subjectClass} at the scene as described:`;
-
-  const sceneNarrative = buildSceneNarrative(
-    subjectClass,
-    matchedSceneType,
-    designDiscipline,
-    geometricDescription,
-    visionAnalysis,
-    stylePreset,
-    lightingPreset
-  );
-
-  // User additions (appended, not replacing)
+  const bubbleSection = bubbleContext.length > 0 ? bubbleContext.join('. ') : '';
   const userAdditions = userPrompt?.trim() ?? '';
+  const outroAnchor = `keep the visual integrity of the ${subjectClass} from the attached image exactly as it is`;
 
-  const outroAnchor = `keep the visual integrity of the ${subjectClass} from the attached image exactly as it is in terms of shape and size and proportion and material and color and camera angle, with the exact camera angle as in the attached image, do not change any aspect of the ${subjectClass} as it is in the attached image, and simply place this ${subjectClass} at the scene as described`;
-
-  // Combine segments into final prompt
-  const promptParts = [introAnchor, sceneNarrative];
+  const promptParts = [introAnchor];
+  if (bubbleSection) {
+    promptParts.push(`Style guidance: ${bubbleSection}`);
+  }
   if (userAdditions) {
     promptParts.push(userAdditions);
   }
@@ -263,10 +144,10 @@ export const POST = withSecurity(async (request): Promise<NextResponse<ArtDirect
   return NextResponse.json({
     success: true,
     finalPrompt,
-    matchedSceneType,
+    matchedSceneType: sceneType || 'Custom',
     segments: {
       introAnchor,
-      sceneNarrative,
+      sceneNarrative: bubbleSection,
       userAdditions,
       outroAnchor,
     },

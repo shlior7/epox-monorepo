@@ -95,7 +95,7 @@ describe('Collection Generate API - POST /api/collections/[id]/generate', () => 
     ] as any);
     vi.mocked(db.productImages.listByProductIds).mockResolvedValue(
       new Map([
-        ['prod-1', [{ id: 'img-1', r2KeyBase: 'clients/test-client/products/prod-1/img-1.jpg', isPrimary: true }]],
+        ['prod-1', [{ id: 'img-1', imageUrl: 'clients/test-client/products/prod-1/img-1.jpg', isPrimary: true }]],
       ]) as any
     );
 

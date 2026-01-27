@@ -85,13 +85,13 @@ export interface CollectionSession {
   id: string;
   clientId: string;
   name: string;
+  status: string;
   productIds: unknown;
   selectedBaseImages: unknown;
+  settings: unknown | null;
   version: number;
   createdAt: Date;
   updatedAt: Date;
-  status: string;
-  settings: unknown | null;
 }
 
 export interface FavoriteImage {
@@ -108,22 +108,24 @@ export interface GeneratedAsset {
   generationFlowId: string | null;
   chatSessionId: string | null;
   assetUrl: string;
+  assetType: string;
+  status: string;
   prompt: string | null;
   settings: unknown | null;
   productIds: unknown | null;
   jobId: string | null;
   error: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  assetType: string;
-  status: string;
   assetAnalysis: unknown | null;
   analysisVersion: string | null;
   approvalStatus: string;
   approvedAt: Date | null;
   approvedBy: string | null;
-  completedAt: Date | null;
+  externalImageId: string | null;
+  syncedAt: Date | null;
   pinned: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  completedAt: Date | null;
   deletedAt: Date | null;
 }
 
@@ -148,17 +150,18 @@ export interface GenerationEvent {
 export interface GenerationFlow {
   id: string;
   collectionSessionId: string | null;
+  clientId: string;
   name: string | null;
+  sceneType: string | null;
   productIds: unknown;
   selectedBaseImages: unknown;
   status: string;
   settings: unknown;
+  isFavorite: boolean;
   currentImageIndex: number;
   version: number;
   createdAt: Date;
   updatedAt: Date;
-  clientId: string;
-  isFavorite: boolean;
 }
 
 export interface GenerationFlowProduct {
@@ -228,34 +231,39 @@ export interface Product {
   description: string | null;
   category: string | null;
   sceneTypes: unknown | null;
+  selectedSceneType: string | null;
   modelFilename: string | null;
-  version: number;
-  createdAt: Date;
-  updatedAt: Date;
   isFavorite: boolean;
   source: string;
   storeConnectionId: string | null;
-  erpId: string | null;
-  erpSku: string | null;
-  erpUrl: string | null;
+  storeId: string | null;
+  storeSku: string | null;
+  storeUrl: string | null;
+  storeProductName: string | null;
   importedAt: Date | null;
   analysisData: unknown | null;
   analysisVersion: string | null;
   analyzedAt: Date | null;
   price: number | null;
   metadata: unknown | null;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface ProductImage {
   id: string;
   productId: string;
-  r2KeyBase: string;
-  r2KeyPreview: string | null;
+  imageUrl: string;
+  previewUrl: string | null;
   sortOrder: number;
+  isPrimary: boolean;
+  syncStatus: string;
+  originalStoreUrl: string | null;
+  externalImageId: string | null;
   version: number;
   createdAt: Date;
   updatedAt: Date;
-  isPrimary: boolean;
 }
 
 export interface QuotaLimit {
@@ -286,18 +294,22 @@ export interface StoreConnection {
   storeType: string;
   storeUrl: string;
   storeName: string | null;
-  tokenExpiresAt: Date | null;
-  autoSyncEnabled: boolean;
-  syncOnApproval: boolean;
-  status: string;
-  lastSyncAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
   credentialsCiphertext: string;
   credentialsIv: string;
   credentialsTag: string;
   credentialsKeyId: string;
   credentialsFingerprint: string | null;
+  tokenExpiresAt: Date | null;
+  autoSyncEnabled: boolean;
+  syncOnApproval: boolean;
+  webhookSecret: string | null;
+  webhookId: string | null;
+  webhookEvents: string[] | null;
+  lastWebhookAt: Date | null;
+  status: string;
+  lastSyncAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface StoreSyncLog {

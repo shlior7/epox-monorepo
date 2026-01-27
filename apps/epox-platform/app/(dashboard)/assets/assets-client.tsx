@@ -15,6 +15,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { apiClient } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -23,14 +30,20 @@ import {
   Check,
   Clock,
   Download,
+  Edit,
   Eye,
   FolderKanban,
   Grid,
+  Heart,
   Images,
   List,
   Loader2,
+  MoreHorizontal,
   Package,
   Pin,
+  Store,
+  Trash2,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -42,8 +55,10 @@ interface GeneratedAsset {
   productId?: string;
   productName?: string;
   flowId?: string;
+  collectionId?: string;
   collectionName?: string;
   sceneType: string;
+  prompt?: string;
   isPinned: boolean;
   approvalStatus: 'pending' | 'approved' | 'rejected';
   createdAt: string;
@@ -109,7 +124,7 @@ export function AssetsClient() {
   // Group assets by collection
   const assetsByCollection = collections.reduce(
     (acc, collection) => {
-      const collectionAssets: GeneratedAsset[] = [];
+      const collectionAssets = assets.filter((a: GeneratedAsset) => a.collectionId === collection.id);
       if (collectionAssets.length > 0) {
         acc[collection.id] = {
           collection,
@@ -325,9 +340,9 @@ export function AssetsClient() {
                               <div className="mb-3 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                   <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-secondary">
-                                    {collection.thumbnailUrl ? (
+                                    {collection.thumbnails?.[0] ? (
                                       <Image
-                                        src={collection.thumbnailUrl}
+                                        src={collection.thumbnails[0]}
                                         alt={collection.name}
                                         fill
                                         className="object-cover"
@@ -498,45 +513,110 @@ function AssetList({
   assets: GeneratedAsset[];
   onSelect: (asset: GeneratedAsset) => void;
 }) {
+  const handlePin = (asset: GeneratedAsset, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // TODO: Implement pin action
+    console.log('Pin asset:', asset.id);
+  };
+
+  const handleFavorite = (asset: GeneratedAsset, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // TODO: Implement favorite action
+    console.log('Favorite asset:', asset.id);
+  };
+
+  const handleApprove = (asset: GeneratedAsset, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // TODO: Implement approve action
+    console.log('Approve asset:', asset.id);
+  };
+
+  const handleEdit = (asset: GeneratedAsset, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // TODO: Implement edit action
+    console.log('Edit asset:', asset.id);
+  };
+
+  const handleDelete = (asset: GeneratedAsset, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // TODO: Implement delete action
+    console.log('Delete asset:', asset.id);
+  };
+
   return (
     <div className="divide-y divide-border">
       {assets.map((asset) => (
         <div
           key={asset.id}
           className="flex cursor-pointer items-center gap-4 py-3 transition-colors hover:bg-muted/50"
-          onClick={() => onSelect(asset)}
+          data-testid={`asset-list-item-${asset.id}`}
         >
-          <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg">
-            <Image src={asset.url} alt="" fill sizes="56px" className="object-cover" />
+          <div
+            className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg"
+            onClick={() => onSelect(asset)}
+            data-testid="asset-thumbnail"
+          >
+            <Image src={asset.url} alt="" fill sizes="80px" className="object-cover" />
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-medium">{asset.productName || 'Generated Asset'}</p>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {asset.sceneType && <span>{asset.sceneType}</span>}
-              {asset.collectionName && (
-                <>
-                  <span>•</span>
-                  <span>{asset.collectionName}</span>
-                </>
-              )}
-            </div>
+          <div className="min-w-0 flex-1" onClick={() => onSelect(asset)}>
+            <p className="truncate font-medium" data-testid="asset-title">
+              {asset.productName || 'Generated Asset'}
+            </p>
+            {asset.prompt && (
+              <p className="truncate text-sm text-muted-foreground" data-testid="asset-subtitle">
+                {asset.prompt}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
-            {asset.isPinned && <Pin className="h-4 w-4 text-primary" />}
-            <Badge
-              variant={
-                asset.approvalStatus === 'approved'
-                  ? 'success'
-                  : asset.approvalStatus === 'rejected'
-                    ? 'destructive'
-                    : 'muted'
-              }
-            >
-              {asset.approvalStatus}
-            </Badge>
-            <span className="text-xs text-muted-foreground">
+            {asset.isPinned && <Pin className="h-4 w-4 text-primary" data-testid="pinned-indicator" />}
+            <span className="text-xs text-muted-foreground" data-testid="asset-timestamp">
               {formatRelativeTime(asset.createdAt)}
             </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => e.stopPropagation()}
+                  data-testid="asset-actions-menu"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" data-testid="asset-actions-menu-content">
+                <DropdownMenuItem onClick={(e) => handlePin(asset, e)} data-testid="action-pin">
+                  <Pin className="mr-2 h-4 w-4" />
+                  {asset.isPinned ? 'Unpin' : 'Pin'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => handleFavorite(asset, e)} data-testid="action-favorite">
+                  <Heart className="mr-2 h-4 w-4" />
+                  Favorite
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => handleApprove(asset, e)}
+                  disabled={asset.approvalStatus === 'approved'}
+                  data-testid="action-approve"
+                >
+                  <Check className={`mr-2 h-4 w-4 ${asset.approvalStatus === 'approved' ? 'text-green-600' : ''}`} />
+                  {asset.approvalStatus === 'approved' ? 'Approved' : 'Approve to Store'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => handleEdit(asset, e)} data-testid="action-edit">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={(e) => handleDelete(asset, e)}
+                  className="text-destructive"
+                  data-testid="action-delete"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       ))}

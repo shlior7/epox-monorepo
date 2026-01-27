@@ -143,7 +143,6 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
   }
 
   const statusConfig = {
-    draft: { label: 'Draft', variant: 'secondary' as const },
     generating: { label: 'Generating', variant: 'default' as const },
     completed: { label: 'Completed', variant: 'success' as const },
   };
@@ -207,27 +206,36 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                   </Button>
                 </div>
               )}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="collection-detail-meta">
-                <Badge
-                  variant={statusConfig[collection.status].variant}
-                  testId={buildTestId('collection-detail', 'status')}
-                >
-                  {statusConfig[collection.status].label}
-                </Badge>
+              <div
+                className="flex items-center gap-2 text-sm text-muted-foreground"
+                data-testid="collection-detail-meta"
+              >
+                {statusConfig[collection.status] && (
+                  <Badge
+                    variant={statusConfig[collection.status].variant}
+                    testId={buildTestId('collection-detail', 'status')}
+                  >
+                    {statusConfig[collection.status].label}
+                  </Badge>
+                )}
                 <span>•</span>
                 <span data-testid={buildTestId('collection-detail', 'product-count')}>
                   {collection.productCount} products
                 </span>
                 <span>•</span>
                 <span data-testid={buildTestId('collection-detail', 'generated-count')}>
-                  {collection.generatedCount}/{collection.totalImages || collection.productCount}{' '}
-                  generated
+                  {collection.generatedCount ?? 0}/
+                  {collection.totalImages || collection.productCount} generated
                 </span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="glow" onClick={handleOpenStudio} testId="collection-detail-open-studio">
+            <Button
+              variant="glow"
+              onClick={handleOpenStudio}
+              testId="collection-detail-open-studio"
+            >
               <Sparkles className="mr-2 h-4 w-4" />
               Open Studio
             </Button>
@@ -262,20 +270,28 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
             {/* Collection Stats */}
             <Card testId="collection-detail-stats">
               <CardHeader testId={buildTestId('collection-detail-stats', 'header')}>
-                <CardTitle className="text-base" testId={buildTestId('collection-detail-stats', 'title')}>
+                <CardTitle
+                  className="text-base"
+                  testId={buildTestId('collection-detail-stats', 'title')}
+                >
                   Collection Details
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4" testId={buildTestId('collection-detail-stats', 'content')}>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Status</span>
-                  <Badge
-                    variant={statusConfig[collection.status].variant}
-                    testId={buildTestId('collection-detail-stats', 'status')}
-                  >
-                    {statusConfig[collection.status].label}
-                  </Badge>
-                </div>
+              <CardContent
+                className="space-y-4"
+                testId={buildTestId('collection-detail-stats', 'content')}
+              >
+                {statusConfig[collection.status] && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Status</span>
+                    <Badge
+                      variant={statusConfig[collection.status].variant}
+                      testId={buildTestId('collection-detail-stats', 'status')}
+                    >
+                      {statusConfig[collection.status].label}
+                    </Badge>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Products</span>
                   <span className="font-medium">{collection.productCount}</span>
@@ -283,7 +299,8 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Generated</span>
                   <span className="font-medium">
-                    {collection.generatedCount}/{collection.totalImages || collection.productCount}
+                    {collection.generatedCount ?? 0}/
+                    {collection.totalImages || collection.productCount}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -300,11 +317,17 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
             {/* Quick Actions */}
             <Card testId="collection-detail-actions-card">
               <CardHeader testId={buildTestId('collection-detail-actions-card', 'header')}>
-                <CardTitle className="text-base" testId={buildTestId('collection-detail-actions-card', 'title')}>
+                <CardTitle
+                  className="text-base"
+                  testId={buildTestId('collection-detail-actions-card', 'title')}
+                >
                   Quick Actions
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2" testId={buildTestId('collection-detail-actions-card', 'content')}>
+              <CardContent
+                className="space-y-2"
+                testId={buildTestId('collection-detail-actions-card', 'content')}
+              >
                 <Button
                   className="w-full justify-start"
                   variant="outline"
@@ -400,7 +423,10 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                                 <Package className="h-8 w-8 text-muted-foreground" />
                               )}
                             </div>
-                            <div className="p-3" data-testid={buildTestId(productTestId, 'content')}>
+                            <div
+                              className="p-3"
+                              data-testid={buildTestId(productTestId, 'content')}
+                            >
                               <p
                                 className="truncate text-sm font-medium"
                                 data-testid={buildTestId(productTestId, 'name')}
@@ -420,7 +446,10 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                     })}
                   </div>
                 ) : (
-                  <div className="space-y-2" data-testid={buildTestId('collection-detail-products', 'list')}>
+                  <div
+                    className="space-y-2"
+                    data-testid={buildTestId('collection-detail-products', 'list')}
+                  >
                     {collectionProducts.map((product) => {
                       const imageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
                       const productTestId = buildTestId('product-card', product.id);
@@ -446,8 +475,14 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                                 <Package className="h-5 w-5 text-muted-foreground" />
                               )}
                             </div>
-                            <div className="min-w-0 flex-1" data-testid={buildTestId(productTestId, 'content')}>
-                              <p className="truncate font-medium" data-testid={buildTestId(productTestId, 'name')}>
+                            <div
+                              className="min-w-0 flex-1"
+                              data-testid={buildTestId(productTestId, 'content')}
+                            >
+                              <p
+                                className="truncate font-medium"
+                                data-testid={buildTestId(productTestId, 'name')}
+                              >
                                 {product.name}
                               </p>
                               <p
@@ -457,7 +492,10 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                                 {product.category}
                               </p>
                             </div>
-                            <Badge variant="secondary" testId={buildTestId(productTestId, 'scene-type')}>
+                            <Badge
+                              variant="secondary"
+                              testId={buildTestId(productTestId, 'scene-type')}
+                            >
                               {(product.sceneTypes ?? product.sceneTypes)?.[0] || 'General'}
                             </Badge>
                           </div>

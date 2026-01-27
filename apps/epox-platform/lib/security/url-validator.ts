@@ -52,20 +52,77 @@ export interface UrlValidationOptions {
 // ============================================================================
 
 /**
- * Strict pattern for valid image data URLs
- * Only allows common image MIME types with base64 encoding
+ * Pattern for valid image data URL prefix
+ * Allows any image/* MIME type with base64 encoding
+ * More permissive to handle browser variations and modern formats (avif, heic, etc.)
  */
-const DATA_URL_PATTERN = /^data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,[A-Za-z0-9+/]+=*$/;
+const DATA_URL_PREFIX_PATTERN = /^data:image\/[a-zA-Z0-9.+-]+;base64,/;
+
+/**
+ * Pattern for valid base64 characters (used for sampling validation)
+ * Allows whitespace since some encoders add line breaks
+ */
+const BASE64_CHARS_PATTERN = /^[A-Za-z0-9+/=\s]+$/;
 
 /**
  * Validates a data URL
+ * Uses prefix check + sampling to avoid regex catastrophic backtracking on large strings
  */
 function isValidDataUrl(url: string): boolean {
-  // Limit data URL size to prevent memory attacks
+  // Limit data URL size to prevent memory attacks (10MB)
   if (url.length > INPUT_LIMITS.FILE_MAX_SIZE) {
+    console.warn('[URL Validator] Data URL exceeds size limit:', url.length, '>', INPUT_LIMITS.FILE_MAX_SIZE);
     return false;
   }
-  return DATA_URL_PATTERN.test(url);
+
+  // Check prefix (mime type and base64 declaration)
+  if (!DATA_URL_PREFIX_PATTERN.test(url)) {
+    const prefix = url.substring(0, 100);
+    const hasDataPrefix = url.startsWith('data:');
+    const hasImagePrefix = url.startsWith('data:image/');
+    const hasBase64 = url.includes(';base64,');
+    console.warn('[URL Validator] Data URL prefix validation failed:', {
+      prefix,
+      hasDataPrefix,
+      hasImagePrefix,
+      hasBase64,
+      urlLength: url.length,
+    });
+    return false;
+  }
+
+  // Find where base64 data starts
+  const commaIndex = url.indexOf(',');
+  if (commaIndex === -1) {
+    console.warn('Data URL missing comma separator');
+    return false;
+  }
+
+  const base64Data = url.slice(commaIndex + 1);
+
+  // For small data, validate the whole thing
+  if (base64Data.length <= 1000) {
+    const isValid = BASE64_CHARS_PATTERN.test(base64Data);
+    if (!isValid) {
+      // Find the first invalid character
+      const invalidChar = base64Data.split('').find(c => !/[A-Za-z0-9+/=\s]/.test(c));
+      console.warn('Data URL contains invalid base64 character:', invalidChar, 'charCode:', invalidChar?.charCodeAt(0));
+    }
+    return isValid;
+  }
+
+  // For large data, sample beginning and end to avoid regex perf issues
+  const sampleStart = base64Data.slice(0, 500);
+  const sampleEnd = base64Data.slice(-500);
+
+  const startValid = BASE64_CHARS_PATTERN.test(sampleStart);
+  const endValid = BASE64_CHARS_PATTERN.test(sampleEnd);
+
+  if (!startValid || !endValid) {
+    console.warn('Data URL base64 sampling validation failed. startValid:', startValid, 'endValid:', endValid);
+  }
+
+  return startValid && endValid;
 }
 
 // ============================================================================
@@ -163,20 +220,21 @@ export function validateUrl(
     return { valid: false, error: `${errorPrefix}: URL is required` };
   }
 
-  // Length check
-  if (urlString.length > INPUT_LIMITS.URL_MAX_LENGTH) {
-    return { valid: false, error: `${errorPrefix}: URL exceeds maximum length` };
-  }
-
-  // Handle data URLs
+  // Handle data URLs FIRST (they have different length limits)
   if (urlString.startsWith('data:')) {
     if (!allowDataUrls) {
       return { valid: false, error: `${errorPrefix}: Data URLs are not allowed` };
     }
+    // Data URLs use FILE_MAX_SIZE limit (checked in isValidDataUrl)
     if (!isValidDataUrl(urlString)) {
-      return { valid: false, error: `${errorPrefix}: Invalid data URL format` };
+      return { valid: false, error: `${errorPrefix}: Invalid data URL format or exceeds size limit` };
     }
     return { valid: true };
+  }
+
+  // Length check for regular URLs only (data URLs have separate size limit)
+  if (urlString.length > INPUT_LIMITS.URL_MAX_LENGTH) {
+    return { valid: false, error: `${errorPrefix}: URL exceeds maximum length` };
   }
 
   // Parse URL

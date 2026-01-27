@@ -136,8 +136,8 @@ describe('ProductRepository', () => {
   describe('listWithImages', () => {
     it('should return products with images', async () => {
       const product = await repo.create(testClientId, { name: 'Product With Images' });
-      await imageRepo.create(product.id, { r2KeyBase: 'images/test1.png' });
-      await imageRepo.create(product.id, { r2KeyBase: 'images/test2.png' });
+      await imageRepo.create(product.id, { imageUrl: 'images/test1.png' });
+      await imageRepo.create(product.id, { imageUrl: 'images/test2.png' });
 
       const productsWithImages = await repo.listWithImages(testClientId);
 
@@ -158,7 +158,7 @@ describe('ProductRepository', () => {
   describe('getWithImages', () => {
     it('should return product with images by ID', async () => {
       const product = await repo.create(testClientId, { name: 'Single Product' });
-      await imageRepo.create(product.id, { r2KeyBase: 'images/single.png' });
+      await imageRepo.create(product.id, { imageUrl: 'images/single.png' });
 
       const result = await repo.getWithImages(product.id);
 

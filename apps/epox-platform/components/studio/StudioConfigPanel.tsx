@@ -24,17 +24,19 @@ import { cn } from '@/lib/utils';
 import { buildTestId } from '@/lib/testing/testid';
 import type {
   InspirationImage,
-  StylePreset,
-  LightingPreset,
   VideoPromptSettings,
   ImageAspectRatio,
 } from 'visualizer-types';
 import {
   CAMERA_MOTION_OPTIONS,
-  STYLE_PRESETS,
-  LIGHTING_PRESETS,
   VIDEO_TYPE_OPTIONS,
 } from 'visualizer-types';
+
+// Legacy types - this component is deprecated in favor of UnifiedStudioConfigPanel
+type StylePreset = string;
+type LightingPreset = string;
+const STYLE_PRESETS: string[] = ['Natural', 'Modern', 'Classic', 'Minimalist', 'Industrial', 'Rustic'];
+const LIGHTING_PRESETS: string[] = ['Natural Daylight', 'Studio', 'Golden Hour', 'Dramatic', 'Soft', 'Night'];
 
 // Output quality options
 const QUALITY_OPTIONS = [

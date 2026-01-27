@@ -4,6 +4,7 @@
  * API Docs: https://shopify.dev/docs/admin-api
  */
 
+import { createHmac, timingSafeEqual } from 'crypto';
 import {
   BaseProvider,
   type ProviderConfig,
@@ -14,6 +15,10 @@ import {
   type AuthState,
   type FetchOptions,
   type PaginatedResult,
+  type WebhookConfig,
+  type WebhookRegistration,
+  type WebhookPayload,
+  type ExternalImage,
 } from '../base';
 
 // Shopify API version - update quarterly as per Shopify versioning
@@ -145,8 +150,55 @@ export class ShopifyProvider extends BaseProvider {
     throw new Error('Shopify image sync not implemented yet (V2 feature)');
   }
 
+  async updateSingleProductImage(): Promise<never> {
+    throw new Error('Shopify image sync not implemented yet (V2 feature)');
+  }
+
   async deleteProductImage(): Promise<never> {
     throw new Error('Shopify image sync not implemented yet (V2 feature)');
+  }
+
+  // ===== WEBHOOK METHODS =====
+
+  async registerWebhook(_credentials: ProviderCredentials, _config: WebhookConfig): Promise<WebhookRegistration> {
+    // Shopify webhooks require specific App setup - stub for V2
+    throw new Error('Shopify webhook registration not implemented yet (V2 feature)');
+  }
+
+  async deleteWebhook(_credentials: ProviderCredentials, _webhookId: string): Promise<void> {
+    throw new Error('Shopify webhook deletion not implemented yet (V2 feature)');
+  }
+
+  verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
+    // Shopify uses HMAC-SHA256 with base64 encoding
+    const computed = createHmac('sha256', secret).update(payload, 'utf8').digest('base64');
+    try {
+      return timingSafeEqual(Buffer.from(computed), Buffer.from(signature));
+    } catch {
+      return false;
+    }
+  }
+
+  parseWebhookPayload(rawPayload: unknown): WebhookPayload {
+    const data = rawPayload as { id?: number };
+    return {
+      type: 'product.updated',
+      productId: data.id ? String(data.id) : '',
+      timestamp: new Date(),
+      raw: rawPayload,
+    };
+  }
+
+  async getProductImages(credentials: ProviderCredentials, externalProductId: string): Promise<ExternalImage[]> {
+    const product = await this.getProduct(credentials, externalProductId);
+    if (!product) return [];
+
+    return product.images.map((img, index) => ({
+      id: String(img.id),
+      url: img.src,
+      position: index,
+      isPrimary: index === 0,
+    }));
   }
 
   private extractShopDomain(url: string): string {

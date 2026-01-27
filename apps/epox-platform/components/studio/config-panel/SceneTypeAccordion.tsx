@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, Briefcase, Bed, Sofa, UtensilsCrossed, Bath, TreePine, Building2, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTestId } from '@/lib/testing/testid';
-import { InspirationBubble } from './InspirationBubble';
+import { BubbleChip } from './InspirationBubble';
 import { AddBubbleButton } from './AddBubbleButton';
 import { ProductCountBadge } from './ProductCountBadge';
 import { useConfigPanelContext } from './ConfigPanelContext';
-import type { InspirationBubbleType, InspirationBubbleValue } from 'visualizer-types';
+import { BubbleModalRouter } from './BubbleModalRouter';
+import type { BubbleType, BubbleValue } from 'visualizer-types';
 
 // ===== SCENE TYPE ICONS =====
 
@@ -51,8 +52,9 @@ export interface SceneTypeAccordionProps {
   onToggle?: () => void;
   onSceneTypeClick?: () => void;
   onProductBadgeClick?: () => void;
-  onBubbleClick?: (index: number, bubble: InspirationBubbleValue) => void;
+  onBubbleClick?: (index: number, bubble: BubbleValue) => void;
   showProductBadge?: boolean;
+  hideHeader?: boolean;
   className?: string;
 }
 
@@ -69,24 +71,120 @@ export function SceneTypeAccordion({
   onProductBadgeClick,
   onBubbleClick,
   showProductBadge = true,
+  hideHeader = false,
   className,
 }: SceneTypeAccordionProps) {
-  const { state, addBubble, removeBubble } = useConfigPanelContext();
+  const { state, addBubble, removeBubble, updateBubble, initializeDefaultBubbles } = useConfigPanelContext();
   const [localExpanded, setLocalExpanded] = useState(isExpanded);
+  const [editingBubble, setEditingBubble] = useState<{ index: number; value: BubbleValue } | null>(null);
 
   const expanded = onToggle ? isExpanded : localExpanded;
   const toggleExpanded = onToggle || (() => setLocalExpanded(!localExpanded));
 
   const Icon = getSceneTypeIcon(sceneType);
-  const bubbles = state.sceneTypeBubbles[sceneType]?.bubbles || [];
+  const bubbles = state.sceneTypeInspiration[sceneType]?.bubbles || [];
 
-  const handleAddBubble = (type: InspirationBubbleType) => {
-    addBubble(sceneType, { type });
+  // Initialize default bubbles on mount if none exist
+  useEffect(() => {
+    if (bubbles.length === 0) {
+      initializeDefaultBubbles(sceneType);
+    }
+  }, [sceneType]); // Only run when scene type changes or on mount
+
+  const handleAddBubble = (type: BubbleType) => {
+    // Create empty bubble and open modal for editing
+    const newBubble: BubbleValue = { type };
+    addBubble(sceneType, newBubble);
+    // Open modal for the newly added bubble
+    const newIndex = bubbles.length;
+    setEditingBubble({ index: newIndex, value: newBubble });
   };
 
-  const handleRemoveBubble = (index: number) => {
-    removeBubble(sceneType, index);
+  const handleRemoveBubble = (index: number, bubble: BubbleValue) => {
+    // For inspiration bubbles with an image, first delete clears the image
+    if (bubble.type === 'reference' && bubble.image) {
+      // Clear the image first
+      updateBubble(sceneType, index, {
+        type: 'reference',
+        image: undefined,
+      });
+    } else {
+      // For empty bubbles or non-inspiration bubbles, delete the bubble
+      removeBubble(sceneType, index);
+    }
   };
+
+  const handleBubbleClick = (index: number, bubble: BubbleValue) => {
+    // Open modal for editing
+    setEditingBubble({ index, value: bubble });
+    // Also call the external handler if provided
+    onBubbleClick?.(index, bubble);
+  };
+
+  const handleBubbleSave = (values: BubbleValue | BubbleValue[]) => {
+    if (editingBubble !== null) {
+      // Handle array of values (multi-select for inspiration bubbles)
+      if (Array.isArray(values)) {
+        // First, update the existing bubble with the first value
+        if (values.length > 0) {
+          updateBubble(sceneType, editingBubble.index, values[0]);
+
+          // Add additional bubbles for the rest
+          for (let i = 1; i < values.length; i++) {
+            addBubble(sceneType, values[i]);
+          }
+        }
+      } else {
+        // Single value
+        updateBubble(sceneType, editingBubble.index, values);
+      }
+      setEditingBubble(null);
+    }
+  };
+
+  // If hideHeader is true, just render bubbles without container
+  if (hideHeader) {
+    return (
+      <>
+        <div
+          className={cn('flex flex-wrap gap-3', className)}
+          data-testid={buildTestId('scene-type-accordion', sceneType)}
+          data-scene-type={sceneType}
+        >
+          {/* Existing bubbles */}
+          {bubbles.map((bubble, index) => (
+            <BubbleChip
+              key={index}
+              value={bubble}
+              sceneType={sceneType}
+              index={index}
+              onClick={() => handleBubbleClick(index, bubble)}
+              onRemove={() => handleRemoveBubble(index, bubble)}
+              isActive={false}
+            />
+          ))}
+
+          {/* Add bubble button */}
+          <AddBubbleButton
+            sceneType={sceneType}
+            onAddBubble={handleAddBubble}
+            currentCount={bubbles.length}
+            maxBubbles={10}
+          />
+        </div>
+
+        {/* Bubble Edit Modal */}
+        {editingBubble && (
+          <BubbleModalRouter
+            bubbleType={editingBubble.value.type}
+            value={editingBubble.value}
+            onSave={handleBubbleSave}
+            onClose={() => setEditingBubble(null)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <div
@@ -119,6 +217,7 @@ export function SceneTypeAccordion({
             sceneType={sceneType}
             count={productCount}
             isActive={isActive}
+            asButton={false}
             onClick={(e) => {
               e.stopPropagation();
               onProductBadgeClick?.();
@@ -143,13 +242,13 @@ export function SceneTypeAccordion({
           <div className="flex flex-wrap gap-3">
             {/* Existing bubbles */}
             {bubbles.map((bubble, index) => (
-              <InspirationBubble
+              <BubbleChip
                 key={index}
                 value={bubble}
                 sceneType={sceneType}
                 index={index}
-                onClick={() => onBubbleClick?.(index, bubble)}
-                onRemove={() => handleRemoveBubble(index)}
+                onClick={() => handleBubbleClick(index, bubble)}
+                onRemove={() => handleRemoveBubble(index, bubble)}
                 isActive={false}
               />
             ))}
@@ -159,10 +258,20 @@ export function SceneTypeAccordion({
               sceneType={sceneType}
               onAddBubble={handleAddBubble}
               currentCount={bubbles.length}
-              maxBubbles={5}
+              maxBubbles={10}
             />
           </div>
         </div>
+      )}
+
+      {/* Bubble Edit Modal */}
+      {editingBubble && (
+        <BubbleModalRouter
+          bubbleType={editingBubble.value.type}
+          value={editingBubble.value}
+          onSave={handleBubbleSave}
+          onClose={() => setEditingBubble(null)}
+        />
       )}
     </div>
   );

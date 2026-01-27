@@ -15,7 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import type { InspirationBubbleValue, InspirationImage } from 'visualizer-types';
+import type { StyleBubbleValue, InspirationImage } from 'visualizer-types';
 
 // ===== STYLE PRESET DATA =====
 
@@ -92,8 +92,8 @@ const STYLE_PRESETS: StylePresetItem[] = [
 export interface StyleExplorerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (value: InspirationBubbleValue) => void;
-  currentValue?: InspirationBubbleValue;
+  onSelect: (value: StyleBubbleValue) => void;
+  currentValue?: StyleBubbleValue;
 }
 
 // ===== COMPONENT =====
@@ -115,15 +115,9 @@ export function StyleExplorerModal({
 
   const handleSelect = () => {
     if (selectedPreset) {
-      const value: InspirationBubbleValue = {
+      const value: StyleBubbleValue = {
         type: 'style',
         preset: selectedPreset.name,
-        image: {
-          url: selectedPreset.imageUrl,
-          tags: selectedPreset.tags,
-          addedAt: new Date().toISOString(),
-          sourceType: 'library',
-        },
       };
       onSelect(value);
       onOpenChange(false);

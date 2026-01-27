@@ -11,19 +11,16 @@ import { internalServerErrorResponse } from '@/lib/security/error-handling';
 import type {
   FlowGenerationSettings,
   ImageAspectRatio,
-  InspirationImage,
   SceneTypeInspirationMap,
-  StylePreset,
-  LightingPreset,
+  BubbleValue,
 } from 'visualizer-types';
 import { normalizeImageQuality } from 'visualizer-types';
 
 interface UpdateSettingsRequest {
-  // Scene Style (Section 1)
-  inspirationImages?: InspirationImage[];
-  sceneTypeInspirations?: SceneTypeInspirationMap;
-  stylePreset?: string; // Can be preset or custom value
-  lightingPreset?: string; // Can be preset or custom value
+  // Inspiration (Section 1)
+  generalInspiration?: BubbleValue[];
+  sceneTypeInspiration?: SceneTypeInspirationMap;
+  useSceneTypeInspiration?: boolean;
   sceneType?: string; // Scene type selection
 
   // User Prompt (Section 3)
@@ -32,7 +29,7 @@ interface UpdateSettingsRequest {
   // Output Settings (Section 4)
   aspectRatio?: ImageAspectRatio;
   imageQuality?: '1k' | '2k' | '4k';
-  variantsCount?: number;
+  variantsPerProduct?: number;
   video?: {
     prompt?: string;
     inspirationImageUrl?: string;
@@ -88,18 +85,15 @@ export const PATCH = withSecurity(async (request, context, { params }) => {
     // Update existing flow settings
     const settingsUpdate: Partial<FlowGenerationSettings> = {};
 
-    // Scene Style settings
-    if (body.inspirationImages !== undefined) {
-      settingsUpdate.inspirationImages = body.inspirationImages;
+    // Inspiration settings
+    if (body.generalInspiration !== undefined) {
+      (settingsUpdate as any).generalInspiration = body.generalInspiration;
     }
-    if (body.sceneTypeInspirations !== undefined) {
-      settingsUpdate.sceneTypeInspirations = body.sceneTypeInspirations;
+    if (body.sceneTypeInspiration !== undefined) {
+      (settingsUpdate as any).sceneTypeInspiration = body.sceneTypeInspiration;
     }
-    if (body.stylePreset !== undefined) {
-      settingsUpdate.stylePreset = body.stylePreset;
-    }
-    if (body.lightingPreset !== undefined) {
-      settingsUpdate.lightingPreset = body.lightingPreset;
+    if (body.useSceneTypeInspiration !== undefined) {
+      (settingsUpdate as any).useSceneTypeInspiration = body.useSceneTypeInspiration;
     }
     if (body.sceneType !== undefined) {
       settingsUpdate.sceneType = body.sceneType;
@@ -124,8 +118,8 @@ export const PATCH = withSecurity(async (request, context, { params }) => {
       }
       settingsUpdate.imageQuality = normalizedQuality;
     }
-    if (body.variantsCount !== undefined) {
-      settingsUpdate.variantsCount = body.variantsCount;
+    if (body.variantsPerProduct !== undefined) {
+      (settingsUpdate as any).variantsPerProduct = body.variantsPerProduct;
     }
     if (body.video !== undefined) {
       settingsUpdate.video = body.video as FlowGenerationSettings['video'];
@@ -185,22 +179,18 @@ export const GET = withSecurity(async (request, context, { params }) => {
 
     // Fetch collection data if this flow belongs to a collection
     let collectionName: string | null = null;
-    let collectionSettings: {
-      userPrompt?: string;
-      stylePreset?: string;
-      lightingPreset?: string;
-    } | null = null;
+    let collectionSettings: FlowGenerationSettings | null = null;
+    let flowSceneType: string | null = null;
     if (flow.collectionSessionId) {
       const collection = await db.collectionSessions.getById(flow.collectionSessionId);
       if (collection) {
         collectionName = collection.name;
+        // Return full collection settings including inspiration images and bubbles
         if (collection.settings) {
-          collectionSettings = {
-            userPrompt: collection.settings.userPrompt,
-            stylePreset: collection.settings.stylePreset,
-            lightingPreset: collection.settings.lightingPreset,
-          };
+          collectionSettings = collection.settings as FlowGenerationSettings;
         }
+        // Get the flow's scene type
+        flowSceneType = (flow.settings?.sceneType as string) ?? null;
       }
     }
 
@@ -211,7 +201,8 @@ export const GET = withSecurity(async (request, context, { params }) => {
       selectedBaseImages: flow.selectedBaseImages,
       collectionSessionId: flow.collectionSessionId ?? null,
       collectionName,
-      collectionSettings,
+      collectionSettings, // Full collection settings
+      flowSceneType, // Scene type of this flow
     });
 
     // Cache studio settings for 10 seconds (private per-user)

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { authClient } from '@/lib/services/auth';
+import { authClient } from 'visualizer-auth/client';
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -86,7 +86,7 @@ export default function SignupPage() {
       toast.success('Account created successfully!');
 
       // Force a full navigation to ensure session cookies are picked up
-      window.location.href = '/dashboard';
+      window.location.href = '/home';
     } catch (error) {
       console.error('Signup error:', error);
       toast.error('Failed to create account. Please try again.');

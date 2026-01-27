@@ -27,6 +27,11 @@ export interface EnqueueVideoResult {
   jobId: string;
 }
 
+export interface EnqueueImageEditResult {
+  jobId: string;
+  expectedImageId: string;
+}
+
 export interface JobStatusResult {
   id: string;
   clientId: string;
@@ -95,12 +100,16 @@ export async function enqueueVideoGeneration(
 
 /**
  * Enqueue an image edit job.
+ * Returns jobId and expectedImageId for client polling.
  */
 export async function enqueueImageEdit(
   clientId: string,
   payload: ImageEditPayload,
   options?: { priority?: number; flowId?: string }
-): Promise<EnqueueVideoResult> {
+): Promise<EnqueueImageEditResult> {
+  // Generate expected image ID for client-side tracking
+  const expectedImageId = `edited-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+
   const job = await getJobs().create({
     clientId,
     type: 'image_edit',
@@ -109,7 +118,7 @@ export async function enqueueImageEdit(
     priority: options?.priority,
   });
 
-  return { jobId: job.id };
+  return { jobId: job.id, expectedImageId };
 }
 
 /**

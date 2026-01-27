@@ -33,7 +33,8 @@ if (!fs.existsSync(SCREENSHOTS_DIR)) {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 }
 
-test.use({ testClientName: 'main' });
+// Use products client which has products seeded (studio needs products)
+test.use({ testClientName: 'products' });
 
 test.describe('Config Panel - Structure & Sections', () => {
   test('verify complete config panel structure and capture screenshots', async ({

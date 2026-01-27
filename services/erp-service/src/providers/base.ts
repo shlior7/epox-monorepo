@@ -2,6 +2,8 @@
  * Base Provider - Abstract class for all commerce providers
  */
 
+import { ImageRequest } from '../types/images';
+
 export type ProviderType = 'woocommerce' | 'shopify' | 'bigcommerce';
 export type ConnectionStatus = 'active' | 'disconnected' | 'error';
 
@@ -76,6 +78,34 @@ export interface ProductImage {
   alt?: string;
 }
 
+// Webhook types for bidirectional sync
+export type WebhookEventType = 'product.created' | 'product.updated' | 'product.deleted';
+
+export interface WebhookConfig {
+  callbackUrl: string;
+  events: WebhookEventType[];
+  secret: string;
+}
+
+export interface WebhookRegistration {
+  webhookId: string;
+  events: WebhookEventType[];
+}
+
+export interface ExternalImage {
+  id: string; // Store's image ID
+  url: string;
+  position: number;
+  isPrimary: boolean;
+}
+
+export interface WebhookPayload {
+  type: WebhookEventType;
+  productId: string;
+  timestamp: Date;
+  raw: unknown;
+}
+
 export abstract class BaseProvider {
   abstract readonly config: ProviderConfig;
 
@@ -96,8 +126,23 @@ export abstract class BaseProvider {
   abstract updateProductImages(
     credentials: ProviderCredentials,
     productId: string | number,
-    imageUrls: string[]
+    imagesData: ImageRequest[]
   ): Promise<ProductImage[]>;
+
+  /**
+   * Update a single product image by replacing its source URL
+   * @param credentials Store credentials
+   * @param productId External product ID in store
+   * @param imageId Image ID in the store to update
+   * @param newImageData New image data (src, alt, name)
+   * @returns Updated image info
+   */
+  abstract updateSingleProductImage(
+    credentials: ProviderCredentials,
+    productId: string | number,
+    imageId: string | number,
+    newImageData: ImageRequest
+  ): Promise<ProductImage>;
 
   /**
    * Delete an image from a product in the store
@@ -105,11 +150,48 @@ export abstract class BaseProvider {
    * @param productId External product ID in store
    * @param imageId Image ID in the store to delete
    */
-  abstract deleteProductImage(
-    credentials: ProviderCredentials,
-    productId: string | number,
-    imageId: string | number
-  ): Promise<void>;
+  abstract deleteProductImage(credentials: ProviderCredentials, productId: string | number, imageId: string | number): Promise<void>;
+
+  // ===== WEBHOOK METHODS =====
+
+  /**
+   * Register a webhook with the store for product updates
+   * @param credentials Store credentials
+   * @param config Webhook configuration (URL, events, secret)
+   * @returns Registration info including webhook ID
+   */
+  abstract registerWebhook(credentials: ProviderCredentials, config: WebhookConfig): Promise<WebhookRegistration>;
+
+  /**
+   * Delete a previously registered webhook
+   * @param credentials Store credentials
+   * @param webhookId ID of the webhook to delete
+   */
+  abstract deleteWebhook(credentials: ProviderCredentials, webhookId: string): Promise<void>;
+
+  /**
+   * Verify webhook signature from the store
+   * @param payload Raw request body
+   * @param signature Signature header from request
+   * @param secret Webhook secret used for signing
+   * @returns true if signature is valid
+   */
+  abstract verifyWebhookSignature(payload: string, signature: string, secret: string): boolean;
+
+  /**
+   * Parse webhook payload into a normalized format
+   * @param rawPayload Raw webhook payload from the store
+   * @returns Normalized webhook payload
+   */
+  abstract parseWebhookPayload(rawPayload: unknown): WebhookPayload;
+
+  /**
+   * Get all images for a product from the store
+   * @param credentials Store credentials
+   * @param externalProductId Product ID in the store
+   * @returns Array of external images
+   */
+  abstract getProductImages(credentials: ProviderCredentials, externalProductId: string): Promise<ExternalImage[]>;
 
   createAuthState(params: AuthParams, stateId: string, expiresAt: Date): AuthState {
     return {
@@ -133,10 +215,14 @@ export abstract class BaseProvider {
 
   protected normalizeUrl(url: string): string {
     let normalized = url.replace(/\/+$/, '');
-    // Upgrade http:// to https://
+    // Preserve HTTP for localhost, upgrade to HTTPS for everything else
     if (normalized.startsWith('http://')) {
-      normalized = normalized.replace('http://', 'https://');
+      // Keep HTTP for localhost (development)
+      if (!normalized.includes('localhost') && !normalized.includes('127.0.0.1')) {
+        normalized = normalized.replace('http://', 'https://');
+      }
     } else if (!normalized.startsWith('https://')) {
+      // Default to HTTPS for domains without protocol
       normalized = `https://${normalized}`;
     }
     return normalized;

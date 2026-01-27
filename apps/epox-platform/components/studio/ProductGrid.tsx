@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import {
   Package,
@@ -24,6 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { buildTestId } from '@/lib/testing/testid';
 import { apiClient, type Product } from '@/lib/api-client';
@@ -66,6 +72,7 @@ export interface ProductGridProps {
 
   // Behavior
   onProductClick?: (product: ProductWithStats) => void;
+  onSceneTypeChange?: (productId: string, sceneType: string) => void;
   selectionMode?: 'checkbox' | 'card'; // checkbox = only checkbox selects, card = entire card selects
 
   // Display options
@@ -74,6 +81,7 @@ export interface ProductGridProps {
   showSelectAll?: boolean;
   emptyStateMessage?: string;
   className?: string;
+  collectionFilterHeader?: React.ReactNode; // Optional header to show after filters
 
   // List view specific
   listRowHeight?: number; // Default 260px
@@ -86,20 +94,34 @@ function ProductGridCard({
   isSelected,
   onSelect,
   onProductClick,
+  onSceneTypeChange,
   selectionMode,
   showGeneratedAssets,
   index,
+  allSceneTypes = [],
 }: {
   product: ProductWithStats;
   isSelected: boolean;
   onSelect: () => void;
   onProductClick?: () => void;
+  onSceneTypeChange?: (sceneType: string) => void;
   selectionMode: 'checkbox' | 'card';
   showGeneratedAssets?: boolean;
   index: number;
+  allSceneTypes?: string[];
 }) {
+  const [showCustomInput, setShowCustomInput] = React.useState(false);
+  const [customSceneType, setCustomSceneType] = React.useState('');
+
   const productTestId = buildTestId('product-card', product.id);
   const imageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
+
+  // Merge all scene types (product's scene types + all available scene types)
+  const availableSceneTypes = React.useMemo(() => {
+    const combined = new Set([...(product.sceneTypes || []), ...allSceneTypes]);
+    return Array.from(combined).sort();
+  }, [product.sceneTypes, allSceneTypes]);
+
   const handleClick = () => {
     if (selectionMode === 'card') {
       onSelect();
@@ -111,6 +133,14 @@ function ProductGridCard({
   const handleCheckboxClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onSelect();
+  };
+
+  const handleCustomSceneTypeSubmit = () => {
+    if (customSceneType.trim()) {
+      onSceneTypeChange?.(customSceneType.trim());
+      setShowCustomInput(false);
+      setCustomSceneType('');
+    }
   };
 
   return (
@@ -125,9 +155,11 @@ function ProductGridCard({
       testId={productTestId}
     >
       {/* Image Section */}
-      <div className="relative aspect-square bg-secondary" data-testid={buildTestId(productTestId, 'image')}>
+      <div className="relative aspect-square bg-white" data-testid={buildTestId(productTestId, 'image')}>
         {imageUrl ? (
-          <Image src={imageUrl} alt={product.name} fill className="object-cover" sizes="300px" />
+          <div className="relative h-full w-full p-4">
+            <Image src={imageUrl} alt={product.name} fill className="object-contain p-2" sizes="300px" />
+          </div>
         ) : (
           <div className="flex h-full items-center justify-center">
             <Package className="h-12 w-12 text-muted-foreground" />
@@ -176,16 +208,88 @@ function ProductGridCard({
           <Badge variant="secondary" className="text-xs" testId={buildTestId(productTestId, 'category')}>
             {product.category}
           </Badge>
-          {product.sceneTypes?.slice(0, 2).map((type) => (
-            <Badge
-              key={type}
-              variant="muted"
-              className="text-xs"
-              testId={buildTestId(productTestId, 'scene-type', type)}
-            >
-              {type}
-            </Badge>
-          ))}
+          {(product.sceneTypes && product.sceneTypes.length > 0) || availableSceneTypes.length > 0 ? (
+            <DropdownMenu open={showCustomInput ? true : undefined}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  onClick={(e) => e.stopPropagation()}
+                  className="rounded-full border border-primary/50 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                  data-testid={buildTestId(productTestId, 'scene-type-dropdown')}
+                >
+                  {(product as any).selectedSceneType || product.sceneTypes?.[0] || 'Select scene type'} ▾
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
+                {showCustomInput ? (
+                  <div className="p-2" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="text"
+                      placeholder="Enter scene type..."
+                      value={customSceneType}
+                      onChange={(e) => setCustomSceneType(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleCustomSceneTypeSubmit();
+                        } else if (e.key === 'Escape') {
+                          setShowCustomInput(false);
+                          setCustomSceneType('');
+                        }
+                      }}
+                      className="w-full rounded border border-border bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none"
+                      autoFocus
+                    />
+                    <div className="mt-2 flex gap-1">
+                      <button
+                        onClick={handleCustomSceneTypeSubmit}
+                        className="flex-1 rounded bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90"
+                      >
+                        Add
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowCustomInput(false);
+                          setCustomSceneType('');
+                        }}
+                        className="flex-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {availableSceneTypes.map((type) => (
+                      <DropdownMenuItem
+                        key={type}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSceneTypeChange?.(type);
+                        }}
+                        className={cn(
+                          (product as any).selectedSceneType === type || (!((product as any).selectedSceneType) && type === product.sceneTypes?.[0])
+                            ? 'bg-primary/10 font-medium text-primary'
+                            : ''
+                        )}
+                        data-testid={buildTestId(productTestId, 'scene-type', type)}
+                      >
+                        {type}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowCustomInput(true);
+                      }}
+                      className="border-t border-border font-medium text-primary"
+                      data-testid={buildTestId(productTestId, 'scene-type', 'custom')}
+                    >
+                      + Custom...
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </div>
       </div>
     </Card>
@@ -198,21 +302,34 @@ function ProductListRow({
   isSelected,
   onSelect,
   onProductClick,
+  onSceneTypeChange,
   selectionMode,
   showGeneratedAssets,
   height,
+  allSceneTypes = [],
 }: {
   product: ProductWithStats;
   isSelected: boolean;
   onSelect: () => void;
   onProductClick?: () => void;
+  onSceneTypeChange?: (sceneType: string) => void;
   selectionMode: 'checkbox' | 'card';
   showGeneratedAssets?: boolean;
   height: number;
+  allSceneTypes?: string[];
 }) {
+  const [showCustomInput, setShowCustomInput] = React.useState(false);
+  const [customSceneType, setCustomSceneType] = React.useState('');
+
   const productTestId = buildTestId('product-card', product.id);
   const imageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
   const baseImages = product.images || [];
+
+  // Merge all scene types (product's scene types + all available scene types)
+  const availableSceneTypes = React.useMemo(() => {
+    const combined = new Set([...(product.sceneTypes || []), ...allSceneTypes]);
+    return Array.from(combined).sort();
+  }, [product.sceneTypes, allSceneTypes]);
 
   const handleRowClick = () => {
     if (selectionMode === 'card') {
@@ -225,6 +342,14 @@ function ProductListRow({
   const handleCheckboxClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onSelect();
+  };
+
+  const handleCustomSceneTypeSubmit = () => {
+    if (customSceneType.trim()) {
+      onSceneTypeChange?.(customSceneType.trim());
+      setShowCustomInput(false);
+      setCustomSceneType('');
+    }
   };
 
   return (
@@ -253,11 +378,13 @@ function ProductListRow({
 
       {/* Main Image */}
       <div
-        className="relative aspect-square h-full shrink-0 overflow-hidden rounded-lg bg-secondary"
+        className="relative aspect-square h-full shrink-0 overflow-hidden rounded-lg bg-white"
         data-testid={buildTestId(productTestId, 'image')}
       >
         {imageUrl ? (
-          <Image src={imageUrl} alt={product.name} fill className="object-cover" sizes="260px" />
+          <div className="relative h-full w-full p-3">
+            <Image src={imageUrl} alt={product.name} fill className="object-contain p-1" sizes="260px" />
+          </div>
         ) : (
           <div className="flex h-full items-center justify-center">
             <Package className="h-8 w-8 text-muted-foreground" />
@@ -273,16 +400,18 @@ function ProductListRow({
           {baseImages.slice(1, 4).map((img, idx) => (
             <div
               key={img.id || idx}
-              className="relative aspect-square h-[calc(33%-4px)] shrink-0 overflow-hidden rounded bg-secondary"
+              className="relative aspect-square h-[calc(33%-4px)] shrink-0 overflow-hidden rounded bg-white"
               data-testid={buildTestId(productTestId, 'gallery', img.id || idx)}
             >
-              <Image
-                src={img.baseUrl || img.previewUrl || ''}
-                alt={`${product.name} - ${idx + 2}`}
-                fill
-                className="object-cover"
-                sizes="80px"
-              />
+              <div className="relative h-full w-full p-1">
+                <Image
+                  src={img.baseUrl || img.previewUrl || ''}
+                  alt={`${product.name} - ${idx + 2}`}
+                  fill
+                  className="object-contain"
+                  sizes="80px"
+                />
+              </div>
             </div>
           ))}
           {baseImages.length > 4 && (
@@ -315,11 +444,88 @@ function ProductListRow({
             <Badge variant="secondary" testId={buildTestId(productTestId, 'category')}>
               {product.category}
             </Badge>
-            {product.sceneTypes?.map((type) => (
-              <Badge key={type} variant="muted" testId={buildTestId(productTestId, 'scene-type', type)}>
-                {type}
-              </Badge>
-            ))}
+            {(product.sceneTypes && product.sceneTypes.length > 0) || availableSceneTypes.length > 0 ? (
+              <DropdownMenu open={showCustomInput ? true : undefined}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    className="rounded-full border border-primary/50 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                    data-testid={buildTestId(productTestId, 'scene-type-dropdown')}
+                  >
+                    {(product as any).selectedSceneType || product.sceneTypes?.[0] || 'Select scene type'} ▾
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="max-h-[300px] overflow-y-auto">
+                  {showCustomInput ? (
+                    <div className="p-2" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        placeholder="Enter scene type..."
+                        value={customSceneType}
+                        onChange={(e) => setCustomSceneType(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleCustomSceneTypeSubmit();
+                          } else if (e.key === 'Escape') {
+                            setShowCustomInput(false);
+                            setCustomSceneType('');
+                          }
+                        }}
+                        className="w-full rounded border border-border bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none"
+                        autoFocus
+                      />
+                      <div className="mt-2 flex gap-1">
+                        <button
+                          onClick={handleCustomSceneTypeSubmit}
+                          className="flex-1 rounded bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90"
+                        >
+                          Add
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowCustomInput(false);
+                            setCustomSceneType('');
+                          }}
+                          className="flex-1 rounded border border-border px-2 py-1 text-xs hover:bg-accent"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {availableSceneTypes.map((type) => (
+                        <DropdownMenuItem
+                          key={type}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSceneTypeChange?.(type);
+                          }}
+                          className={cn(
+                            (product as any).selectedSceneType === type || (!((product as any).selectedSceneType) && type === product.sceneTypes?.[0])
+                              ? 'bg-primary/10 font-medium text-primary'
+                              : ''
+                          )}
+                          data-testid={buildTestId(productTestId, 'scene-type', type)}
+                        >
+                          {type}
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowCustomInput(true);
+                        }}
+                        className="border-t border-border font-medium text-primary"
+                        data-testid={buildTestId(productTestId, 'scene-type', 'custom')}
+                      >
+                        + Custom...
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
           </div>
         </div>
 
@@ -358,12 +564,14 @@ export function ProductGrid({
   collectionId,
   filterToIds,
   onProductClick,
+  onSceneTypeChange,
   selectionMode = 'card',
   showGeneratedAssets = false,
   showSelectionCount = true,
   showSelectAll = true,
   emptyStateMessage = 'No products available',
   className,
+  collectionFilterHeader,
   listRowHeight = 220,
   testId,
 }: ProductGridProps) {
@@ -485,11 +693,11 @@ export function ProductGrid({
   }
 
   return (
-    <div className={cn('flex flex-col', className)} data-testid={testId}>
+    <div className={cn('flex h-full flex-col overflow-hidden', className)} data-testid={testId}>
       {/* Filters & Actions Bar */}
       {showFilters && (
         <div
-          className="mb-6 flex flex-col gap-4 rounded-lg border border-border/50 bg-card/50 p-4 lg:flex-row lg:items-center lg:justify-between"
+          className="flex-none flex flex-col gap-4 rounded-lg border border-border/50 bg-card/50 p-4 lg:flex-row lg:items-center lg:justify-between"
           data-testid={buildTestId(testId, 'filters')}
         >
           {/* Left: Filter Tools */}
@@ -616,12 +824,17 @@ export function ProductGrid({
         </div>
       )}
 
-      {/* Products Grid or List */}
-      {viewMode === 'grid' ? (
-        <div
-          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-          data-testid={buildTestId(testId, 'grid')}
-        >
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Collection Filter Header (optional) */}
+        {collectionFilterHeader}
+
+        {/* Products Grid or List */}
+        {viewMode === 'grid' ? (
+          <div
+            className="grid gap-4 p-6 pb-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            data-testid={buildTestId(testId, 'grid')}
+          >
           {filteredProducts.map((product, index) => (
             <ProductGridCard
               key={product.id}
@@ -629,14 +842,16 @@ export function ProductGrid({
               isSelected={selectedIds.includes(product.id)}
               onSelect={() => toggleProduct(product.id)}
               onProductClick={onProductClick ? () => onProductClick(product) : undefined}
+              onSceneTypeChange={onSceneTypeChange ? (sceneType) => onSceneTypeChange(product.id, sceneType) : undefined}
               selectionMode={selectionMode}
               showGeneratedAssets={showGeneratedAssets}
               index={index}
+              allSceneTypes={sceneTypes}
             />
           ))}
         </div>
       ) : (
-        <div className="flex flex-col gap-3" data-testid={buildTestId(testId, 'list')}>
+        <div className="flex flex-col gap-3 p-6 pb-8" data-testid={buildTestId(testId, 'list')}>
           {filteredProducts.map((product) => (
             <ProductListRow
               key={product.id}
@@ -644,25 +859,28 @@ export function ProductGrid({
               isSelected={selectedIds.includes(product.id)}
               onSelect={() => toggleProduct(product.id)}
               onProductClick={onProductClick ? () => onProductClick(product) : undefined}
+              onSceneTypeChange={onSceneTypeChange ? (sceneType) => onSceneTypeChange(product.id, sceneType) : undefined}
               selectionMode={selectionMode}
               showGeneratedAssets={showGeneratedAssets}
               height={listRowHeight}
+              allSceneTypes={sceneTypes}
             />
           ))}
         </div>
       )}
 
-      {filteredProducts.length === 0 && (
-        <div
-          className="animate-fade-in py-16 text-center opacity-0"
-          data-testid={buildTestId(testId, 'no-results')}
-        >
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
-            <Search className="h-8 w-8 text-muted-foreground" />
+        {filteredProducts.length === 0 && (
+          <div
+            className="animate-fade-in py-16 text-center opacity-0"
+            data-testid={buildTestId(testId, 'no-results')}
+          >
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
+              <Search className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground">No products found matching your search</p>
           </div>
-          <p className="text-muted-foreground">No products found matching your search</p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

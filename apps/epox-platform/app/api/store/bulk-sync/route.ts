@@ -23,11 +23,17 @@ export const POST = withSecurity(async (request, context) => {
 
     // Validate request
     if (!Array.isArray(assetIds) || assetIds.length === 0) {
-      return NextResponse.json({ error: 'assetIds array is required and must not be empty' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'assetIds array is required and must not be empty' },
+        { status: 400 }
+      );
     }
 
     if (assetIds.length > 50) {
-      return NextResponse.json({ error: 'Maximum 50 assets can be synced at once' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Maximum 50 assets can be synced at once' },
+        { status: 400 }
+      );
     }
 
     // Get store connection
@@ -74,9 +80,11 @@ export const POST = withSecurity(async (request, context) => {
 
           try {
             // Sync to store
-            const uploadedImages = await storeService.updateProductImages(clientId, product.storeId, [
-              asset.assetUrl,
-            ]);
+            const uploadedImages = await storeService.updateProductImages(
+              clientId,
+              product.storeId,
+              [{ src: asset.assetUrl, name: '', alt: '' }]
+            );
 
             // Update sync log with success
             const updatedLog = await db.storeSyncLogs.updateStatus(syncLog.id, 'success', {

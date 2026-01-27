@@ -4,7 +4,7 @@
  */
 
 import { pgTable, text, timestamp, boolean, index, unique } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import { client } from './auth';
 import { generatedAsset } from './generated-images';
 import { product } from './products';
@@ -14,6 +14,9 @@ export type StoreType = 'shopify' | 'woocommerce' | 'bigcommerce';
 export type StoreConnectionStatus = 'active' | 'disconnected' | 'error';
 export type SyncAction = 'upload' | 'update' | 'delete';
 export type SyncStatus = 'pending' | 'success' | 'failed';
+
+// Webhook event types
+export type WebhookEvent = 'product.created' | 'product.updated' | 'product.deleted';
 
 // ===== STORE CONNECTION =====
 export const storeConnection = pgTable(
@@ -40,6 +43,12 @@ export const storeConnection = pgTable(
     // Sync settings
     autoSyncEnabled: boolean('auto_sync_enabled').notNull().default(false),
     syncOnApproval: boolean('sync_on_approval').notNull().default(true),
+
+    // Webhook settings (for bidirectional sync)
+    webhookSecret: text('webhook_secret'), // HMAC secret for signature verification
+    webhookId: text('webhook_id'), // Store's webhook ID (for deletion)
+    webhookEvents: text('webhook_events').array().$type<WebhookEvent[]>(),
+    lastWebhookAt: timestamp('last_webhook_at', { mode: 'date' }),
 
     // Status
     status: text('status').$type<StoreConnectionStatus>().notNull().default('active'),

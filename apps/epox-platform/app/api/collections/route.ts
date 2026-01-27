@@ -6,8 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { withSecurity } from '@/lib/security/middleware';
+import { resolveStorageUrl } from 'visualizer-storage';
 import type { CollectionSessionStatus, FlowGenerationSettings } from 'visualizer-types';
-
 
 // Force dynamic rendering since security middleware reads headers
 export const dynamic = 'force-dynamic';
@@ -67,6 +67,11 @@ export const GET = withSecurity(async (request, context) => {
         effectiveStatus = 'draft';
       }
 
+      // Resolve thumbnail URLs (may be relative storage keys or full URLs)
+      const thumbnails = (c.thumbnails ?? [])
+        .map((url) => resolveStorageUrl(url))
+        .filter((url): url is string => url !== null);
+
       return {
         id: c.id,
         name: c.name,
@@ -77,7 +82,7 @@ export const GET = withSecurity(async (request, context) => {
         totalImages: c.totalImages,
         createdAt: c.createdAt.toISOString(),
         updatedAt: c.updatedAt.toISOString(),
-        thumbnailUrl: c.thumbnailUrl ?? '',
+        thumbnails,
       };
     });
 
@@ -131,27 +136,41 @@ export const POST = withSecurity(async (request, context) => {
       return NextResponse.json({ error: 'inspirationImages must be an object' }, { status: 400 });
     }
 
-    // Convert wizard inspiration images format to settings format
-    const inspirationImagesArray = inspirationImages
+    // Convert wizard inspiration images to reference bubbles
+    const generalInspiration: import('visualizer-types').BubbleValue[] = inspirationImages
       ? Object.values(inspirationImages).map((url: any) => ({
-          url,
-          thumbnailUrl: url,
-          tags: [],
-          addedAt: new Date().toISOString(),
-          sourceType: 'upload' as const,
+          type: 'reference' as const,
+          image: {
+            url,
+            addedAt: new Date().toISOString(),
+            sourceType: 'upload' as const,
+          },
         }))
       : [];
 
     // Build collection settings
-    const collectionSettings: FlowGenerationSettings | undefined =
-      inspirationImagesArray.length > 0
+    const collectionSettings: import('visualizer-types').CollectionGenerationSettings | undefined =
+      generalInspiration.length > 0
         ? {
-            inspirationImages: inspirationImagesArray,
+            generalInspiration,
+            sceneTypeInspiration: {},
+            useSceneTypeInspiration: true,
             aspectRatio: '1:1',
             imageQuality: '2k' as import('visualizer-types').ImageQuality,
-            variantsCount: 1,
+            variantsPerProduct: 1,
           }
         : undefined;
+
+    // Fetch products to get their selected scene types
+    // selectedSceneType is set when user changes scene type on product cards in Studio Home
+    // This ensures flows inherit the user's scene type selection for each product
+    const products = await db.products.listByIds(productIds);
+    const productSceneTypeMap = new Map<string, string>();
+    products.forEach((product) => {
+      if (product.selectedSceneType) {
+        productSceneTypeMap.set(product.id, product.selectedSceneType);
+      }
+    });
 
     // Create collection in database
     const collection = await db.collectionSessions.create(clientId, {
@@ -163,23 +182,32 @@ export const POST = withSecurity(async (request, context) => {
     });
 
     // Create dedicated generation flows for each product in the collection
-    const createdFlows = [];
+    const createdFlows: Awaited<ReturnType<typeof db.generationFlows.create>>[] = [];
     for (const productId of productIds) {
       try {
+        // Get the product's selected scene type
+        const selectedSceneType = productSceneTypeMap.get(productId);
+
+        // Merge collection settings with product-specific scene type
+        const flowSettings = {
+          ...(collectionSettings || {
+            aspectRatio: '1:1' as const,
+            imageQuality: '2k' as import('visualizer-types').ImageQuality,
+            variantsPerProduct: 1,
+          }),
+          ...(selectedSceneType && { sceneType: selectedSceneType }),
+        };
+
         const flow = await db.generationFlows.create(clientId, {
           collectionSessionId: collection.id,
           name: `${name.trim()} - ${productId}`,
           productIds: [productId],
           selectedBaseImages: {},
-          settings: collectionSettings || {
-            aspectRatio: '1:1',
-            imageQuality: '2k' as import('visualizer-types').ImageQuality,
-            variantsCount: 1,
-          },
+          settings: flowSettings,
         });
         createdFlows.push(flow);
         console.log(
-          `✅ Created generation flow ${flow.id} for product ${productId} in collection ${collection.id}`
+          `✅ Created generation flow ${flow.id} for product ${productId} in collection ${collection.id}${selectedSceneType ? ` with scene type: ${selectedSceneType}` : ''}`
         );
       } catch (error) {
         console.error(`❌ Failed to create flow for product ${productId}:`, error);
@@ -190,7 +218,28 @@ export const POST = withSecurity(async (request, context) => {
       `✅ Created collection ${collection.id} with ${createdFlows.length} generation flows`
     );
 
-    // Map to frontend format
+    // Get thumbnails from product base images (up to 4)
+    const thumbnails: string[] = [];
+
+    for (const productId of productIds.slice(0, 4)) {
+      try {
+        const productImages = await db.productImages.list(productId);
+        const primaryImage = productImages.find((img) => img.isPrimary);
+
+        // Resolve storage key to public URL
+        const imageUrl = primaryImage?.imageUrl || productImages[0]?.imageUrl;
+        if (imageUrl) {
+          const fullUrl = resolveStorageUrl(imageUrl);
+          if (fullUrl) {
+            thumbnails.push(fullUrl);
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to get image for product ${productId}:`, error);
+      }
+    }
+
+    // Map to frontend format with thumbnails
     const responseCollection = {
       id: collection.id,
       name: collection.name,
@@ -203,9 +252,10 @@ export const POST = withSecurity(async (request, context) => {
       promptTags: promptTags || {},
       createdAt: collection.createdAt.toISOString(),
       updatedAt: collection.updatedAt.toISOString(),
+      thumbnails,
     };
 
-    console.log('✅ Created collection:', collection.id);
+    console.log('✅ Created collection:', collection.id, 'with', thumbnails.length, 'thumbnails');
     return NextResponse.json(responseCollection, { status: 201 });
   } catch (error: unknown) {
     console.error('❌ Failed to create collection:', error);

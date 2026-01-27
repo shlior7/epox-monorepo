@@ -3,20 +3,17 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Input } from '@/components/ui/input';
-import {
-  MinimalAccordion,
-  MinimalAccordionItem,
-  MinimalAccordionTrigger,
-  MinimalAccordionContent,
-} from '@/components/ui/minimal-accordion';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/spinner';
-import { Textarea } from '@/components/ui/textarea';
 import { SceneLoader } from '@/components/ui/scene-loader';
-import { InspirationImageModal } from '@/components/studio/InspirationImageModal';
 import { AssetCard } from '@/components/studio/AssetCard/AssetCard';
 import { ThumbnailNav } from '@/components/studio/ThumbnailNav';
+import { ImageEditOverlay } from '@/components/ui/image-edit-overlay';
+import { ImageEditorModal } from '@/components/studio/modals/ImageEditorModal';
+import {
+  UnifiedStudioConfigPanel,
+  ConfigPanelProvider,
+  type SceneTypeInfo,
+} from '@/components/studio';
 import type { GeneratedAsset } from '@/lib/api-client';
 import { apiClient } from '@/lib/api-client';
 import { useGenerationPolling } from '@/lib/hooks/use-generation-polling';
@@ -24,16 +21,13 @@ import { cn } from '@/lib/utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
-  Check,
   ChevronRight,
-  Eye,
   FolderOpen,
   Grid3X3,
   LayoutList,
   Loader2,
   Package,
   Sparkles,
-  Upload,
   Video,
   Wand2,
   X,
@@ -45,19 +39,14 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type {
   FlowGenerationSettings,
-  InspirationImage,
-  InspirationSourceType,
-  LightingPreset,
   SceneTypeInspirationMap,
-  StylePreset,
   SubjectAnalysis,
   VideoPromptSettings,
+  BubbleValue,
 } from 'visualizer-types';
 import {
   CAMERA_MOTION_OPTIONS,
   IMAGE_ASPECT_RATIO_OPTIONS,
-  LIGHTING_PRESETS,
-  STYLE_PRESETS,
   VIDEO_TYPE_OPTIONS,
   VIDEO_ASPECT_RATIO_OPTIONS,
   VIDEO_RESOLUTION_OPTIONS,
@@ -198,18 +187,11 @@ export default function StudioPage({ params }: StudioPageProps) {
   );
 
   // Section 1: Scene Style
-  const [inspirationImages, setInspirationImages] = useState<InspirationImage[]>([]);
-  const [sceneTypeInspirations, setSceneTypeInspirations] = useState<SceneTypeInspirationMap>({});
-  const [stylePreset, setStylePreset] = useState<StylePreset | 'Custom'>('Modern Minimalist');
-  const [customStylePreset, setCustomStylePreset] = useState('');
-  const [lightingPreset, setLightingPreset] = useState<LightingPreset | 'Custom'>(
-    'Studio Soft Light'
-  );
-  const [customLightingPreset, setCustomLightingPreset] = useState('');
+  const [generalInspiration, setGeneralInspiration] = useState<BubbleValue[]>([]);
+  const [sceneTypeInspiration, setSceneTypeInspiration] = useState<SceneTypeInspirationMap>({});
+  const [useSceneTypeInspiration, setUseSceneTypeInspiration] = useState(true);
   const [sceneType, setSceneType] = useState<string>('');
   const [customSceneType, setCustomSceneType] = useState('');
-  const [isAnalyzingInspiration, setIsAnalyzingInspiration] = useState(false);
-  const [isInspirationModalOpen, setIsInspirationModalOpen] = useState(false);
 
   // Track previous values to avoid unnecessary saves
   const prevSettingsRef = useRef<string>('');
@@ -226,7 +208,7 @@ export default function StudioPage({ params }: StudioPageProps) {
   const [settings, setSettings] = useState({
     aspectRatio: '1:1' as ImageAspectRatio,
     quality: '2k' as '1k' | '2k' | '4k',
-    variantsCount: 4,
+    variantsCount: 1,
   });
 
   // Video Settings
@@ -243,6 +225,10 @@ export default function StudioPage({ params }: StudioPageProps) {
   const [newlyGeneratedImages, setNewlyGeneratedImages] = useState<GeneratedAsset[]>([]);
   const [selectedGeneratedImage, setSelectedGeneratedImage] = useState<GeneratedAsset | null>(null);
   const [selectedGeneratedVideo, setSelectedGeneratedVideo] = useState<GeneratedAsset | null>(null);
+
+  // Image editor state
+  const [gridEditorOpen, setGridEditorOpen] = useState(false);
+  const [gridEditingAsset, setGridEditingAsset] = useState<GeneratedAsset | null>(null);
 
   // UI state - multi-open accordions (support multiple open at once)
   const [expandedSections, setExpandedSections] = useState<string[]>([
@@ -363,29 +349,27 @@ export default function StudioPage({ params }: StudioPageProps) {
     return Math.max(generationProgress, progressFromAssets);
   }, [generationProgress, imageGenerationTracker, isGenerating, newGeneratedImageCount]);
 
-  // Scene type groups from inspiration analysis
+  // Scene type groups from inspiration
   const sceneTypeGroups = useMemo(() => {
     const groups: Record<string, number> = {};
-    for (const [sceneType, data] of Object.entries(sceneTypeInspirations)) {
-      groups[sceneType] = data.inspirationImages.length;
+    for (const [sceneType, data] of Object.entries(sceneTypeInspiration)) {
+      groups[sceneType] = data.bubbles?.length ?? 0;
     }
     return groups;
-  }, [sceneTypeInspirations]);
+  }, [sceneTypeInspiration]);
 
   // Matched scene type for current product
   const matchedSceneType = useMemo(() => {
-    if (!subjectAnalysis?.nativeSceneTypes || Object.keys(sceneTypeInspirations).length === 0) {
+    if (!subjectAnalysis?.nativeSceneTypes || Object.keys(sceneTypeInspiration).length === 0) {
       return null;
     }
-    // Find first matching scene type
     for (const sceneType of subjectAnalysis.nativeSceneTypes) {
-      if (sceneTypeInspirations[sceneType]) {
+      if (sceneTypeInspiration[sceneType]) {
         return sceneType;
       }
     }
-    // Return first available if no match
-    return Object.keys(sceneTypeInspirations)[0] || null;
-  }, [subjectAnalysis, sceneTypeInspirations]);
+    return Object.keys(sceneTypeInspiration)[0] || null;
+  }, [subjectAnalysis, sceneTypeInspiration]);
 
   // Current tab assets
   const currentAssets = activeTab === 'images' ? imageAssets : videoAssets;
@@ -394,12 +378,10 @@ export default function StudioPage({ params }: StudioPageProps) {
   const assetConfiguration = useMemo(
     () => ({
       sceneType: matchedSceneType ?? undefined,
-      stylePreset,
-      lightingPreset,
       aspectRatio: settings.aspectRatio,
       quality: settings.quality,
     }),
-    [matchedSceneType, stylePreset, lightingPreset, settings.aspectRatio, settings.quality]
+    [matchedSceneType, settings.aspectRatio, settings.quality]
   );
 
   // ===== EFFECTS =====
@@ -444,33 +426,13 @@ export default function StudioPage({ params }: StudioPageProps) {
   // Initialize from flow settings
   useEffect(() => {
     if (flowData?.settings) {
-      const s = flowData.settings as FlowGenerationSettings;
-      if (s.inspirationImages) setInspirationImages(s.inspirationImages);
-      if (s.sceneTypeInspirations) setSceneTypeInspirations(s.sceneTypeInspirations);
-
-      // Handle stylePreset - check if it's a known preset or custom
-      if (s.stylePreset) {
-        if ((STYLE_PRESETS as readonly string[]).includes(s.stylePreset)) {
-          setStylePreset(s.stylePreset as StylePreset);
-        } else {
-          setStylePreset('Custom');
-          setCustomStylePreset(s.stylePreset);
-        }
-      }
-
-      // Handle lightingPreset - check if it's a known preset or custom
-      if (s.lightingPreset) {
-        if ((LIGHTING_PRESETS as readonly string[]).includes(s.lightingPreset)) {
-          setLightingPreset(s.lightingPreset as LightingPreset);
-        } else {
-          setLightingPreset('Custom');
-          setCustomLightingPreset(s.lightingPreset);
-        }
-      }
+      const s = flowData.settings as any;
+      if (Array.isArray(s.generalInspiration)) setGeneralInspiration(s.generalInspiration);
+      if (s.sceneTypeInspiration) setSceneTypeInspiration(s.sceneTypeInspiration as SceneTypeInspirationMap);
+      if (typeof s.useSceneTypeInspiration === 'boolean') setUseSceneTypeInspiration(s.useSceneTypeInspiration);
 
       // Handle sceneType
       if (s.sceneType) {
-        // Check if it's a native scene type from product analysis
         const nativeTypes = products?.[0]?.analysis?.subject?.nativeSceneTypes || [];
         if (nativeTypes.includes(s.sceneType)) {
           setSceneType(s.sceneType);
@@ -484,7 +446,7 @@ export default function StudioPage({ params }: StudioPageProps) {
       if (s.aspectRatio) setSettings((prev) => ({ ...prev, aspectRatio: s.aspectRatio }));
       if (s.imageQuality)
         setSettings((prev) => ({ ...prev, quality: s.imageQuality as '1k' | '2k' | '4k' }));
-      if (s.variantsCount) setSettings((prev) => ({ ...prev, variantsCount: s.variantsCount! }));
+      if (s.variantsPerProduct) setSettings((prev) => ({ ...prev, variantsCount: s.variantsPerProduct! }));
       if (s.video) {
         setVideoPrompt(s.video.prompt ?? '');
         setVideoSettings({
@@ -578,18 +540,13 @@ export default function StudioPage({ params }: StudioPageProps) {
         soundPrompt: videoSettings.soundPrompt,
       };
 
-      // Resolve custom values
-      const effectiveStylePreset = stylePreset === 'Custom' ? customStylePreset : stylePreset;
-      const effectiveLightingPreset =
-        lightingPreset === 'Custom' ? customLightingPreset : lightingPreset;
       const effectiveSceneType = sceneType === 'Custom' ? customSceneType : sceneType;
 
       // Create settings object for comparison
       const currentSettings = JSON.stringify({
-        inspirationImages,
-        sceneTypeInspirations,
-        stylePreset: effectiveStylePreset,
-        lightingPreset: effectiveLightingPreset,
+        generalInspiration,
+        sceneTypeInspiration,
+        useSceneTypeInspiration,
         sceneType: effectiveSceneType,
         userPrompt,
         aspectRatio: settings.aspectRatio,
@@ -607,15 +564,14 @@ export default function StudioPage({ params }: StudioPageProps) {
       prevSettingsRef.current = currentSettings;
 
       await apiClient.updateStudioSettings(studioId, {
-        inspirationImages: inspirationImages as any,
-        sceneTypeInspirations: sceneTypeInspirations as any,
-        stylePreset: effectiveStylePreset,
-        lightingPreset: effectiveLightingPreset,
+        generalInspiration: generalInspiration as any,
+        sceneTypeInspiration: sceneTypeInspiration as any,
+        useSceneTypeInspiration,
         sceneType: effectiveSceneType || undefined,
         userPrompt: userPrompt || undefined,
         aspectRatio: settings.aspectRatio,
         imageQuality: settings.quality,
-        variantsCount: settings.variantsCount,
+        variantsPerProduct: settings.variantsCount,
         video: {
           prompt: videoPrompt || undefined,
           settings: normalizedVideoSettings,
@@ -627,12 +583,9 @@ export default function StudioPage({ params }: StudioPageProps) {
     }
   }, [
     studioId,
-    inspirationImages,
-    sceneTypeInspirations,
-    stylePreset,
-    customStylePreset,
-    lightingPreset,
-    customLightingPreset,
+    generalInspiration,
+    sceneTypeInspiration,
+    useSceneTypeInspiration,
     sceneType,
     customSceneType,
     userPrompt,
@@ -643,99 +596,6 @@ export default function StudioPage({ params }: StudioPageProps) {
     videoSettings,
     videoPresetId,
   ]);
-
-  const analyzeAndAddInspiration = useCallback(
-    async (imageUrl: string, sourceType: InspirationSourceType) => {
-      const analysisResponse = await fetch('/api/vision-scanner', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageUrl,
-          sourceType,
-        }),
-      });
-
-      if (!analysisResponse.ok) {
-        throw new Error('Vision Scanner analysis failed');
-      }
-
-      const { inspirationImage, analysis } = await analysisResponse.json();
-      const detectedSceneType = analysis?.json?.detectedSceneType || 'General';
-
-      setInspirationImages((prev) => {
-        if (prev.some((img) => img.url === inspirationImage.url)) {
-          return prev;
-        }
-        return [...prev, inspirationImage];
-      });
-
-      setSceneTypeInspirations((prev) => {
-        const existing = prev[detectedSceneType];
-        const nextImages = existing
-          ? [...existing.inspirationImages, inspirationImage]
-          : [inspirationImage];
-        const uniqueImages = nextImages.filter(
-          (img, idx) => nextImages.findIndex((item) => item.url === img.url) === idx
-        );
-
-        return {
-          ...prev,
-          [detectedSceneType]: {
-            inspirationImages: uniqueImages,
-            mergedAnalysis: analysis,
-          },
-        };
-      });
-
-      return detectedSceneType;
-    },
-    []
-  );
-
-  const addInspirationFromUrls = useCallback(
-    async (items: Array<{ url: string; sourceType: InspirationSourceType }>) => {
-      if (items.length === 0) return;
-      setIsAnalyzingInspiration(true);
-
-      try {
-        for (const item of items) {
-          try {
-            const detectedSceneType = await analyzeAndAddInspiration(item.url, item.sourceType);
-            toast.success(`Analyzed: ${detectedSceneType} scene detected`);
-          } catch (err) {
-            console.error('Inspiration analysis failed:', err);
-            toast.error('Failed to analyze inspiration image');
-          }
-        }
-        saveSettings();
-      } finally {
-        setIsAnalyzingInspiration(false);
-      }
-    },
-    [analyzeAndAddInspiration, saveSettings]
-  );
-
-  const removeInspirationImage = (url: string) => {
-    setInspirationImages((prev) => prev.filter((img) => img.url !== url));
-
-    // Also remove from scene type groups
-    setSceneTypeInspirations((prev) => {
-      const updated = { ...prev };
-      for (const [sceneType, data] of Object.entries(updated)) {
-        updated[sceneType] = {
-          ...data,
-          inspirationImages: data.inspirationImages.filter((img) => img.url !== url),
-        };
-        // Remove empty groups
-        if (updated[sceneType].inspirationImages.length === 0) {
-          delete updated[sceneType];
-        }
-      }
-      return updated;
-    });
-
-    saveSettings();
-  };
 
   // Auto-save video settings when they change
   useEffect(() => {
@@ -874,9 +734,9 @@ export default function StudioPage({ params }: StudioPageProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subjectAnalysis,
-          sceneTypeInspirations,
-          stylePreset,
-          lightingPreset,
+          generalInspiration,
+          sceneTypeInspiration,
+          useSceneTypeInspiration,
           userPrompt: userPrompt || undefined,
         }),
       });
@@ -901,15 +761,15 @@ export default function StudioPage({ params }: StudioPageProps) {
       manualImageCompletionRef.current = false;
       // First, generate the prompt via Art Director
       let prompt = '';
-      if (subjectAnalysis && Object.keys(sceneTypeInspirations).length > 0) {
+      if (subjectAnalysis && (generalInspiration.length > 0 || Object.keys(sceneTypeInspiration).length > 0)) {
         const artDirectorResponse = await fetch('/api/art-director', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             subjectAnalysis,
-            sceneTypeInspirations,
-            stylePreset,
-            lightingPreset,
+            generalInspiration,
+            sceneTypeInspiration,
+            useSceneTypeInspiration,
             userPrompt: userPrompt || undefined,
           }),
         });
@@ -925,13 +785,20 @@ export default function StudioPage({ params }: StudioPageProps) {
         prompt = userPrompt;
       }
 
+      // Extract reference image URLs from reference bubbles
+      const referenceImageUrls: string[] = [];
+      for (const bubble of generalInspiration) {
+        if (bubble.type === 'reference' && bubble.image?.url) {
+          referenceImageUrls.push(bubble.image.url);
+        }
+      }
+
       const result = await apiClient.generateImages({
         sessionId: studioId,
         productIds: products.map((p: any) => p.id),
         prompt: prompt || undefined,
         productImageUrls: selectedBaseImageUrl ? [selectedBaseImageUrl] : undefined,
-        inspirationImageUrls:
-          inspirationImages.length > 0 ? inspirationImages.map((img) => img.url) : undefined,
+        inspirationImageUrls: referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
         settings: {
           aspectRatio: settings.aspectRatio,
           imageQuality: settings.quality.toLowerCase() as '1k' | '2k' | '4k',
@@ -1068,13 +935,127 @@ export default function StudioPage({ params }: StudioPageProps) {
     }
   };
 
+  // ===== PREPARE SCENE TYPES FOR CONFIG PANEL =====
+
+  const configPanelSceneTypes: SceneTypeInfo[] = useMemo(() => {
+    if (!currentProduct) return [];
+
+    // Get all unique scene types from the current product
+    const sceneTypes = currentProduct.sceneTypes || [];
+
+    // If no scene types exist, try to get a default one
+    if (sceneTypes.length === 0) {
+      const defaultSceneType =
+        flowData?.settings?.sceneType ||
+        currentProduct?.selectedSceneType ||
+        currentProduct?.analysis?.subject?.nativeSceneTypes?.[0];
+
+      // If we have a default scene type, use it
+      if (defaultSceneType) {
+        return [
+          {
+            sceneType: defaultSceneType,
+            productCount: 1,
+            productIds: [currentProduct.id],
+          },
+        ];
+      }
+
+      // No scene type at all - return empty array
+      return [];
+    }
+
+    // Create scene type info for each scene type
+    return sceneTypes.map((st: any) => ({
+      sceneType: st,
+      productCount: 1,
+      productIds: [currentProduct.id],
+    }));
+  }, [currentProduct, flowData?.settings?.sceneType]);
+
+  const selectedSceneTypeValue = useMemo(() => {
+    // Priority: state sceneType > flow settings > product selected > product first scene type > native scene type
+    if (sceneType) return sceneType;
+
+    if (flowData?.settings?.sceneType) return flowData.settings.sceneType;
+
+    if (currentProduct?.selectedSceneType) return currentProduct.selectedSceneType;
+
+    if (currentProduct?.sceneTypes?.length > 0) return currentProduct.sceneTypes[0];
+
+    // Fallback to native scene type from analysis
+    if (currentProduct?.analysis?.subject?.nativeSceneTypes?.[0]) {
+      return currentProduct.analysis.subject.nativeSceneTypes[0];
+    }
+
+    // No scene type - return empty string
+    return '';
+  }, [sceneType, flowData?.settings?.sceneType, currentProduct]);
+
+  // Prepare base images for config panel
+  const configPanelBaseImages = useMemo(() => {
+    if (!currentProduct?.baseImages) return [];
+    return currentProduct.baseImages.map((img: any) => ({
+      id: img.id,
+      url: img.url,
+      thumbnailUrl: img.thumbnailUrl || img.url,
+    }));
+  }, [currentProduct]);
+
+  // Handler for scene type change
+  const handleSceneTypeChange = useCallback(
+    async (newSceneType: string) => {
+      setSceneType(newSceneType);
+      if (currentProduct) {
+        try {
+          // Add scene type to product's sceneTypes array if not already there
+          const currentSceneTypes = currentProduct.sceneTypes || [];
+          const updatedSceneTypes = currentSceneTypes.includes(newSceneType)
+            ? currentSceneTypes
+            : [...currentSceneTypes, newSceneType];
+
+          await apiClient.updateProduct(currentProduct.id, {
+            selectedSceneType: newSceneType,
+            sceneTypes: updatedSceneTypes,
+          });
+
+          // Refresh product data to reflect the change
+          queryClient.invalidateQueries({ queryKey: ['products', productIds] });
+        } catch (error) {
+          console.error('Failed to update scene type:', error);
+        }
+      }
+    },
+    [currentProduct, productIds, queryClient]
+  );
+
+  // Handler for base image selection
+  const handleBaseImageSelect = useCallback(
+    async (imageId: string) => {
+      setSelectedBaseImageId(imageId);
+      if (currentProduct) {
+        const image = currentProduct.baseImages?.find((img: any) => img.id === imageId);
+        if (image) {
+          try {
+            await apiClient.updateFlowBaseImages(studioId, {
+              [currentProduct.id]: image.url,
+            });
+          } catch (error) {
+            console.error('Failed to save base image selection:', error);
+          }
+        }
+      }
+    },
+    [currentProduct, studioId]
+  );
+
   // ===== LOADING STATE =====
 
   if (isLoadingFlow || isLoadingProducts) {
     return (
       <div className="flex h-screen flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border bg-card/80 px-4 backdrop-blur-xl">
-          <Link href="/dashboard">
+          <Link href="/home">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -1095,7 +1076,7 @@ export default function StudioPage({ params }: StudioPageProps) {
     return (
       <div className="flex h-screen flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border bg-card/80 px-4 backdrop-blur-xl">
-          <Link href="/dashboard">
+          <Link href="/home">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -1108,8 +1089,8 @@ export default function StudioPage({ params }: StudioPageProps) {
           <p className="mb-4 text-muted-foreground">
             {productsError instanceof Error ? productsError.message : 'Unable to load product data'}
           </p>
-          <Link href="/dashboard">
-            <Button>Back to Dashboard</Button>
+          <Link href="/home">
+            <Button>Back to Home</Button>
           </Link>
         </div>
       </div>
@@ -1121,7 +1102,21 @@ export default function StudioPage({ params }: StudioPageProps) {
   // ===== RENDER =====
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <ConfigPanelProvider
+      initialState={{
+        generalInspiration,
+        sceneTypeInspiration,
+        useSceneTypeInspiration,
+        userPrompt,
+        applyCollectionPrompt: !!flowData?.collectionSessionId,
+        outputSettings: {
+          aspectRatio: settings.aspectRatio,
+          quality: settings.quality,
+          variantsCount: settings.variantsCount,
+        },
+      }}
+    >
+      <div className="flex h-screen flex-col overflow-hidden">
       {/* Header */}
       <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur-xl">
         <div className="flex items-center gap-3">
@@ -1129,7 +1124,7 @@ export default function StudioPage({ params }: StudioPageProps) {
             href={
               flowData?.collectionSessionId
                 ? `/studio/collections/${flowData.collectionSessionId}`
-                : '/dashboard'
+                : '/home'
             }
           >
             <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -1202,899 +1197,32 @@ export default function StudioPage({ params }: StudioPageProps) {
       {/* Main Layout - Responsive: stacked on small screens, side-by-side on larger */}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Left Panel - Config (4 Sections) */}
-        <aside className="flex w-full shrink-0 flex-col border-b border-border bg-card/30 lg:w-80 lg:border-b-0 lg:border-r">
-          <div className="border-b border-border p-3">
-            <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted/50 p-1 text-xs font-semibold">
-              <button
-                onClick={() => handleSetActiveTab('images')}
-                className={cn(
-                  'rounded-md px-2 py-2 transition-colors',
-                  activeTab === 'images'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                Images
-              </button>
-              <button
-                onClick={() => handleSetActiveTab('video')}
-                className={cn(
-                  'rounded-md px-2 py-2 transition-colors',
-                  activeTab === 'video'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                Video
-              </button>
-            </div>
-          </div>
-
-          <div className="max-h-[40vh] flex-1 overflow-y-auto px-3 py-2 lg:max-h-none">
-            {activeTab === 'images' ? (
-              <MinimalAccordion
-                value={expandedSections}
-                onValueChange={setExpandedSections}
-                defaultValue={['scene-style', 'output-settings']}
-              >
-                {/* Collection Settings Section (when flow belongs to a collection) */}
-                {flowData?.collectionSessionId && flowData?.collectionSettings && (
-                  <MinimalAccordionItem value="collection-settings">
-                    <MinimalAccordionTrigger
-                      suffix={
-                        <Badge variant="outline" className="text-[10px]">
-                          Collection
-                        </Badge>
-                      }
-                    >
-                      Collection Settings
-                    </MinimalAccordionTrigger>
-                    <MinimalAccordionContent>
-                      <div className="space-y-3">
-                        <p className="text-[10px] text-muted-foreground">
-                          These settings come from the parent collection and apply to all products.
-                        </p>
-                        {flowData.collectionSettings.userPrompt && (
-                          <div>
-                            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                              Collection Prompt
-                            </label>
-                            <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
-                              {flowData.collectionSettings.userPrompt}
-                            </p>
-                          </div>
-                        )}
-                        {flowData.collectionSettings.stylePreset && (
-                          <div>
-                            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                              Collection Style
-                            </label>
-                            <Badge variant="secondary">
-                              {flowData.collectionSettings.stylePreset}
-                            </Badge>
-                          </div>
-                        )}
-                        {flowData.collectionSettings.lightingPreset && (
-                          <div>
-                            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                              Collection Lighting
-                            </label>
-                            <Badge variant="secondary">
-                              {flowData.collectionSettings.lightingPreset}
-                            </Badge>
-                          </div>
-                        )}
-                        <Link
-                          href={`/studio/collections/${flowData.collectionSessionId}`}
-                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                        >
-                          Edit collection settings
-                          <ChevronRight className="h-3 w-3" />
-                        </Link>
-                      </div>
-                    </MinimalAccordionContent>
-                  </MinimalAccordionItem>
-                )}
-
-                {/* Section 1: Scene Style */}
-                <MinimalAccordionItem value="scene-style">
-                  <MinimalAccordionTrigger
-                    suffix={
-                      inspirationImages.length > 0 ? (
-                        <Badge variant="secondary" className="text-xs">
-                          {inspirationImages.length}
-                        </Badge>
-                      ) : null
-                    }
-                  >
-                    Scene Style
-                  </MinimalAccordionTrigger>
-                  <MinimalAccordionContent>
-                    <div className="space-y-4">
-                      {/* Inspiration Images */}
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Inspiration Images
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {inspirationImages.map((img, idx) => (
-                            <div
-                              key={idx}
-                              className="group relative aspect-square h-30 w-30 shrink-0 overflow-hidden rounded-lg border border-border"
-                            >
-                              <Image
-                                src={img.url}
-                                alt={`Inspiration ${idx + 1}`}
-                                fill
-                                className="object-cover"
-                                unoptimized
-                              />
-                              <button
-                                onClick={() => removeInspirationImage(img.url)}
-                                className="absolute right-0.5 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                              {img.tags?.[0] && (
-                                <div className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-center text-[8px] text-white">
-                                  {img.tags[0]}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                          <button
-                            onClick={() => setIsInspirationModalOpen(true)}
-                            disabled={isAnalyzingInspiration}
-                            className="flex aspect-square h-30 w-30 items-center justify-center rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
-                          >
-                            {isAnalyzingInspiration ? (
-                              <Loader2 className="h-6 w-6 animate-spin" />
-                            ) : (
-                              <Upload className="h-6 w-6" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Detected Scene Types */}
-                      {Object.keys(sceneTypeGroups).length > 0 && (
-                        <div>
-                          <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                            Detected Scene Types
-                          </label>
-                          <div className="flex flex-wrap gap-1">
-                            {Object.entries(sceneTypeGroups).map(([sceneType, count]) => (
-                              <Badge
-                                key={sceneType}
-                                variant={matchedSceneType === sceneType ? 'default' : 'outline'}
-                                className="text-xs"
-                              >
-                                {sceneType} ({count})
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Style Preset */}
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Style Preset
-                        </label>
-                        <select
-                          value={stylePreset}
-                          onChange={(e) => {
-                            setStylePreset(e.target.value as StylePreset | 'Custom');
-                            if (e.target.value !== 'Custom') {
-                              saveSettings();
-                            }
-                          }}
-                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                        >
-                          {STYLE_PRESETS.map((style) => (
-                            <option key={style} value={style}>
-                              {style}
-                            </option>
-                          ))}
-                          <option value="Custom">Custom...</option>
-                        </select>
-                        {stylePreset === 'Custom' && (
-                          <Input
-                            value={customStylePreset}
-                            onChange={(e) => setCustomStylePreset(e.target.value)}
-                            onBlur={saveSettings}
-                            placeholder="Enter custom style..."
-                            className="mt-2"
-                          />
-                        )}
-                      </div>
-
-                      {/* Lighting Preset */}
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Lighting Preset
-                        </label>
-                        <select
-                          value={lightingPreset}
-                          onChange={(e) => {
-                            setLightingPreset(e.target.value as LightingPreset | 'Custom');
-                            if (e.target.value !== 'Custom') {
-                              saveSettings();
-                            }
-                          }}
-                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                        >
-                          {LIGHTING_PRESETS.map((lighting) => (
-                            <option key={lighting} value={lighting}>
-                              {lighting}
-                            </option>
-                          ))}
-                          <option value="Custom">Custom...</option>
-                        </select>
-                        {lightingPreset === 'Custom' && (
-                          <Input
-                            value={customLightingPreset}
-                            onChange={(e) => setCustomLightingPreset(e.target.value)}
-                            onBlur={saveSettings}
-                            placeholder="Enter custom lighting..."
-                            className="mt-2"
-                          />
-                        )}
-                      </div>
-
-                      {/* Scene Type */}
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Scene Type
-                        </label>
-                        <select
-                          value={sceneType}
-                          onChange={(e) => {
-                            setSceneType(e.target.value);
-                            if (e.target.value !== 'Custom') {
-                              saveSettings();
-                            }
-                          }}
-                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                        >
-                          <option value="">Auto (from analysis)</option>
-                          {(subjectAnalysis?.nativeSceneTypes &&
-                          subjectAnalysis.nativeSceneTypes.length > 0
-                            ? subjectAnalysis.nativeSceneTypes
-                            : [
-                                'Living Room',
-                                'Bedroom',
-                                'Office',
-                                'Kitchen',
-                                'Dining Room',
-                                'Bathroom',
-                                'Outdoor',
-                                'Studio',
-                              ]
-                          ).map((type) => (
-                            <option key={type} value={type}>
-                              {type}
-                            </option>
-                          ))}
-                          <option value="Custom">Custom...</option>
-                        </select>
-                        {sceneType === 'Custom' && (
-                          <Input
-                            value={customSceneType}
-                            onChange={(e) => setCustomSceneType(e.target.value)}
-                            onBlur={saveSettings}
-                            placeholder="Enter custom scene type..."
-                            className="mt-2"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </MinimalAccordionContent>
-                </MinimalAccordionItem>
-
-                {/* Section 2: Product Details */}
-                <MinimalAccordionItem value="product-details">
-                  <MinimalAccordionTrigger
-                    suffix={
-                      subjectAnalysis ? (
-                        <Badge variant="secondary" className="text-xs">
-                          Analyzed
-                        </Badge>
-                      ) : null
-                    }
-                  >
-                    Product Details
-                  </MinimalAccordionTrigger>
-                  <MinimalAccordionContent>
-                    <div className="space-y-4">
-                      {/* Base Images */}
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Product Images
-                        </label>
-                        <div className="flex gap-2 overflow-x-auto pb-1">
-                          {currentProduct?.baseImages?.map((img: any) => (
-                            <button
-                              key={img.id}
-                              onClick={async () => {
-                                setSelectedBaseImageId(img.id);
-                                // Persist to database
-                                try {
-                                  await apiClient.updateFlowBaseImages(studioId, {
-                                    [currentProduct.id]: img.url,
-                                  });
-                                } catch (error) {
-                                  console.error('Failed to save base image selection:', error);
-                                }
-                              }}
-                              className={cn(
-                                'relative aspect-square h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all',
-                                selectedBaseImageId === img.id
-                                  ? 'border-primary ring-2 ring-primary/30'
-                                  : 'border-border hover:border-primary/50'
-                              )}
-                            >
-                              <Image
-                                src={img.url}
-                                alt="Product"
-                                fill
-                                className="object-cover"
-                                unoptimized
-                              />
-                              {selectedBaseImageId === img.id && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
-                                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary shadow">
-                                    <Check className="h-3 w-3 text-primary-foreground" />
-                                  </div>
-                                </div>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Subject Analysis (read-only) */}
-                      {subjectAnalysis ? (
-                        <div className="rounded-lg bg-muted/50 p-3 text-sm">
-                          <div className="mb-2 flex items-center gap-2">
-                            <Wand2 className="h-3.5 w-3.5 text-primary" />
-                            <span className="font-medium">AI Analysis</span>
-                          </div>
-                          <div className="space-y-1 text-xs text-muted-foreground">
-                            <p>
-                              <span className="font-medium">Subject:</span>{' '}
-                              {subjectAnalysis.subjectClassHyphenated}
-                            </p>
-                            <p>
-                              <span className="font-medium">Scene Types:</span>{' '}
-                              {subjectAnalysis.nativeSceneTypes.join(', ')}
-                            </p>
-                            <p>
-                              <span className="font-medium">Camera:</span>{' '}
-                              {subjectAnalysis.inputCameraAngle}
-                            </p>
-                            {matchedSceneType && (
-                              <p className="mt-2 text-green-600">
-                                <Check className="mr-1 inline h-3 w-3" />
-                                Matched: {matchedSceneType}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="rounded-lg border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
-                          Product not yet analyzed. Upload an image to trigger analysis.
-                        </div>
-                      )}
-                    </div>
-                  </MinimalAccordionContent>
-                </MinimalAccordionItem>
-
-                {/* Section 3: User Prompt */}
-                <MinimalAccordionItem value="user-prompt">
-                  <MinimalAccordionTrigger
-                    suffix={
-                      userPrompt ? (
-                        <Badge variant="secondary" className="text-xs">
-                          Custom
-                        </Badge>
-                      ) : null
-                    }
-                  >
-                    Scene Prompt
-                  </MinimalAccordionTrigger>
-                  <MinimalAccordionContent>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Additional Details (optional)
-                        </label>
-                        <Textarea
-                          placeholder="Add specific details for this generation... e.g., 'include a coffee cup on the table'"
-                          value={userPrompt}
-                          onChange={(e) => setUserPrompt(e.target.value)}
-                          onBlur={saveSettings}
-                          className="min-h-[80px] resize-none text-sm"
-                        />
-                        <p className="mt-1 text-[10px] text-muted-foreground">
-                          Your additions will be appended to the AI-generated prompt
-                        </p>
-                      </div>
-
-                      {/* Preview Button */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handlePreviewPrompt}
-                        disabled={
-                          !subjectAnalysis || Object.keys(sceneTypeInspirations).length === 0
-                        }
-                        className="w-full"
-                      >
-                        <Eye className="mr-2 h-3.5 w-3.5" />
-                        Preview Generated Prompt
-                      </Button>
-
-                      {/* Prompt Preview */}
-                      {generatedPromptPreview && (
-                        <div className="rounded-lg bg-muted/50 p-3">
-                          <div className="mb-2 flex items-center justify-between">
-                            <span className="text-xs font-medium">Generated Prompt</span>
-                            <button
-                              onClick={() => setGeneratedPromptPreview(null)}
-                              className="text-muted-foreground hover:text-foreground"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                          <p className="whitespace-pre-wrap text-xs text-muted-foreground">
-                            {generatedPromptPreview.substring(0, 500)}...
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </MinimalAccordionContent>
-                </MinimalAccordionItem>
-
-                {/* Section 4: Output Settings */}
-                <MinimalAccordionItem value="output-settings">
-                  <MinimalAccordionTrigger>Output Settings</MinimalAccordionTrigger>
-                  <MinimalAccordionContent>
-                    <div className="space-y-4">
-                      {/* Quality */}
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Quality
-                        </label>
-                        <div className="flex gap-2">
-                          {QUALITY_OPTIONS.map((opt) => (
-                            <button
-                              key={opt.value}
-                              onClick={() => {
-                                setSettings({ ...settings, quality: opt.value });
-                                saveSettings();
-                              }}
-                              className={cn(
-                                'flex flex-1 flex-col items-center rounded-lg border p-2 transition-colors',
-                                settings.quality === opt.value
-                                  ? 'border-primary bg-primary/10'
-                                  : 'border-border hover:border-primary/50'
-                              )}
-                            >
-                              <span className="text-sm font-semibold">{opt.label}</span>
-                              <span className="text-[10px] text-muted-foreground">
-                                {opt.description}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Aspect Ratio */}
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Aspect Ratio
-                        </label>
-                        <div className="grid grid-cols-4 gap-1.5">
-                          {IMAGE_ASPECT_RATIO_OPTIONS.map((ratio) => (
-                            <button
-                              key={ratio}
-                              onClick={() => {
-                                setSettings({ ...settings, aspectRatio: ratio });
-                                saveSettings();
-                              }}
-                              className={cn(
-                                'flex flex-col items-center rounded-lg border py-2 text-xs transition-colors',
-                                settings.aspectRatio === ratio
-                                  ? 'border-primary bg-primary/10 text-primary'
-                                  : 'border-border hover:border-primary/50'
-                              )}
-                            >
-                              <span className="mb-0.5 text-base">{ASPECT_RATIO_ICONS[ratio]}</span>
-                              <span>{formatAspectRatioDisplay(ratio)}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Variants */}
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Variants: {settings.variantsCount}
-                        </label>
-                        <div className="flex gap-1">
-                          {[1, 2, 4, 6].map((n) => (
-                            <button
-                              key={n}
-                              onClick={() => {
-                                setSettings({ ...settings, variantsCount: n });
-                                saveSettings();
-                              }}
-                              className={cn(
-                                'flex-1 rounded-md border py-1 text-sm transition-colors',
-                                settings.variantsCount === n
-                                  ? 'border-primary bg-primary/10 font-medium text-primary'
-                                  : 'border-border hover:border-primary/50'
-                              )}
-                            >
-                              {n}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </MinimalAccordionContent>
-                </MinimalAccordionItem>
-              </MinimalAccordion>
-            ) : (
-              <MinimalAccordion
-                value={videoExpandedSections}
-                onValueChange={setVideoExpandedSections}
-                defaultValue={['video-inputs', 'video-prompt']}
-              >
-                {/* Video Section: Inputs */}
-                <MinimalAccordionItem value="video-inputs">
-                  <MinimalAccordionTrigger>Video Inputs</MinimalAccordionTrigger>
-                  <MinimalAccordionContent>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Source Image
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() => setVideoSource('base')}
-                            className={cn(
-                              'rounded-lg border-2 p-2 text-left transition-all',
-                              videoSource === 'base'
-                                ? 'border-primary ring-2 ring-primary/30'
-                                : 'border-border hover:border-primary/50'
-                            )}
-                          >
-                            {selectedBaseImageUrl ? (
-                              <div className="relative aspect-square w-full overflow-hidden rounded-md">
-                                <Image
-                                  src={selectedBaseImageUrl}
-                                  alt="Base"
-                                  fill
-                                  className="object-cover"
-                                  unoptimized
-                                />
-                              </div>
-                            ) : (
-                              <div className="flex aspect-square w-full items-center justify-center rounded-md border border-dashed border-border text-[10px] text-muted-foreground">
-                                Select base image
-                              </div>
-                            )}
-                            <span className="mt-1 block text-[10px] font-medium">Base</span>
-                          </button>
-                          <button
-                            onClick={() => setVideoSource('generated')}
-                            disabled={!selectedGeneratedImage}
-                            className={cn(
-                              'rounded-lg border-2 p-2 text-left transition-all',
-                              videoSource === 'generated'
-                                ? 'border-primary ring-2 ring-primary/30'
-                                : 'border-border hover:border-primary/50',
-                              !selectedGeneratedImage && 'cursor-not-allowed opacity-50'
-                            )}
-                          >
-                            {selectedGeneratedImage ? (
-                              <div className="relative aspect-square w-full overflow-hidden rounded-md">
-                                <Image
-                                  src={selectedGeneratedImage.url}
-                                  alt="Generated"
-                                  fill
-                                  className="object-cover"
-                                  unoptimized
-                                />
-                              </div>
-                            ) : (
-                              <div className="flex aspect-square w-full items-center justify-center rounded-md border border-dashed border-border text-[10px] text-muted-foreground">
-                                Generate an image first
-                              </div>
-                            )}
-                            <span className="mt-1 block text-[10px] font-medium">Generated</span>
-                          </button>
-                        </div>
-                        <p className="mt-1 text-[10px] text-muted-foreground">
-                          Choose one image to drive the video.
-                        </p>
-                      </div>
-                    </div>
-                  </MinimalAccordionContent>
-                </MinimalAccordionItem>
-
-                {/* Video Section: Prompt */}
-                <MinimalAccordionItem value="video-prompt">
-                  <MinimalAccordionTrigger>Video Prompt</MinimalAccordionTrigger>
-                  <MinimalAccordionContent>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-muted-foreground">
-                          Prompt
-                        </label>
-                        <Textarea
-                          placeholder="Describe the video you want to generate..."
-                          value={videoPrompt}
-                          onChange={(e) => setVideoPrompt(e.target.value)}
-                          onBlur={saveSettings}
-                          className="min-h-[80px] resize-none text-sm"
-                        />
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleEnhanceVideoPrompt}
-                        disabled={isEnhancingVideoPrompt || !videoSourceUrl}
-                        className="w-full"
-                      >
-                        {isEnhancingVideoPrompt ? (
-                          <>
-                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                            Enhancing...
-                          </>
-                        ) : (
-                          <>
-                            <Wand2 className="mr-2 h-3.5 w-3.5" />
-                            Enhance Prompt
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </MinimalAccordionContent>
-                </MinimalAccordionItem>
-
-                {/* Video Section: Settings */}
-                <MinimalAccordionItem value="video-settings">
-                  <MinimalAccordionTrigger>Video Settings</MinimalAccordionTrigger>
-                  <MinimalAccordionContent>
-                    <div className="space-y-3">
-                      <select
-                        value={videoSettings.videoType ?? ''}
-                        onChange={(e) =>
-                          updateVideoSettings({ videoType: e.target.value || undefined })
-                        }
-                        onBlur={saveSettings}
-                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                      >
-                        <option value="">Video type</option>
-                        {VIDEO_TYPE_OPTIONS.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        value={videoSettings.cameraMotion ?? ''}
-                        onChange={(e) =>
-                          updateVideoSettings({ cameraMotion: e.target.value || undefined })
-                        }
-                        onBlur={saveSettings}
-                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                      >
-                        <option value="">Camera motion</option>
-                        {CAMERA_MOTION_OPTIONS.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="grid grid-cols-2 gap-2">
-                        <select
-                          value={videoSettings.aspectRatio ?? '16:9'}
-                          onChange={(e) =>
-                            updateVideoSettings({
-                              aspectRatio: e.target.value as VideoPromptSettings['aspectRatio'],
-                            })
-                          }
-                          onBlur={saveSettings}
-                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                        >
-                          {VIDEO_ASPECT_RATIO_OPTIONS.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          value={videoSettings.resolution ?? '720p'}
-                          onChange={(e) =>
-                            updateVideoSettings({
-                              resolution: e.target.value as VideoPromptSettings['resolution'],
-                            })
-                          }
-                          onBlur={saveSettings}
-                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                        >
-                          {VIDEO_RESOLUTION_OPTIONS.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <select
-                        value={videoSettings.sound ?? 'automatic'}
-                        onChange={(e) =>
-                          updateVideoSettings({
-                            sound: e.target.value as VideoPromptSettings['sound'],
-                          })
-                        }
-                        onBlur={saveSettings}
-                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                      >
-                        <option value="automatic">Automatic sound</option>
-                        <option value="with_music">With music</option>
-                        <option value="no_sound">No sound</option>
-                        <option value="custom">Custom sound prompt</option>
-                      </select>
-                      {videoSettings.sound === 'custom' && (
-                        <Input
-                          placeholder="Sound prompt (e.g., ambient cafe noise, soft synth)"
-                          value={videoSettings.soundPrompt || ''}
-                          onChange={(e) => updateVideoSettings({ soundPrompt: e.target.value })}
-                          onBlur={saveSettings}
-                        />
-                      )}
-                    </div>
-                  </MinimalAccordionContent>
-                </MinimalAccordionItem>
-
-                {/* Video Section: Presets */}
-                <MinimalAccordionItem value="video-presets">
-                  <MinimalAccordionTrigger
-                    suffix={
-                      videoPresets.length > 0 ? (
-                        <Badge variant="secondary" className="text-xs">
-                          {videoPresets.length}
-                        </Badge>
-                      ) : null
-                    }
-                  >
-                    Presets
-                  </MinimalAccordionTrigger>
-                  <MinimalAccordionContent>
-                    <div className="space-y-3">
-                      <select
-                        value={videoPresetId ?? ''}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setVideoPresetId(value || null);
-                          if (value) {
-                            handleApplyVideoPreset(value);
-                          }
-                        }}
-                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                      >
-                        <option value="">Select preset</option>
-                        {videoPresets.map((preset) => (
-                          <option key={preset.id} value={preset.id}>
-                            {preset.name}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Preset name"
-                          value={videoPresetName}
-                          onChange={(e) => setVideoPresetName(e.target.value)}
-                        />
-                        <Button variant="outline" onClick={handleSaveVideoPreset}>
-                          Save
-                        </Button>
-                      </div>
-                    </div>
-                  </MinimalAccordionContent>
-                </MinimalAccordionItem>
-              </MinimalAccordion>
-            )}
-          </div>
-
-          {/* Footer - Generate Button */}
-          <div className="shrink-0 border-t border-border bg-card p-3">
-            {activeTab === 'images' ? (
-              <>
-                <Button
-                  variant="glow"
-                  size="lg"
-                  className="w-full"
-                  onClick={handleGenerate}
-                  disabled={isGenerating}
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {effectiveImageProgress > 0
-                        ? `Generating... ${Math.round(effectiveImageProgress)}%`
-                        : 'Starting...'}
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Generate {settings.variantsCount} Images
-                    </>
-                  )}
-                </Button>
-                {isGenerating && (
-                  <>
-                    <Progress value={effectiveImageProgress} className="mt-2 h-1.5" />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        manualImageCompletionRef.current = false;
-                        setImageGenerationTracker(null);
-                        cancelGeneration();
-                      }}
-                      className="mt-2 w-full text-xs text-muted-foreground"
-                    >
-                      Cancel
-                    </Button>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <Button
-                  variant="glow"
-                  size="lg"
-                  className="w-full"
-                  onClick={handleGenerateVideo}
-                  disabled={isGeneratingVideo}
-                >
-                  {isGeneratingVideo ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {videoProgress > 0
-                        ? `Generating... ${Math.round(videoProgress)}%`
-                        : 'Starting...'}
-                    </>
-                  ) : (
-                    <>
-                      <Video className="mr-2 h-4 w-4" />
-                      Generate Video
-                    </>
-                  )}
-                </Button>
-                {isGeneratingVideo && (
-                  <>
-                    <Progress value={videoProgress} className="mt-2 h-1.5" />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={cancelVideoGeneration}
-                      className="mt-2 w-full text-xs text-muted-foreground"
-                    >
-                      Cancel
-                    </Button>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        </aside>
-
+        {/* Unified Config Panel */}
+        <UnifiedStudioConfigPanel
+          mode="single-flow"
+          sceneTypes={configPanelSceneTypes}
+          selectedSceneType={selectedSceneTypeValue}
+          onSceneTypeChange={handleSceneTypeChange}
+          collectionSessionId={flowData?.collectionSessionId ?? undefined}
+          collectionName={flowData?.collectionName ?? undefined}
+          collectionSettings={flowData?.collectionSettings}
+          flowSceneType={flowData?.flowSceneType ?? undefined}
+          collectionPrompt={flowData?.collectionSettings?.userPrompt}
+          onSave={saveSettings}
+          onGenerate={() => {
+            if (activeTab === 'images') {
+              handleGenerate();
+            } else {
+              handleGenerateVideo();
+            }
+          }}
+          isGenerating={activeTab === 'images' ? isGenerating : isGeneratingVideo}
+          isSaving={false}
+          baseImages={configPanelBaseImages}
+          selectedBaseImageId={selectedBaseImageId || ''}
+          onBaseImageSelect={handleBaseImageSelect}
+          className="h-full"
+        />
         {/* Main Content Area */}
         <main className="flex min-w-0 flex-1 bg-background/50">
           {/* Scrollable Main View */}
@@ -2119,7 +1247,7 @@ export default function StudioPage({ params }: StudioPageProps) {
                   label={
                     (activeTab === 'images' ? generationStatus : videoStatus) === 'retrying'
                       ? (activeTab === 'images' ? generationError : videoError) ||
-                        'Encountered an issue, retrying...'
+                      'Encountered an issue, retrying...'
                       : (activeTab === 'images' ? effectiveImageProgress : videoProgress) > 0
                         ? activeTab === 'images'
                           ? 'AI is creating your visualizations'
@@ -2134,27 +1262,27 @@ export default function StudioPage({ params }: StudioPageProps) {
             {/* Error State */}
             {((activeTab === 'images' && generationStatus === 'failed' && generationError) ||
               (activeTab === 'video' && videoStatus === 'failed' && videoError)) && (
-              <div className="mb-6 flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-8 text-center">
-                <div className="rounded-full bg-destructive/10 p-4">
-                  <X className="h-8 w-8 text-destructive" />
+                <div className="mb-6 flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-8 text-center">
+                  <div className="rounded-full bg-destructive/10 p-4">
+                    <X className="h-8 w-8 text-destructive" />
+                  </div>
+                  <div>
+                    <h3 className="mb-2 text-lg font-semibold text-foreground">
+                      {activeTab === 'images' ? 'Generation Failed' : 'Video Generation Failed'}
+                    </h3>
+                    <p className="mb-4 max-w-md text-sm text-muted-foreground">
+                      {activeTab === 'images' ? generationError : videoError}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={activeTab === 'images' ? handleGenerate : handleGenerateVideo}
+                    variant="default"
+                  >
+                    <Wand2 className="mr-2 h-4 w-4" />
+                    Try Again
+                  </Button>
                 </div>
-                <div>
-                  <h3 className="mb-2 text-lg font-semibold text-foreground">
-                    {activeTab === 'images' ? 'Generation Failed' : 'Video Generation Failed'}
-                  </h3>
-                  <p className="mb-4 max-w-md text-sm text-muted-foreground">
-                    {activeTab === 'images' ? generationError : videoError}
-                  </p>
-                </div>
-                <Button
-                  onClick={activeTab === 'images' ? handleGenerate : handleGenerateVideo}
-                  variant="default"
-                >
-                  <Wand2 className="mr-2 h-4 w-4" />
-                  Try Again
-                </Button>
-              </div>
-            )}
+              )}
 
             {/* Assets Display */}
             {currentAssets.length === 0 && !isGenerating && !isGeneratingVideo ? (
@@ -2181,7 +1309,6 @@ export default function StudioPage({ params }: StudioPageProps) {
                           ? { url: selectedBaseImageUrl, name: currentProduct?.name }
                           : undefined
                       }
-                      inspirationImages={inspirationImages}
                       configuration={assetConfiguration}
                       isPinned={asset.isPinned}
                       isApproved={asset.approvalStatus === 'approved'}
@@ -2220,13 +1347,22 @@ export default function StudioPage({ params }: StudioPageProps) {
                         playsInline
                       />
                     ) : (
-                      <Image
-                        src={asset.url}
-                        alt="Generated"
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
+                      <ImageEditOverlay
+                        onEdit={() => {
+                          setGridEditingAsset(asset);
+                          setGridEditorOpen(true);
+                        }}
+                        className="h-full w-full"
+                        testId={`grid-asset-${asset.id}-edit-overlay`}
+                      >
+                        <Image
+                          src={asset.url}
+                          alt="Generated"
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </ImageEditOverlay>
                     )}
 
                     {/* Hover overlay with quick actions */}
@@ -2268,13 +1404,22 @@ export default function StudioPage({ params }: StudioPageProps) {
         </main>
       </div>
 
-      <InspirationImageModal
-        isOpen={isInspirationModalOpen}
-        onClose={() => setIsInspirationModalOpen(false)}
-        onSubmit={addInspirationFromUrls}
-        existingImages={inspirationImages}
-        isProcessing={isAnalyzingInspiration}
-      />
-    </div>
+      {/* Image Editor Modal for grid view */}
+      {gridEditingAsset && gridEditingAsset.assetType !== 'video' && (
+        <ImageEditorModal
+          open={gridEditorOpen}
+          onOpenChange={setGridEditorOpen}
+          imageUrl={gridEditingAsset.url}
+          imageType="generated"
+          imageId={gridEditingAsset.id}
+          productId={currentProduct?.id}
+          onSave={(result) => {
+            // TODO: Handle save - refresh assets after save
+            queryClient.invalidateQueries({ queryKey: ['generated-images', studioId] });
+          }}
+        />
+      )}
+      </div>
+    </ConfigPanelProvider>
   );
 }

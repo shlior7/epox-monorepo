@@ -12,6 +12,7 @@ import type {
   GenerationFlowWithDetails,
 } from 'visualizer-types';
 import { DEFAULT_FLOW_SETTINGS, DEFAULT_POST_ADJUSTMENTS, normalizeImageQuality } from 'visualizer-types';
+import { resolveStorageUrl } from 'visualizer-storage';
 import { updateWithVersion } from '../utils/optimistic-lock';
 import { BaseRepository } from './base';
 
@@ -270,7 +271,7 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
    * Get all flows for a collection with enriched product, image, and asset data.
    * Single optimized query that batch fetches all related data in parallel.
    */
-  async listByCollectionSessionWithDetails(collectionSessionId: string, r2PublicUrl: string): Promise<GenerationFlowWithDetails[]> {
+  async listByCollectionSessionWithDetails(collectionSessionId: string): Promise<GenerationFlowWithDetails[]> {
     // 1. Get all flows for the collection
     const flows = await this.listByCollectionSession(collectionSessionId);
     if (flows.length === 0) return [];
@@ -297,7 +298,7 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
             .select({
               id: productImage.id,
               productId: productImage.productId,
-              r2KeyBase: productImage.r2KeyBase,
+              imageUrl: productImage.imageUrl,
               isPrimary: productImage.isPrimary,
               sortOrder: productImage.sortOrder,
             })
@@ -325,7 +326,7 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
     ]);
 
     // 4. Build lookup maps for O(1) access
-    const productsMap = new Map(productsRows.map((p) => [p.id, p]));
+    const productsMap = new Map(productsRows.map((p) => [p.id, p] as const));
     const imagesByProduct = new Map<string, typeof imagesRows>();
     for (const img of imagesRows) {
       const existing = imagesByProduct.get(img.productId) || [];
@@ -344,25 +345,27 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
     // 5. Assemble enriched flows
     return flows.map((flow): GenerationFlowWithDetails => {
       const productId = flow.productIds[0];
-      const productData = productId ? productsMap.get(productId) : null;
+      const productData = (productId ? productsMap.get(productId) : null) || null;
       const images = productId ? imagesByProduct.get(productId) || [] : [];
-      const assets = (assetsByFlow.get(flow.id) || []).filter((a) => a.assetType !== 'video');
+      const assets = (assetsByFlow.get(flow.id) || []).filter((a: any) => a.assetType !== 'video');
 
       return {
         ...flow,
         product: productData
           ? {
-              id: productData.id,
-              name: productData.name,
-              category: productData.category,
-              sceneTypes: productData.sceneTypes as string[] | null,
+              id: (productData as any).id,
+              name: (productData as any).name,
+              category: (productData as any).category,
+              sceneTypes: (productData as any).sceneTypes as string[] | null,
             }
           : null,
-        baseImages: images.map((img) => ({
-          id: img.id,
-          url: `${r2PublicUrl}/${img.r2KeyBase}`,
-          isPrimary: img.isPrimary,
-        })),
+        baseImages: images
+          .map((img) => ({
+            id: img.id,
+            url: resolveStorageUrl(img.imageUrl),
+            isPrimary: img.isPrimary,
+          }))
+          .filter((img): img is { id: string; url: string; isPrimary: boolean } => img.url !== null),
         generatedAssets: assets.map((a) => ({
           id: a.id,
           assetUrl: a.assetUrl,
@@ -396,6 +399,20 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
       .from(generationFlow)
       .where(inArray(generationFlow.collectionSessionId, collectionSessionIds))
       .orderBy(asc(generationFlow.createdAt));
+
+    return rows.map((row) => this.mapToEntity(row));
+  }
+
+  /** Get flows by IDs (batch query) */
+  async listByIds(flowIds: string[]): Promise<GenerationFlow[]> {
+    if (flowIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.drizzle
+      .select()
+      .from(generationFlow)
+      .where(inArray(generationFlow.id, flowIds));
 
     return rows.map((row) => this.mapToEntity(row));
   }

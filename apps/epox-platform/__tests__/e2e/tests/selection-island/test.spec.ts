@@ -28,7 +28,8 @@ if (!fs.existsSync(SCREENSHOTS_DIR)) {
   fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 }
 
-test.use({ testClientName: 'main' });
+// Use products client which has products seeded
+test.use({ testClientName: 'products' });
 
 test.describe('Selection Island - Basic Functionality', () => {
   test('selection island appears when products are selected', async ({

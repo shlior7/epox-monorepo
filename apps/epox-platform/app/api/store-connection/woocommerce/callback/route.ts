@@ -6,8 +6,9 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { getStoreService } from '@/lib/services/erp';
 import type { WooCommerceCallbackPayload } from '@scenergy/erp-service';
+import { withPublicSecurity } from '../../../../../lib/security';
 
-export async function POST(request: NextRequest) {
+export const POST = withPublicSecurity(async (request) => {
   try {
     const payload = (await request.json()) as WooCommerceCallbackPayload;
     const stateId = String(payload.user_id);
@@ -24,11 +25,11 @@ export async function POST(request: NextRequest) {
     console.error('WooCommerce callback error:', error);
     return NextResponse.json({ error: 'Failed to process callback' }, { status: 500 });
   }
-}
+});
 
-export async function GET(request: NextRequest) {
+export const GET = withPublicSecurity(async (request) => {
   const success = request.nextUrl.searchParams.get('success');
   return NextResponse.redirect(
     new URL(`/settings/store?connected=${success === 'true'}`, request.url)
   );
-}
+});

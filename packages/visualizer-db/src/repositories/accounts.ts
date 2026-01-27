@@ -20,7 +20,7 @@ export class AccountRepository extends BaseRepository<Account> {
 
   async listByUser(userId: string): Promise<Account[]> {
     const rows = await this.drizzle.select().from(account).where(eq(account.userId, userId));
-    return rows.map((row) => this.mapToEntity(row));
+    return rows.map((row: typeof account.$inferSelect) => this.mapToEntity(row));
   }
 
   async getByProviderAndUser(userId: string, providerId: string): Promise<Account | null> {

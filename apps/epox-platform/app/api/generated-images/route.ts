@@ -96,6 +96,7 @@ export const GET = withSecurity(async (request, context) => {
         approvalStatus: asset.approvalStatus,
         createdAt: asset.createdAt.toISOString(),
         pinned: asset.pinned,
+        prompt: asset.prompt,
         settings: asset.settings,
       }));
 
@@ -154,11 +155,22 @@ export const GET = withSecurity(async (request, context) => {
         ? await db.products.getNamesByIds(Array.from(productIdsSet))
         : new Map<string, string>();
 
+    // Get flow details for collectionId mapping (batch query)
+    const flowIdsSet = new Set<string>();
+    for (const asset of assets) {
+      if (asset.generationFlowId) {
+        flowIdsSet.add(asset.generationFlowId);
+      }
+    }
+    const flows = flowIdsSet.size > 0 ? await db.generationFlows.listByIds(Array.from(flowIdsSet)) : [];
+    const flowMap = new Map(flows.map((f) => [f.id, f]));
+
     // Map to frontend format
     const mappedAssets = assets.map((asset) => {
       const sceneType =
         (asset.settings as { promptTags?: { sceneType?: string[] } } | undefined)?.promptTags
           ?.sceneType?.[0] ?? '';
+      const flow = asset.generationFlowId ? flowMap.get(asset.generationFlowId) : undefined;
 
       return {
         id: asset.id,
@@ -169,11 +181,13 @@ export const GET = withSecurity(async (request, context) => {
           ? (productMap.get(asset.productIds[0]) ?? 'Unknown')
           : 'Unknown',
         flowId: asset.generationFlowId ?? '',
+        collectionId: flow?.collectionSessionId ?? undefined,
         sceneType,
         rating: 0, // TODO: Add rating field to schema
         isPinned: asset.pinned,
         approvalStatus: asset.approvalStatus,
         status: asset.status,
+        prompt: asset.prompt,
         createdAt: asset.createdAt.toISOString(),
         settings: asset.settings,
       };

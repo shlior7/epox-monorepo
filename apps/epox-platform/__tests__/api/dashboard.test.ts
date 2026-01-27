@@ -46,7 +46,7 @@ describe('Dashboard API - GET /api/dashboard', () => {
         // Pre-aggregated stats from optimized query
         totalImages: 6,
         completedCount: 4,
-        thumbnailUrl: 'https://cdn.example.com/assets/asset-1.jpg',
+        thumbnails: ['https://cdn.example.com/assets/asset-1.jpg'],
       },
     ] as any);
   });
@@ -68,7 +68,7 @@ describe('Dashboard API - GET /api/dashboard', () => {
       productCount: 2,
       generatedCount: 4,
       totalImages: 6,
-      thumbnailUrl: 'https://cdn.example.com/assets/asset-1.jpg',
+      thumbnails: expect.arrayContaining(['https://cdn.example.com/assets/asset-1.jpg']),
     });
   });
 

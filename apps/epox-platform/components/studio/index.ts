@@ -7,7 +7,7 @@ export * from './AssetCard/AssetCard';
 export * from './AssetCard/ProductAssetCard';
 export * from './ThumbnailNav';
 export * from './AssetCard/AssetCardContent';
-export * from './StudioConfigPanel';
+
 export * from './ProductGrid';
 
 // New Unified Config Panel

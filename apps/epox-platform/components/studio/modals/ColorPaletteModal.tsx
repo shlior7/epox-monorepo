@@ -14,7 +14,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import type { InspirationBubbleValue } from 'visualizer-types';
+import type { ColorPaletteBubbleValue } from 'visualizer-types';
 
 // ===== PRESET PALETTES =====
 
@@ -76,8 +76,8 @@ type PaletteTab = 'presets' | 'extract' | 'custom';
 export interface ColorPaletteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (value: InspirationBubbleValue) => void;
-  currentValue?: InspirationBubbleValue;
+  onSelect: (value: ColorPaletteBubbleValue) => void;
+  currentValue?: ColorPaletteBubbleValue;
 }
 
 // ===== COMPONENT =====
@@ -113,9 +113,9 @@ export function ColorPaletteModal({
     }
 
     if (colors.length > 0) {
-      const value: InspirationBubbleValue = {
+      const value: ColorPaletteBubbleValue = {
         type: 'color-palette',
-        colorPalette: colors,
+        colors: colors,
       };
       onSelect(value);
       onOpenChange(false);

@@ -43,3 +43,4 @@ export {
 } from './providers';
 
 export type { StoreCredentialsPayload, EncryptedCredentials } from './types/credentials';
+export { decryptCredentials, encryptCredentials } from './services/credentials-crypto';

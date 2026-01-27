@@ -72,6 +72,43 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
     return this.mapToEntity(created);
   }
 
+  /**
+   * Create a generated asset with a specific ID (useful for API routes that need to return the ID)
+   */
+  async createWithId(id: string, data: GeneratedAssetCreate): Promise<GeneratedAsset> {
+    const now = new Date();
+
+    const [created] = await this.drizzle
+      .insert(generatedAsset)
+      .values({
+        id,
+        clientId: data.clientId,
+        generationFlowId: data.generationFlowId ?? null,
+        chatSessionId: data.chatSessionId ?? null,
+        assetUrl: data.assetUrl,
+        assetType: data.assetType ?? 'image',
+        status: data.status ?? 'pending',
+        prompt: data.prompt ?? null,
+        settings: data.settings ?? null,
+        productIds: data.productIds ?? null,
+        jobId: data.jobId ?? null,
+        error: data.error ?? null,
+        assetAnalysis: data.assetAnalysis ?? null,
+        analysisVersion: data.analysisVersion ?? null,
+        approvalStatus: data.approvalStatus ?? 'pending',
+        approvedAt: data.approvedAt ?? null,
+        approvedBy: data.approvedBy ?? null,
+        completedAt: data.completedAt ?? null,
+        pinned: data.pinned ?? false,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      })
+      .returning();
+
+    return this.mapToEntity(created);
+  }
+
   async createBatchWithIds(entries: GeneratedAssetInsert[]): Promise<GeneratedAsset[]> {
     if (entries.length === 0) {
       return [];
@@ -529,6 +566,29 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
     return rows[0] ? this.mapToEntity(rows[0]) : null;
   }
 
+  /**
+   * Get asset count breakdown by status for multiple generation flows
+   * Used to check if collection generation is complete
+   */
+  async getStatusCountsByFlowIds(
+    flowIds: string[]
+  ): Promise<{ total: number; completed: number; generating: number }> {
+    if (flowIds.length === 0) {
+      return { total: 0, completed: 0, generating: 0 };
+    }
+
+    const [result] = await this.drizzle
+      .select({
+        total: sql<number>`COUNT(*)::int`,
+        completed: sql<number>`COUNT(*) FILTER (WHERE ${generatedAsset.status} = 'completed')::int`,
+        generating: sql<number>`COUNT(*) FILTER (WHERE ${generatedAsset.status} IN ('pending', 'generating'))::int`,
+      })
+      .from(generatedAsset)
+      .where(and(inArray(generatedAsset.generationFlowId, flowIds), isNull(generatedAsset.deletedAt)));
+
+    return result ?? { total: 0, completed: 0, generating: 0 };
+  }
+
   // ===== GET FIRST BY PRODUCT IDS (for thumbnails) =====
 
   async getFirstByProductIds(clientId: string, productIds: string[], status?: AssetStatus): Promise<GeneratedAsset | null> {
@@ -856,7 +916,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
           p.name as product_name,
           p.store_id,
           p.store_url,
-          p.store_name,
+          p.store_product_name,
           ssl.status as sync_status,
           ssl.external_image_url,
           ssl.error_message as sync_error,
@@ -890,7 +950,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
         product_name,
         store_id,
         store_url,
-        store_name,
+        store_product_name,
         json_agg(
           json_build_object(
             'id', id,
@@ -925,7 +985,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
               'name', product_name,
               'storeId', store_id,
               'storeUrl', store_url,
-              'storeName', store_name
+              'storeName', store_product_name
             )
           )
           ORDER BY
@@ -937,7 +997,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
         COUNT(*) FILTER (WHERE sync_status = 'success')::int as synced_count,
         COUNT(*) FILTER (WHERE is_favorite = true)::int as favorite_count
       FROM asset_sync_status
-      GROUP BY product_id, product_name, store_id, store_url, store_name
+      GROUP BY product_id, product_name, store_id, store_url, store_product_name
       ORDER BY synced_count DESC, favorite_count DESC, product_name
     `);
 
@@ -947,7 +1007,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
         product_name: string;
         store_id: string | null;
         store_url: string | null;
-        store_name: string | null;
+        store_product_name: string | null;
         assets: GeneratedAssetWithSync[];
         total_count: number;
         synced_count: number;
@@ -960,12 +1020,13 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
         // Note: Product type uses null, not undefined
         storeId: row.store_id,
         storeUrl: row.store_url,
-        storeName: row.store_name,
+        storeName: row.store_product_name,
         // Add minimal required Product fields (these won't be used by UI)
         clientId,
         description: null,
         category: null,
         sceneTypes: null,
+        selectedSceneType: null,
         modelFilename: null,
         isFavorite: false,
         source: 'uploaded' as const,
@@ -995,5 +1056,42 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
       syncedCount: row.synced_count,
       favoriteCount: row.favorite_count,
     }));
+  }
+
+  // ===== PRODUCT LINKING =====
+
+  /**
+   * Link a product to a generated asset via junction table
+   * Used when creating new assets that should be associated with products
+   */
+  async linkProductToAsset(assetId: string, productId: string, isPrimary = true): Promise<void> {
+    const id = `gap_${assetId}_${productId}`;
+    await this.drizzle.insert(generatedAssetProduct).values({
+      id,
+      generatedAssetId: assetId,
+      productId,
+      isPrimary,
+      createdAt: new Date(),
+    });
+  }
+
+  /**
+   * Link multiple products to a generated asset
+   */
+  async linkProductsToAsset(assetId: string, productIds: string[]): Promise<void> {
+    if (productIds.length === 0) {
+      return;
+    }
+
+    const now = new Date();
+    await this.drizzle.insert(generatedAssetProduct).values(
+      productIds.map((productId, index) => ({
+        id: `gap_${assetId}_${productId}`,
+        generatedAssetId: assetId,
+        productId,
+        isPrimary: index === 0, // First product is primary
+        createdAt: now,
+      }))
+    );
   }
 }

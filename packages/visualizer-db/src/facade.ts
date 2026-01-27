@@ -22,14 +22,6 @@ import {
   AICostTrackingRepository,
   StoreConnectionRepository,
   StoreSyncLogRepository,
-  AntonWorkspaceRepository,
-  AntonWorkspaceMemberRepository,
-  AntonProjectRepository,
-  AntonProjectMemberRepository,
-  AntonPageRepository,
-  AntonAnnotationRepository,
-  AntonAnnotationReplyRepository,
-  AntonClaudeTaskRepository,
 } from './repositories/index';
 
 /**
@@ -57,14 +49,6 @@ export interface DatabaseFacade {
   readonly aiCostTracking: AICostTrackingRepository;
   readonly storeConnections: StoreConnectionRepository;
   readonly storeSyncLogs: StoreSyncLogRepository;
-  readonly antonWorkspaces: AntonWorkspaceRepository;
-  readonly antonWorkspaceMembers: AntonWorkspaceMemberRepository;
-  readonly antonProjects: AntonProjectRepository;
-  readonly antonProjectMembers: AntonProjectMemberRepository;
-  readonly antonPages: AntonPageRepository;
-  readonly antonAnnotations: AntonAnnotationRepository;
-  readonly antonAnnotationReplies: AntonAnnotationReplyRepository;
-  readonly antonClaudeTasks: AntonClaudeTaskRepository;
   /**
    * Execute multiple operations in a transaction.
    *
@@ -100,14 +84,6 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
   const aiCostTracking = new AICostTrackingRepository(drizzle);
   const storeConnections = new StoreConnectionRepository(drizzle);
   const storeSyncLogs = new StoreSyncLogRepository(drizzle);
-  const antonWorkspaces = new AntonWorkspaceRepository(drizzle);
-  const antonWorkspaceMembers = new AntonWorkspaceMemberRepository(drizzle);
-  const antonProjects = new AntonProjectRepository(drizzle);
-  const antonProjectMembers = new AntonProjectMemberRepository(drizzle);
-  const antonPages = new AntonPageRepository(drizzle);
-  const antonAnnotations = new AntonAnnotationRepository(drizzle);
-  const antonAnnotationReplies = new AntonAnnotationReplyRepository(drizzle);
-  const antonClaudeTasks = new AntonClaudeTaskRepository(drizzle);
 
   async function transaction<T>(fn: (tx: DatabaseFacade) => Promise<T>): Promise<T> {
     // Check if the drizzle client supports transactions
@@ -161,14 +137,6 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
     aiCostTracking,
     storeConnections,
     storeSyncLogs,
-    antonWorkspaces,
-    antonWorkspaceMembers,
-    antonProjects,
-    antonProjectMembers,
-    antonPages,
-    antonAnnotations,
-    antonAnnotationReplies,
-    antonClaudeTasks,
     transaction,
   };
 }

@@ -11,6 +11,11 @@ export {
   type FetchOptions,
   type PaginatedResult,
   type ConnectionStatus,
+  type WebhookEventType,
+  type WebhookConfig,
+  type WebhookRegistration,
+  type ExternalImage,
+  type WebhookPayload,
 } from './base';
 
 export { providers, ProviderRegistry } from './registry';

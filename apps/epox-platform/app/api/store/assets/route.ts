@@ -1,11 +1,17 @@
 /**
  * Store Assets API
- * GET - Fetch assets with sync status grouped by product
+ * GET - Fetch ALL products with their base images and generated assets for the Store page
+ *
+ * Returns products with:
+ * - baseImages: Original product images (with public URLs)
+ * - syncedAssets: Generated assets that have been successfully synced to store
+ * - unsyncedAssets: Generated assets not yet synced
  */
 
 import { NextResponse } from 'next/server';
 import { withSecurity } from '@/lib/security';
 import { db } from '@/lib/services/db';
+import { storage } from '@/lib/services/storage';
 import { getStoreService } from '@/lib/services/erp';
 
 // Force dynamic rendering since security middleware reads headers
@@ -26,11 +32,21 @@ export const GET = withSecurity(async (request, context) => {
       return NextResponse.json({ error: 'No active store connection found' }, { status: 404 });
     }
 
-    // Fetch assets with sync status
-    const productGroups = await db.generatedAssets.listWithSyncStatus(clientId, connection.id);
+    // Fetch ALL products with their base images and generated assets
+    const storeProducts = await db.products.listForStorePage(clientId, connection.id);
+
+    // Transform baseImages to include public URLs
+    const transformedProducts = storeProducts.map((productView) => ({
+      ...productView,
+      baseImages: productView.baseImages.map((img) => ({
+        ...img,
+        // Add public URL for the image
+        url: storage.getPublicUrl(img.imageUrl),
+      })),
+    }));
 
     return NextResponse.json({
-      products: productGroups,
+      products: transformedProducts,
     });
   } catch (error: any) {
     console.error('❌ Failed to fetch store assets:', error);

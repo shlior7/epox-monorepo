@@ -10,7 +10,6 @@ import { NextResponse } from 'next/server';
 import { withSecurity } from '@/lib/security/middleware';
 import { verifyOwnership, forbiddenResponse } from '@/lib/security/auth';
 
-
 // Force dynamic rendering since security middleware reads headers
 export const dynamic = 'force-dynamic';
 export const GET = withSecurity(async (request, context, { params }) => {
@@ -34,10 +33,11 @@ export const GET = withSecurity(async (request, context, { params }) => {
     const mappedProduct = {
       id: product.id,
       name: product.name,
-      sku: product.erpSku ?? `SKU-${product.id.slice(0, 8)}`,
+      sku: product.storeSku ?? `SKU-${product.id.slice(0, 8)}`,
       category: product.category ?? 'Uncategorized',
       description: product.description ?? '',
       sceneTypes: product.sceneTypes ?? [],
+      selectedSceneType: product.selectedSceneType,
       source: product.source,
       analyzed: product.analyzedAt != null,
       price: product.price ? parseFloat(product.price) : 0,
@@ -46,7 +46,7 @@ export const GET = withSecurity(async (request, context, { params }) => {
       // Return ALL images with proper URLs from storage keys
       baseImages: product.images.map((img) => ({
         id: img.id,
-        url: storage.getPublicUrl(img.r2KeyBase),
+        url: storage.getPublicUrl(img.imageUrl),
         isPrimary: img.isPrimary,
         sortOrder: img.sortOrder,
       })),
@@ -84,7 +84,7 @@ export const GET = withSecurity(async (request, context, { params }) => {
       response.generatedAssets = productAssets.map((asset) => ({
         id: asset.id,
         url: asset.assetUrl,
-        sceneType: '', // TODO: Extract from settings if needed
+        assetType: asset.assetType, // TODO: Extract from settings if needed
         rating: 0, // TODO: Add rating field to schema
         isPinned: asset.pinned,
         approvalStatus: asset.approvalStatus,
@@ -178,6 +178,9 @@ export const PATCH = withSecurity(async (request, context, { params }) => {
     if (body.sceneTypes !== undefined) {
       updateData.sceneTypes = body.sceneTypes;
     }
+    if (body.selectedSceneType !== undefined) {
+      updateData.selectedSceneType = body.selectedSceneType?.trim() ?? null;
+    }
     if (body.price !== undefined) {
       updateData.price = body.price != null ? body.price.toString() : null;
     }
@@ -188,10 +191,11 @@ export const PATCH = withSecurity(async (request, context, { params }) => {
     const response = {
       id: updated.id,
       name: updated.name,
-      sku: updated.erpSku ?? `SKU-${updated.id.slice(0, 8)}`,
+      sku: updated.storeSku ?? `SKU-${updated.id.slice(0, 8)}`,
       category: updated.category ?? 'Uncategorized',
       description: updated.description ?? '',
       sceneTypes: updated.sceneTypes ?? [],
+      selectedSceneType: updated.selectedSceneType,
       source: updated.source,
       analyzed: updated.analyzedAt != null,
       price: updated.price ? parseFloat(updated.price) : 0,
