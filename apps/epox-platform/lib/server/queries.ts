@@ -6,7 +6,7 @@
 import { db } from '../services/db';
 import { storage } from '../services/storage';
 import { resolveStorageUrl } from 'visualizer-storage';
-import { createQuotaServiceFromDb } from 'visualizer-services';
+import { createQuotaServiceFromDb } from 'visualizer-client';
 import type { DashboardResponse, Product, Collection } from '../api-client';
 import type { CollectionSessionStatus, ProductSource } from 'visualizer-types';
 

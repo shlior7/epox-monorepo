@@ -118,6 +118,10 @@ export interface CollectionGenerationSettings {
   // General inspiration bubbles (apply to all scene types)
   generalInspiration?: import('./bubbles').BubbleValue[];
 
+  // Category-based inspiration (bubbles targeting specific categories within the collection)
+  // Key: categoryId, Value: { bubbles }
+  categoryInspiration?: Record<string, { bubbles: import('./bubbles').BubbleValue[] }>;
+
   // Inspiration bubbles organized by scene type
   sceneTypeInspiration: SceneTypeInspirationMap;
 

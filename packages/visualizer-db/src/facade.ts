@@ -22,6 +22,8 @@ import {
   AICostTrackingRepository,
   StoreConnectionRepository,
   StoreSyncLogRepository,
+  CategoryRepository,
+  ProductCategoryRepository,
 } from './repositories/index';
 
 /**
@@ -35,6 +37,8 @@ export interface DatabaseFacade {
   readonly members: MemberRepository;
   readonly products: ProductRepository;
   readonly productImages: ProductImageRepository;
+  readonly categories: CategoryRepository;
+  readonly productCategories: ProductCategoryRepository;
   readonly chatSessions: ChatSessionRepository;
   readonly collectionSessions: CollectionSessionRepository;
   readonly messages: MessageRepository;
@@ -70,6 +74,8 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
   const members = new MemberRepository(drizzle);
   const products = new ProductRepository(drizzle);
   const productImages = new ProductImageRepository(drizzle);
+  const categories = new CategoryRepository(drizzle);
+  const productCategories = new ProductCategoryRepository(drizzle);
   const chatSessions = new ChatSessionRepository(drizzle);
   const collectionSessions = new CollectionSessionRepository(drizzle);
   const messages = new MessageRepository(drizzle);
@@ -123,6 +129,8 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
     members,
     products,
     productImages,
+    categories,
+    productCategories,
     chatSessions,
     collectionSessions,
     messages,

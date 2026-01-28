@@ -51,6 +51,24 @@ export interface CustomBubbleValue extends BaseBubbleValue {
   value?: string;
 }
 
+export interface HumanInteractionBubbleValue extends BaseBubbleValue {
+  type: 'human-interaction';
+  preset?: 'none' | 'partial' | 'full' | 'contextual'; // none = no human, partial = hands/arms only, full = full person, contextual = depends on product
+  customValue?: string; // e.g., "Person sitting naturally on the chair"
+}
+
+export interface PropsBubbleValue extends BaseBubbleValue {
+  type: 'props';
+  preset?: 'none' | 'minimal' | 'styled' | 'lifestyle'; // none = no props, minimal = few props, styled = curated, lifestyle = lived-in
+  customValue?: string; // e.g., "Coffee table books, small plant, textured throw"
+}
+
+export interface BackgroundBubbleValue extends BaseBubbleValue {
+  type: 'background';
+  preset?: string; // e.g., "Clean wall", "Window view", "Urban loft"
+  customValue?: string;
+}
+
 // ===== DISCRIMINATED UNION =====
 
 export type BubbleValue =
@@ -60,7 +78,10 @@ export type BubbleValue =
   | ReferenceBubbleValue
   | ColorPaletteBubbleValue
   | MoodBubbleValue
-  | CustomBubbleValue;
+  | CustomBubbleValue
+  | HumanInteractionBubbleValue
+  | PropsBubbleValue
+  | BackgroundBubbleValue;
 
 // ===== BUBBLE TYPE HELPERS =====
 
@@ -75,5 +96,8 @@ export function isBubbleType(type: string): type is BubbleType {
     'color-palette',
     'mood',
     'custom',
+    'human-interaction',
+    'props',
+    'background',
   ].includes(type);
 }

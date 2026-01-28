@@ -4,8 +4,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createQuotaServiceFromDb } from 'visualizer-services';
-import type { QuotaService } from 'visualizer-services';
+import { createQuotaServiceFromDb } from 'visualizer-client';
+import type { QuotaService } from 'visualizer-client';
 import { db } from '@/lib/services/db';
 
 let quotaServiceInstance: QuotaService | null = null;

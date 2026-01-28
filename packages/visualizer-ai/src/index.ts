@@ -114,3 +114,26 @@ export {
   initRedisRateLimiter,
 } from './rate-limit';
 export type { RateLimitResult, RateLimitConfig, RedisClient } from './rate-limit';
+
+// Flow Orchestration (prompt building, art-director, settings merger)
+export {
+  buildPromptFromTags,
+  buildPromptFromContext,
+  generatePromptVariations,
+  // Art Director prompt builder
+  buildArtDirectorPrompt,
+  buildSimplePrompt,
+  // Hierarchical settings merger
+  mergeGenerationSettings,
+  formatSettingsSources,
+} from './flow-orchestration';
+export type {
+  PromptBuilderContext,
+  // Art Director types
+  ArtDirectorInput,
+  ArtDirectorResult,
+  // Settings merger types
+  MergeContext,
+  MergedSettings,
+  BubbleSource,
+} from './flow-orchestration';

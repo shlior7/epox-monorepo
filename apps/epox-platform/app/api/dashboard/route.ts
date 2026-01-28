@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { withSecurity } from '@/lib/security/middleware';
 import { resolveStorageUrl } from 'visualizer-storage';
-import { createQuotaServiceFromDb } from 'visualizer-services';
+import { createQuotaServiceFromDb } from 'visualizer-client';
 
 // Revalidate dashboard data every 30 seconds
 

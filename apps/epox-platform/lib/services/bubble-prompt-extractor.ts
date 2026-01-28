@@ -81,6 +81,55 @@ function extractSingleBubbleContext(bubble: BubbleValue): string[] {
       }
       return [];
 
+    case 'human-interaction':
+      if (bubble.customValue) {
+        return [bubble.customValue];
+      }
+      if (bubble.preset) {
+        switch (bubble.preset) {
+          case 'none':
+            return ['no people in the scene'];
+          case 'partial':
+            return ['include partial human presence (hands or arms interacting with the product)'];
+          case 'full':
+            return ['include a person naturally interacting with the product'];
+          case 'contextual':
+            return ['include contextually appropriate human interaction'];
+          default:
+            return [];
+        }
+      }
+      return [];
+
+    case 'props':
+      if (bubble.customValue) {
+        return [`props and accessories: ${bubble.customValue}`];
+      }
+      if (bubble.preset) {
+        switch (bubble.preset) {
+          case 'none':
+            return ['no props or accessories, product only'];
+          case 'minimal':
+            return ['minimal, clean styling with few props'];
+          case 'styled':
+            return ['carefully styled with curated props and accessories'];
+          case 'lifestyle':
+            return ['natural lifestyle staging with lived-in feel'];
+          default:
+            return [];
+        }
+      }
+      return [];
+
+    case 'background':
+      if (bubble.customValue) {
+        return [`background: ${bubble.customValue}`];
+      }
+      if (bubble.preset) {
+        return [`${bubble.preset} background`];
+      }
+      return [];
+
     default:
       console.warn(`Unknown bubble type: ${(bubble as any).type}`);
       return [];
@@ -107,6 +156,9 @@ export function groupBubbleContextByCategory(bubbles: BubbleValue[]): {
     'color-palette': 'style',
     reference: 'scene',
     custom: 'scene',
+    'human-interaction': 'scene',
+    props: 'scene',
+    background: 'scene',
     lighting: 'technical',
     'camera-angle': 'technical',
   };

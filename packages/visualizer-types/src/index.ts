@@ -15,6 +15,9 @@ export type {
   ColorPaletteBubbleValue,
   MoodBubbleValue,
   CustomBubbleValue,
+  HumanInteractionBubbleValue,
+  PropsBubbleValue,
+  BackgroundBubbleValue,
 } from './bubbles';
 
 export { isBubbleType } from './bubbles';
@@ -196,3 +199,23 @@ export type {
   MemberUpdate,
   SessionType,
 } from './database';
+
+// Category types (open, multi-category system)
+export type {
+  SceneTypeGenerationSettings,
+  CategoryGenerationSettings,
+  ClientGenerationDefaults,
+  WizardProgress,
+  WizardQuestion,
+  WizardQuestionOption,
+  Category,
+  ProductCategory,
+  CategoryCreate,
+  CategoryUpdate,
+  ProductCategoryLink,
+} from './categories';
+
+export {
+  DEFAULT_CATEGORY_GENERATION_SETTINGS,
+  DEFAULT_CLIENT_GENERATION_DEFAULTS,
+} from './categories';

@@ -5,6 +5,7 @@
 
 import type { FlowGenerationSettings, CollectionGenerationSettings, ClientMetadata, FlowStatus } from './settings';
 import type { MessagePart, MessageRole } from './messages';
+import type { ClientGenerationDefaults } from './categories';
 import type {
   ProductSource,
   ProductAnalysis,
@@ -27,6 +28,7 @@ export interface ClientCreate {
   slug?: string;
   logo?: string;
   metadata?: ClientMetadata;
+  generationDefaults?: ClientGenerationDefaults;
 }
 
 export interface ClientUpdate {
@@ -34,6 +36,7 @@ export interface ClientUpdate {
   slug?: string;
   logo?: string;
   metadata?: ClientMetadata;
+  generationDefaults?: ClientGenerationDefaults;
 }
 
 // ===== PRODUCT =====
