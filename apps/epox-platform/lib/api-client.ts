@@ -13,6 +13,10 @@ export interface DashboardStats {
   totalCollections: number;
   totalGenerated: number;
   creditsRemaining: number;
+  creditsTotal: number;
+  plan: string;
+  usagePercent: number;
+  resetDate: string;
 }
 
 export interface RecentCollection {
