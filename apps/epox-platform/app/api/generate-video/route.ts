@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { enqueueVideoGeneration } from 'visualizer-ai';
 import { withGenerationSecurity, isValidUrl } from '@/lib/security';
 import { logJobStarted } from '@/lib/logger';
+import { enforceQuota, consumeCredits } from '@/lib/services/quota';
 
 // URL validation using centralized security module
 const validateImageUrlField = (val: string) => isValidUrl(val, { allowDataUrls: true });
@@ -88,6 +89,10 @@ export const POST = withGenerationSecurity(async (request, context) => {
   const body: GenerateVideoRequest = parseResult.data;
   const { sessionId, productId, sourceImageUrl, prompt, inspirationNote, settings, urgent } = body;
 
+  // Enforce quota before enqueuing
+  const quotaDenied = await enforceQuota(clientId, 1);
+  if (quotaDenied) return quotaDenied;
+
   const { jobId } = await enqueueVideoGeneration(
     clientId,
     {
@@ -103,6 +108,9 @@ export const POST = withGenerationSecurity(async (request, context) => {
       flowId: sessionId,
     }
   );
+
+  // Consume credits after successful enqueue
+  await consumeCredits(clientId, 1);
 
   logJobStarted(jobId, { clientId, sessionId, productId, type: 'video' });
 
