@@ -53,7 +53,7 @@ export type {
   PromptBuilderContext,
 } from './flow-orchestration';
 
-export { QuotaService, createQuotaService, PLAN_LIMITS } from './quota';
+export { QuotaService, createQuotaService, createQuotaServiceFromDb, PLAN_LIMITS } from './quota';
 export type { QuotaServiceDependencies, PlanType, PlanLimits, QuotaStatus, QuotaCheckResult } from './quota';
 
 export { NotificationService, getNotificationService, resetNotificationService, DEFAULT_NOTIFICATION_PREFERENCES } from './notification';

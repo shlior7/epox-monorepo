@@ -12,10 +12,13 @@ import { enqueueImageEdit } from 'visualizer-ai';
 import { storage, storagePaths } from 'visualizer-storage';
 import { withGenerationSecurity, validateImageUrl } from '@/lib/security';
 import { logJobStarted, logger } from '@/lib/logger';
+import { enforceQuota, consumeCredits } from '@/lib/services/quota';
 
 export interface EditImageApiRequest {
-  /** Base64 data URL of the image to edit */
-  baseImageDataUrl: string;
+  /** Base64 data URL of the image to edit (for first edit or client-modified images) */
+  baseImageDataUrl?: string;
+  /** R2 URL of source image (for subsequent edits - skips re-upload) */
+  sourceImageUrl?: string;
   /** Edit instructions */
   prompt: string;
   /** Edit session ID for grouping temp files */
@@ -85,51 +88,15 @@ export const POST = withGenerationSecurity(
     try {
       const body: EditImageApiRequest = await request.json();
 
-      // Validate required fields
-      if (!body.baseImageDataUrl) {
+      // Validate required fields - need either baseImageDataUrl or sourceImageUrl
+      if (!body.baseImageDataUrl && !body.sourceImageUrl) {
         return NextResponse.json(
-          { success: false, error: 'Missing baseImageDataUrl' },
+          { success: false, error: 'Missing baseImageDataUrl or sourceImageUrl' },
           { status: 400 }
         );
       }
       if (!body.prompt) {
         return NextResponse.json({ success: false, error: 'Missing prompt' }, { status: 400 });
-      }
-
-      // Log the incoming request
-      const urlLength = body.baseImageDataUrl?.length ?? 0;
-      const urlPrefix = body.baseImageDataUrl?.substring(0, 100) ?? '';
-      const isDataUrl = body.baseImageDataUrl?.startsWith('data:');
-      const hasBase64 = body.baseImageDataUrl?.includes(';base64,');
-
-      logger.info(
-        {
-          clientId,
-          urlLength,
-          isDataUrl,
-          hasBase64,
-          promptLength: body.prompt.length,
-        },
-        '[edit-image] Received edit request'
-      );
-
-      // Validate data URL format
-      const urlValidation = validateImageUrl(body.baseImageDataUrl);
-      if (!urlValidation.valid) {
-        logger.error(
-          {
-            error: urlValidation.error,
-            urlLength,
-            urlPrefix,
-            isDataUrl,
-            hasBase64,
-          },
-          '[edit-image] Image URL validation failed'
-        );
-        return NextResponse.json(
-          { success: false, error: urlValidation.error ?? 'Invalid image data URL' },
-          { status: 400 }
-        );
       }
 
       // Validate editSessionId is provided
@@ -140,20 +107,80 @@ export const POST = withGenerationSecurity(
         );
       }
 
+      // Determine the source image URL - either use existing R2 URL or upload new data URL
+      let baseImageR2Url: string;
+
+      if (body.sourceImageUrl) {
+        // Use existing R2 URL directly - skip upload (subsequent edits)
+        baseImageR2Url = body.sourceImageUrl;
+
+        logger.info(
+          {
+            clientId,
+            editSessionId: body.editSessionId,
+            sourceImageUrl: body.sourceImageUrl.substring(0, 100),
+            promptLength: body.prompt.length,
+          },
+          '[edit-image] Using existing R2 URL - skipping upload'
+        );
+      } else {
+        // Upload data URL to R2 (first edit or client-modified image)
+        const urlLength = body.baseImageDataUrl?.length ?? 0;
+        const urlPrefix = body.baseImageDataUrl?.substring(0, 100) ?? '';
+        const isDataUrl = body.baseImageDataUrl?.startsWith('data:');
+        const hasBase64 = body.baseImageDataUrl?.includes(';base64,');
+
+        logger.info(
+          {
+            clientId,
+            urlLength,
+            isDataUrl,
+            hasBase64,
+            promptLength: body.prompt.length,
+          },
+          '[edit-image] Received edit request with data URL'
+        );
+
+        // Validate data URL format
+        const urlValidation = validateImageUrl(body.baseImageDataUrl!);
+        if (!urlValidation.valid) {
+          logger.error(
+            {
+              error: urlValidation.error,
+              urlLength,
+              urlPrefix,
+              isDataUrl,
+              hasBase64,
+            },
+            '[edit-image] Image URL validation failed'
+          );
+          return NextResponse.json(
+            { success: false, error: urlValidation.error ?? 'Invalid image data URL' },
+            { status: 400 }
+          );
+        }
+
+        // Upload base image to R2 temp storage
+        const { buffer, mimeType } = base64ToBuffer(body.baseImageDataUrl!);
+        const baseImageKey = storagePaths.editSessionBase(clientId, body.editSessionId);
+
+        await storage.upload(baseImageKey, buffer, mimeType);
+        baseImageR2Url = storage.getPublicUrl(baseImageKey);
+
+        logger.info(
+          { clientId, editSessionId: body.editSessionId, baseImageKey },
+          '[edit-image] Uploaded base image to R2 temp storage'
+        );
+      }
+
+      // Enforce quota before processing
+      const quotaDenied = await enforceQuota(clientId, 1);
+      if (quotaDenied) return quotaDenied as NextResponse<EditImageResponse>;
+
       // Extract aspect ratio from the image (will be preserved in output)
-      const aspectRatio = extractAspectRatioFromDataUrl(body.baseImageDataUrl);
-
-      // Upload base image to R2 temp storage to avoid large job payloads
-      const { buffer, mimeType } = base64ToBuffer(body.baseImageDataUrl);
-      const baseImageKey = storagePaths.editSessionBase(clientId, body.editSessionId);
-
-      await storage.upload(baseImageKey, buffer, mimeType);
-      const baseImageR2Url = storage.getPublicUrl(baseImageKey);
-
-      logger.info(
-        { clientId, editSessionId: body.editSessionId, baseImageKey },
-        '[edit-image] Uploaded base image to R2 temp storage'
-      );
+      const aspectRatio = body.baseImageDataUrl
+        ? extractAspectRatioFromDataUrl(body.baseImageDataUrl)
+        : '1:1'; // Default for R2 URL - worker will calculate actual ratio
 
       // Enqueue the image edit job with R2 URL (not data URL)
       // Note: flowId is intentionally omitted for standalone edits (no FK constraint)
@@ -185,6 +212,9 @@ export const POST = withGenerationSecurity(
         type: 'image_edit',
         aspectRatio,
       });
+
+      // Consume credits after successful enqueue
+      await consumeCredits(clientId, 1);
 
       logger.info({ jobId, expectedImageId, clientId }, '[edit-image] Job queued successfully');
 

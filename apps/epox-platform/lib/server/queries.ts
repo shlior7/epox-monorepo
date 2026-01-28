@@ -6,18 +6,22 @@
 import { db } from '../services/db';
 import { storage } from '../services/storage';
 import { resolveStorageUrl } from 'visualizer-storage';
+import { createQuotaServiceFromDb } from 'visualizer-services';
 import type { DashboardResponse, Product, Collection } from '../api-client';
 import type { CollectionSessionStatus, ProductSource } from 'visualizer-types';
 
 // ===== Dashboard =====
 
 export async function fetchDashboardData(clientId: string): Promise<DashboardResponse> {
+  const quotaService = createQuotaServiceFromDb(db);
+
   const [
     productCount,
     collectionCount,
     completedAssetsCount,
     recentCollectionsWithStats,
     recentGeneratedAssets,
+    quotaStatus,
   ] = await Promise.all([
     db.products.count(clientId),
     db.collectionSessions.count(clientId),
@@ -31,13 +35,18 @@ export async function fetchDashboardData(clientId: string): Promise<DashboardRes
       status: 'completed',
       limit: 6,
     }),
+    quotaService.getQuotaStatus(clientId),
   ]);
 
   const stats = {
     totalProducts: productCount,
     totalCollections: collectionCount,
     totalGenerated: completedAssetsCount,
-    creditsRemaining: 500, // TODO: Integrate with quota service
+    creditsRemaining: quotaStatus.usage.generationsRemaining,
+    creditsTotal: quotaStatus.usage.generationsLimit,
+    plan: quotaStatus.plan,
+    usagePercent: quotaStatus.usage.usagePercent,
+    resetDate: quotaStatus.resetDate.toISOString(),
   };
 
   const recentCollections = recentCollectionsWithStats.map((c) => {

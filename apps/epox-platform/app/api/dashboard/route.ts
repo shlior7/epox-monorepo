@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { withSecurity } from '@/lib/security/middleware';
 import { resolveStorageUrl } from 'visualizer-storage';
+import { createQuotaServiceFromDb } from 'visualizer-services';
 
 // Revalidate dashboard data every 30 seconds
 
@@ -21,6 +22,8 @@ export const GET = withSecurity(async (request, context) => {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   try {
+    const quotaService = createQuotaServiceFromDb(db);
+
     // Execute all count queries and optimized collection list in parallel
     const [
       productCount,
@@ -28,6 +31,7 @@ export const GET = withSecurity(async (request, context) => {
       completedAssetsCount,
       recentCollectionsWithStats,
       recentGeneratedAssets,
+      quotaStatus,
     ] = await Promise.all([
       db.products.count(clientId),
       db.collectionSessions.count(clientId),
@@ -42,13 +46,18 @@ export const GET = withSecurity(async (request, context) => {
         status: 'completed',
         limit: 6,
       }),
+      quotaService.getQuotaStatus(clientId),
     ]);
 
     const stats = {
       totalProducts: productCount,
       totalCollections: collectionCount,
       totalGenerated: completedAssetsCount,
-      creditsRemaining: 500, // TODO: Integrate with quota service
+      creditsRemaining: quotaStatus.usage.generationsRemaining,
+      creditsTotal: quotaStatus.usage.generationsLimit,
+      plan: quotaStatus.plan,
+      usagePercent: quotaStatus.usage.usagePercent,
+      resetDate: quotaStatus.resetDate.toISOString(),
     };
 
     // Map collections - stats already included from optimized query

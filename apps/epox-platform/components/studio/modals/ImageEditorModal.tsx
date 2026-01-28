@@ -57,6 +57,8 @@ interface Revision {
   prompt?: string;
   /** Parent revision index (for tree structure) */
   parentIndex?: number;
+  /** R2 storage URL for subsequent edits (avoids re-uploading) */
+  storageUrl?: string;
 }
 
 // Crop area type
@@ -231,6 +233,8 @@ export function ImageEditorModal({
               imageDataUrl: dataUrl,
               timestamp: Date.now(),
               prompt: 'Original image',
+              // Store the original R2 URL so the first edit can skip upload
+              storageUrl: imageUrl,
             },
           ]);
           setCurrentRevisionIndex(0);
@@ -277,70 +281,78 @@ export function ImageEditorModal({
   }, [open, initialAdjustments]);
 
   // Poll job status until complete - handles R2 URLs and legacy data URLs
-  const pollJobStatus = useCallback(async (jobId: string): Promise<string> => {
-    const maxAttempts = 120; // 2 minutes at 1 second intervals
-    const pollInterval = 1000;
+  // Returns both the data URL (for display) and storage URL (for next edit)
+  const pollJobStatus = useCallback(
+    async (jobId: string): Promise<{ imageDataUrl: string; storageUrl?: string }> => {
+      const maxAttempts = 120; // 2 minutes at 1 second intervals
+      const pollInterval = 1000;
 
-    /**
-     * Helper to fetch image URL and convert to data URL
-     */
-    const fetchAsDataUrl = async (url: string): Promise<string> => {
-      const proxyUrl = `/api/download-image?url=${encodeURIComponent(url)}`;
-      const imgResponse = await fetch(proxyUrl);
-      const blob = await imgResponse.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Failed to read image'));
-        reader.readAsDataURL(blob);
-      });
-    };
+      /**
+       * Helper to fetch image URL and convert to data URL
+       */
+      const fetchAsDataUrl = async (url: string): Promise<string> => {
+        const proxyUrl = `/api/download-image?url=${encodeURIComponent(url)}`;
+        const imgResponse = await fetch(proxyUrl);
+        const blob = await imgResponse.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error('Failed to read image'));
+          reader.readAsDataURL(blob);
+        });
+      };
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        const response = await fetch(`/api/jobs/${jobId}`);
-        const data = await response.json();
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          const response = await fetch(`/api/jobs/${jobId}`);
+          const data = await response.json();
 
-        if (data.status === 'completed') {
-          // New: R2 URL from temp storage (preferred)
-          if (data.result?.editedImageUrl) {
-            return await fetchAsDataUrl(data.result.editedImageUrl);
+          if (data.status === 'completed') {
+            // New: R2 URL from temp storage (preferred)
+            if (data.result?.editedImageUrl) {
+              const imageDataUrl = await fetchAsDataUrl(data.result.editedImageUrl);
+              // Return both the data URL and the R2 URL for next edit
+              return { imageDataUrl, storageUrl: data.result.editedImageUrl };
+            }
+            // Legacy: data URL returned directly (no storage URL)
+            if (data.result?.editedImageDataUrl) {
+              return { imageDataUrl: data.result.editedImageDataUrl };
+            }
+            // Fallback: imageUrls if saved to R2 permanently
+            if (data.result?.imageUrls?.[0]) {
+              const imageDataUrl = await fetchAsDataUrl(data.result.imageUrls[0]);
+              return { imageDataUrl, storageUrl: data.result.imageUrls[0] };
+            }
+            throw new Error('Job completed but no image returned');
           }
-          // Legacy: data URL returned directly
-          if (data.result?.editedImageDataUrl) {
-            return data.result.editedImageDataUrl;
-          }
-          // Fallback: imageUrls if saved to R2 permanently
-          if (data.result?.imageUrls?.[0]) {
-            return await fetchAsDataUrl(data.result.imageUrls[0]);
-          }
-          throw new Error('Job completed but no image returned');
-        }
 
-        if (data.status === 'failed') {
-          throw new Error(data.error || 'Image edit failed');
-        }
+          if (data.status === 'failed') {
+            throw new Error(data.error || 'Image edit failed');
+          }
 
-        // Still processing - wait and try again
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
-      } catch (err) {
-        if (attempt === maxAttempts - 1) {
-          throw err;
+          // Still processing - wait and try again
+          await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        } catch (err) {
+          if (attempt === maxAttempts - 1) {
+            throw err;
+          }
+          // Continue polling on transient errors
+          await new Promise((resolve) => setTimeout(resolve, pollInterval));
         }
-        // Continue polling on transient errors
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
       }
-    }
 
-    throw new Error('Timeout waiting for image edit to complete');
-  }, []);
+      throw new Error('Timeout waiting for image edit to complete');
+    },
+    []
+  );
 
   // Generate AI edit - inserts new revision below the current one
   const handleGenerateEdit = useCallback(async () => {
     if (!editPrompt.trim() || !currentImageUrl) return;
 
-    // Ensure we have a data URL, not a regular URL
-    if (!currentImageUrl.startsWith('data:')) {
+    // Need either a data URL or a storage URL from a previous revision
+    const hasStorageUrl = !!currentRevision?.storageUrl;
+    if (!currentImageUrl.startsWith('data:') && !hasStorageUrl) {
       setError('Image not loaded as data URL. Please wait for the image to load completely.');
       toast.error('Image not ready. Please try again.');
       return;
@@ -376,19 +388,26 @@ export function ImageEditorModal({
     setEditPrompt('');
 
     try {
-      console.log('Sending edit request with image length:', currentImageUrl.length);
+      // Build request body - use storageUrl if available (skips re-upload)
+      const requestBody: Record<string, unknown> = {
+        prompt: promptText,
+        editSessionId,
+        productId,
+      };
 
-      //TODO: send only the image url and have that saved on the edit job
+      if (hasStorageUrl) {
+        requestBody.sourceImageUrl = currentRevision.storageUrl;
+        console.log('Using existing R2 URL - skipping upload');
+      } else {
+        requestBody.baseImageDataUrl = currentImageUrl;
+        console.log('Sending edit request with image length:', currentImageUrl.length);
+      }
+
       // Step 1: Queue the edit job (preview mode with R2 temp storage)
       const response = await fetch('/api/edit-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          baseImageDataUrl: currentImageUrl,
-          prompt: promptText,
-          editSessionId,
-          productId,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -400,14 +419,19 @@ export function ImageEditorModal({
       console.log('Edit job queued:', data.jobId);
       toast.info('Editing image...');
 
-      // Step 2: Poll for job completion (returns data URL in preview mode)
-      const editedImageDataUrl = await pollJobStatus(data.jobId);
+      // Step 2: Poll for job completion (returns data URL + storage URL)
+      const result = await pollJobStatus(data.jobId);
 
-      // Step 3: Update the placeholder revision with the actual image
+      // Step 3: Update the placeholder revision with the actual image and storage URL
       setRevisions((prev) => {
         return prev.map((rev) =>
           rev.id === generatingRevisionId
-            ? { ...rev, id: `edit-${Date.now()}`, imageDataUrl: editedImageDataUrl }
+            ? {
+                ...rev,
+                id: `edit-${Date.now()}`,
+                imageDataUrl: result.imageDataUrl,
+                storageUrl: result.storageUrl,
+              }
             : rev
         );
       });
@@ -429,7 +453,7 @@ export function ImageEditorModal({
       setIsGenerating(false);
       setGeneratingPrompt(null);
     }
-  }, [editPrompt, currentImageUrl, currentRevisionIndex, productId, pollJobStatus]);
+  }, [editPrompt, currentImageUrl, currentRevision, currentRevisionIndex, productId, pollJobStatus, editSessionId]);
 
   // Apply adjustments - creates new revision below current
   const handleApplyAdjustments = useCallback(async () => {

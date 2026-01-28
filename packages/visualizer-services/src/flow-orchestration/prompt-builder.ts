@@ -36,7 +36,11 @@ export function buildPromptFromTags(tags: PromptTags): string {
 }
 
 /**
- * Build a full generation prompt from context
+ * Build a full generation prompt from context.
+ *
+ * Pure Reference Constraint: The product is referenced only by its generic name
+ * (e.g. "Sofa") without material/color/shape adjectives. The image model must
+ * rely solely on the attached reference image pixels for product appearance.
  */
 export function buildPromptFromContext(context: PromptBuilderContext): string {
   // If custom prompt is provided, use it directly
@@ -48,15 +52,15 @@ export function buildPromptFromContext(context: PromptBuilderContext): string {
   if (context.promptTags) {
     const tagsPrompt = buildPromptFromTags(context.promptTags);
     if (tagsPrompt) {
-      // Prepend product name if not in tags
       return `${context.productName} in ${tagsPrompt}`;
     }
   }
 
-  // Build from individual settings
+  // Build from individual settings — reference the product only by name,
+  // never describe its visual attributes (the reference image is the source of truth).
   const parts: string[] = [
-    `Professional ${context.sceneType.toLowerCase()}`,
-    `featuring ${context.productName} as the focal point`,
+    `Professional ${context.sceneType.toLowerCase()} photograph, editorial catalog style, ultra-realistic`,
+    `featuring the ${context.productName} from the attached image as the focal point`,
     `${context.style.toLowerCase()} style`,
     `${context.lighting.toLowerCase()} lighting`,
     `${context.colorScheme.toLowerCase()} color scheme`,

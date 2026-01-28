@@ -86,6 +86,10 @@ export interface ComponentAnalysisResult {
     id: string;
     name: string;
     description: string;
+    /** Center point of the component on a 0–1000 coordinate scale */
+    centerPoint?: { x: number; y: number };
+    /** What is behind/underneath this component (useful for removal edits) */
+    context?: string;
   }>;
   overallDescription: string;
   suggestedAdjustments?: AdjustmentHint[]; // AI-powered improvement hints
