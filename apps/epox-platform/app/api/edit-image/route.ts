@@ -12,6 +12,7 @@ import { enqueueImageEdit } from 'visualizer-ai';
 import { storage, storagePaths } from 'visualizer-storage';
 import { withGenerationSecurity, validateImageUrl } from '@/lib/security';
 import { logJobStarted, logger } from '@/lib/logger';
+import { enforceQuota, consumeCredits } from '@/lib/services/quota';
 
 export interface EditImageApiRequest {
   /** Base64 data URL of the image to edit */
@@ -140,6 +141,10 @@ export const POST = withGenerationSecurity(
         );
       }
 
+      // Enforce quota before processing
+      const quotaDenied = await enforceQuota(clientId, 1);
+      if (quotaDenied) return quotaDenied;
+
       // Extract aspect ratio from the image (will be preserved in output)
       const aspectRatio = extractAspectRatioFromDataUrl(body.baseImageDataUrl);
 
@@ -185,6 +190,9 @@ export const POST = withGenerationSecurity(
         type: 'image_edit',
         aspectRatio,
       });
+
+      // Consume credits after successful enqueue
+      await consumeCredits(clientId, 1);
 
       logger.info({ jobId, expectedImageId, clientId }, '[edit-image] Job queued successfully');
 
