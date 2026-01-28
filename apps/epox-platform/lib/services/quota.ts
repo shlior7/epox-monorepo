@@ -3,6 +3,7 @@
  * Provides singleton QuotaService and convenience functions for API endpoints.
  */
 
+import { NextResponse } from 'next/server';
 import { createQuotaServiceFromDb } from 'visualizer-services';
 import type { QuotaService } from 'visualizer-services';
 import { db } from '@/lib/services/db';
@@ -21,17 +22,26 @@ export function getQuotaService(): QuotaService {
 
 /**
  * Check if a client has enough credits for the requested operation.
- * Throws an error with status-compatible info if quota is exceeded.
+ * Returns a 402 NextResponse if quota is exceeded, or null if allowed.
  */
-export async function enforceQuota(clientId: string, count = 1): Promise<void> {
+export async function enforceQuota(clientId: string, count = 1): Promise<NextResponse | null> {
   const service = getQuotaService();
   const result = await service.checkQuota(clientId, count);
 
   if (!result.allowed) {
-    const error = new Error(result.reason ?? 'Credit limit reached');
-    (error as any).status = 402;
-    throw error;
+    return NextResponse.json(
+      {
+        error: 'Credit limit reached',
+        reason: result.reason,
+        currentUsage: result.currentUsage,
+        limit: result.limit,
+        remaining: result.remaining,
+      },
+      { status: 402 }
+    );
   }
+
+  return null;
 }
 
 /**
