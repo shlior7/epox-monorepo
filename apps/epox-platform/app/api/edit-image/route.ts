@@ -143,7 +143,7 @@ export const POST = withGenerationSecurity(
 
       // Enforce quota before processing
       const quotaDenied = await enforceQuota(clientId, 1);
-      if (quotaDenied) return quotaDenied;
+      if (quotaDenied) return quotaDenied as NextResponse<EditImageResponse>;
 
       // Extract aspect ratio from the image (will be preserved in output)
       const aspectRatio = extractAspectRatioFromDataUrl(body.baseImageDataUrl);
