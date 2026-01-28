@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "en-US"
+reviews:
+  profile: "chill"
+  # Use path_filters to exclude folders (prefix with '!')
+  path_filters:
+    - "!dist/**"          # Ignores the entire 'dist' folder
+    - "!node_modules/**"  # Ignores 'node_modules'
+    - "!**/vendor/**"     # Ignores any 'vendor' folder at any depth
+    - "!*.min.js"         # Ignores minified JavaScript files
+    - ".claude/**"    # Includes the '.claude' folder
+    - ".cursor/**"   # Includes the '.cursor' folder
+  auto_review:
+    enabled: true
+    drafts: false
