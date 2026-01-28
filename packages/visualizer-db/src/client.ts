@@ -25,12 +25,7 @@ function isLocalDatabase(url: string): boolean {
  * Detect if DATABASE_URL points to a production cloud database
  */
 function isProductionDatabase(url: string): boolean {
-  return (
-    url.includes('neon.tech') ||
-    url.includes('amazonaws.com') ||
-    url.includes('supabase.co') ||
-    url.includes('planetscale.com')
-  );
+  return url.includes('neon.tech') || url.includes('amazonaws.com') || url.includes('supabase.co') || url.includes('planetscale.com');
 }
 
 /**
@@ -40,14 +35,14 @@ function isProductionDatabase(url: string): boolean {
 function validateDatabaseConnection(url: string): void {
   const isProd = isProductionDatabase(url);
   const isDevEnv = process.env.NODE_ENV === 'development';
-  const isTest = process.env.NODE_ENV === 'test' || process.env.CI === 'true';
+  const isTestEnv = process.env.NODE_ENV === 'test' || (process.env.CI === 'true' && process.env.NODE_ENV !== 'production');
   const isLocalUrl = isLocalDatabase(url);
 
   // Allow explicit bypass for intentional production operations (db:push, migrations)
   const allowProdAccess = process.env.ALLOW_PRODUCTION_ACCESS === 'true';
 
   // CRITICAL: Block production database in development/test (unless explicitly allowed)
-  if (isProd && (isDevEnv || isTest) && !allowProdAccess) {
+  if (isProd && (isDevEnv || isTestEnv) && !allowProdAccess) {
     const maskedUrl = url.substring(0, 30) + '***';
     throw new Error(
       '\n' +
@@ -66,7 +61,7 @@ function validateDatabaseConnection(url: string): void {
   }
 
   // WARN: Local database in production (might be intentional for preview deployments)
-  if (isLocalUrl && !isDevEnv && !isTest) {
+  if (isLocalUrl && !isDevEnv && !isTestEnv) {
     console.warn(
       '⚠️  WARNING: Using local database in production environment.\n' +
         'If this is unintentional, check your DATABASE_URL configuration.\n'
