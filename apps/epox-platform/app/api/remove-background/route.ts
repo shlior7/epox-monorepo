@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { getGeminiService } from 'visualizer-ai';
 import { withSecurity, validateImageUrl } from '@/lib/security';
+import { enforceQuota, consumeCredits } from '@/lib/services/quota';
 
 interface RemoveBackgroundRequest {
   imageDataUrl: string;
@@ -14,7 +15,12 @@ interface RemoveBackgroundRequest {
 
 // Force dynamic rendering since security middleware reads headers
 export const dynamic = 'force-dynamic';
-export const POST = withSecurity(async (request) => {
+export const POST = withSecurity(async (request, context) => {
+  const clientId = context.clientId;
+  if (!clientId) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   const body: RemoveBackgroundRequest = await request.json();
 
   if (!body.imageDataUrl) {
@@ -30,6 +36,10 @@ export const POST = withSecurity(async (request) => {
     );
   }
 
+  // Enforce quota before processing
+  const quotaDenied = await enforceQuota(clientId, 1);
+  if (quotaDenied) return quotaDenied;
+
   const geminiService = getGeminiService();
 
   // Use edit image with background removal prompt
@@ -42,6 +52,9 @@ export const POST = withSecurity(async (request) => {
     prompt,
     editMode: 'background_swap',
   });
+
+  // Consume credits after successful processing
+  await consumeCredits(clientId, 1);
 
   return NextResponse.json({
     success: true,

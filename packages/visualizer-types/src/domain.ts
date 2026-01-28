@@ -4,6 +4,7 @@
  */
 
 import type { FlowGenerationSettings, CollectionGenerationSettings, FlowStatus, ClientMetadata, SubjectAnalysis } from './settings';
+import type { ClientGenerationDefaults } from './categories';
 import type { MessagePart, MessageRole } from './messages';
 
 // ===== BASE TYPES =====
@@ -34,6 +35,7 @@ export interface Client extends VersionedEntity {
   slug: string | null;
   logo: string | null;
   metadata: ClientMetadata | null;
+  generationDefaults: ClientGenerationDefaults | null;
 }
 
 // ===== MEMBER =====

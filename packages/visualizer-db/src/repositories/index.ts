@@ -4,6 +4,7 @@ export { AccountRepository, type Account } from './accounts';
 export { ClientRepository } from './clients';
 export { MemberRepository } from './members';
 export { ProductRepository, type ProductListOptions } from './products';
+export { CategoryRepository, ProductCategoryRepository, type CategoryListOptions, type CategoryWithProductCount } from './categories';
 export { ProductImageRepository } from './product-images';
 export { ChatSessionRepository } from './chat-sessions';
 export { CollectionSessionRepository, type CollectionSessionListOptions } from './collection-sessions';

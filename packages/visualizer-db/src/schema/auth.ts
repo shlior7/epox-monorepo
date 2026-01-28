@@ -5,10 +5,10 @@
 
 import { pgTable, text, timestamp, boolean, jsonb, uniqueIndex, index, integer } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import type { ClientMetadata } from 'visualizer-types';
+import type { ClientMetadata, ClientGenerationDefaults } from 'visualizer-types';
 
 // Re-export types for schema consumers
-export type { CommerceConfig, AIModelConfig, ClientMetadata } from 'visualizer-types';
+export type { CommerceConfig, AIModelConfig, ClientMetadata, ClientGenerationDefaults } from 'visualizer-types';
 
 // ===== ADMIN USER (Platform Administrators) =====
 export const adminUser = pgTable('admin_user', {
@@ -115,6 +115,8 @@ export const client = pgTable(
     slug: text('slug').unique(),
     logo: text('logo'),
     metadata: jsonb('metadata').$type<ClientMetadata>(),
+    // Brand-level generation defaults (style, lighting, aspect ratio, etc.)
+    generationDefaults: jsonb('generation_defaults').$type<ClientGenerationDefaults>(),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),

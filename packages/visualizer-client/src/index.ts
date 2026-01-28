@@ -1,7 +1,13 @@
 /**
- * Visualizer Services
+ * Visualizer Client
  *
- * Non-AI business logic services shared across apps.
+ * Business logic services for client management:
+ * - Invitation: Team member invitations
+ * - Email: Email sending via Resend
+ * - Notification: Browser notifications
+ * - User Settings: User preferences
+ * - Quota: Usage quota management
+ * - Inspiration: Unsplash integration for inspiration images
  */
 
 export { InvitationService, getInvitationService, resetInvitationService } from './invitation';
@@ -37,23 +43,7 @@ export type {
   MergedInspirationSettings,
 } from './inspiration';
 
-export {
-  FlowOrchestrationService,
-  getFlowOrchestrationService,
-  resetFlowOrchestrationService,
-  buildPromptFromTags,
-  buildPromptFromContext,
-  generatePromptVariations,
-} from './flow-orchestration';
-export type {
-  FlowOrchestrationServiceConfig,
-  CreateFlowRequest,
-  FlowCreationResult,
-  PerProductSettings,
-  PromptBuilderContext,
-} from './flow-orchestration';
-
-export { QuotaService, createQuotaService, PLAN_LIMITS } from './quota';
+export { QuotaService, createQuotaService, createQuotaServiceFromDb, PLAN_LIMITS } from './quota';
 export type { QuotaServiceDependencies, PlanType, PlanLimits, QuotaStatus, QuotaCheckResult } from './quota';
 
 export { NotificationService, getNotificationService, resetNotificationService, DEFAULT_NOTIFICATION_PREFERENCES } from './notification';

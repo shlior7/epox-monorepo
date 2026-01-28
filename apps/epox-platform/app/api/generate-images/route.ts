@@ -11,6 +11,7 @@ import type { PromptTags } from '@/lib/types';
 import type { ImageAspectRatio } from 'visualizer-types';
 import { withGenerationSecurity, validateUrls } from '@/lib/security';
 import { logJobStarted, logJobFailed, logger } from '@/lib/logger';
+import { enforceQuota, consumeCredits } from '@/lib/services/quota';
 
 // Flexible input that accepts strings or arrays
 interface FlexiblePromptTags {
@@ -139,6 +140,10 @@ export const POST = withGenerationSecurity(async (request, context) => {
 
   const expectedImageCount = productIds.length * (settings?.variantsPerProduct ?? 4);
 
+  // Enforce quota before enqueuing
+  const quotaDenied = await enforceQuota(clientId, expectedImageCount);
+  if (quotaDenied) return quotaDenied;
+
   // Create job in PostgreSQL queue
   const { jobId } = await enqueueImageGeneration(
     clientId,
@@ -162,6 +167,9 @@ export const POST = withGenerationSecurity(async (request, context) => {
       flowId: sessionId,
     }
   );
+
+  // Consume credits after successful enqueue
+  await consumeCredits(clientId, expectedImageCount);
 
   logJobStarted(jobId, {
     clientId,
