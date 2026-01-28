@@ -5,7 +5,7 @@ Turn the existing AI asset generation platform into a revenue-generating busines
 
 ## Phases
 
-### Phase 1: Credit System Foundation
+### Phase 1: Credit System Foundation -- Complete (2026-01-28)
 **Why first:** No revenue without billing — this is the core value proposition. The quota schema and service already exist but aren't wired up.
 **Scope:**
 - Extend DB schema: credit balance table, credit transaction ledger, subscription plans table
