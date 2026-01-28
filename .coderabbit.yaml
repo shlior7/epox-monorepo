@@ -8,8 +8,8 @@ reviews:
     - "!node_modules/**"  # Ignores 'node_modules'
     - "!**/vendor/**"     # Ignores any 'vendor' folder at any depth
     - "!*.min.js"         # Ignores minified JavaScript files
-    - ".claude/**"    # Includes the '.claude' folder
-    - ".cursor/**"   # Includes the '.cursor' folder
+    - "!.claude/**"    # Ignores the '.claude' folder
+    - "!.cursor/**"   # Ignores the '.cursor' folder
   auto_review:
     enabled: true
     drafts: false
