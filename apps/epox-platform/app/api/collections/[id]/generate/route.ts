@@ -12,6 +12,7 @@ import { resolveStorageUrl } from 'visualizer-storage';
 import type { FlowGenerationSettings, ProductImage, BubbleValue, SceneTypeInspirationMap } from 'visualizer-types';
 import { enqueueImageGeneration } from 'visualizer-ai';
 import { buildBubblePromptSection } from '@/lib/services/bubble-prompt-extractor';
+import { enforceQuota, consumeCredits } from '@/lib/services/quota';
 
 interface GenerateRequest {
   productIds?: string[]; // Optional: specific products to generate (defaults to all)
@@ -65,6 +66,15 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
       ...collection.settings,
       ...body.settings,
     };
+
+    // Calculate total expected images across all flows and enforce quota
+    const variantsPerProduct = mergedSettings.variantsPerProduct ?? 1;
+    const totalExpectedImages = generationFlows.reduce(
+      (sum, f) => sum + f.productIds.length * variantsPerProduct,
+      0
+    );
+    const quotaDenied = await enforceQuota(clientId, totalExpectedImages);
+    if (quotaDenied) return quotaDenied;
 
     // Extract general inspiration bubbles
     const generalInspiration: BubbleValue[] = Array.isArray(mergedSettings.generalInspiration)
@@ -174,6 +184,9 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
         `🚀 Started generation job ${jobId} for flow ${flowId}, products ${productIds.join(',')}, base images: ${productImageUrls.join(', ') || 'none'}`
       );
     }
+
+    // Consume credits after all jobs enqueued successfully
+    await consumeCredits(clientId, totalExpectedImages);
 
     // Update collection status to generating
     await db.collectionSessions.update(collectionId, { status: 'generating' });
