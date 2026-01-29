@@ -16,7 +16,7 @@ Turn the existing AI asset generation platform into a revenue-generating busines
 **Depends on:** Nothing (foundation)
 **Existing code:** `packages/visualizer-services/src/quota/`, `packages/visualizer-db/src/schema/usage.ts`, `packages/visualizer-db/src/repositories/usage.ts`
 
-### Phase 2: Admin Credit Management for Design Partners
+### Phase 2: Admin Credit Management for Design Partners -- Complete (2026-01-29)
 **Why second:** Before payment integration, design partners need platform access with manually granted credits from the admin panel.
 **Scope:**
 - Admin UI: credit granting form on client detail page (`/admin/clients/[id]`) — set plan, grant credits, adjust monthly limit
