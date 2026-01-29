@@ -722,6 +722,230 @@ $admin-font: 'DM Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif
     transition: width 0.3s;
   }
 
+  // Credit Management
+  &__credit-feedback {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 16px;
+
+    &--success {
+      background: rgba($admin-success, 0.1);
+      border: 1px solid rgba($admin-success, 0.3);
+      color: $admin-success;
+    }
+
+    &--error {
+      background: rgba($admin-error, 0.1);
+      border: 1px solid rgba($admin-error, 0.3);
+      color: $admin-error;
+    }
+  }
+
+  &__credit-form {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid $admin-border;
+
+    &:first-of-type {
+      margin-top: 16px;
+    }
+  }
+
+  &__credit-form-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: $admin-text;
+    margin: 0 0 12px;
+  }
+
+  &__credit-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__credit-label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    color: $admin-text-muted;
+    font-weight: 500;
+
+    &--wide {
+      flex: 1;
+      min-width: 200px;
+    }
+  }
+
+  &__credit-select,
+  &__credit-input {
+    padding: 8px 12px;
+    background: $admin-bg;
+    border: 1px solid $admin-border;
+    border-radius: 6px;
+    color: $admin-text;
+    font-family: $admin-font;
+    font-size: 13px;
+    outline: none;
+    min-width: 120px;
+    transition: border-color 0.2s;
+
+    &:focus {
+      border-color: $admin-accent;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__credit-select {
+    cursor: pointer;
+    appearance: auto;
+  }
+
+  &__credit-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid $admin-border;
+    border-radius: 6px;
+    color: $admin-text;
+    font-family: $admin-font;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+
+    &:hover:not(:disabled) {
+      background: rgba($admin-accent, 0.1);
+      border-color: $admin-accent;
+      color: $admin-accent;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    &--grant {
+      border-color: $admin-success;
+      color: $admin-success;
+
+      &:hover:not(:disabled) {
+        background: rgba($admin-success, 0.1);
+      }
+    }
+
+    &--reset {
+      border-color: $admin-warning;
+      color: $admin-warning;
+
+      &:hover:not(:disabled) {
+        background: rgba($admin-warning, 0.1);
+      }
+    }
+  }
+
+  &__credit-hint {
+    font-size: 12px;
+    color: $admin-text-dim;
+    margin: 8px 0 0;
+  }
+
+  &__credit-confirm {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__credit-confirm-text {
+    font-size: 13px;
+    color: $admin-warning;
+    font-weight: 500;
+  }
+
+  // Audit Log
+  &__audit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__audit-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: rgba($admin-border, 0.2);
+    border-radius: 6px;
+    font-size: 13px;
+  }
+
+  &__audit-time {
+    color: $admin-text-dim;
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+
+  &__audit-badge {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    &--plan_change {
+      background: rgba(#3b82f6, 0.15);
+      color: #3b82f6;
+    }
+
+    &--credit_grant {
+      background: rgba($admin-success, 0.15);
+      color: $admin-success;
+    }
+
+    &--limit_change {
+      background: rgba($admin-warning, 0.15);
+      color: $admin-warning;
+    }
+
+    &--usage_reset {
+      background: rgba($admin-error, 0.15);
+      color: $admin-error;
+    }
+  }
+
+  &__audit-details {
+    flex: 1;
+    color: $admin-text;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__audit-admin {
+    color: $admin-text-dim;
+    font-size: 11px;
+    flex-shrink: 0;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   &__danger-zone {
     margin-top: 32px;
     padding: 24px;
