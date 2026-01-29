@@ -1,6 +1,6 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, sql, desc } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
-import { usageRecord, quotaLimit, type PlanType } from '../schema/usage';
+import { usageRecord, quotaLimit, creditAuditLog, type PlanType, type AuditAction } from '../schema/usage';
 import { NotFoundError } from '../errors';
 import { BaseRepository } from './base';
 
@@ -188,5 +188,71 @@ export class QuotaLimitRepository extends BaseRepository<QuotaLimit> {
     }
 
     return this.mapToEntity(updated);
+  }
+}
+
+// ===== CREDIT AUDIT LOG =====
+
+export interface CreditAuditLogEntry {
+  id: string;
+  clientId: string;
+  adminId: string;
+  action: AuditAction;
+  details: unknown;
+  previousValue: string | null;
+  newValue: string | null;
+  createdAt: Date;
+}
+
+export interface CreateAuditLogEntry {
+  clientId: string;
+  adminId: string;
+  action: AuditAction;
+  details: unknown;
+  previousValue?: string | null;
+  newValue?: string | null;
+}
+
+export class CreditAuditLogRepository extends BaseRepository<CreditAuditLogEntry> {
+  constructor(drizzle: DrizzleClient) {
+    super(drizzle, creditAuditLog);
+  }
+
+  async create(data: CreateAuditLogEntry): Promise<CreditAuditLogEntry> {
+    const id = this.generateId();
+
+    const [created] = await this.drizzle
+      .insert(creditAuditLog)
+      .values({
+        id,
+        clientId: data.clientId,
+        adminId: data.adminId,
+        action: data.action,
+        details: data.details,
+        previousValue: data.previousValue ?? null,
+        newValue: data.newValue ?? null,
+        createdAt: new Date(),
+      })
+      .returning();
+
+    return this.mapToEntity(created);
+  }
+
+  async listByClient(
+    clientId: string,
+    options?: { limit?: number; offset?: number }
+  ): Promise<CreditAuditLogEntry[]> {
+    const limit = options?.limit ?? 50;
+    const offset = options?.offset ?? 0;
+
+    const rows = await this.drizzle
+      .select()
+      .from(creditAuditLog)
+      .where(eq(creditAuditLog.clientId, clientId))
+      .orderBy(desc(creditAuditLog.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    return rows.map((row) => this.mapToEntity(row));
   }
 }

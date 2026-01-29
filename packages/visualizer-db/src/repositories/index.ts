@@ -14,14 +14,17 @@ export { FavoriteImageRepository } from './favorite-images';
 export { UserRepository } from './users';
 export { InvitationRepository, type Invitation, type InvitationCreate, type InvitationStatus } from './invitations';
 export { UserSettingsRepository, type UserSettings, type UserSettingsUpdate } from './user-settings';
-export type { AIOperationType } from '../schema/usage';
+export type { AIOperationType, AuditAction } from '../schema/usage';
 export {
   UsageRecordRepository,
   QuotaLimitRepository,
+  CreditAuditLogRepository,
   type UsageRecord,
   type QuotaLimit,
   type QuotaLimitCreate,
   type QuotaLimitUpdate,
+  type CreditAuditLogEntry,
+  type CreateAuditLogEntry,
 } from './usage';
 export { AICostTrackingRepository, type CreateCostRecord, type CostSummary } from './ai-cost-tracking';
 export { GenerationJobRepository, type GenerationJob, type GenerationJobCreate, type GenerationJobUpdate } from './generation-jobs';
