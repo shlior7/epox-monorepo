@@ -11,7 +11,7 @@ import { internalServerErrorResponse } from '@/lib/security/error-handling';
 import type {
   FlowGenerationSettings,
   ImageAspectRatio,
-  SceneTypeInspirationMap,
+  InspirationSection,
   BubbleValue,
 } from 'visualizer-types';
 import { normalizeImageQuality } from 'visualizer-types';
@@ -19,8 +19,7 @@ import { normalizeImageQuality } from 'visualizer-types';
 interface UpdateSettingsRequest {
   // Inspiration (Section 1)
   generalInspiration?: BubbleValue[];
-  sceneTypeInspiration?: SceneTypeInspirationMap;
-  useSceneTypeInspiration?: boolean;
+  inspirationSections?: InspirationSection[];
   sceneType?: string; // Scene type selection
 
   // User Prompt (Section 3)
@@ -89,11 +88,8 @@ export const PATCH = withSecurity(async (request, context, { params }) => {
     if (body.generalInspiration !== undefined) {
       (settingsUpdate as any).generalInspiration = body.generalInspiration;
     }
-    if (body.sceneTypeInspiration !== undefined) {
-      (settingsUpdate as any).sceneTypeInspiration = body.sceneTypeInspiration;
-    }
-    if (body.useSceneTypeInspiration !== undefined) {
-      (settingsUpdate as any).useSceneTypeInspiration = body.useSceneTypeInspiration;
+    if (body.inspirationSections !== undefined) {
+      (settingsUpdate as any).inspirationSections = body.inspirationSections;
     }
     if (body.sceneType !== undefined) {
       settingsUpdate.sceneType = body.sceneType;

@@ -20,11 +20,15 @@ export {
   type OutputSettingsConfig,
 } from './ConfigPanelContext';
 
-export { InspireSection, type InspireSectionProps } from './InspireSection';
-export { ProductSection, type ProductSectionProps } from './ProductSection';
+export { InspireSection, type InspireSectionProps, type CategoryInfo } from './InspireSection';
+export { ProductSection, type ProductSectionProps, type ProductCategoryInfo } from './ProductSection';
 export { CollectionSettingsSection, type CollectionSettingsSectionProps } from './CollectionSettingsSection';
-export { SceneTypeAccordion, type SceneTypeAccordionProps } from './SceneTypeAccordion';
+export { AddSectionDropdown, type AddSectionDropdownProps } from './AddSectionDropdown';
 export { GeneralBubblesSection, type GeneralBubblesSectionProps } from './GeneralBubblesSection';
+export { InspirationBubblesGrid, type InspirationBubblesGridProps } from './InspirationBubblesGrid';
+export { CategoryBubble, type CategoryBubbleProps } from './CategoryBubble';
+export { CategoryBubbleModal, type CategoryBubbleModalProps } from './CategoryBubbleModal';
+export { CategoryBubblesSection, type CategoryBubblesSectionProps } from './CategoryBubblesSection';
 export { BubbleChip, type BubbleChipProps } from './InspirationBubble';
 export { AddBubbleButton, type AddBubbleButtonProps } from './AddBubbleButton';
 export { ProductCountBadge, type ProductCountBadgeProps } from './ProductCountBadge';

@@ -20,15 +20,15 @@ export type {
   BackgroundBubbleValue,
 } from './bubbles';
 
-export { isBubbleType } from './bubbles';
+export { isBubbleType, BUBBLE_MERGE_STRATEGIES, getBubbleMergeStrategy } from './bubbles';
+export type { BubbleMergeStrategy } from './bubbles';
 
 // Bubble utility functions
 export {
-  getBubblesForSceneType,
-  hasNewBubbleFormat,
   isBubbleEmpty,
   filterEmptyBubbles,
   extractBubbleFromInspiration,
+  getBubbleNarrative,
 } from './bubble-utils';
 
 // Settings types
@@ -52,6 +52,7 @@ export type {
   ClientMetadata,
   FlowStatus,
   ImageQuality,
+  InspirationSection,
   // New types for studio settings redesign
   NativeSceneCategory,
   InputCameraAngle,
@@ -60,8 +61,6 @@ export type {
   VisionAnalysisResult,
   InspirationSourceType,
   InspirationImage,
-  SceneTypeInspirationEntry,
-  SceneTypeInspirationMap,
 } from './settings';
 
 export {
@@ -78,8 +77,6 @@ export {
   // Utility functions
   normalizeImageQuality,
   formatAspectRatioDisplay,
-  // Inspiration defaults
-  DEFAULT_SCENE_TYPE_INSPIRATION_ENTRY,
 } from './settings';
 
 // Message types

@@ -51,6 +51,9 @@ export const product = pgTable(
     analysisVersion: text('analysis_version'),
     analyzedAt: timestamp('analyzed_at', { mode: 'date' }),
 
+    // Default generation settings (configured during product creation or via settings)
+    defaultGenerationSettings: jsonb('default_generation_settings').$type<import('visualizer-types').FlowGenerationSettings>(),
+
     // Price and metadata
     price: decimal('price', { precision: 10, scale: 2 }),
     metadata: jsonb('metadata').$type<Record<string, unknown>>(),

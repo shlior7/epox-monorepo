@@ -58,6 +58,7 @@ export interface ProductCreate {
   analysisData?: ProductAnalysis;
   analysisVersion?: string;
   analyzedAt?: Date;
+  defaultGenerationSettings?: FlowGenerationSettings;
   price?: string;
   metadata?: Record<string, unknown>;
 }
@@ -79,6 +80,7 @@ export interface ProductUpdate {
   analysisData?: ProductAnalysis | null;
   analysisVersion?: string | null;
   analyzedAt?: Date | null;
+  defaultGenerationSettings?: FlowGenerationSettings | null;
   price?: string | null;
   metadata?: Record<string, unknown> | null;
 }
@@ -177,6 +179,7 @@ export interface GeneratedAssetCreate {
   generationFlowId?: string | null;
   chatSessionId?: string | null;
   assetUrl: string;
+  originalAssetUrl?: string | null;
   assetType?: AssetType;
   status?: AssetStatus;
   prompt?: string | null;
@@ -195,6 +198,7 @@ export interface GeneratedAssetCreate {
 
 export interface GeneratedAssetUpdate {
   assetUrl?: string;
+  originalAssetUrl?: string | null;
   assetType?: AssetType;
   status?: AssetStatus;
   prompt?: string | null;

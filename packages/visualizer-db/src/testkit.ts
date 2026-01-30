@@ -88,6 +88,7 @@ function createMockGeneratedAssetRepository(store: InMemoryStore<GeneratedAsset>
         generationFlowId: data.generationFlowId ?? null,
         chatSessionId: data.chatSessionId ?? null,
         assetUrl: data.assetUrl,
+        originalAssetUrl: data.originalAssetUrl ?? null,
         assetType: data.assetType ?? 'image',
         status: data.status ?? 'completed',
         prompt: data.prompt ?? null,

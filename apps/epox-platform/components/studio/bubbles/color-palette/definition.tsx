@@ -13,6 +13,7 @@ export const colorPaletteBubble: BubbleDefinition<ColorPaletteBubbleValue> = {
   label: 'Color Palette',
   icon: Palette,
   category: 'style',
+  mergeStrategy: 'additive',
   allowMultiple: false,
 
   Modal: ColorPaletteModal,
@@ -22,19 +23,15 @@ export const colorPaletteBubble: BubbleDefinition<ColorPaletteBubbleValue> = {
       return (
         <div className="flex h-full w-full flex-wrap gap-0.5 rounded-md p-1">
           {value.colors.slice(0, 4).map((color, i) => (
-            <div
-              key={i}
-              className="h-1/2 flex-1 rounded-sm"
-              style={{ backgroundColor: color }}
-            />
+            <div key={i} className="h-1/2 flex-1 rounded-sm" style={{ backgroundColor: color }} />
           ))}
         </div>
       );
     }
     return (
       <div className="flex flex-col items-center px-1">
-        <Palette className="h-4 w-4 text-foreground" />
-        <span className="mt-0.5 text-center text-[9px] font-medium leading-tight text-foreground">
+        <Palette className="h-6 w-6 text-foreground" />
+        <span className="mt-0.5 text-center text-[12px] font-medium leading-tight text-foreground">
           Colors
         </span>
       </div>

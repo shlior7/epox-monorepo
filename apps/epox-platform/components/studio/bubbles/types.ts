@@ -3,7 +3,7 @@
  * Type definitions for the extensible bubble system
  */
 
-import type { BaseBubbleValue } from 'visualizer-types';
+import type { BaseBubbleValue, BubbleMergeStrategy } from 'visualizer-types';
 import type { LucideIcon } from 'lucide-react';
 
 // ===== BUBBLE MODAL PROPS =====
@@ -22,6 +22,7 @@ export interface BubbleDefinition<T extends BaseBubbleValue = BaseBubbleValue> {
   label: string;
   icon: LucideIcon;
   category: 'style' | 'scene' | 'technical';
+  mergeStrategy: BubbleMergeStrategy;
   allowMultiple: boolean;
 
   // UI Components

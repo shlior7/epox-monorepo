@@ -37,7 +37,8 @@ export class CategoryRepository extends BaseRepository<Category> {
     const now = new Date();
     const slug = data.slug || slugify(data.name);
 
-    const [created] = await this.drizzle
+    // Use onConflictDoNothing to prevent duplicates on (clientId, slug)
+    const rows = await this.drizzle
       .insert(category)
       .values({
         id,
@@ -51,9 +52,17 @@ export class CategoryRepository extends BaseRepository<Category> {
         createdAt: now,
         updatedAt: now,
       })
+      .onConflictDoNothing()
       .returning();
 
-    return this.mapToEntity(created);
+    // If conflict (duplicate slug for this client), return existing
+    if (rows.length === 0) {
+      const existing = await this.getBySlug(data.clientId, slug);
+      if (existing) return existing;
+      throw new Error(`Failed to create or find category with slug "${slug}"`);
+    }
+
+    return this.mapToEntity(rows[0]);
   }
 
   async update(id: string, data: CategoryUpdate): Promise<Category> {

@@ -111,7 +111,7 @@ export const POST = withUploadSecurity(async (request, context) => {
             productType: subjectAnalysis.subjectClassHyphenated.replace(/-/g, ' '),
             materials: subjectAnalysis.materialTags ?? existingAnalysis?.materials ?? [],
             colors: existingAnalysis?.colors ?? {
-              primary: subjectAnalysis.dominantColors?.[0] ?? 'neutral',
+              primary: subjectAnalysis.dominantColors?.[0] ?? '#B0A899',
             },
             style: existingAnalysis?.style ?? [],
             sceneTypes: subjectAnalysis.nativeSceneTypes,

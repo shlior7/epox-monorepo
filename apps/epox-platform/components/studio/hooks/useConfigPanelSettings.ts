@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { apiClient, type UpdateStudioSettingsPayload } from '@/lib/api-client';
 import { useConfigPanelContext, type ConfigPanelState } from '../config-panel';
-import type { FlowGenerationSettings, SceneTypeInspirationMap } from 'visualizer-types';
+import type { FlowGenerationSettings } from 'visualizer-types';
 
 // ===== TYPES =====
 
@@ -59,8 +59,7 @@ export function useConfigPanelSettings({
   const toApiPayload = useCallback((): UpdateStudioSettingsPayload => {
     return {
       generalInspiration: state.generalInspiration,
-      sceneTypeInspiration: state.sceneTypeInspiration,
-      useSceneTypeInspiration: state.useSceneTypeInspiration,
+      inspirationSections: state.inspirationSections,
       userPrompt: state.userPrompt,
       aspectRatio: state.outputSettings.aspectRatio,
       imageQuality: state.outputSettings.quality,
@@ -72,7 +71,7 @@ export function useConfigPanelSettings({
   const toFlowSettings = useCallback((): FlowGenerationSettings => {
     return {
       generalInspiration: state.generalInspiration,
-      sceneTypeInspiration: state.sceneTypeInspiration,
+      inspirationSections: state.inspirationSections,
       userPrompt: state.userPrompt,
       aspectRatio: state.outputSettings.aspectRatio,
       imageQuality: state.outputSettings.quality,
@@ -109,9 +108,9 @@ export function useConfigPanelSettings({
     (settings: FlowGenerationSettings) => {
       const newState: ConfigPanelState = {
         generalInspiration: settings.generalInspiration || [],
-        sceneTypeInspiration: settings.sceneTypeInspiration || {},
-        useSceneTypeInspiration: true,
+        inspirationSections: settings.inspirationSections || [],
         userPrompt: settings.userPrompt || '',
+        applyCollectionInspiration: true,
         applyCollectionPrompt: true,
         outputSettings: {
           aspectRatio: settings.aspectRatio || '1:1',

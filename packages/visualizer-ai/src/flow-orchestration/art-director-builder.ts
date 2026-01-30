@@ -5,6 +5,7 @@
  */
 
 import type { SubjectAnalysis, BubbleValue, NativeSceneCategory, InputCameraAngle } from 'visualizer-types';
+import { getBubbleNarrative } from 'visualizer-types';
 
 // ===== TYPES =====
 
@@ -34,6 +35,50 @@ export interface ArtDirectorResult {
     outroAnchor: string;
   };
 }
+
+// ===== SMART PROMPT TYPES =====
+
+export interface SmartPromptInput {
+  productName: string;
+  subjectClass?: string; // from analysisData.subject.subjectClassHyphenated
+  productCategories?: string[];
+  sceneType?: string;
+  subjectAnalysis?: SubjectAnalysis; // optional — imported products may not have it yet
+  mergedBubbles: BubbleValue[];
+  userPrompt?: string;
+}
+
+export interface SmartPromptResult {
+  finalPrompt: string;
+  segments: {
+    introAnchor: string;
+    sceneDescription: string;
+    outroAnchor: string;
+  };
+  layers: Record<string, string>; // Individual layer values for debugging
+}
+
+// ===== STYLE CASCADE =====
+
+export const STYLE_CASCADE: Record<
+  string,
+  {
+    lighting: string;
+    colorPalette: string[];
+    props: 'none' | 'minimal' | 'styled' | 'lifestyle';
+  }
+> = {
+  Modern: { lighting: 'Studio Soft Light', colorPalette: ['#FFFFFF', '#1A1A1A', '#C0C0C0'], props: 'minimal' },
+  Minimalist: { lighting: 'Natural Daylight', colorPalette: ['#FAFAFA', '#E0E0E0', '#2C2C2C'], props: 'none' },
+  Industrial: { lighting: 'Dramatic Side Light', colorPalette: ['#3B3B3B', '#8B7355', '#A0A0A0'], props: 'minimal' },
+  Scandinavian: { lighting: 'Natural Daylight', colorPalette: ['#F5F0EB', '#D4C5B2', '#6B8E7B'], props: 'minimal' },
+  Bohemian: { lighting: 'Warm Evening', colorPalette: ['#C4723A', '#8B4513', '#DAA520', '#4A6741'], props: 'lifestyle' },
+  'Mid-Century': { lighting: 'Golden Hour', colorPalette: ['#D2691E', '#FFD700', '#2F4F4F', '#F5DEB3'], props: 'styled' },
+  Contemporary: { lighting: 'Studio Soft Light', colorPalette: ['#FFFFFF', '#333333', '#4A90D9'], props: 'styled' },
+  Traditional: { lighting: 'Warm Evening', colorPalette: ['#8B0000', '#DAA520', '#2F2F2F', '#FFFFF0'], props: 'styled' },
+  Rustic: { lighting: 'Morning Light', colorPalette: ['#8B7355', '#556B2F', '#D2B48C'], props: 'lifestyle' },
+  Eclectic: { lighting: 'Natural Daylight', colorPalette: ['#FF6347', '#4169E1', '#FFD700', '#32CD32'], props: 'lifestyle' },
+};
 
 // ===== HELPER FUNCTIONS =====
 
@@ -75,153 +120,46 @@ function deriveGeometricDescription(cameraAngle: InputCameraAngle | undefined): 
 }
 
 /**
- * Extract style from bubbles.
+ * Check if a product description contains useful information
+ * (not lorem ipsum, placeholder text, or HTML-only content).
  */
-function extractStyle(bubbles: BubbleValue[]): string | undefined {
-  for (const bubble of bubbles) {
-    if (bubble.type === 'style') {
-      return bubble.preset || bubble.customValue;
-    }
-  }
-  return undefined;
-}
+function isUsefulDescription(description: string): boolean {
+  const lower = description.toLowerCase().trim();
+  if (!lower || lower.length < 10) return false;
 
-/**
- * Extract lighting from bubbles.
- */
-function extractLighting(bubbles: BubbleValue[]): string | undefined {
-  for (const bubble of bubbles) {
-    if (bubble.type === 'lighting') {
-      return bubble.preset || bubble.customValue;
-    }
-  }
-  return undefined;
-}
+  // Detect lorem ipsum and common placeholder patterns
+  const placeholderPatterns = [
+    'lorem ipsum',
+    'pellentesque habitant',
+    'morbi tristique',
+    'vestibulum tortor',
+    'donec eu libero',
+    'maecenas tempus',
+    'nulla facilisi',
+    'curabitur blandit',
+    'sample product',
+    'this is a placeholder',
+    'description goes here',
+    'add your description',
+  ];
 
-/**
- * Extract mood from bubbles.
- */
-function extractMood(bubbles: BubbleValue[]): string | undefined {
-  for (const bubble of bubbles) {
-    if (bubble.type === 'mood') {
-      return bubble.preset;
-    }
-  }
-  return undefined;
-}
-
-/**
- * Extract human interaction context from bubbles.
- */
-function extractHumanInteraction(bubbles: BubbleValue[]): string | undefined {
-  for (const bubble of bubbles) {
-    if (bubble.type === 'human-interaction') {
-      if (bubble.customValue) {
-        return bubble.customValue;
-      }
-      switch (bubble.preset) {
-        case 'none':
-          return 'no people in the scene';
-        case 'partial':
-          return 'include partial human presence (hands or arms interacting with the product)';
-        case 'full':
-          return 'include a person naturally interacting with the product';
-        case 'contextual':
-          return 'include contextually appropriate human interaction';
-        default:
-          return undefined;
-      }
-    }
-  }
-  return undefined;
-}
-
-/**
- * Extract props context from bubbles.
- */
-function extractProps(bubbles: BubbleValue[]): string | undefined {
-  for (const bubble of bubbles) {
-    if (bubble.type === 'props') {
-      if (bubble.customValue) {
-        return `props and accessories: ${bubble.customValue}`;
-      }
-      switch (bubble.preset) {
-        case 'none':
-          return 'no props or accessories, product only';
-        case 'minimal':
-          return 'minimal, clean styling with few props';
-        case 'styled':
-          return 'carefully styled with curated props and accessories';
-        case 'lifestyle':
-          return 'natural lifestyle staging with lived-in feel';
-        default:
-          return undefined;
-      }
-    }
-  }
-  return undefined;
-}
-
-/**
- * Extract background context from bubbles.
- */
-function extractBackground(bubbles: BubbleValue[]): string | undefined {
-  for (const bubble of bubbles) {
-    if (bubble.type === 'background') {
-      if (bubble.customValue) {
-        return `background: ${bubble.customValue}`;
-      }
-      if (bubble.preset) {
-        return `${bubble.preset} background`;
-      }
-    }
-  }
-  return undefined;
-}
-
-/**
- * Extract remaining bubble context (excluding already-handled types).
- */
-function extractRemainingContext(bubbles: BubbleValue[]): string[] {
-  const result: string[] = [];
-  const handledTypes = new Set(['style', 'lighting', 'mood', 'human-interaction', 'props', 'background']);
-
-  for (const bubble of bubbles) {
-    if (handledTypes.has(bubble.type)) {
-      continue;
-    }
-
-    switch (bubble.type) {
-      case 'camera-angle':
-        if (bubble.preset) {
-          result.push(`shot from ${bubble.preset.toLowerCase()}`);
-        }
-        break;
-      case 'color-palette':
-        if (bubble.colors && bubble.colors.length > 0) {
-          result.push(`color palette: ${bubble.colors.join(', ')}`);
-        }
-        break;
-      case 'reference':
-        if (bubble.image) {
-          result.push('inspired by reference image');
-        }
-        break;
-      case 'custom':
-        if (bubble.value) {
-          result.push(bubble.value);
-        }
-        break;
-    }
+  for (const pattern of placeholderPatterns) {
+    if (lower.includes(pattern)) return false;
   }
 
-  return result;
+  // Skip if it's mostly HTML tags
+  const stripped = description.replace(/<[^>]*>/g, '').trim();
+  if (stripped.length < 10) return false;
+
+  return true;
 }
 
 // ===== MAIN BUILDER =====
 
 /**
  * Build an art-director "sandwich" prompt.
+ *
+ * @deprecated Use `buildSmartPrompt` instead — it handles both with and without subject analysis.
  *
  * Structure:
  * - Segment A (Intro Anchor): Product identity preservation instruction
@@ -259,47 +197,9 @@ export function buildArtDirectorPrompt(input: ArtDirectorInput): ArtDirectorResu
   // Geometric perspective (P2)
   narrativeParts.push(geometricDescription);
 
-  // Style from bubbles
-  const style = extractStyle(mergedBubbles);
-  if (style) {
-    narrativeParts.push(`${style} style.`);
-  }
-
-  // Lighting from bubbles
-  const lighting = extractLighting(mergedBubbles);
-  if (lighting) {
-    narrativeParts.push(`${lighting} lighting.`);
-  }
-
-  // Mood from bubbles
-  const mood = extractMood(mergedBubbles);
-  if (mood) {
-    narrativeParts.push(`${mood} mood and atmosphere.`);
-  }
-
-  // Human interaction from bubbles
-  const humanInteraction = extractHumanInteraction(mergedBubbles);
-  if (humanInteraction) {
-    narrativeParts.push(humanInteraction + '.');
-  }
-
-  // Props from bubbles
-  const props = extractProps(mergedBubbles);
-  if (props) {
-    narrativeParts.push(props + '.');
-  }
-
-  // Background from bubbles
-  const background = extractBackground(mergedBubbles);
-  if (background) {
-    narrativeParts.push(background + '.');
-  }
-
-  // Remaining bubble context
-  const remainingContext = extractRemainingContext(mergedBubbles);
-  if (remainingContext.length > 0) {
-    narrativeParts.push(remainingContext.join('. ') + '.');
-  }
+  // Bubble narratives
+  const bubbleNarratives = mergedBubbles.map(getBubbleNarrative).filter((n): n is string => n !== null);
+  narrativeParts.push(...bubbleNarratives.map((n) => (n.endsWith('.') ? n : n + '.')));
 
   const sceneNarrative = narrativeParts.join(' ');
 
@@ -308,7 +208,7 @@ export function buildArtDirectorPrompt(input: ArtDirectorInput): ArtDirectorResu
 
   // === SEGMENT D: OUTRO ANCHOR ===
   // P1: Strengthened outro — mirror the explicit attribute list from intro
-  const outroAnchor = `Keep the visual integrity of the ${subjectClass} from the attached image exactly as it is in terms of shape, size, proportion, material, color, texture, and camera angle. Do not change any aspect of the ${subjectClass}.`;
+  const outroAnchor = `Keep the visual integrity of the ${subjectClass} from the attached image exactly as it is in terms of shape, size, proportion, material, color, texture, and camera angle. Do not change any aspect of the ${subjectClass}. The ${subjectClass} should look naturally part of the scene`;
 
   // === COMPOSE FINAL PROMPT ===
   const promptParts = [introAnchor, sceneNarrative];
@@ -331,38 +231,63 @@ export function buildArtDirectorPrompt(input: ArtDirectorInput): ArtDirectorResu
 }
 
 /**
- * Build a simple prompt when subject analysis is not available.
- * Falls back to a less structured prompt.
+ * Product context for building prompts when subject analysis is unavailable.
  */
-export function buildSimplePrompt(bubbles: BubbleValue[], userPrompt?: string): string {
+export interface ProductContext {
+  productName: string;
+  productDescription?: string | null;
+  productCategory?: string | null;
+  productCategories?: string[];
+  sceneType?: string;
+}
+
+/**
+ * Build a simple prompt when subject analysis is not available.
+ * When product context is provided, includes product name, description,
+ * categories, and scene type for a richer prompt.
+ *
+ * @deprecated Use `buildSmartPrompt` instead — it handles both with and without subject analysis.
+ */
+export function buildSimplePrompt(bubbles: BubbleValue[], userPrompt?: string, productContext?: ProductContext): string {
   const parts: string[] = [];
 
-  // Quality framing
-  parts.push('Professional interior photograph, editorial catalog style, ultra-realistic, 8k resolution.');
+  // Product identity anchor (if context available)
+  if (productContext) {
+    const { productName, productDescription, productCategory, productCategories, sceneType } = productContext;
 
-  // Extract and add bubble context
-  const style = extractStyle(bubbles);
-  if (style) parts.push(`${style} style.`);
+    // Build subject description
+    const subjectParts: string[] = [];
+    const categories = productCategories?.length ? productCategories.join(', ') : productCategory || undefined;
+    if (categories) subjectParts.push(`(${categories})`);
 
-  const lighting = extractLighting(bubbles);
-  if (lighting) parts.push(`${lighting} lighting.`);
+    const subjectLine =
+      subjectParts.length > 0
+        ? `Create a scene featuring the "${productName}" ${subjectParts.join(' ')} from the attached product image.`
+        : `Create a scene featuring the "${productName}" from the attached product image.`;
+    parts.push(subjectLine);
 
-  const mood = extractMood(bubbles);
-  if (mood) parts.push(`${mood} mood and atmosphere.`);
+    if (productDescription && isUsefulDescription(productDescription)) {
+      // Include a brief description for context (truncate to ~200 chars)
+      const brief = productDescription.length > 200 ? productDescription.slice(0, 200).trim() + '...' : productDescription;
+      parts.push(`Product description: ${brief}`);
+    }
 
-  const humanInteraction = extractHumanInteraction(bubbles);
-  if (humanInteraction) parts.push(humanInteraction + '.');
+    // Scene context
+    const sceneLabel = sceneType || 'interior';
+    parts.push(`Professional ${sceneLabel} photograph, editorial catalog style, ultra-realistic, 8k resolution.`);
 
-  const props = extractProps(bubbles);
-  if (props) parts.push(props + '.');
-
-  const background = extractBackground(bubbles);
-  if (background) parts.push(background + '.');
-
-  const remainingContext = extractRemainingContext(bubbles);
-  if (remainingContext.length > 0) {
-    parts.push(remainingContext.join('. ') + '.');
+    // Integrity instruction
+    parts.push(
+      'Keep the product exactly as it appears in the reference image — preserve its shape, proportions, materials, colors, and textures.'
+    );
+  } else {
+    // No product context at all — generic framing
+    parts.push('Professional interior photograph, editorial catalog style, ultra-realistic, 8k resolution.');
   }
+
+  // Bubble narratives
+  const bubbleNarratives = bubbles.map(getBubbleNarrative).filter((n): n is string => n !== null);
+  parts.push(...bubbleNarratives.map((n) => (n.endsWith('.') ? n : n + '.')));
 
   // User prompt
   if (userPrompt?.trim()) {
@@ -370,4 +295,165 @@ export function buildSimplePrompt(bubbles: BubbleValue[], userPrompt?: string): 
   }
 
   return parts.join(' ');
+}
+
+// ===== SMART PROMPT BUILDER =====
+
+/**
+ * Build a smart 3-segment "sandwich" prompt with layered content and style cascade.
+ *
+ * Structure:
+ * - Segment A (Intro Anchor): Product preservation instruction (high attention)
+ * - Segment B (Scene Description): Smart layered content with cascade + user intent
+ * - Segment C (Outro Anchor): Product preservation reinforcement
+ *
+ * Works with or without subject analysis data.
+ */
+export function buildSmartPrompt(input: SmartPromptInput): SmartPromptResult {
+  const { productName, subjectClass, subjectAnalysis, mergedBubbles, userPrompt, sceneType } = input;
+
+  const label = subjectClass || productName;
+  const environmentType = deriveEnvironmentType(subjectAnalysis?.nativeSceneCategory);
+  const geometricDescription = deriveGeometricDescription(subjectAnalysis?.inputCameraAngle);
+  const sceneContext = sceneType || subjectAnalysis?.nativeSceneCategory?.toLowerCase() || 'interior';
+
+  // Extract bubbles by type
+  const styleBubble = mergedBubbles.find((b) => b.type === 'style');
+  const lightingBubble = mergedBubbles.find((b) => b.type === 'lighting');
+  const colorBubble = mergedBubbles.find((b) => b.type === 'color-palette');
+  const humanBubble = mergedBubbles.find((b) => b.type === 'human-interaction');
+  const propsBubble = mergedBubbles.find((b) => b.type === 'props');
+  const backgroundBubble = mergedBubbles.find((b) => b.type === 'background');
+  const cameraBubble = mergedBubbles.find((b) => b.type === 'camera-angle');
+  const moodBubble = mergedBubbles.find((b) => b.type === 'mood');
+  const customBubbles = mergedBubbles.filter((b) => b.type === 'custom');
+  // Determine style name for cascade
+  const styleName = styleBubble?.type === 'style' ? styleBubble.preset || styleBubble.customValue : undefined;
+  const cascade = styleName ? STYLE_CASCADE[styleName] : undefined;
+
+  // Check if human interaction is active (partial/full/contextual)
+  const humanPreset = humanBubble?.type === 'human-interaction' ? humanBubble.preset : undefined;
+  const isHumanInteraction = humanPreset === 'partial' || humanPreset === 'full' || humanPreset === 'contextual';
+
+  // Determine design discipline
+  const designDiscipline = environmentType === 'studio' ? 'studio photography' : `${environmentType} design`;
+
+  const layers: Record<string, string> = {};
+
+  // === SEGMENT A: INTRO ANCHOR ===
+  let introAnchor: string;
+  if (isHumanInteraction) {
+    introAnchor = `Create an ${environmentType} ${label} scene with this ${label} from the attached image and keep the visual identity of the ${label} from the attached image — preserve its design, colors, and branding. The product should integrate naturally into the scene:`;
+  } else {
+    introAnchor = `Create an ${environmentType} ${label} scene with this ${label} from the attached image and keep the visual integrity of the ${label} from the attached image exactly as it is in terms of shape and size and proportion and material and color and camera angle, with the exact camera angle as in the attached image, do not change any aspect of the ${label} as it is in the attached image, and simply place this ${label} at the scene as described:`;
+  }
+  layers['introAnchor'] = introAnchor;
+
+  // === SEGMENT B: SCENE DESCRIPTION (ordered layers) ===
+  const sceneParts: string[] = [];
+
+  // 1. Quality framing
+  sceneParts.push(`Professional ${designDiscipline} of a ${sceneContext}`);
+  layers['qualityFraming'] = sceneParts[sceneParts.length - 1];
+
+  // 2. Camera/geometric description
+  const cameraDesc = cameraBubble ? getBubbleNarrative(cameraBubble) : null;
+  const geoDesc = cameraDesc || geometricDescription;
+  sceneParts.push(geoDesc);
+  layers['camera'] = geoDesc;
+
+  // 3. Style + Mood
+  const styleNarrative = styleBubble ? getBubbleNarrative(styleBubble) : null;
+  if (styleNarrative) {
+    sceneParts.push(styleNarrative);
+    layers['style'] = styleNarrative;
+  }
+  const moodNarrative = moodBubble ? getBubbleNarrative(moodBubble) : null;
+  if (moodNarrative) {
+    sceneParts.push(moodNarrative);
+    layers['mood'] = moodNarrative;
+  }
+
+  // 4. Lighting (from bubble, or cascaded from style preset)
+  const lightingNarrative = lightingBubble ? getBubbleNarrative(lightingBubble) : null;
+  if (lightingNarrative) {
+    sceneParts.push(lightingNarrative);
+    layers['lighting'] = lightingNarrative;
+  } else if (cascade?.lighting) {
+    const cascadedLighting = `${cascade.lighting} lighting`;
+    sceneParts.push(cascadedLighting);
+    layers['lighting'] = `${cascadedLighting} (cascaded from ${styleName})`;
+  }
+
+  // 5. Color palette (from bubble, or cascaded from style preset)
+  const colorNarrative = colorBubble ? getBubbleNarrative(colorBubble) : null;
+  if (colorNarrative) {
+    sceneParts.push(colorNarrative);
+    layers['colorPalette'] = colorNarrative;
+  } else if (cascade?.colorPalette) {
+    const cascadedColor = `color palette: ${cascade.colorPalette.join(', ')}`;
+    sceneParts.push(cascadedColor);
+    layers['colorPalette'] = `${cascadedColor} (cascaded from ${styleName})`;
+  }
+
+  // 6. Background/environment
+  const bgNarrative = backgroundBubble ? getBubbleNarrative(backgroundBubble) : null;
+  if (bgNarrative) {
+    sceneParts.push(bgNarrative);
+    layers['background'] = bgNarrative;
+  }
+
+  // 7. Human interaction narrative
+  const humanNarrative = humanBubble ? getBubbleNarrative(humanBubble) : null;
+  if (humanNarrative) {
+    sceneParts.push(humanNarrative);
+    layers['humanInteraction'] = humanNarrative;
+  }
+
+  // 8. Props narrative (from bubble, or cascaded from style preset)
+  const propsNarrative = propsBubble ? getBubbleNarrative(propsBubble) : null;
+  if (propsNarrative) {
+    sceneParts.push(propsNarrative);
+    layers['props'] = propsNarrative;
+  } else if (cascade?.props) {
+    const cascadedProps = getBubbleNarrative({ type: 'props', preset: cascade.props });
+    if (cascadedProps) {
+      sceneParts.push(cascadedProps);
+      layers['props'] = `${cascadedProps} (cascaded from ${styleName})`;
+    }
+  }
+
+  // 9. Custom bubble narratives
+  for (const custom of customBubbles) {
+    const n = getBubbleNarrative(custom);
+    if (n) sceneParts.push(n);
+  }
+
+  // 10. User prompt (placed in Segment B for strong weighting)
+  if (userPrompt?.trim()) {
+    sceneParts.push(userPrompt.trim());
+    layers['userPrompt'] = userPrompt.trim();
+  }
+
+  // 11. Technical boosters
+  sceneParts.push('professional product photograph, editorial catalog quality, ultra-realistic, 8k resolution, sharp focus');
+
+  const sceneDescription = sceneParts.filter(Boolean).join('. ') + '.';
+
+  // === SEGMENT C: OUTRO ANCHOR ===
+  let outroAnchor: string;
+  if (isHumanInteraction) {
+    outroAnchor = `keep the visual identity of the ${label} from the attached image — preserve its design, colors, and branding. The product should integrate naturally into the scene`;
+  } else {
+    outroAnchor = `keep the visual integrity of the ${label} from the attached image exactly as it is in terms of shape and size and proportion and material and color and camera angle, with the exact camera angle as in the attached image, do not change any aspect of the ${label} as it is in the attached image, and simply place this ${label} at the scene as described`;
+  }
+  layers['outroAnchor'] = outroAnchor;
+
+  const finalPrompt = [introAnchor, sceneDescription, outroAnchor].join('\n\n');
+
+  return {
+    finalPrompt,
+    segments: { introAnchor, sceneDescription, outroAnchor },
+    layers,
+  };
 }

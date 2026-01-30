@@ -55,6 +55,8 @@ export interface ProductAnalysis {
   productType: string;
   materials: string[];
   colors: { primary: string; accent?: string[] };
+  /** Primary color as hex code for display (e.g., "#8B4513") */
+  dominantColorHex?: string;
   style: string[];
   sceneTypes: string[]; // Renamed from suggestedsceneTypes
   scaleHints: { width: string; height: string };
@@ -83,6 +85,7 @@ export interface Product extends VersionedEntity {
   analysisData: ProductAnalysis | null;
   analysisVersion: string | null;
   analyzedAt: Date | null;
+  defaultGenerationSettings: FlowGenerationSettings | null;
   price: string | null;
   metadata: Record<string, unknown> | null;
 }
@@ -171,6 +174,7 @@ export interface GeneratedAsset extends BaseEntity {
   generationFlowId: string | null;
   chatSessionId: string | null;
   assetUrl: string;
+  originalAssetUrl: string | null;
   assetType: AssetType;
   status: AssetStatus;
   prompt: string | null;
@@ -292,6 +296,7 @@ export interface GenerationFlowWithDetails extends GenerationFlow {
     name: string;
     category: string | null;
     sceneTypes: string[] | null;
+    storeSku: string | null;
   } | null;
   baseImages: Array<{
     id: string;
@@ -304,6 +309,8 @@ export interface GenerationFlowWithDetails extends GenerationFlow {
     status: AssetStatus;
     approvalStatus: ApprovalStatus;
     aspectRatio: string | null;
+    prompt: string | null;
+    settings: import('./settings').FlowGenerationSettings | null;
     createdAt: Date;
     jobId: string | null;
   }>;

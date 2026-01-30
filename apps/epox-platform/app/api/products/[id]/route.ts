@@ -29,6 +29,13 @@ export const GET = withSecurity(async (request, context, { params }) => {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
+    // Fetch linked categories for this product
+    const [productCatLinks, clientCategories] = await Promise.all([
+      db.productCategories.listByProduct(id),
+      db.categories.listByClient(clientId),
+    ]);
+    const categoryNameMap = new Map(clientCategories.map((c) => [c.id, c.name]));
+
     // Map to frontend format with ALL images and proper URLs
     const mappedProduct = {
       id: product.id,
@@ -42,6 +49,13 @@ export const GET = withSecurity(async (request, context, { params }) => {
       analyzed: product.analyzedAt != null,
       price: product.price ? parseFloat(product.price) : 0,
       isFavorite: product.isFavorite,
+
+      // Linked categories from product_categories table
+      linkedCategories: productCatLinks.map((lc) => ({
+        categoryId: lc.categoryId,
+        categoryName: categoryNameMap.get(lc.categoryId) || 'Unknown',
+        isPrimary: lc.isPrimary,
+      })),
 
       // Return ALL images with proper URLs from storage keys
       baseImages: product.images.map((img) => ({
@@ -59,6 +73,8 @@ export const GET = withSecurity(async (request, context, { params }) => {
         dominantColorHex: '#CCCCCC',
       },
 
+      defaultGenerationSettings: product.defaultGenerationSettings ?? null,
+
       createdAt: product.createdAt.toISOString(),
       updatedAt: product.updatedAt.toISOString(),
     };
@@ -75,19 +91,24 @@ export const GET = withSecurity(async (request, context, { params }) => {
     } = mappedProduct;
 
     if (includeAssets) {
-      // Query assets and stats in parallel - stats use optimized SQL aggregation
+      // Query enriched assets and stats in parallel - stats use optimized SQL aggregation
       const [productAssets, stats] = await Promise.all([
-        db.generatedAssets.listByProductId(clientId, id, 100),
+        db.generatedAssets.listByProductIdEnriched(clientId, id, 100),
         db.generatedAssets.getStatsByProductId(clientId, id),
       ]);
 
       response.generatedAssets = productAssets.map((asset) => ({
         id: asset.id,
         url: asset.assetUrl,
-        assetType: asset.assetType, // TODO: Extract from settings if needed
-        rating: 0, // TODO: Add rating field to schema
+        assetType: asset.assetType,
+        rating: 0,
         isPinned: asset.pinned,
         approvalStatus: asset.approvalStatus,
+        isFavorite: asset.isFavorite,
+        syncedAt: asset.syncedAt?.toISOString() ?? undefined,
+        prompt: asset.prompt ?? undefined,
+        collectionId: asset.collectionId ?? undefined,
+        collectionName: asset.collectionName ?? undefined,
         createdAt: asset.createdAt.toISOString(),
       }));
 
@@ -183,6 +204,15 @@ export const PATCH = withSecurity(async (request, context, { params }) => {
     }
     if (body.price !== undefined) {
       updateData.price = body.price != null ? body.price.toString() : null;
+    }
+    if (body.defaultGenerationSettings !== undefined) {
+      updateData.defaultGenerationSettings = body.defaultGenerationSettings;
+    }
+    if (body.analysisData !== undefined) {
+      updateData.analysisData = body.analysisData;
+    }
+    if (body.analyzedAt !== undefined) {
+      updateData.analyzedAt = body.analyzedAt ? new Date(body.analyzedAt) : null;
     }
 
     const updated = await db.products.update(id, updateData);

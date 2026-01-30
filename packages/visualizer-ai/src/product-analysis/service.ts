@@ -148,6 +148,103 @@ const STYLE_KEYWORDS: Record<string, string[]> = {
   'Art Deco': ['art deco', 'glamour', 'geometric', 'gatsby', 'luxe'],
 };
 
+// Common color name → hex mapping for normalizing AI responses
+const COLOR_NAME_TO_HEX: Record<string, string> = {
+  neutral: '#B0A899',
+  white: '#FFFFFF',
+  black: '#000000',
+  red: '#CC3333',
+  blue: '#3366CC',
+  green: '#339933',
+  yellow: '#CCCC33',
+  orange: '#CC7733',
+  purple: '#7733CC',
+  pink: '#CC6699',
+  brown: '#8B4513',
+  gray: '#808080',
+  grey: '#808080',
+  beige: '#D4C5A9',
+  cream: '#FFFDD0',
+  ivory: '#FFFFF0',
+  tan: '#D2B48C',
+  gold: '#CFB53B',
+  silver: '#C0C0C0',
+  navy: '#001F3F',
+  teal: '#008080',
+  charcoal: '#36454F',
+  walnut: '#5C3317',
+  oak: '#C19A6B',
+  mahogany: '#4E1609',
+  espresso: '#3C1414',
+  chocolate: '#3D1C02',
+  taupe: '#483C32',
+  slate: '#708090',
+  sand: '#C2B280',
+  olive: '#556B2F',
+  rust: '#B7410E',
+  burgundy: '#800020',
+  maroon: '#800000',
+  coral: '#FF7F50',
+  salmon: '#FA8072',
+  peach: '#FFCBA4',
+  lavender: '#B57EDC',
+  mint: '#98FB98',
+  turquoise: '#40E0D0',
+  copper: '#B87333',
+  brass: '#B5A642',
+  chrome: '#DBE4EB',
+  natural: '#C8B88A',
+  'dark brown': '#3B2005',
+  'dark-brown': '#3B2005',
+  'light brown': '#B5835A',
+  'light-brown': '#B5835A',
+  'dark gray': '#555555',
+  'dark-gray': '#555555',
+  'light gray': '#D3D3D3',
+  'light-gray': '#D3D3D3',
+  'dark grey': '#555555',
+  'dark-grey': '#555555',
+  'light grey': '#D3D3D3',
+  'light-grey': '#D3D3D3',
+  'off-white': '#FAF9F6',
+  'off white': '#FAF9F6',
+};
+
+/**
+ * Normalize a color value to a valid hex code.
+ * If the value is already hex, return it. Otherwise, look up in color name map.
+ * Falls back to a neutral color if unknown.
+ */
+function normalizeColorToHex(color: string): string {
+  const trimmed = color.trim();
+
+  // Already a valid hex code
+  if (/^#[0-9a-fA-F]{3,8}$/.test(trimmed)) {
+    // Normalize 3-char hex to 6-char
+    if (trimmed.length === 4) {
+      const r = trimmed[1], g = trimmed[2], b = trimmed[3];
+      return `#${r}${r}${g}${g}${b}${b}`.toUpperCase();
+    }
+    return trimmed.toUpperCase();
+  }
+
+  // Look up by name (case-insensitive)
+  const lower = trimmed.toLowerCase();
+  if (COLOR_NAME_TO_HEX[lower]) {
+    return COLOR_NAME_TO_HEX[lower];
+  }
+
+  // Try partial match (e.g., "Natural Oak" → "oak" or "natural")
+  for (const [name, hex] of Object.entries(COLOR_NAME_TO_HEX)) {
+    if (lower.includes(name) || name.includes(lower)) {
+      return hex;
+    }
+  }
+
+  // Fallback
+  return '#808080';
+}
+
 // Material keywords
 const MATERIAL_KEYWORDS: Record<string, string[]> = {
   Wood: ['wood', 'oak', 'walnut', 'mahogany', 'pine', 'birch', 'teak', 'timber'],
@@ -170,11 +267,13 @@ Return JSON:
 {
   "productType": "specific type (e.g., '3-seater sofa', 'dining table')",
   "sceneTypes": ["Living Room", "Bedroom", etc - 1-3 suitable rooms],
-  "colorSchemes": [{"name": "Color Name", "colors": ["color1", "color2"]}],
+  "colorSchemes": [{"name": "Color Name", "colors": ["#hex1", "#hex2"]}],
   "materials": ["specific materials with finishes"],
   "size": {"type": "small|medium|large|specific", "dimensions": "optional, e.g., '1.60 x 0.90 m'"},
   "styles": ["Modern", "Scandinavian", etc - 1-3 styles]
-}`;
+}
+
+IMPORTANT: All colors in colorSchemes MUST be valid hex color codes (e.g., "#8B4513", "#F5F5DC"). Never use color names like "brown" or "neutral".`;
 
 /**
  * Batch analysis prompt - analyzes multiple products in one API call
@@ -190,7 +289,7 @@ Return a JSON array with one object per product (in the same order as provided):
     "productId": "the product ID from metadata",
     "productType": "specific type (e.g., '3-seater sofa')",
     "sceneTypes": ["1-3 suitable rooms"],
-    "colorSchemes": [{"name": "Color Name", "colors": ["colors"]}],
+    "colorSchemes": [{"name": "Color Name", "colors": ["#hex1", "#hex2"]}],
     "materials": ["detected materials"],
     "size": {"type": "small|medium|large|specific", "dimensions": "optional"},
     "styles": ["1-3 design styles"]
@@ -199,7 +298,8 @@ Return a JSON array with one object per product (in the same order as provided):
 
 Rules:
 - Keep productType specific and lowercase
-- Be accurate based on image, don't assume`;
+- Be accurate based on image, don't assume
+- All colors MUST be valid hex color codes (e.g., "#8B4513", "#F5F5DC"). Never use color names`;
 
 // ============================================================================
 // IMAGE RESIZE UTILITY
@@ -738,14 +838,16 @@ export class ProductAnalysisService {
       ...(sizeData?.dimensions && typeof sizeData.dimensions === 'string' ? { dimensions: sizeData.dimensions } : {}),
     };
 
-    // Parse color schemes
+    // Parse color schemes and normalize all colors to hex
     const colorSchemesRaw = parsed.colorSchemes as Array<Record<string, unknown>> | undefined;
     const colorSchemes: ColorScheme[] = Array.isArray(colorSchemesRaw)
       ? colorSchemesRaw.map((scheme) => ({
           name: typeof scheme.name === 'string' ? scheme.name : 'Default',
-          colors: Array.isArray(scheme.colors) ? scheme.colors.filter((c): c is string => typeof c === 'string') : [],
+          colors: Array.isArray(scheme.colors)
+            ? scheme.colors.filter((c): c is string => typeof c === 'string').map(normalizeColorToHex)
+            : [],
         }))
-      : [{ name: 'Default', colors: ['neutral'] }];
+      : [{ name: 'Default', colors: ['#808080'] }];
 
     return {
       productType: typeof parsed.productType === 'string' ? parsed.productType : 'furniture',
@@ -771,7 +873,7 @@ export class ProductAnalysisService {
       colorSchemes: [
         {
           name: 'Default',
-          colors: [metadataResult.colors.primary, ...(metadataResult.colors.accent ?? [])],
+          colors: [metadataResult.colors.primary, ...(metadataResult.colors.accent ?? [])].map(normalizeColorToHex),
         },
       ],
       materials: metadataResult.materials,

@@ -27,7 +27,7 @@ export interface RecentCollection {
   generatedCount: number;
   totalImages: number;
   updatedAt: string;
-  thumbnailUrl?: string;
+  thumbnails: string[];
 }
 
 export interface RecentAsset {
@@ -35,7 +35,19 @@ export interface RecentAsset {
   imageUrl: string;
   productId: string;
   productName: string;
+  productCategory?: string;
+  sceneType?: string;
+  flowId?: string;
+  collectionId?: string;
   prompt?: string;
+  createdAt: string;
+}
+
+export interface RecentProduct {
+  id: string;
+  name: string;
+  category?: string;
+  imageUrl?: string;
   createdAt: string;
 }
 
@@ -43,6 +55,7 @@ export interface DashboardResponse {
   stats: DashboardStats;
   recentCollections: RecentCollection[];
   recentAssets: RecentAsset[];
+  recentProducts: RecentProduct[];
 }
 
 export interface ProductImage {
@@ -74,6 +87,8 @@ export interface Product {
   storeUrl?: string;
   storeName?: string;
   storeSku?: string;
+  // Linked categories (from product_categories join table)
+  linkedCategories?: Array<{ categoryId: string; categoryName: string; isPrimary: boolean }>;
 }
 
 export interface ProductCollection {
@@ -97,7 +112,9 @@ export interface ProductWithAssets extends Product {
     colors: string[];
     style: string[];
     dominantColorHex: string;
+    subject?: any;
   };
+  defaultGenerationSettings?: Record<string, any> | null;
   generatedAssets?: GeneratedAsset[];
   collections?: ProductCollection[];
   stats?: {
@@ -151,6 +168,7 @@ export interface UpdateProductPayload {
   sceneTypes?: string[];
   selectedSceneType?: string;
   price?: number;
+  defaultGenerationSettings?: Record<string, any> | null;
 }
 
 export interface Collection {
@@ -168,8 +186,7 @@ export interface Collection {
   promptTags?: Partial<PromptTags>;
   settings?: {
     generalInspiration?: any[];
-    sceneTypeInspiration?: Record<string, any>;
-    useSceneTypeInspiration?: boolean;
+    inspirationSections?: any[];
     userPrompt?: string;
     aspectRatio?: ImageAspectRatio;
     imageQuality?: '1k' | '2k' | '4k';
@@ -213,6 +230,14 @@ export interface CreateCollectionPayload {
   productIds: string[];
   inspirationImages?: Record<string, string>;
   promptTags?: Partial<PromptTags>;
+  settings?: {
+    generalInspiration?: any[];
+    inspirationSections?: any[];
+    userPrompt?: string;
+    aspectRatio?: ImageAspectRatio;
+    imageQuality?: '1k' | '2k' | '4k';
+    variantsPerProduct?: number;
+  };
 }
 
 export interface UpdateCollectionPayload {
@@ -223,8 +248,7 @@ export interface UpdateCollectionPayload {
   promptTags?: Partial<PromptTags>;
   settings?: {
     generalInspiration?: any[];
-    sceneTypeInspiration?: Record<string, any>;
-    useSceneTypeInspiration?: boolean;
+    inspirationSections?: any[];
     userPrompt?: string;
     aspectRatio?: ImageAspectRatio;
     imageQuality?: '1k' | '2k' | '4k';
@@ -257,8 +281,7 @@ export interface GenerationFlow {
     aspectRatio: ImageAspectRatio;
     variantsPerProduct: number;
     generalInspiration?: any[];
-    sceneTypeInspiration?: Record<string, any>;
-    useSceneTypeInspiration?: boolean;
+    inspirationSections?: any[];
   };
   generatedAssets: GeneratedAsset[];
   createdAt: string;
@@ -276,8 +299,7 @@ export interface CreateGenerationFlowPayload {
 export interface UpdateStudioSettingsPayload {
   // Inspiration (Section 1)
   generalInspiration?: any[];
-  sceneTypeInspiration?: Record<string, any>;
-  useSceneTypeInspiration?: boolean;
+  inspirationSections?: any[];
   sceneType?: string;
 
   // User Prompt (Section 3)
@@ -317,10 +339,13 @@ export interface GeneratedAsset {
   productName: string;
   flowId?: string;
   collectionId?: string;
+  collectionName?: string;
   sceneType: string;
   prompt?: string;
   rating?: number;
   isPinned: boolean;
+  isFavorite?: boolean;
+  syncedAt?: string;
   approvalStatus: 'pending' | 'approved' | 'rejected';
   status: 'pending' | 'generating' | 'completed' | 'error';
   createdAt: string;
@@ -407,7 +432,7 @@ export interface GenerateVideoResponse {
 
 export interface JobStatus {
   id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'active' | 'completed' | 'failed';
   progress?: number;
   result?: unknown;
   error?: string;
@@ -736,6 +761,7 @@ class ApiClient {
       id: string;
       productId: string;
       productName: string;
+      productSku?: string | null;
       productCategory?: string;
       productSceneTypes?: string[];
       status: string;
@@ -752,6 +778,8 @@ class ApiClient {
         approvalStatus: string;
         aspectRatio?: ImageAspectRatio;
         jobId?: string;
+        prompt?: string | null;
+        settings?: Record<string, unknown> | null;
       }>;
     }>;
     total: number;
@@ -834,6 +862,16 @@ class ApiClient {
 
   async getJobStatus(jobId: string): Promise<JobStatus> {
     return this.request<JobStatus>(`/api/jobs/${jobId}`, { cache: 'no-store' });
+  }
+
+  async getJobStatusBatch(jobIds: string[]): Promise<Record<string, JobStatus>> {
+    const data = await this.request<{ jobs: Record<string, JobStatus> }>('/api/jobs/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobIds }),
+      cache: 'no-store',
+    });
+    return data.jobs;
   }
 
   // ===== Generated Images / Assets =====
@@ -946,6 +984,22 @@ class ApiClient {
     return this.request<UploadResponse>('/api/upload', {
       method: 'POST',
       body: formData,
+    });
+  }
+
+  // ===== Single Product Analysis =====
+  async analyzeProduct(productId: string): Promise<{ success: boolean; productId: string; analysis: any }> {
+    return this.request(`/api/products/${productId}/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  async updateProductDefaultSettings(productId: string, settings: Record<string, unknown>): Promise<Product> {
+    return this.request<Product>(`/api/products/${productId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ defaultGenerationSettings: settings }),
     });
   }
 

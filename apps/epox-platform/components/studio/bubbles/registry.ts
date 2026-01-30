@@ -7,7 +7,7 @@ import type { BubbleDefinition } from './types';
 import { styleBubble } from './style/definition';
 import { lightingBubble } from './lighting/definition';
 import { cameraAngleBubble } from './camera-angle/definition';
-import { referenceBubble } from './inspiration/definition';
+import { referenceBubble } from './reference/definition';
 import { colorPaletteBubble } from './color-palette/definition';
 import { moodBubble } from './mood/definition';
 import { customBubble } from './custom/definition';
@@ -52,8 +52,12 @@ export function getAllBubbleDefinitions(): readonly BubbleDefinition[] {
 /**
  * Get bubbles by category
  */
-export function getBubblesByCategory(category: 'style' | 'scene' | 'technical'): readonly BubbleDefinition[] {
-  return BUBBLE_DEFINITIONS.filter((def) => def.category === category) as unknown as readonly BubbleDefinition[];
+export function getBubblesByCategory(
+  category: 'style' | 'scene' | 'technical'
+): readonly BubbleDefinition[] {
+  return BUBBLE_DEFINITIONS.filter(
+    (def) => def.category === category
+  ) as unknown as readonly BubbleDefinition[];
 }
 
 /**

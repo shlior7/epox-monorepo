@@ -8,8 +8,8 @@ export { buildPromptFromTags, buildPromptFromContext, generatePromptVariations }
 export type { PromptBuilderContext } from './types';
 
 // Art Director prompt builder (sandwich prompts with Pure Reference Constraint)
-export { buildArtDirectorPrompt, buildSimplePrompt } from './art-director-builder';
-export type { ArtDirectorInput, ArtDirectorResult } from './art-director-builder';
+export { buildArtDirectorPrompt, buildSimplePrompt, buildSmartPrompt, STYLE_CASCADE } from './art-director-builder';
+export type { ArtDirectorInput, ArtDirectorResult, ProductContext, SmartPromptInput, SmartPromptResult } from './art-director-builder';
 
 // Settings merger (hierarchical settings cascade)
 export { mergeGenerationSettings, formatSettingsSources } from './settings-merger';

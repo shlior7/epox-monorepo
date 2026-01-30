@@ -11,13 +11,19 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { withGenerationSecurity, verifyOwnership, forbiddenResponse } from '@/lib/security';
-import { resolveStorageUrl } from 'visualizer-storage';
-import type { FlowGenerationSettings, ProductImage, BubbleValue, Category, CollectionGenerationSettings } from 'visualizer-types';
+import { resolveStorageUrlAbsolute } from 'visualizer-storage';
+import type {
+  FlowGenerationSettings,
+  ProductImage,
+  BubbleValue,
+  Category,
+  CollectionGenerationSettings,
+  Product,
+} from 'visualizer-types';
 import { enqueueImageGeneration } from 'visualizer-ai';
 import { enforceQuota, consumeCredits } from '@/lib/services/quota';
 import {
-  buildArtDirectorPrompt,
-  buildSimplePrompt,
+  buildSmartPrompt,
   mergeGenerationSettings,
   formatSettingsSources,
   type MergeContext,
@@ -27,7 +33,6 @@ interface GenerateRequest {
   productIds?: string[]; // Optional: specific products to generate (defaults to all)
   settings?: Partial<FlowGenerationSettings>; // Override collection settings
 }
-
 
 // Force dynamic rendering since security middleware reads headers
 export const dynamic = 'force-dynamic';
@@ -66,7 +71,9 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
 
     // Fetch products with their images and analysis data
     const [productImagesMap, productsMap] = await Promise.all([
-      allProductIds.length > 0 ? db.productImages.listByProductIds(allProductIds) : new Map<string, ProductImage[]>(),
+      allProductIds.length > 0
+        ? db.productImages.listByProductIds(allProductIds)
+        : new Map<string, ProductImage[]>(),
       uniqueProductIds.length > 0 ? db.products.getByIds(uniqueProductIds) : new Map(),
     ]);
 
@@ -79,7 +86,8 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
     const categoriesMap = new Map<string, Category>(allCategories.map((c) => [c.id, c]));
 
     // Fetch product categories for all products
-    const productCategoriesMap = await db.productCategories.getProductsWithCategories(uniqueProductIds);
+    const productCategoriesMap =
+      await db.productCategories.getProductsWithCategories(uniqueProductIds);
 
     // Basic settings from collection and request override
     const baseSettings = {
@@ -92,79 +100,77 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
 
     // Calculate total expected images across all flows and enforce quota
     const variantsPerProduct = baseSettings.variantsPerProduct ?? 1;
-    const totalExpectedImages = generationFlows.reduce((sum, f) => sum + f.productIds.length * variantsPerProduct, 0);
+    const totalExpectedImages = generationFlows.reduce(
+      (sum, f) => sum + f.productIds.length * variantsPerProduct,
+      0
+    );
     const quotaDenied = await enforceQuota(clientId, totalExpectedImages);
     if (quotaDenied) return quotaDenied;
 
     // Create separate jobs for each gen flow so each gets its own generated images
+    // Process in batches for parallel DB inserts
+    const BATCH_SIZE = 50;
     const jobIds: string[] = [];
 
-    for (let i = 0; i < generationFlows.length; i++) {
-      const flow = generationFlows[i];
+    // Prepare all flow data first (CPU-bound, no async needed)
+    const flowTasks = generationFlows.map((flow) => {
       const flowId = flow.id;
       const productIds = flow.productIds;
-      let productImageUrls = Object.values(flow.selectedBaseImages);
 
       // Resolve product image URLs
       productIds.forEach((productId) => {
         if (!flow.selectedBaseImages[productId]) {
           const productImages = productImagesMap.get(productId) || [];
-          // Use explicitly marked primary image, or fall back to first by sort order
           const primaryImage = productImages.find((img) => img.isPrimary) ?? productImages[0];
           if (primaryImage?.imageUrl) {
-            const fullUrl = resolveStorageUrl(primaryImage.imageUrl);
+            const fullUrl = resolveStorageUrlAbsolute(primaryImage.imageUrl);
             if (fullUrl) {
               flow.selectedBaseImages[productId] = fullUrl;
             }
           }
         }
       });
-      productImageUrls = Object.values(flow.selectedBaseImages);
+      const productImageUrls = Object.values(flow.selectedBaseImages);
 
-      // Get the first product for this flow (for subject analysis)
       const firstProductId = productIds[0];
-      const firstProduct = firstProductId ? productsMap.get(firstProductId) : null;
+      const firstProduct: Product | undefined = firstProductId
+        ? productsMap.get(firstProductId)
+        : undefined;
       const subjectAnalysis = firstProduct?.analysisData?.subject;
-
-      // Get product categories for this product
       const productCategories = productCategoriesMap.get(firstProductId ?? '') ?? [];
-
-      // Get the flow's scene type
       const flowSceneType = (flow.settings as any)?.sceneType || 'Living-Room';
 
-      // Build merge context
       const mergeContext: MergeContext = {
         clientId,
         productId: firstProductId ?? '',
         productCategories,
         sceneType: flowSceneType,
+        productDefaultSettings: firstProduct?.defaultGenerationSettings ?? undefined,
         collectionSettings: collection.settings as CollectionGenerationSettings | undefined,
         flowSettings: flow.settings,
       };
 
-      // Merge settings from all hierarchy levels
       const merged = mergeGenerationSettings(mergeContext, clientDefaults, categoriesMap);
+      console.log(
+        `📊 Settings sources for flow ${flowId}: ${formatSettingsSources(merged.sources)}`
+      );
 
-      console.log(`📊 Settings sources for flow ${flowId}: ${formatSettingsSources(merged.sources)}`);
+      const categoryNames = productCategories
+        .map((pc) => categoriesMap.get(pc.categoryId)?.name)
+        .filter((n): n is string => !!n);
 
-      // Build prompt using art-director approach if we have subject analysis
-      let flowPrompt: string;
-      if (subjectAnalysis) {
-        const artDirectorResult = buildArtDirectorPrompt({
-          subjectAnalysis,
-          mergedBubbles: merged.mergedBubbles,
-          userPrompt: merged.userPrompt,
-          sceneType: flowSceneType,
-        });
-        flowPrompt = artDirectorResult.finalPrompt;
-        console.log(`🎨 Art Director prompt segments for flow ${flowId}:`, artDirectorResult.segments);
-      } else {
-        // Fallback to simple prompt if no subject analysis
-        flowPrompt = buildSimplePrompt(merged.mergedBubbles, merged.userPrompt);
-        console.log(`📝 Using simple prompt for flow ${flowId} (no subject analysis)`);
-      }
+      const smartResult = buildSmartPrompt({
+        productName: firstProduct?.name || 'product',
+        subjectClass: subjectAnalysis?.subjectClassHyphenated,
+        productCategories: categoryNames.length > 0 ? categoryNames : undefined,
+        sceneType: flowSceneType,
+        subjectAnalysis,
+        mergedBubbles: merged.mergedBubbles,
+        userPrompt: merged.userPrompt,
+      });
+      const flowPrompt = smartResult.finalPrompt;
+      console.log(`🧠 Smart prompt layers for flow ${flowId}:`, smartResult.layers);
 
-      // Extract reference image URLs from merged bubbles
       const inspirationImageUrls: string[] = [];
       for (const bubble of merged.mergedBubbles) {
         if (bubble.type === 'reference' && bubble.image?.url) {
@@ -172,53 +178,80 @@ export const POST = withGenerationSecurity(async (request, context, { params }) 
         }
       }
 
-      // Build collection settings for AI context
-      const collectionSettingsForJob = {
-        userPrompt: merged.userPrompt,
+      return {
+        flow,
+        flowId,
+        productIds,
+        productImageUrls,
+        flowPrompt,
+        merged,
+        inspirationImageUrls,
       };
+    });
 
-      // Create a job for this flow
-      const { jobId } = await enqueueImageGeneration(
-        clientId,
-        {
-          prompt: flowPrompt,
-          productIds: flow.productIds,
-          sessionId: flowId,
-          settings: {
-            aspectRatio: merged.aspectRatio,
-            imageQuality: merged.imageQuality,
-            numberOfVariants: variantsPerProduct,
-          },
-          productImageUrls,
-          inspirationImageUrls,
-          collectionSettings: collectionSettingsForJob,
-        },
-        {
-          priority: 100,
-          flowId,
-        }
+    // Process in batches with Promise.all for parallel DB inserts
+    for (let batchStart = 0; batchStart < flowTasks.length; batchStart += BATCH_SIZE) {
+      const batch = flowTasks.slice(batchStart, batchStart + BATCH_SIZE);
+
+      const batchResults = await Promise.all(
+        batch.map(
+          async ({
+            flow,
+            flowId,
+            productIds,
+            productImageUrls,
+            flowPrompt,
+            merged,
+            inspirationImageUrls,
+          }) => {
+            const collectionSettingsForJob = { userPrompt: merged.userPrompt };
+
+            const { jobId } = await enqueueImageGeneration(
+              clientId,
+              {
+                prompt: flowPrompt,
+                productIds: flow.productIds,
+                sessionId: flowId,
+                settings: {
+                  aspectRatio: merged.aspectRatio,
+                  imageQuality: merged.imageQuality,
+                  numberOfVariants: variantsPerProduct,
+                },
+                productImageUrls,
+                inspirationImageUrls,
+                collectionSettings: collectionSettingsForJob,
+              },
+              {
+                priority: 100,
+                flowId,
+              }
+            );
+
+            await db.generatedAssets.create({
+              clientId,
+              generationFlowId: flowId,
+              assetUrl: '',
+              assetType: 'image',
+              status: 'pending',
+              jobId,
+              productIds: flow.productIds,
+              settings: {
+                ...baseSettings,
+                aspectRatio: merged.aspectRatio,
+                imageQuality: merged.imageQuality,
+              } as FlowGenerationSettings,
+            });
+
+            console.log(
+              `🚀 Started generation job ${jobId} for flow ${flowId}, products ${productIds.join(',')}, base images: ${productImageUrls.join(', ') || 'none'}`
+            );
+
+            return jobId;
+          }
+        )
       );
 
-      // Create placeholder asset with pending status so we can resume polling on refresh
-      await db.generatedAssets.create({
-        clientId,
-        generationFlowId: flowId,
-        assetUrl: '', // Will be set when job completes
-        assetType: 'image',
-        status: 'pending',
-        jobId,
-        productIds: flow.productIds,
-        settings: {
-          ...baseSettings,
-          aspectRatio: merged.aspectRatio,
-          imageQuality: merged.imageQuality,
-        } as FlowGenerationSettings,
-      });
-
-      jobIds.push(jobId);
-      console.log(
-        `🚀 Started generation job ${jobId} for flow ${flowId}, products ${productIds.join(',')}, base images: ${productImageUrls.join(', ') || 'none'}`
-      );
+      jobIds.push(...batchResults);
     }
 
     // Consume credits after all jobs enqueued successfully

@@ -65,6 +65,7 @@ export class ProductRepository extends BaseRepository<Product> {
         analysisData: data.analysisData ?? null,
         analysisVersion: data.analysisVersion ?? null,
         analyzedAt: data.analyzedAt ?? null,
+        defaultGenerationSettings: data.defaultGenerationSettings ?? null,
         price: data.price ?? null,
         metadata: data.metadata ?? null,
         version: 1,
@@ -411,6 +412,7 @@ export class ProductRepository extends BaseRepository<Product> {
       generationFlowId: string | null;
       chatSessionId: string | null;
       assetUrl: string;
+      originalAssetUrl: string | null;
       assetType: string;
       status: string;
       prompt: string | null;
@@ -452,6 +454,7 @@ export class ProductRepository extends BaseRepository<Product> {
           generationFlowId: asset.generationFlowId,
           chatSessionId: asset.chatSessionId,
           assetUrl: asset.assetUrl,
+          originalAssetUrl: asset.originalAssetUrl ?? null,
           assetType: asset.assetType as 'image' | 'video',
           status: asset.status as 'pending' | 'generating' | 'completed' | 'error',
           prompt: asset.prompt,

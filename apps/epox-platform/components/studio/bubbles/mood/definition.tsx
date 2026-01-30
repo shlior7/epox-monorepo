@@ -13,14 +13,15 @@ export const moodBubble: BubbleDefinition<MoodBubbleValue> = {
   label: 'Mood',
   icon: Heart,
   category: 'style',
+  mergeStrategy: 'single',
   allowMultiple: false,
 
   Modal: MoodModal,
 
   renderPreview: (value) => (
     <div className="flex flex-col items-center px-1">
-      <Heart className="h-4 w-4 text-foreground" />
-      <span className="mt-0.5 text-center text-[9px] font-medium leading-tight text-foreground">
+      <Heart className="h-6 w-6 text-foreground" />
+      <span className="mt-0.5 text-center text-[12px] font-medium leading-tight text-foreground">
         {value.preset || 'Mood'}
       </span>
     </div>

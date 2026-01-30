@@ -1,7 +1,7 @@
 /**
  * Settings Merger
  * Merges generation settings from the full hierarchy:
- * Client → Category → Category+SceneType → Collection → Collection+Category → Collection+SceneType → Flow
+ * Client → Category → Category+SceneType → Collection → Collection Sections → Flow
  */
 
 import type {
@@ -15,6 +15,7 @@ import type {
   ImageQuality,
   Category,
 } from 'visualizer-types';
+import { getBubbleMergeStrategy } from 'visualizer-types';
 
 // ===== TYPES =====
 
@@ -30,6 +31,9 @@ export interface MergeContext {
 
   /** Flow's selected scene type (controls which scene-type settings apply) */
   sceneType: string;
+
+  /** Product-level default generation settings (configured during product creation) */
+  productDefaultSettings?: FlowGenerationSettings;
 
   /** Collection-level settings */
   collectionSettings?: CollectionGenerationSettings;
@@ -62,7 +66,7 @@ export interface MergedSettings {
 }
 
 export interface BubbleSource {
-  level: 'client' | 'category' | 'categorySceneType' | 'collection' | 'collectionCategory' | 'collectionSceneType' | 'flow';
+  level: 'client' | 'category' | 'categorySceneType' | 'productDefault' | 'collection' | 'collectionSection' | 'flow';
   label: string;
   bubbleCount: number;
 }
@@ -75,13 +79,12 @@ export interface BubbleSource {
  * For types that can have multiple values (custom, reference), all are kept.
  */
 function deduplicateBubbles(bubbles: BubbleValue[]): BubbleValue[] {
-  const multiValueTypes = new Set(['custom', 'reference', 'color-palette']);
   const seen = new Map<string, BubbleValue>();
   const result: BubbleValue[] = [];
 
   for (const bubble of bubbles) {
-    if (multiValueTypes.has(bubble.type)) {
-      // Keep all instances of multi-value types
+    if (getBubbleMergeStrategy(bubble.type) === 'additive') {
+      // Keep all instances of additive types
       result.push(bubble);
     } else {
       // For single-value types, last one wins
@@ -133,9 +136,8 @@ function isBubbleEmpty(bubble: BubbleValue): boolean {
  * 2. Category defaults (from primary category)
  * 3. Category + SceneType defaults
  * 4. Collection general inspiration
- * 5. Collection category inspiration
- * 6. Collection scene-type inspiration
- * 7. Flow settings (highest priority)
+ * 5. Collection inspiration sections (category/scene-type combo overrides)
+ * 6. Flow settings (highest priority)
  */
 export function mergeGenerationSettings(
   ctx: MergeContext,
@@ -195,6 +197,20 @@ export function mergeGenerationSettings(
     }
   }
 
+  // === Level 3.5: Product Default Settings ===
+  if (ctx.productDefaultSettings?.generalInspiration && ctx.productDefaultSettings.generalInspiration.length > 0) {
+    const validBubbles = ctx.productDefaultSettings.generalInspiration.filter((b) => !isBubbleEmpty(b));
+    bubbles.push(...validBubbles);
+    if (validBubbles.length > 0) {
+      sources.push({ level: 'productDefault', label: 'Product defaults', bubbleCount: validBubbles.length });
+    }
+  }
+
+  if (ctx.productDefaultSettings) {
+    aspectRatio = ctx.productDefaultSettings.aspectRatio || aspectRatio;
+    imageQuality = ctx.productDefaultSettings.imageQuality || imageQuality;
+  }
+
   // === Level 4: Collection General Inspiration ===
   if (ctx.collectionSettings?.generalInspiration && ctx.collectionSettings.generalInspiration.length > 0) {
     const validBubbles = ctx.collectionSettings.generalInspiration.filter((b) => !isBubbleEmpty(b));
@@ -204,36 +220,40 @@ export function mergeGenerationSettings(
     }
   }
 
-  // === Level 5: Collection Category Inspiration ===
-  if (ctx.collectionSettings?.categoryInspiration) {
-    for (const pc of ctx.productCategories) {
-      const catInspiration = ctx.collectionSettings.categoryInspiration[pc.categoryId];
-      if (catInspiration?.bubbles && catInspiration.bubbles.length > 0) {
-        const validBubbles = catInspiration.bubbles.filter((b) => !isBubbleEmpty(b));
+  // === Level 5: Collection Inspiration Sections ===
+  if (ctx.collectionSettings?.inspirationSections) {
+    const productCategoryIds = new Set(ctx.productCategories.map((c) => c.categoryId));
+
+    for (const section of ctx.collectionSettings.inspirationSections) {
+      if (!section.enabled) continue;
+
+      // Check category match: empty = match all
+      const categoryMatch =
+        section.categoryIds.length === 0 ||
+        section.categoryIds.some((catId) => productCategoryIds.has(catId));
+
+      // Check scene type match: empty = match all
+      const sceneTypeMatch =
+        section.sceneTypes.length === 0 ||
+        section.sceneTypes.includes(ctx.sceneType);
+
+      if (categoryMatch && sceneTypeMatch) {
+        const validBubbles = section.bubbles.filter((b) => !isBubbleEmpty(b));
         bubbles.push(...validBubbles);
         if (validBubbles.length > 0) {
-          const catName = categories.get(pc.categoryId)?.name || 'Category';
+          // Build label from category names and scene types
+          const catNames = section.categoryIds
+            .map((id) => categories.get(id)?.name || 'Unknown')
+            .join(', ');
+          const stNames = section.sceneTypes.join(', ');
+          const parts = [catNames || 'All categories', stNames || 'All scene types'];
           sources.push({
-            level: 'collectionCategory',
-            label: `Collection (${catName})`,
+            level: 'collectionSection',
+            label: `Section (${parts.join(' · ')})`,
             bubbleCount: validBubbles.length,
           });
         }
       }
-    }
-  }
-
-  // === Level 6: Collection Scene-Type Inspiration ===
-  if (ctx.collectionSettings?.sceneTypeInspiration?.[ctx.sceneType]?.bubbles) {
-    const stBubbles = ctx.collectionSettings.sceneTypeInspiration[ctx.sceneType].bubbles;
-    const validBubbles = stBubbles.filter((b) => !isBubbleEmpty(b));
-    bubbles.push(...validBubbles);
-    if (validBubbles.length > 0) {
-      sources.push({
-        level: 'collectionSceneType',
-        label: `Collection (${ctx.sceneType})`,
-        bubbleCount: validBubbles.length,
-      });
     }
   }
 
@@ -243,7 +263,7 @@ export function mergeGenerationSettings(
     imageQuality = ctx.collectionSettings.imageQuality || imageQuality;
   }
 
-  // === Level 7: Flow Settings (highest priority) ===
+  // === Level 6: Flow Settings (highest priority) ===
   if (ctx.flowSettings?.generalInspiration && ctx.flowSettings.generalInspiration.length > 0) {
     const validBubbles = ctx.flowSettings.generalInspiration.filter((b) => !isBubbleEmpty(b));
     bubbles.push(...validBubbles);
@@ -260,8 +280,10 @@ export function mergeGenerationSettings(
   // Deduplicate bubbles (later overrides earlier for same type)
   const mergedBubbles = deduplicateBubbles(bubbles);
 
-  // Merge user prompts (flow > collection)
-  const userPrompt = ctx.flowSettings?.userPrompt || ctx.collectionSettings?.userPrompt;
+  // Merge user prompts (flow > collection) - prefer non-empty flow prompt, then collection
+  const userPrompt =
+    (ctx.flowSettings?.userPrompt?.trim() || undefined) ??
+    (ctx.collectionSettings?.userPrompt?.trim() || undefined);
 
   return {
     mergedBubbles,
@@ -279,7 +301,7 @@ export function mergeGenerationSettings(
  */
 export function formatSettingsSources(sources: BubbleSource[]): string {
   if (sources.length === 0) {
-    return 'No bubble sources';
+    return 'No generation setting sources';
   }
 
   return sources.map((s) => `${s.label} (${s.bubbleCount})`).join(' → ');

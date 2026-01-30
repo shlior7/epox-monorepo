@@ -3,7 +3,7 @@
  * Open, user-editable category system with many-to-many product relationships
  */
 
-import { pgTable, text, timestamp, jsonb, integer, boolean, primaryKey, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, jsonb, integer, boolean, primaryKey, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { client } from './auth';
 import { product } from './products';
@@ -33,7 +33,7 @@ export const category = pgTable(
   },
   (table) => [
     index('category_client_id_idx').on(table.clientId),
-    index('category_slug_idx').on(table.clientId, table.slug),
+    uniqueIndex('category_client_slug_unique').on(table.clientId, table.slug),
     index('category_parent_id_idx').on(table.parentId),
     index('category_sort_order_idx').on(table.clientId, table.sortOrder),
   ]

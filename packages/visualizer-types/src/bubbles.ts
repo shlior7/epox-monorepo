@@ -101,3 +101,33 @@ export function isBubbleType(type: string): type is BubbleType {
     'background',
   ].includes(type);
 }
+
+// ===== MERGE STRATEGY =====
+
+/**
+ * Determines how bubbles of a given type are merged across hierarchy levels.
+ * - 'single': Most specific source wins (flow > section > collection > category > client). One value per type.
+ * - 'additive': All sources merge together. Multiple values per type coexist.
+ */
+export type BubbleMergeStrategy = 'single' | 'additive';
+
+export const BUBBLE_MERGE_STRATEGIES: Record<string, BubbleMergeStrategy> = {
+  style: 'single',
+  lighting: 'single',
+  'camera-angle': 'single',
+  mood: 'single',
+  reference: 'additive',
+  'color-palette': 'additive',
+  custom: 'additive',
+  'human-interaction': 'single',
+  props: 'single',
+  background: 'single',
+};
+
+/**
+ * Get the merge strategy for a bubble type.
+ * Defaults to 'single' for unknown types.
+ */
+export function getBubbleMergeStrategy(type: string): BubbleMergeStrategy {
+  return BUBBLE_MERGE_STRATEGIES[type] ?? 'single';
+}

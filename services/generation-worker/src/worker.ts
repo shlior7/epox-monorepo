@@ -232,7 +232,24 @@ export class GenerationWorker {
       this.resetSignal();
     }
 
+    // Only worker 0 runs periodic stale job cleanup
+    let lastTimeoutCheck = 0;
+    const TIMEOUT_CHECK_INTERVAL_MS = 60_000; // Every 60 seconds
+
     while (this.isRunning) {
+      // Periodically timeout stale jobs (only from worker 0 to avoid duplicate work)
+      if (workerId === 0 && Date.now() - lastTimeoutCheck > TIMEOUT_CHECK_INTERVAL_MS) {
+        lastTimeoutCheck = Date.now();
+        try {
+          const timedOut = await this.jobs.timeoutStaleJobs();
+          if (timedOut > 0) {
+            logger.info({ timedOut }, `Timed out ${timedOut} stale job(s)`);
+          }
+        } catch (err) {
+          logger.warn({ err }, 'Failed to timeout stale jobs');
+        }
+      }
+
       // Check distributed rate limit before attempting to claim
       if (!(await this.canProcessJob())) {
         await this.sleep(100);
@@ -840,8 +857,7 @@ export class GenerationWorker {
     const clientId = job.clientId;
 
     // Convert base64 to buffer
-    const { buffer, mimeType } = this.base64ToBuffer(base64Data);
-    const ext = mimeType.includes('webp') ? 'webp' : mimeType.includes('jpeg') ? 'jpg' : 'png';
+    const { buffer } = this.base64ToBuffer(base64Data);
 
     // Generate asset ID
     const assetId = `asset_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -856,11 +872,25 @@ export class GenerationWorker {
     // For storage path: use flowId or sessionId for organization
     const dbFlowId = job.flowId; // This is the actual generation_flow ID or null
     const storageFlowId = (job.flowId ?? sessionId) || 'adhoc';
-    const storagePath = storagePaths.generationAsset(clientId, storageFlowId, assetId, ext);
 
-    // Upload to R2 storage
-    await storage.upload(storagePath, buffer, mimeType);
-    const assetUrl = storage.getPublicUrl(storagePath);
+    // Produce both WebP (display) and PNG (original download) formats
+    const { default: sharp } = await import('sharp');
+    const [webpBuffer, pngBuffer] = await Promise.all([
+      sharp(buffer).webp({ quality: 85 }).toBuffer(),
+      sharp(buffer).png().toBuffer(),
+    ]);
+
+    const webpPath = storagePaths.generationAsset(clientId, storageFlowId, assetId, 'webp');
+    const pngPath = storagePaths.generationAssetOriginal(clientId, storageFlowId, assetId, 'png');
+
+    // Upload both formats in parallel
+    await Promise.all([
+      storage.upload(webpPath, webpBuffer, 'image/webp'),
+      storage.upload(pngPath, pngBuffer, 'image/png'),
+    ]);
+
+    const assetUrl = storage.getPublicUrl(webpPath);          // WebP for display
+    const originalAssetUrl = storage.getPublicUrl(pngPath);   // PNG for download
 
     // Create generatedAsset record in database
     const prompt = 'prompt' in payload ? payload.prompt : 'editPrompt' in payload ? payload.editPrompt : '';
@@ -882,6 +912,7 @@ export class GenerationWorker {
       // Try to update existing placeholder asset for this job
       const existingAssetId = await db.generatedAssets.completePendingByJobId(job.id, {
         assetUrl,
+        originalAssetUrl,
         prompt,
         settings,
       });
@@ -897,6 +928,7 @@ export class GenerationWorker {
         clientId,
         generationFlowId: dbFlowId || null, // Use null if no valid flow ID (standalone edits)
         assetUrl,
+        originalAssetUrl,
         assetType: 'image',
         status: 'completed',
         prompt,

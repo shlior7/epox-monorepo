@@ -6,6 +6,7 @@ export type { PresignedUrl, UploadOptions, StorageObject, StorageFacade } from '
 export {
   getStorageBaseUrl,
   resolveStorageUrl,
+  resolveStorageUrlAbsolute,
   resolveStorageUrls,
   extractStorageKey,
 } from './url-utils';

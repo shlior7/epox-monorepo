@@ -145,26 +145,20 @@ describe('Collection Flows API - POST /api/collections/[id]/flows', () => {
       productIds: ['prod-1', 'prod-2'],
       selectedBaseImages: {},
       settings: {
-        inspirationImages: [{ url: 'https://example.com/default.jpg' }],
-        sceneTypeInspirations: {
-          'Living Room': {
-            inspirationImages: [{ url: 'https://example.com/living.jpg' }],
-            mergedAnalysis: {
-              json: {
-                styleSummary: 'Modern',
-                detectedSceneType: 'Living Room',
-                heroObjectAccessories: null,
-                sceneInventory: [],
-                lightingPhysics: {
-                  sourceDirection: 'left',
-                  shadowQuality: 'soft',
-                  colorTemperature: 'warm',
-                },
-              },
-              promptText: 'Modern',
-            },
+        inspirationSections: [
+          {
+            id: 'section-1',
+            categoryIds: [],
+            sceneTypes: ['Living Room'],
+            bubbles: [
+              { type: 'style', preset: 'Modern' },
+            ],
+            enabled: true,
           },
-        },
+        ],
+        aspectRatio: '1:1',
+        imageQuality: '2k',
+        variantsPerProduct: 1,
       },
     } as any);
     vi.mocked(db.generationFlows.listByCollectionSession).mockResolvedValue([

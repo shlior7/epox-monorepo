@@ -1,53 +1,30 @@
 'use client';
 
-import { useState, use, useEffect, useCallback, useRef, useMemo } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import {
-  ArrowLeft,
-  Filter,
-  LayoutGrid,
-  Rows3,
-  Plus,
-  Sparkles,
-  PanelRightOpen,
-  PanelRightClose,
-  Loader2,
-  Play,
-  X,
-  Video,
-  Package,
-  Wand2,
-  RefreshCw,
-  Pin,
-} from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Input, SearchInput } from '@/components/ui/input';
-import { EmptyState } from '@/components/ui/empty-state';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  MinimalAccordion,
-  MinimalAccordionItem,
-  MinimalAccordionTrigger,
-  MinimalAccordionContent,
-} from '@/components/ui/minimal-accordion';
 import {
   UnifiedStudioConfigPanel,
-  ConfigPanelProvider,
-  type SceneTypeInfo,
   type ConfigPanelState,
-  useScrollSync,
-  InspirationPickerModal,
-  StyleExplorerModal,
-  ColorPaletteModal,
-  SceneTypeGroupedView,
-  type ProductItem,
+  type SceneTypeInfo,
 } from '@/components/studio';
-import { useConfigPanelSettings } from '@/components/studio/hooks/useConfigPanelSettings';
+import {
+  AssetDebugModal,
+  type AssetDebugInfo,
+} from '@/components/studio/AssetCard/AssetDebugModal';
+import { GenerationFlowCard } from '@/components/studio/GenerationFlowCard';
+import { GenerationFlowRow } from '@/components/studio/GenerationFlowRow';
+import { ProductThumbnailNav } from '@/components/studio/ThumbnailNav';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { EmptyState } from '@/components/ui/empty-state';
+import { SearchInput } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -55,41 +32,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { GenerationFlowCard } from '@/components/studio/GenerationFlowCard';
-import { ProductAssetCard } from '@/components/studio/AssetCard/ProductAssetCard';
-import { ProductThumbnailNav } from '@/components/studio/ThumbnailNav';
-import { cn } from '@/lib/utils';
-import { apiClient } from '@/lib/api-client';
 import { toast } from '@/components/ui/toast';
-import type { AssetStatus, ApprovalStatus } from '@/lib/types';
-import type {
-  FlowGenerationSettings,
-  SceneTypeInspirationMap,
-  VideoPromptSettings,
-  ImageAspectRatio,
-  BubbleValue,
-} from 'visualizer-types';
 import {
-  CAMERA_MOTION_OPTIONS,
-  VIDEO_TYPE_OPTIONS,
-} from 'visualizer-types';
+  CategoryWizardModal,
+  type CategoryWizardCategory,
+} from '@/components/wizard/CategoryWizardModal';
+import { apiClient } from '@/lib/api-client';
+import type { ApprovalStatus, AssetStatus } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  ArrowLeft,
+  Check,
+  Filter,
+  LayoutGrid,
+  Loader2,
+  PanelRightClose,
+  PanelRightOpen,
+  Pencil,
+  Pin,
+  Play,
+  Rows3,
+  ExternalLink,
+  Sparkles,
+  Store,
+  Upload,
+  X,
+} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { InspirationSection, VideoPromptSettings } from 'visualizer-types';
 
 type ViewMode = 'matrix' | 'list';
-
-// Output quality options
-const QUALITY_OPTIONS = [
-  { value: '1k', label: '1K', description: 'Fast' },
-  { value: '2k', label: '2K', description: 'Balanced' },
-  { value: '4k', label: '4K', description: 'High Quality' },
-] as const;
-
-// Aspect ratio options
-const ASPECT_OPTIONS = [
-  { value: '1:1', label: '1:1', icon: '◻' },
-  { value: '16:9', label: '16:9', icon: '▭' },
-  { value: '9:16', label: '9:16', icon: '▯' },
-  { value: '4:3', label: '4:3', icon: '▱' },
-] as const;
 
 type StudioTab = 'images' | 'video';
 
@@ -135,17 +111,6 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   // List view state
   const mainListRef = useRef<HTMLDivElement>(null);
 
-  // Settings state
-  const [generalInspiration, setGeneralInspiration] = useState<BubbleValue[]>([]);
-  const [sceneTypeInspiration, setSceneTypeInspiration] = useState<SceneTypeInspirationMap>({});
-  const [useSceneTypeInspiration, setUseSceneTypeInspiration] = useState(true);
-  const [userPrompt, setUserPrompt] = useState('');
-  const [outputSettings, setOutputSettings] = useState({
-    aspectRatio: '1:1' as ImageAspectRatio,
-    quality: '2k' as '1k' | '2k' | '4k',
-    variantsCount: 1,
-  });
-
   const [selectedBaseImages, setSelectedBaseImages] = useState<Record<string, string>>({});
 
   // Video Settings
@@ -161,6 +126,28 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   const [editingSceneTypeFlowId, setEditingSceneTypeFlowId] = useState<string | null>(null);
   const [newSceneTypeValue, setNewSceneTypeValue] = useState('');
   const sceneTypeAccordionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Debug mode
+  const searchParams = useSearchParams();
+  const debugMode = searchParams.has('debug');
+  const [debugAssetId, setDebugAssetId] = useState<string | null>(null);
+
+  // Sync to store state
+  const [syncConfirmOpen, setSyncConfirmOpen] = useState(false);
+  const [syncFlowData, setSyncFlowData] = useState<{
+    assetId: string;
+    assetImageUrl: string;
+    productId: string;
+    productName: string;
+    productSku?: string;
+    productCategory?: string;
+  } | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Inline name editing
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingName, setEditingName] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Generation state
   const [flowJobs, setFlowJobs] = useState<Map<string, FlowJobState>>(new Map());
@@ -184,6 +171,150 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     enabled: !!collection,
     refetchInterval: isGenerationInProgress ? 5000 : false,
   });
+
+  // Fetch store connection status (for sync dialog)
+  const { data: storeConnectionData } = useQuery({
+    queryKey: ['store-connection-status'],
+    queryFn: () => apiClient.getStoreConnectionStatus(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch client categories for wizard
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await fetch('/api/categories');
+      if (!res.ok) return { categories: [] };
+      return res.json() as Promise<{
+        categories: Array<{ id: string; name: string; productCount: number }>;
+      }>;
+    },
+  });
+
+  // ===== CONFIG PANEL STATE (ref as single source of draft state) =====
+  const configPanelStateRef = useRef<ConfigPanelState | null>(null);
+  const hasInitializedRef = useRef(false);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [configPanelKey, setConfigPanelKey] = useState(0);
+
+  // Compute initialState from query data — by the time we render past the loading guard,
+  // collection IS available, so this eliminates the race condition.
+  const configPanelInitialState = useMemo((): ConfigPanelState => {
+    const s = collection?.settings as any;
+    return {
+      generalInspiration: Array.isArray(s?.generalInspiration) ? s.generalInspiration : [],
+      inspirationSections: Array.isArray(s?.inspirationSections) ? s.inspirationSections : [],
+      userPrompt: s?.userPrompt ?? '',
+      applyCollectionInspiration: true,
+      applyCollectionPrompt: true,
+      outputSettings: {
+        aspectRatio: s?.aspectRatio ?? '1:1',
+        quality: (s?.imageQuality as '1k' | '2k' | '4k') ?? '2k',
+        variantsCount: s?.variantsPerProduct ?? 1,
+      },
+    };
+  }, [collection?.settings]);
+
+  // Use a ref for saveSettings so the callback doesn't need it in deps
+  const saveSettingsFnRef = useRef<(() => void) | undefined>(undefined);
+
+  const handleConfigStateChange = useCallback((configState: ConfigPanelState) => {
+    configPanelStateRef.current = configState;
+
+    // Skip auto-save until first real user interaction (not the initial mount)
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      return;
+    }
+
+    // Debounced auto-save
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      saveSettingsFnRef.current?.();
+    }, 1000);
+  }, []);
+
+  // Category wizard state
+  const [wizardOpen, setWizardOpen] = useState(false);
+
+  // Derive categories present in this collection (match by name against flows)
+  const collectionCategories: CategoryWizardCategory[] = useMemo(() => {
+    if (!categoriesData?.categories || !flowsData?.flows) return [];
+
+    // Collect unique category names from flows
+    const flowCategoryNames = new Set<string>();
+    flowsData.flows.forEach((flow) => {
+      if (flow.productCategory) flowCategoryNames.add(flow.productCategory);
+    });
+
+    // Match against actual categories (deduplicate by name)
+    const seen = new Set<string>();
+    return categoriesData.categories
+      .filter((cat) => {
+        if (!flowCategoryNames.has(cat.name) || seen.has(cat.name)) return false;
+        seen.add(cat.name);
+        return true;
+      })
+      .map((cat) => ({
+        id: cat.id,
+        name: cat.name,
+        productCount: flowsData.flows.filter((f) => f.productCategory === cat.name).length,
+      }));
+  }, [categoriesData?.categories, flowsData?.flows]);
+
+  // CategoryInfo for config panel (subset of CategoryWizardCategory)
+  const configPanelCategories = useMemo(() => {
+    return collectionCategories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      productCount: c.productCount,
+    }));
+  }, [collectionCategories]);
+
+  // Map category ID → first product image URL for category bubble previews
+  const categoryProductImages = useMemo(() => {
+    if (!categoriesData?.categories || !flowsData?.flows) return {};
+    const map: Record<string, string> = {};
+    for (const cat of categoriesData.categories) {
+      const flow = flowsData.flows.find(
+        (f) => f.productCategory === cat.name && f.baseImages[0]?.url
+      );
+      if (flow) {
+        map[cat.id] = flow.baseImages[0].url;
+      }
+    }
+    return map;
+  }, [categoriesData?.categories, flowsData?.flows]);
+
+  const handleWizardComplete = useCallback(
+    async (sections: InspirationSection[]) => {
+      // Filter out sections with no bubbles (skipped categories)
+      const nonEmpty = sections.filter((s) => s.bubbles.length > 0);
+      if (nonEmpty.length === 0) return;
+
+      // Merge wizard sections with current settings and save to API
+      const currentRef = configPanelStateRef.current ?? configPanelInitialState;
+      const mergedSections = [...currentRef.inspirationSections, ...nonEmpty];
+
+      try {
+        await apiClient.updateCollection(id, {
+          settings: {
+            ...((collection?.settings as any) ?? {}),
+            inspirationSections: mergedSections,
+          },
+        });
+        // Invalidate to refresh query data (our single source of truth)
+        await queryClient.invalidateQueries({ queryKey: ['collection', id] });
+        // Bump key to force config panel remount with fresh initialState
+        setConfigPanelKey((k) => k + 1);
+        hasInitializedRef.current = false; // Reset so next mount doesn't auto-save
+      } catch (error) {
+        console.error('Failed to save wizard sections:', error);
+        toast.error('Failed to save category settings');
+      }
+    },
+    [id, collection?.settings, configPanelInitialState, queryClient]
+  );
 
   // Map productId -> flowId for quick lookup
   const productToFlowMap = useMemo(() => {
@@ -225,23 +356,11 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     }
   }, [flowsData?.flows]);
 
-  // Initialize settings from collection
+  // Initialize video settings from collection
+  // (config panel settings are now computed directly via configPanelInitialState)
   useEffect(() => {
     if (collection?.settings) {
       const s = collection.settings as any;
-      console.log('📥 Loading collection settings from database:', {
-        generalInspirationCount: Array.isArray(s.generalInspiration) ? s.generalInspiration.length : 0,
-        sceneTypeInspirationKeys: Object.keys(s.sceneTypeInspiration ?? {}),
-      });
-      if (Array.isArray(s.generalInspiration)) setGeneralInspiration(s.generalInspiration);
-      if (s.sceneTypeInspiration)
-        setSceneTypeInspiration(s.sceneTypeInspiration as SceneTypeInspirationMap);
-      if (typeof s.useSceneTypeInspiration === 'boolean') setUseSceneTypeInspiration(s.useSceneTypeInspiration);
-      if (s.userPrompt) setUserPrompt(s.userPrompt);
-      if (s.aspectRatio) setOutputSettings((prev) => ({ ...prev, aspectRatio: s.aspectRatio! }));
-      if (s.imageQuality) setOutputSettings((prev) => ({ ...prev, quality: s.imageQuality! }));
-      if (s.variantsPerProduct)
-        setOutputSettings((prev) => ({ ...prev, variantsCount: s.variantsPerProduct! }));
       if (s.video) {
         setVideoPrompt(s.video.prompt ?? '');
         setVideoSettings({
@@ -272,30 +391,35 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
 
   // No longer needed - multi-open accordions don't need tab-based reset
 
-  // Scene type groups from inspiration
+  // Scene type groups from inspiration sections (read from query data)
   const sceneTypeGroups = useMemo(() => {
+    const sections = configPanelInitialState.inspirationSections;
     const groups: Record<string, number> = {};
-    for (const [sceneType, data] of Object.entries(sceneTypeInspiration)) {
-      groups[sceneType] = data.bubbles?.length ?? 0;
+    for (const section of sections) {
+      for (const st of section.sceneTypes) {
+        groups[st] = (groups[st] || 0) + section.bubbles.length;
+      }
     }
     return groups;
-  }, [sceneTypeInspiration]);
+  }, [configPanelInitialState.inspirationSections]);
 
   // All available scene types (from flows in the collection)
   const availableSceneTypes = useMemo(() => {
+    const sections = configPanelInitialState.inspirationSections;
     const types = new Set<string>();
     flowsData?.flows?.forEach((flow) => {
-      // Normalize scene types: trim whitespace
       flow.productSceneTypes?.forEach((type) => {
         const normalized = type.trim();
         if (normalized) types.add(normalized);
       });
     });
-    // Also add any scene types from inspiration
-    Object.keys(sceneTypeInspiration).forEach((type) => {
-      const normalized = type.trim();
-      if (normalized) types.add(normalized);
-    });
+    // Also add scene types from inspiration sections
+    for (const section of sections) {
+      for (const st of section.sceneTypes) {
+        const normalized = st.trim();
+        if (normalized) types.add(normalized);
+      }
+    }
     // Add some common defaults if empty
     if (types.size === 0) {
       ['Living Room', 'Bedroom', 'Office', 'Kitchen', 'Dining Room', 'Outdoor', 'Studio'].forEach(
@@ -303,7 +427,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       );
     }
     return Array.from(types).sort();
-  }, [flowsData?.flows, sceneTypeInspiration]);
+  }, [flowsData?.flows, configPanelInitialState.inspirationSections]);
 
   // Derive scene types for config panel (grouped by sceneType field in flow settings)
   const configPanelSceneTypes: SceneTypeInfo[] = useMemo(() => {
@@ -373,6 +497,10 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
           timestamp: new Date(img.timestamp),
           type: 'generated' as const,
           aspectRatio: img.aspectRatio,
+          // Debug info
+          prompt: img.prompt ?? undefined,
+          settings: img.settings ?? undefined,
+          jobId: img.jobId ?? undefined,
         }));
 
       const baseImages = flow.baseImages || [];
@@ -383,7 +511,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
         product: {
           id: flow.productId,
           name: flow.productName,
-          sku: undefined,
+          sku: flow.productSku || undefined,
           category: flow.productCategory,
         },
         baseImages,
@@ -547,27 +675,34 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     return baseImage?.url ?? null;
   }, [readyToGenerateFlows, selectedBaseImages]);
 
-  // Poll for job statuses
+  // Poll for job statuses (batch — single request for all active jobs)
   const pollJobStatuses = useCallback(async () => {
     if (flowJobs.size === 0) return;
 
-    const updates = new Map(flowJobs);
-    let hasChanges = false;
-    let completedCount = 0;
-    let errorCount = 0;
-
+    // Collect all active job IDs
+    const activeEntries: Array<[string, typeof flowJobs extends Map<string, infer V> ? V : never]> =
+      [];
     for (const [productId, jobState] of flowJobs) {
-      if (jobState.status === 'completed' || jobState.status === 'error') {
-        continue;
-      }
+      if (jobState.status === 'completed' || jobState.status === 'error') continue;
+      if (!jobState.jobId) continue;
+      activeEntries.push([productId, jobState]);
+    }
 
-      // Skip polling if jobId is not yet available (optimistic state before mutation completes)
-      if (!jobState.jobId) {
-        continue;
-      }
+    if (activeEntries.length === 0) return;
 
-      try {
-        const status = await apiClient.getJobStatus(jobState.jobId);
+    const jobIds = activeEntries.map(([, s]) => s.jobId!);
+
+    try {
+      const statuses = await apiClient.getJobStatusBatch(jobIds);
+
+      const updates = new Map(flowJobs);
+      let hasChanges = false;
+      let completedCount = 0;
+      let errorCount = 0;
+
+      for (const [productId, jobState] of activeEntries) {
+        const status = statuses[jobState.jobId!];
+        if (!status) continue;
 
         if (status.status === 'completed') {
           updates.set(productId, { ...jobState, status: 'completed', progress: 100 });
@@ -577,38 +712,38 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
           updates.set(productId, { ...jobState, status: 'error', progress: 0 });
           hasChanges = true;
           errorCount++;
-        } else if (status.status === 'processing') {
+        } else if (status.status === 'processing' || status.status === 'active') {
           const newProgress = Math.min(90, jobState.progress + 10);
           if (newProgress !== jobState.progress) {
             updates.set(productId, { ...jobState, progress: newProgress });
             hasChanges = true;
           }
         }
-      } catch (error) {
-        console.error(`Failed to poll job status for ${productId}:`, error);
       }
-    }
 
-    if (hasChanges) {
-      const activeJobs = new Map(
-        Array.from(updates.entries()).filter(
-          ([_, state]) => state.status !== 'completed' && state.status !== 'error'
-        )
-      );
+      if (hasChanges) {
+        const activeJobs = new Map(
+          Array.from(updates.entries()).filter(
+            ([_, state]) => state.status !== 'completed' && state.status !== 'error'
+          )
+        );
 
-      setFlowJobs(activeJobs);
+        setFlowJobs(activeJobs);
 
-      if (completedCount > 0) {
-        const label = activeGenerationType === 'video' ? 'video' : 'image';
-        toast.success(`${completedCount} ${label}(s) generated successfully!`);
-        queryClient.invalidateQueries({ queryKey: ['collection', id] });
-        queryClient.invalidateQueries({ queryKey: ['collection-flows', id] });
-        queryClient.invalidateQueries({ queryKey: ['products', 'all'] });
+        if (completedCount > 0) {
+          const label = activeGenerationType === 'video' ? 'video' : 'image';
+          toast.success(`${completedCount} ${label}(s) generated successfully!`);
+          queryClient.invalidateQueries({ queryKey: ['collection', id] });
+          queryClient.invalidateQueries({ queryKey: ['collection-flows', id] });
+          queryClient.invalidateQueries({ queryKey: ['products', 'all'] });
+        }
+        if (errorCount > 0) {
+          const label = activeGenerationType === 'video' ? 'video' : 'image';
+          toast.error(`${errorCount} ${label} generation(s) failed`);
+        }
       }
-      if (errorCount > 0) {
-        const label = activeGenerationType === 'video' ? 'video' : 'image';
-        toast.error(`${errorCount} ${label} generation(s) failed`);
-      }
+    } catch (error) {
+      console.error('Failed to batch poll job statuses:', error);
     }
   }, [flowJobs, id, queryClient, activeGenerationType]);
 
@@ -634,6 +769,9 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
   // Save settings mutation
   const saveSettingsMutation = useMutation({
     mutationFn: async () => {
+      // Read the latest draft state from the config panel ref
+      const panelState = configPanelStateRef.current ?? configPanelInitialState;
+
       const normalizedVideoSettings: VideoPromptSettings = {
         videoType: videoSettings.videoType,
         cameraMotion: videoSettings.cameraMotion,
@@ -643,13 +781,12 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
         soundPrompt: videoSettings.soundPrompt,
       };
       const settings = {
-        generalInspiration,
-        sceneTypeInspiration,
-        useSceneTypeInspiration,
-        userPrompt,
-        aspectRatio: outputSettings.aspectRatio,
-        imageQuality: outputSettings.quality as '1k' | '2k' | '4k',
-        variantsPerProduct: outputSettings.variantsCount,
+        generalInspiration: panelState.generalInspiration,
+        inspirationSections: panelState.inspirationSections,
+        userPrompt: panelState.userPrompt,
+        aspectRatio: panelState.outputSettings.aspectRatio,
+        imageQuality: panelState.outputSettings.quality as '1k' | '2k' | '4k',
+        variantsPerProduct: panelState.outputSettings.variantsCount,
         video: {
           prompt: videoPrompt || undefined,
           settings: normalizedVideoSettings,
@@ -658,7 +795,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       };
       console.log('📤 Saving collection settings to API:', {
         generalInspirationCount: settings.generalInspiration.length,
-        sceneTypeInspirationKeys: Object.keys(settings.sceneTypeInspiration),
+        inspirationSectionsCount: settings.inspirationSections.length,
       });
       return apiClient.updateCollection(id, { settings });
     },
@@ -685,46 +822,44 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     },
   });
 
-  // Track if settings have been initialized from collection
-  const hasInitializedSettings = useRef(false);
+  // Rename collection mutation
+  const renameMutation = useMutation({
+    mutationFn: (newName: string) => apiClient.updateCollection(id, { name: newName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['collection', id] });
+      queryClient.invalidateQueries({ queryKey: ['sidebar-recent-sessions'] });
+      setIsEditingName(false);
+    },
+    onError: () => {
+      toast.error('Failed to rename collection');
+    },
+  });
 
-  // Mark settings as initialized after collection data loads
-  useEffect(() => {
-    if (collection?.settings) {
-      hasInitializedSettings.current = true;
-    }
-  }, [collection?.settings]);
+  const handleStartEditing = useCallback(() => {
+    setEditingName(collection?.name ?? '');
+    setIsEditingName(true);
+    setTimeout(() => nameInputRef.current?.select(), 0);
+  }, [collection?.name]);
 
-  // Auto-save settings on change (skip initial mount)
-  useEffect(() => {
-    // Skip auto-save if settings haven't been initialized yet
-    if (!hasInitializedSettings.current) {
+  const handleConfirmRename = useCallback(() => {
+    const trimmed = editingName.trim();
+    if (!trimmed || trimmed === collection?.name) {
+      setIsEditingName(false);
       return;
     }
+    renameMutation.mutate(trimmed);
+  }, [editingName, collection?.name, renameMutation]);
 
-    const timeoutId = setTimeout(() => {
-      if (collection) {
-        console.log('💾 Auto-saving collection settings:', {
-          generalInspirationCount: generalInspiration.length,
-          sceneTypeInspirationKeys: Object.keys(sceneTypeInspiration),
-        });
-        saveSettingsMutation.mutate();
-      }
-    }, 1000);
-    return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    generalInspiration,
-    sceneTypeInspiration,
-    useSceneTypeInspiration,
-    userPrompt,
-    outputSettings,
-    videoPrompt,
-    videoSettings,
-    videoPresetId,
-    collection?.id, // Only depend on collection ID, not the whole object
-    // Note: saveSettingsMutation is intentionally excluded to prevent infinite loop
-  ]);
+  const handleCancelRename = useCallback(() => {
+    setIsEditingName(false);
+  }, []);
+
+  // Keep saveSettings ref in sync for debounced auto-save
+  saveSettingsFnRef.current = () => {
+    if (collection) {
+      saveSettingsMutation.mutate();
+    }
+  };
 
   const persistVideoPresets = (presets: VideoPreset[]) => {
     setVideoPresets(presets);
@@ -851,17 +986,19 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       setFlowJobs(newJobStates);
       setActiveGenerationType('image');
 
+      // Read the latest draft state from the config panel ref
+      const panelState = configPanelStateRef.current ?? configPanelInitialState;
+
       // Call the new collection generate endpoint
       const result = await apiClient.generateCollection(id, {
         productIds,
         settings: {
-          generalInspiration,
-          sceneTypeInspiration,
-          useSceneTypeInspiration,
-          userPrompt,
-          aspectRatio: outputSettings.aspectRatio,
-          imageQuality: outputSettings.quality,
-          variantsPerProduct: outputSettings.variantsCount,
+          generalInspiration: panelState.generalInspiration,
+          inspirationSections: panelState.inspirationSections,
+          userPrompt: panelState.userPrompt,
+          aspectRatio: panelState.outputSettings.aspectRatio,
+          imageQuality: panelState.outputSettings.quality,
+          variantsPerProduct: panelState.outputSettings.variantsCount,
         },
       });
 
@@ -1054,9 +1191,60 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
       await apiClient.deleteGeneratedImage(revisionId);
       toast.success('Revision deleted');
       queryClient.invalidateQueries({ queryKey: ['collection', id] });
+      queryClient.invalidateQueries({ queryKey: ['collection-flows', id] });
       queryClient.invalidateQueries({ queryKey: ['products', 'all'] });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete revision');
+    }
+  };
+
+  // Favorite state: track favorited revision IDs locally
+  const [favoritedRevisionIds, setFavoritedRevisionIds] = useState<Set<string>>(new Set());
+
+  const handleFavoriteRevision = async (revisionId: string) => {
+    // Optimistic update
+    setFavoritedRevisionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(revisionId)) {
+        next.delete(revisionId);
+      } else {
+        next.add(revisionId);
+      }
+      return next;
+    });
+
+    try {
+      const response = await fetch('/api/favorite-asset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assetId: revisionId }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to toggle favorite');
+      }
+      // Sync with server state
+      setFavoritedRevisionIds((prev) => {
+        const next = new Set(prev);
+        if (data.isFavorite) {
+          next.add(revisionId);
+        } else {
+          next.delete(revisionId);
+        }
+        return next;
+      });
+    } catch (error) {
+      // Revert optimistic update
+      setFavoritedRevisionIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(revisionId)) {
+          next.delete(revisionId);
+        } else {
+          next.add(revisionId);
+        }
+        return next;
+      });
+      toast.error('Failed to update favorite');
     }
   };
 
@@ -1095,6 +1283,31 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     [productToFlowMap, queryClient, id]
   );
 
+  // Debug modal handler: find the revision and build debug info
+  const handleDebug = useCallback((flowId: string, revisionId: string) => {
+    setDebugAssetId(`${flowId}:${revisionId}`);
+  }, []);
+
+  const debugInfo = useMemo((): AssetDebugInfo | null => {
+    if (!debugAssetId) return null;
+    const [flowId, revisionId] = debugAssetId.split(':');
+    const flow = generationFlows.find((f) => f.id === flowId);
+    if (!flow) return null;
+    const revision = flow.revisions.find((r) => r.id === revisionId);
+    if (!revision) return null;
+    return {
+      assetId: revision.id,
+      prompt: (revision as any).prompt ?? null,
+      settings: (revision as any).settings ?? null,
+      jobId: (revision as any).jobId ?? null,
+      productId: flow.product.id,
+      productName: flow.product.name,
+      baseImageUrls: flow.baseImages.map((b) => b.url),
+      flowSettings: flowsData?.flows?.find((f) => f.id === flowId)?.settings ?? null,
+      collectionSettings: collection?.settings ?? null,
+    };
+  }, [debugAssetId, generationFlows, flowsData?.flows, collection?.settings]);
+
   const handleApproveAsset = async (flowId: string) => {
     try {
       toast.info('Use the individual studio to approve specific revisions');
@@ -1111,6 +1324,60 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
     link.click();
     document.body.removeChild(link);
   };
+
+  // Sync to store: open confirmation dialog for a given flow
+  const handleSyncClick = useCallback(
+    (flow: (typeof generationFlows)[number]) => {
+      // Use the latest completed revision as the asset to sync
+      const latestRevision = flow.revisions[0];
+      if (!latestRevision) {
+        toast.error('No generated image to upload');
+        return;
+      }
+      setSyncFlowData({
+        assetId: latestRevision.id,
+        assetImageUrl: latestRevision.imageUrl,
+        productId: flow.product.id,
+        productName: flow.product.name,
+        productSku: flow.product.sku,
+        productCategory: flow.product.category,
+      });
+      setSyncConfirmOpen(true);
+    },
+    []
+  );
+
+  const handleConfirmSync = useCallback(async () => {
+    if (!syncFlowData) return;
+    setIsSyncing(true);
+    try {
+      const response = await fetch('/api/store/sync-asset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assetId: syncFlowData.assetId,
+          productId: syncFlowData.productId,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to sync asset');
+      }
+      toast.success('Image uploaded to store', {
+        description: `Synced to ${syncFlowData.productName}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['collection-flows', id] });
+      queryClient.invalidateQueries({ queryKey: ['products', 'all'] });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to upload to store'
+      );
+    } finally {
+      setIsSyncing(false);
+      setSyncConfirmOpen(false);
+      setSyncFlowData(null);
+    }
+  }, [syncFlowData, queryClient, id]);
 
   const isLoading = isLoadingCollection || isLoadingFlows;
 
@@ -1159,10 +1426,60 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </Link>
-            <div>
-              <h1 className="text-lg font-semibold">{collection.name}</h1>
+            <div data-testid="collection-studio-header-info">
+              {isEditingName ? (
+                <div className="flex items-center gap-1.5" data-testid="collection-name-edit">
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleConfirmRename();
+                      if (e.key === 'Escape') handleCancelRename();
+                    }}
+                    className="h-8 rounded-md border border-border bg-background px-2 text-lg font-semibold focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    disabled={renameMutation.isPending}
+                    data-testid="collection-name-input"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={handleConfirmRename}
+                    disabled={renameMutation.isPending}
+                    testId="collection-name-confirm"
+                  >
+                    {renameMutation.isPending ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Check className="h-3.5 w-3.5 text-green-500" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={handleCancelRename}
+                    disabled={renameMutation.isPending}
+                    testId="collection-name-cancel"
+                  >
+                    <X className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="group flex items-center gap-1.5" data-testid="collection-name-display">
+                  <h1 className="text-lg font-semibold">{collection.name}</h1>
+                  <button
+                    onClick={handleStartEditing}
+                    className="rounded p-0.5 opacity-0 transition-opacity hover:bg-secondary/50 group-hover:opacity-100"
+                    data-testid="collection-name-edit-btn"
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+              )}
               <p className="text-sm text-muted-foreground">
-                {collection.productCount} products • {generalInspiration.length} inspiration bubbles
+                {collection.productCount} products •{' '}
+                {configPanelInitialState.generalInspiration.length} inspiration bubbles
               </p>
             </div>
           </div>
@@ -1239,47 +1556,14 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
         {/* Config Panel Sidebar - LEFT SIDE (matching single studio layout) */}
         {showConfigPanel && (
           <UnifiedStudioConfigPanel
+            key={configPanelKey}
             mode="collection-studio"
             sceneTypes={configPanelSceneTypes}
-            initialState={{
-              generalInspiration,
-              sceneTypeInspiration,
-              useSceneTypeInspiration,
-              userPrompt,
-              applyCollectionPrompt: true,
-              outputSettings: {
-                aspectRatio: outputSettings.aspectRatio,
-                quality: outputSettings.quality,
-                variantsCount: outputSettings.variantsCount,
-              },
-            }}
-            onStateChange={(panelState) => {
-              // Use functional updaters to avoid unnecessary re-renders
-              // when values haven't actually changed
-              setGeneralInspiration((prev) =>
-                prev === panelState.generalInspiration ? prev : panelState.generalInspiration
-              );
-              setSceneTypeInspiration((prev) =>
-                prev === panelState.sceneTypeInspiration ? prev : panelState.sceneTypeInspiration
-              );
-              setUseSceneTypeInspiration(panelState.useSceneTypeInspiration);
-              setUserPrompt(panelState.userPrompt);
-              setOutputSettings((prev) => {
-                const next = panelState.outputSettings;
-                if (
-                  prev.aspectRatio === next.aspectRatio &&
-                  prev.quality === next.quality &&
-                  prev.variantsCount === next.variantsCount
-                ) {
-                  return prev;
-                }
-                return {
-                  aspectRatio: next.aspectRatio,
-                  quality: next.quality,
-                  variantsCount: next.variantsCount,
-                };
-              });
-            }}
+            categories={configPanelCategories}
+            categoryProductImages={categoryProductImages}
+            onOpenCategoryWizard={() => setWizardOpen(true)}
+            initialState={configPanelInitialState}
+            onStateChange={handleConfigStateChange}
             onSave={async () => {
               await saveSettingsMutation.mutateAsync();
             }}
@@ -1324,11 +1608,7 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                 <Badge variant="secondary" className="gap-1">
                   {selectedFlowIds.size} selected
                 </Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedFlowIds(new Set())}
-                >
+                <Button variant="outline" size="sm" onClick={() => setSelectedFlowIds(new Set())}>
                   Clear
                 </Button>
               </div>
@@ -1392,12 +1672,17 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                               product={flow.product}
                               baseImages={flow.baseImages}
                               selectedBaseImageId={flow.selectedBaseImageId}
-                              revisions={flow.revisions}
+                              revisions={flow.revisions.map((r) => ({
+                                ...r,
+                                isFavorite: favoritedRevisionIds.has(r.id),
+                              }))}
                               status={flow.status}
                               approvalStatus={flow.approvalStatus}
                               isPinned={flow.isPinned}
                               sceneType={flow.sceneType}
                               availableSceneTypes={availableSceneTypes}
+                              debugMode={debugMode}
+                              onDebug={(revisionId) => handleDebug(flow.id, revisionId)}
                               onChangeBaseImage={(imageId) => {
                                 const baseImage = flow.baseImages.find((img) => img.id === imageId);
                                 if (baseImage) {
@@ -1407,10 +1692,11 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                               onChangeSceneType={(newSceneType) => {
                                 handleChangeSceneType(flow.id, flow.product.id, newSceneType);
                               }}
-                              onPin={() => handlePinFlow(flow.id, flow.product.id, flow.isPinned)}
                               onGenerate={() => handleGenerateFlow(flow.product.id)}
                               onDeleteRevision={handleDeleteRevision}
-                              onClick={() => handleProductClick(flow.product.id, flow.realFlowId)}
+                              onOpenStudio={() => handleProductClick(flow.product.id, flow.realFlowId)}
+                              onFavorite={handleFavoriteRevision}
+                              onSync={() => handleSyncClick(flow)}
                               isSelected={selectedFlowIds.has(flow.id)}
                               onSelect={(selected) => handleSelectFlow(flow.id, selected)}
                               className={cn(
@@ -1449,12 +1735,17 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                             product={flow.product}
                             baseImages={flow.baseImages}
                             selectedBaseImageId={flow.selectedBaseImageId}
-                            revisions={flow.revisions}
+                            revisions={flow.revisions.map((r) => ({
+                              ...r,
+                              isFavorite: favoritedRevisionIds.has(r.id),
+                            }))}
                             status={flow.status}
                             approvalStatus={flow.approvalStatus}
                             isPinned={flow.isPinned}
                             sceneType={flow.sceneType}
                             availableSceneTypes={availableSceneTypes}
+                            debugMode={debugMode}
+                            onDebug={(revisionId) => handleDebug(flow.id, revisionId)}
                             onChangeBaseImage={(imageId) => {
                               const baseImage = flow.baseImages.find((img) => img.id === imageId);
                               if (baseImage) {
@@ -1464,10 +1755,11 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                             onChangeSceneType={(newSceneType) => {
                               handleChangeSceneType(flow.id, flow.product.id, newSceneType);
                             }}
-                            onPin={() => handlePinFlow(flow.id, flow.product.id, flow.isPinned)}
                             onGenerate={() => handleGenerateFlow(flow.product.id)}
                             onDeleteRevision={handleDeleteRevision}
-                            onClick={() => handleProductClick(flow.product.id, flow.realFlowId)}
+                            onOpenStudio={() => handleProductClick(flow.product.id, flow.realFlowId)}
+                            onFavorite={handleFavoriteRevision}
+                            onSync={() => handleSyncClick(flow)}
                             isSelected={selectedFlowIds.has(flow.id)}
                             onSelect={(selected) => handleSelectFlow(flow.id, selected)}
                             className={cn(
@@ -1481,46 +1773,45 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
                     </div>
                   </div>
                 ) : (
-                  // List View - ProductAssetCard with gallery navigation (1.5 cards visible)
-                  <div className="mx-auto flex max-w-3xl flex-col gap-6">
+                  // List View - Horizontal revision rows
+                  <div className="flex flex-col gap-3">
                     {filteredFlows.map((flow) => (
-                      <ProductAssetCard
+                      <GenerationFlowRow
                         key={flow.id}
-                        product={{
-                          id: flow.product.id,
-                          name: flow.product.name,
-                          sku: flow.product.sku,
-                          thumbnailUrl: flow.baseImages[0]?.url,
-                        }}
-                        testId={`product-card--${flow.product.id}`}
+                        flowId={flow.id}
+                        collectionId={id}
+                        product={flow.product}
+                        baseImages={flow.baseImages}
+                        selectedBaseImageId={flow.selectedBaseImageId}
                         revisions={flow.revisions.map((r) => ({
-                          id: r.id,
-                          imageUrl: r.imageUrl,
-                          timestamp: r.timestamp,
-                          type: r.type,
-                          isVideo: false,
-                          aspectRatio: r.aspectRatio,
+                          ...r,
+                          isFavorite: favoritedRevisionIds.has(r.id),
                         }))}
-                        configuration={{
-                          sceneType: flow.sceneType,
-                          aspectRatio: outputSettings.aspectRatio,
-                          quality: outputSettings.quality,
-                        }}
+                        status={flow.status}
+                        approvalStatus={flow.approvalStatus}
                         isPinned={flow.isPinned}
-                        isApproved={flow.approvalStatus === 'approved'}
-                        isGenerating={flow.status === 'generating'}
-                        onPin={() => handlePinFlow(flow.id, flow.product.id, flow.isPinned)}
-                        onApprove={() => handleApproveAsset(flow.id)}
-                        onDownload={() => {
-                          const latestRevision = flow.revisions[0];
-                          if (latestRevision) {
-                            handleDownloadAsset(latestRevision, flow.product.name);
+                        sceneType={flow.sceneType}
+                        availableSceneTypes={availableSceneTypes}
+                        debugMode={debugMode}
+                        onDebug={(revisionId) => handleDebug(flow.id, revisionId)}
+                        onChangeBaseImage={(imageId) => {
+                          const baseImage = flow.baseImages.find((img) => img.id === imageId);
+                          if (baseImage) {
+                            handleChangeBaseImage(flow.product.id, imageId, baseImage.url);
                           }
                         }}
-                        onDelete={(revisionId) => handleDeleteRevision(revisionId)}
-                        onGenerate={() => handleProductClick(flow.product.id, flow.realFlowId)}
+                        onChangeSceneType={(newSceneType) => {
+                          handleChangeSceneType(flow.id, flow.product.id, newSceneType);
+                        }}
+                        onGenerate={() => handleGenerateFlow(flow.product.id)}
+                        onDeleteRevision={handleDeleteRevision}
                         onOpenStudio={() => handleProductClick(flow.product.id, flow.realFlowId)}
-                        className="shrink-0"
+                        onOpenProductDetails={() => router.push(`/products/${flow.product.id}`)}
+                        onFavorite={handleFavoriteRevision}
+                        onSync={() => handleSyncClick(flow)}
+                        isSelected={selectedFlowIds.has(flow.id)}
+                        onSelect={(selected) => handleSelectFlow(flow.id, selected)}
+                        testId={`flow-row--${flow.id}`}
                       />
                     ))}
                   </div>
@@ -1557,6 +1848,121 @@ export default function CollectionStudioPage({ params }: { params: Promise<{ id:
         </main>
       </div>
 
+      {/* Category Wizard Modal */}
+      <CategoryWizardModal
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        categories={collectionCategories}
+        onComplete={handleWizardComplete}
+      />
+
+      {/* Debug Modal */}
+      {debugInfo && (
+        <AssetDebugModal
+          open={!!debugAssetId}
+          onOpenChange={(open) => {
+            if (!open) setDebugAssetId(null);
+          }}
+          debugInfo={debugInfo}
+          testId="collection-debug-modal"
+        />
+      )}
+
+      {/* Sync to Store Confirmation Dialog */}
+      <Dialog open={syncConfirmOpen} onOpenChange={setSyncConfirmOpen}>
+        <DialogContent testId="sync-confirm-dialog" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Upload to Store
+            </DialogTitle>
+            <DialogDescription>
+              This will add the generated image to the product and sync it to your connected store.
+            </DialogDescription>
+          </DialogHeader>
+
+          {syncFlowData && (
+            <div className="space-y-4">
+              {/* Asset preview */}
+              <div className="overflow-hidden rounded-lg border border-border">
+                <div className="relative aspect-video bg-secondary">
+                  <Image
+                    src={syncFlowData.assetImageUrl}
+                    alt="Image to upload"
+                    fill
+                    sizes="400px"
+                    className="object-contain"
+                    unoptimized
+                  />
+                </div>
+              </div>
+
+              {/* Product details */}
+              <div className="rounded-lg border border-border p-3 space-y-1.5">
+                <p className="text-sm font-medium text-foreground" data-testid="sync-product-name">
+                  {syncFlowData.productName}
+                </p>
+                {syncFlowData.productSku && (
+                  <p className="text-xs text-muted-foreground" data-testid="sync-product-sku">
+                    SKU: {syncFlowData.productSku}
+                  </p>
+                )}
+                {syncFlowData.productCategory && (
+                  <p className="text-xs text-muted-foreground" data-testid="sync-product-category">
+                    Category: {syncFlowData.productCategory}
+                  </p>
+                )}
+              </div>
+
+              {/* Store connection info */}
+              {storeConnectionData?.connection ? (
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-secondary/30 p-3" data-testid="sync-store-info">
+                  <Store className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {storeConnectionData.connection.storeName}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {storeConnectionData.connection.storeUrl}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="flex-shrink-0 text-[10px] capitalize">
+                    {storeConnectionData.connection.provider}
+                  </Badge>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm text-warning" data-testid="sync-no-store">
+                  <Store className="h-4 w-4 flex-shrink-0" />
+                  <span>No store connected. The image will be added to the product&apos;s base images only.</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSyncConfirmOpen(false)}
+              disabled={isSyncing}
+              data-testid="sync-confirm-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmSync}
+              disabled={isSyncing}
+              data-testid="sync-confirm-submit"
+            >
+              {isSyncing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
+              Upload to Store
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

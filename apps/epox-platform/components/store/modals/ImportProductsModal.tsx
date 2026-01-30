@@ -28,10 +28,16 @@ interface StoreProduct {
   categories: Array<{ id: string | number; name: string; slug: string }>;
 }
 
+export interface ImportResult {
+  imported: number;
+  products: Array<{ id: string; name: string; storeId: string }>;
+  unconfiguredCategories: Array<{ id: string; name: string; productCount: number }>;
+}
+
 interface ImportProductsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onImportComplete?: () => void;
+  onImportComplete?: (result: ImportResult) => void;
   testId?: string;
 }
 
@@ -86,11 +92,15 @@ export function ImportProductsModal({
       }
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['store-assets'] });
       setSelectedIds(new Set());
-      onImportComplete?.();
+      onImportComplete?.({
+        imported: data.imported,
+        products: data.products,
+        unconfiguredCategories: data.unconfiguredCategories ?? [],
+      });
       onOpenChange(false);
     },
   });

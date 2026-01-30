@@ -109,15 +109,15 @@ export const colors = {
     300: '#fda4af',
   },
 
-  // Specialty gradients (CSS values)
+  // Specialty gradients (CSS values) — Monochrome Pro
   gradients: {
-    primary: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%)',
-    secondary: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
-    warm: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)',
-    premium: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)',
-    aurora: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 25%, #06b6d4 75%, #22d3ee 100%)',
-    surface: 'linear-gradient(180deg, rgba(99, 102, 241, 0.08) 0%, transparent 100%)',
-    glow: 'radial-gradient(ellipse at center, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
+    primary: 'linear-gradient(135deg, #8ab4f8 0%, #6d9bdb 50%, #5a87c7 100%)',
+    secondary: 'linear-gradient(135deg, #94a3b8 0%, #8ab4f8 100%)',
+    warm: 'linear-gradient(135deg, #ebebeb 0%, #cccccc 100%)',
+    premium: 'linear-gradient(135deg, #ffffff 0%, #e0e0e0 50%, #b0b0b0 100%)',
+    aurora: 'linear-gradient(135deg, #ffffff 0%, #94a3b8 50%, #8ab4f8 100%)',
+    surface: 'linear-gradient(180deg, rgba(138, 180, 248, 0.08) 0%, transparent 100%)',
+    glow: 'radial-gradient(ellipse at center, rgba(138, 180, 248, 0.15) 0%, transparent 70%)',
   },
 } as const;
 
@@ -235,13 +235,13 @@ export const shadows = {
   inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.3)',
   none: 'none',
 
-  // Glow effects for accents
+  // Glow effects for accents — Monochrome Pro
   glow: {
-    primary: '0 0 20px rgba(99, 102, 241, 0.3), 0 0 40px rgba(99, 102, 241, 0.1)',
-    primaryLg: '0 0 30px rgba(99, 102, 241, 0.4), 0 0 60px rgba(99, 102, 241, 0.2)',
-    cyan: '0 0 20px rgba(6, 182, 212, 0.3), 0 0 40px rgba(6, 182, 212, 0.1)',
-    amber: '0 0 20px rgba(245, 158, 11, 0.3), 0 0 40px rgba(245, 158, 11, 0.1)',
-    success: '0 0 20px rgba(16, 185, 129, 0.3), 0 0 40px rgba(16, 185, 129, 0.1)',
+    primary: '0 0 20px rgba(138, 180, 248, 0.3), 0 0 40px rgba(138, 180, 248, 0.1)',
+    primaryLg: '0 0 30px rgba(138, 180, 248, 0.4), 0 0 60px rgba(138, 180, 248, 0.2)',
+    cyan: '0 0 20px rgba(148, 163, 184, 0.3), 0 0 40px rgba(148, 163, 184, 0.1)',
+    amber: '0 0 20px rgba(224, 224, 224, 0.3), 0 0 40px rgba(224, 224, 224, 0.1)',
+    success: '0 0 20px rgba(45, 212, 191, 0.3), 0 0 40px rgba(45, 212, 191, 0.1)',
   },
 } as const;
 
@@ -316,36 +316,36 @@ export const semanticDark = {
   borderStrong: colors.charcoal[600],
   borderMuted: colors.charcoal[600],
 
-  // Primary accent
-  primary: colors.indigo[500],
-  primaryHover: colors.indigo[400],
-  primaryStrong: colors.indigo[600],
-  primaryMuted: colors.indigo[300],
-  primarySoft: `rgba(99, 102, 241, 0.15)`,
-  primaryGlow: `rgba(99, 102, 241, 0.3)`,
+  // Primary accent — Soft Blue
+  primary: '#8ab4f8',
+  primaryHover: '#a8c8fa',
+  primaryStrong: '#6d9bdb',
+  primaryMuted: '#5a87c7',
+  primarySoft: `rgba(138, 180, 248, 0.15)`,
+  primaryGlow: `rgba(138, 180, 248, 0.3)`,
 
-  // Secondary accent
-  accent: colors.cyan[500],
-  accentHover: colors.cyan[400],
-  accentSoft: `rgba(6, 182, 212, 0.15)`,
+  // Secondary accent — Muted Steel
+  accent: '#94a3b8',
+  accentHover: '#b0bec5',
+  accentSoft: `rgba(148, 163, 184, 0.15)`,
 
-  // Warm accent
-  warm: colors.amber[500],
-  warmHover: colors.amber[400],
-  warmSoft: `rgba(245, 158, 11, 0.15)`,
+  // Warm accent — White-ish
+  warm: '#e0e0e0',
+  warmHover: '#f0f0f0',
+  warmSoft: `rgba(224, 224, 224, 0.15)`,
 
-  // Status
-  success: colors.emerald[500],
-  successHover: colors.emerald[400],
-  successSoft: `rgba(16, 185, 129, 0.15)`,
+  // Status — Teal / Muted Red / Softer Amber
+  success: '#2dd4bf',
+  successHover: '#5eead4',
+  successSoft: `rgba(45, 212, 191, 0.15)`,
 
-  warning: colors.amber[500],
-  warningHover: colors.amber[400],
-  warningSoft: `rgba(245, 158, 11, 0.15)`,
+  warning: '#dda832',
+  warningHover: '#e8c060',
+  warningSoft: `rgba(221, 168, 50, 0.15)`,
 
-  error: colors.rose[500],
-  errorHover: colors.rose[400],
-  errorSoft: `rgba(244, 63, 94, 0.15)`,
+  error: '#d45454',
+  errorHover: '#e07070',
+  errorSoft: `rgba(212, 84, 84, 0.15)`,
 
   // Overlays
   overlay: 'rgba(0, 0, 0, 0.5)',

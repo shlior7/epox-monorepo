@@ -208,6 +208,16 @@ function ProductGridCard({
           <Badge variant="secondary" className="text-xs" testId={buildTestId(productTestId, 'category')}>
             {product.category}
           </Badge>
+          {product.linkedCategories?.map((lc) => (
+            <Badge
+              key={lc.categoryId}
+              variant={lc.isPrimary ? 'default' : 'outline'}
+              className="text-xs"
+              testId={buildTestId(productTestId, 'linked-category', lc.categoryId)}
+            >
+              {lc.categoryName}
+            </Badge>
+          ))}
           {(product.sceneTypes && product.sceneTypes.length > 0) || availableSceneTypes.length > 0 ? (
             <DropdownMenu open={showCustomInput ? true : undefined}>
               <DropdownMenuTrigger asChild>
@@ -444,6 +454,15 @@ function ProductListRow({
             <Badge variant="secondary" testId={buildTestId(productTestId, 'category')}>
               {product.category}
             </Badge>
+            {product.linkedCategories?.map((lc) => (
+              <Badge
+                key={lc.categoryId}
+                variant={lc.isPrimary ? 'default' : 'outline'}
+                testId={buildTestId(productTestId, 'linked-category', lc.categoryId)}
+              >
+                {lc.categoryName}
+              </Badge>
+            ))}
             {(product.sceneTypes && product.sceneTypes.length > 0) || availableSceneTypes.length > 0 ? (
               <DropdownMenu open={showCustomInput ? true : undefined}>
                 <DropdownMenuTrigger asChild>

@@ -13,14 +13,15 @@ export const lightingBubble: BubbleDefinition<LightingBubbleValue> = {
   label: 'Lighting',
   icon: Lightbulb,
   category: 'technical',
+  mergeStrategy: 'single',
   allowMultiple: false,
 
   Modal: LightingModal,
 
   renderPreview: (value) => (
     <div className="flex flex-col items-center px-1">
-      <Lightbulb className="h-4 w-4 text-foreground" />
-      <span className="mt-0.5 text-center text-[9px] font-medium leading-tight text-foreground">
+      <Lightbulb className="h-6 w-6 text-foreground" />
+      <span className="mt-0.5 text-center text-[12px] font-medium leading-tight text-foreground">
         {value.preset || value.customValue || 'Lighting'}
       </span>
     </div>

@@ -13,14 +13,15 @@ export const cameraAngleBubble: BubbleDefinition<CameraAngleBubbleValue> = {
   label: 'Camera Angle',
   icon: Camera,
   category: 'technical',
+  mergeStrategy: 'single',
   allowMultiple: false,
 
   Modal: CameraAngleModal,
 
   renderPreview: (value) => (
     <div className="flex flex-col items-center px-1">
-      <Camera className="h-4 w-4 text-foreground" />
-      <span className="mt-0.5 text-center text-[9px] font-medium leading-tight text-foreground">
+      <Camera className="h-6 w-6 text-foreground" />
+      <span className="mt-0.5 text-center text-[12px] font-medium leading-tight text-foreground">
         {value.preset || 'Camera'}
       </span>
     </div>

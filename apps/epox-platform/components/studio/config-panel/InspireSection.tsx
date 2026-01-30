@@ -1,193 +1,151 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import Image from 'next/image';
+import { useMemo } from 'react';
+import { Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTestId } from '@/lib/testing/testid';
-import { Checkbox } from '@/components/ui/checkbox';
-import { SceneTypeAccordion } from './SceneTypeAccordion';
 import { GeneralBubblesSection } from './GeneralBubblesSection';
+import { CategoryBubblesSection } from './CategoryBubblesSection';
 import { useConfigPanelContext } from './ConfigPanelContext';
-import type { SceneTypeInfo } from './UnifiedStudioConfigPanel';
-import type { BubbleValue } from 'visualizer-types';
+import type { BubbleValue, InspirationSection } from 'visualizer-types';
 
 // ===== PROPS =====
 
+export interface CategoryInfo {
+  id: string;
+  name: string;
+  productCount?: number;
+}
+
 export interface InspireSectionProps {
-  sceneTypes: SceneTypeInfo[];
-  // For scroll sync
-  activeSceneType?: string;
-  onSceneTypeClick?: (sceneType: string) => void;
-  // Product badge click
-  onProductBadgeClick?: (sceneType: string) => void;
-  // Bubble click (opens modal)
-  onBubbleClick?: (sceneType: string, index: number, bubble: BubbleValue) => void;
-  // Whether to show product badges
-  showProductBadges?: boolean;
-  // Base image section (single-flow mode)
-  showBaseImageSelector?: boolean;
-  baseImages?: Array<{ id: string; url: string; thumbnailUrl?: string }>;
-  selectedBaseImageId?: string;
-  onBaseImageSelect?: (imageId: string) => void;
-  // Single-flow mode (show simple title instead of accordion)
+  categories?: CategoryInfo[];
+  sceneTypes?: Array<{ sceneType: string; productCount: number; productIds: string[] }>;
   isSingleFlowMode?: boolean;
-  // Selected scene type (for single-flow mode to show bubbles even when no scene type)
   selectedSceneType?: string;
+  selectedCategoryIds?: string[];
+  onBubbleClick?: (sceneType: string, index: number, bubble: BubbleValue) => void;
+  onOpenCategoryWizard?: () => void;
+  categoryProductImages?: Record<string, string>;
   className?: string;
 }
 
 // ===== COMPONENT =====
 
 export function InspireSection({
-  sceneTypes,
-  activeSceneType,
-  onSceneTypeClick,
-  onProductBadgeClick,
-  onBubbleClick,
-  showProductBadges = true,
-  showBaseImageSelector = false,
-  baseImages = [],
-  selectedBaseImageId,
-  onBaseImageSelect,
+  categories = [],
+  sceneTypes = [],
   isSingleFlowMode = false,
   selectedSceneType = '',
+  selectedCategoryIds = [],
+  onBubbleClick,
+  onOpenCategoryWizard,
+  categoryProductImages = {},
   className,
 }: InspireSectionProps) {
-  const { state, setUseSceneTypeInspiration } = useConfigPanelContext();
+  const { state, addSection } = useConfigPanelContext();
 
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    () => new Set(sceneTypes.slice(0, 1).map((st) => st.sceneType))
-  );
+  // Derive available scene type names
+  const availableSceneTypes = useMemo(() => {
+    return sceneTypes.map((st) => st.sceneType);
+  }, [sceneTypes]);
 
-  // Track which sections are expanded
-  const toggleSection = (sceneType: string) => {
-    setExpandedSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(sceneType)) {
-        next.delete(sceneType);
-      } else {
-        next.add(sceneType);
-      }
-      return next;
-    });
+  // Filter out categories that already have a dedicated section
+  const unusedCategories = useMemo(() => {
+    const usedCategoryIds = new Set(state.inspirationSections.flatMap((s) => s.categoryIds));
+    return categories.filter((c) => !usedCategoryIds.has(c.id));
+  }, [categories, state.inspirationSections]);
+
+  const handleAddSection = (categoryIds: string[], sectionSceneTypes: string[]) => {
+    if (categoryIds.length === 0) return;
+    const section: InspirationSection = {
+      id: crypto.randomUUID(),
+      categoryIds,
+      sceneTypes: sectionSceneTypes,
+      bubbles: [
+        { type: 'style' },
+        { type: 'lighting' },
+        { type: 'camera-angle' },
+        { type: 'mood' },
+        { type: 'reference' },
+        { type: 'color-palette' },
+        { type: 'custom' },
+      ],
+      enabled: true,
+    };
+    addSection(section);
   };
 
-  // Sort scene types by product count (most products first)
-  const sortedSceneTypes = useMemo(() => {
-    return [...sceneTypes].sort((a, b) => b.productCount - a.productCount);
-  }, [sceneTypes]);
+  // Filter sections for single-flow mode
+  const visibleSections = useMemo(() => {
+    if (!isSingleFlowMode) return state.inspirationSections;
+
+    return state.inspirationSections.filter((section) => {
+      const categoryMatch =
+        section.categoryIds.length === 0 ||
+        section.categoryIds.some((id) => selectedCategoryIds.includes(id));
+      const sceneTypeMatch =
+        section.sceneTypes.length === 0 || section.sceneTypes.includes(selectedSceneType);
+      return categoryMatch && sceneTypeMatch;
+    });
+  }, [state.inspirationSections, isSingleFlowMode, selectedSceneType, selectedCategoryIds]);
+
+  // Show category wizard button when: not single-flow, categories exist, no sections yet
+  const showWizardButton =
+    !isSingleFlowMode &&
+    categories.length > 0 &&
+    state.inspirationSections.length === 0 &&
+    !!onOpenCategoryWizard;
 
   return (
     <section className={className} data-testid={buildTestId('inspire-section')}>
-      <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Inspire
-      </h3>
+      {/* General Bubbles Section */}
+      <GeneralBubblesSection className="mb-4" />
 
-      {/* Base Image Selector (single-flow mode only) */}
-      {showBaseImageSelector && baseImages.length > 0 && (
-        <div className="mb-4" data-testid={buildTestId('inspire-section', 'base-images')}>
-          <p className="mb-2 text-xs text-muted-foreground">Base Image</p>
-          <div className="flex flex-wrap gap-2">
-            {baseImages.map((img) => (
-              <button
-                key={img.id}
-                onClick={() => onBaseImageSelect?.(img.id)}
-                className={cn(
-                  'relative aspect-square h-16 w-16 overflow-hidden rounded-lg border-2 transition-all',
-                  selectedBaseImageId === img.id
-                    ? 'border-primary ring-2 ring-primary/20'
-                    : 'border-border hover:border-primary/50'
-                )}
-                data-testid={buildTestId('inspire-section', 'base-image', img.id)}
-              >
-                <Image
-                  src={img.thumbnailUrl || img.url}
-                  alt="Base"
-                  fill
-                  sizes="64px"
-                  className="object-cover"
-                />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* General Bubbles Section (collection studio mode only) */}
-      {!isSingleFlowMode && (
-        <GeneralBubblesSection className="mb-4" />
-      )}
-
-      {/* Scene Type Inspiration Toggle (collection studio mode only) */}
-      {!isSingleFlowMode && sortedSceneTypes.length > 0 && (
-        <div
-          className="mb-3 flex items-center gap-2"
-          data-testid={buildTestId('inspire-section', 'scene-type-toggle')}
+      {/* Category Wizard prompt (when no sections and categories exist) */}
+      {showWizardButton && (
+        <button
+          onClick={onOpenCategoryWizard}
+          className={cn(
+            'mb-3 flex w-full items-center gap-2.5 rounded-lg border border-dashed border-primary/30',
+            'bg-primary/5 px-3 py-3 text-left transition-colors',
+            'hover:border-primary/50 hover:bg-primary/10'
+          )}
+          data-testid={buildTestId('inspire-section', 'category-wizard-trigger')}
         >
-          <Checkbox
-            id="use-scene-type-inspiration"
-            checked={state.useSceneTypeInspiration}
-            onCheckedChange={(checked) => setUseSceneTypeInspiration(!!checked)}
-          />
-          <label
-            htmlFor="use-scene-type-inspiration"
-            className="cursor-pointer text-xs font-medium text-muted-foreground"
-          >
-            Per-scene-type inspiration
-          </label>
-        </div>
+          <Wand2 className="h-4 w-4 shrink-0 text-primary" />
+          <div>
+            <div className="text-xs font-medium text-primary">Set up category defaults</div>
+            <div className="text-[10px] text-muted-foreground">
+              Configure style & lighting per category
+            </div>
+          </div>
+        </button>
       )}
 
-      {/* Scene Type Display */}
-      <div className="space-y-2" data-testid={buildTestId('inspire-section', 'scene-types')}>
-        {isSingleFlowMode ? (
-          // Single-flow mode: just bubbles, no title - always show using selectedSceneType
-          <div data-testid={buildTestId('inspire-section', 'scene-type-simple', selectedSceneType || 'none')}>
-            <SceneTypeAccordion
-              sceneType={selectedSceneType || ''}
-              productCount={sortedSceneTypes[0]?.productCount || 1}
-              productIds={sortedSceneTypes[0]?.productIds || []}
-              isExpanded={true}
-              isActive={false}
-              onToggle={() => {}}
-              onSceneTypeClick={() => onSceneTypeClick?.(selectedSceneType || '')}
-              onProductBadgeClick={() => onProductBadgeClick?.(selectedSceneType || '')}
-              onBubbleClick={(index, bubble) => onBubbleClick?.(selectedSceneType || '', index, bubble)}
-              showProductBadge={false}
-              hideHeader={true}
-            />
-          </div>
-        ) : state.useSceneTypeInspiration ? (
-          // Collection studio mode: accordions
-          sortedSceneTypes.map((st) => (
-            <SceneTypeAccordion
-              key={st.sceneType}
-              sceneType={st.sceneType}
-              productCount={st.productCount}
-              productIds={st.productIds}
-              isExpanded={expandedSections.has(st.sceneType)}
-              isActive={activeSceneType === st.sceneType}
-              onToggle={() => toggleSection(st.sceneType)}
-              onSceneTypeClick={() => onSceneTypeClick?.(st.sceneType)}
-              onProductBadgeClick={() => onProductBadgeClick?.(st.sceneType)}
-              onBubbleClick={(index, bubble) => onBubbleClick?.(st.sceneType, index, bubble)}
-              showProductBadge={showProductBadges}
-            />
-          ))
-        ) : null}
-      </div>
+      {/* Category Bubbles Section */}
+      <CategoryBubblesSection
+        categories={categories}
+        availableSceneTypes={availableSceneTypes}
+        visibleSections={visibleSections}
+        unusedCategories={unusedCategories}
+        categoryProductImages={categoryProductImages}
+        onAddSection={handleAddSection}
+      />
 
       {/* Empty state */}
-      {sceneTypes.length === 0 && !isSingleFlowMode && (
-        <div
-          className="rounded-lg border border-dashed border-border p-6 text-center"
-          data-testid={buildTestId('inspire-section', 'empty')}
-        >
-          <p className="text-sm text-muted-foreground">
-            No products selected. Add products to start configuring.
-          </p>
-        </div>
-      )}
+      {visibleSections.length === 0 &&
+        state.generalInspiration.length === 0 &&
+        !isSingleFlowMode &&
+        !showWizardButton && (
+          <div
+            className="rounded-lg border border-dashed border-border p-6 text-center"
+            data-testid={buildTestId('inspire-section', 'empty')}
+          >
+            <p className="text-sm text-muted-foreground">
+              No inspiration configured. Add general inspiration or create sections above.
+            </p>
+          </div>
+        )}
     </section>
   );
 }

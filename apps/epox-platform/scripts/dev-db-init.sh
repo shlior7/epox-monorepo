@@ -7,4 +7,4 @@ echo "Starting development database..."
 yarn dev:db:start
 
 echo "Pushing database schema..."
-yarn db:push:dev
+yarn dev:db:push

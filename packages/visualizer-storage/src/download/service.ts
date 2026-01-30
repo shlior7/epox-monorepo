@@ -58,19 +58,23 @@ export class DownloadService {
 
   /**
    * Get download URL for a generated asset
+   * @param format - 'webp' for optimized display, 'png' for original quality
    */
   async getAssetDownloadUrl(
     clientId: string,
     generationFlowId: string,
     assetId: string,
-    productName?: string
+    productName?: string,
+    format: 'webp' | 'png' = 'webp'
   ): Promise<SingleDownloadResult> {
-    const key = storagePaths.generationAsset(clientId, generationFlowId, assetId);
+    const key = format === 'png'
+      ? storagePaths.generationAssetOriginal(clientId, generationFlowId, assetId, 'png')
+      : storagePaths.generationAsset(clientId, generationFlowId, assetId);
 
-    // Build filename: product_name_timestamp.webp
+    // Build filename: product_name_timestamp.{format}
     const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const safeName = (productName ?? 'image').toLowerCase().replace(/[^a-z0-9]+/g, '_');
-    const filename = `${safeName}_${timestamp}.webp`;
+    const filename = `${safeName}_${timestamp}.${format}`;
 
     return this.getSignedDownloadUrl(key, filename);
   }

@@ -17,7 +17,7 @@ function requireEnv(name: string): string {
 }
 
 function resolveFilesystemRoot(): string {
-  return process.env.NEXT_PUBLIC_LOCAL_S3_DIR ?? process.env.LOCAL_STORAGE_DIR ?? '.local-storage';
+  return process.env.LOCAL_STORAGE_DIR ?? process.env.NEXT_PUBLIC_LOCAL_S3_DIR ?? '.local-storage';
 }
 
 function resolvePublicUrl(): string | undefined {

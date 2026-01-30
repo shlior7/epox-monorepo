@@ -1,31 +1,28 @@
 'use client';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
-import { Loader2, Sparkles, Save, Check, Minus, Plus, Image as ImageIcon, Video } from 'lucide-react';
-import { buildTestId } from '@/lib/testing/testid';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { ConfigPanelProvider, useConfigPanelContext, type ConfigPanelState } from './ConfigPanelContext';
-import { InspireSection } from './InspireSection';
-import { ProductSection } from './ProductSection';
+import { buildTestId } from '@/lib/testing/testid';
+import { cn } from '@/lib/utils';
+import { Check, Image as ImageIcon, Loader2, Save, Sparkles, Video } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type {
+  BubbleValue,
+  ImageAspectRatio,
+  ImageQuality,
+  InspirationSection,
+  Category,
+} from 'visualizer-types';
 import { CollectionSettingsSection } from './CollectionSettingsSection';
+import {
+  ConfigPanelProvider,
+  useConfigPanelContext,
+  type ConfigPanelState,
+} from './ConfigPanelContext';
+import type { CategoryInfo } from './InspireSection';
+import { InspireSection } from './InspireSection';
 import { OutputSettingsPanel } from './OutputSettings';
-import type { ImageAspectRatio, ImageQuality, BubbleValue, SceneTypeInspirationMap } from 'visualizer-types';
+import { ProductSection, type ProductCategoryInfo } from './ProductSection';
 
 // ===== MODE TYPES =====
 
@@ -48,13 +45,15 @@ export interface UnifiedStudioConfigPanelProps {
   // For single-flow mode
   selectedSceneType?: string;
   onSceneTypeChange?: (sceneType: string) => void;
+  // Categories available in the collection (resolved from products)
+  categories?: CategoryInfo[];
   // Collection settings (for single-flow mode when flow belongs to collection)
   collectionSessionId?: string; // ID of the collection
   collectionName?: string; // Name of the collection
   collectionSettings?: {
     userPrompt?: string;
     generalInspiration?: BubbleValue[];
-    sceneTypeInspiration?: SceneTypeInspirationMap;
+    inspirationSections?: InspirationSection[];
   };
   flowSceneType?: string; // The scene type of this flow in the collection
   collectionPrompt?: string; // Deprecated - use collectionSettings.userPrompt
@@ -77,8 +76,18 @@ export interface UnifiedStudioConfigPanelProps {
   baseImages?: Array<{ id: string; url: string; thumbnailUrl?: string }>;
   selectedBaseImageId?: string;
   onBaseImageSelect?: (imageId: string) => void;
+  // Product category selection (single-flow mode)
+  productCategories?: ProductCategoryInfo[];
+  selectedCategoryId?: string;
+  onCategoryChange?: (categoryId: string) => void;
+  /** Full category objects with generationSettings (for resolving category bubbles) */
+  categoryMap?: Map<string, Category>;
   // State change callback (bridges inner context to outer page state)
   onStateChange?: (state: ConfigPanelState) => void;
+  // Category wizard
+  onOpenCategoryWizard?: () => void;
+  // Category product images (for category bubble previews)
+  categoryProductImages?: Record<string, string>;
   // Style
   className?: string;
 }
@@ -111,6 +120,7 @@ function ConfigPanelContent({
   sceneTypes,
   selectedSceneType,
   onSceneTypeChange,
+  categories,
   collectionSessionId,
   collectionName,
   collectionSettings,
@@ -127,36 +137,19 @@ function ConfigPanelContent({
   baseImages = [],
   selectedBaseImageId,
   onBaseImageSelect,
+  productCategories = [],
+  selectedCategoryId,
+  onCategoryChange,
+  categoryMap,
+  onOpenCategoryWizard,
+  categoryProductImages,
   onStateChange,
   className,
 }: Omit<UnifiedStudioConfigPanelProps, 'initialState'>) {
-  const {
-    state,
-    isDirty,
-    setUserPrompt,
-    setApplyCollectionPrompt,
-    setOutputSettings,
-    migrateBubbles,
-    markClean,
-  } = useConfigPanelContext();
+  const { state, isDirty, setUserPrompt, setApplyCollectionInspiration, setApplyCollectionPrompt, setOutputSettings, markClean } =
+    useConfigPanelContext();
 
   const [activeTab, setActiveTab] = useState<'image' | 'video'>('image');
-  const prevSelectedSceneType = useRef<string | undefined>(selectedSceneType);
-
-  // Migrate bubbles when scene type changes in single-flow mode
-  useEffect(() => {
-    if (mode === 'single-flow' && selectedSceneType !== prevSelectedSceneType.current) {
-      const prev = prevSelectedSceneType.current || '';
-      const next = selectedSceneType || '';
-
-      // If we're moving from empty to a real scene type, migrate the bubbles
-      if (prev === '' && next !== '') {
-        migrateBubbles(prev, next);
-      }
-
-      prevSelectedSceneType.current = selectedSceneType;
-    }
-  }, [mode, selectedSceneType, migrateBubbles]);
 
   // Notify parent of state changes (use ref to avoid infinite re-render loop
   // from inline callback creating new references each render)
@@ -184,12 +177,22 @@ function ConfigPanelContent({
   // Whether to show collection settings section (single-flow mode when flow belongs to collection)
   const showCollectionSettings = mode === 'single-flow' && !!collectionSettings && !!collectionName;
 
-  // Whether to show collection prompt (read-only) - DEPRECATED, use showCollectionSettings
-  const showCollectionPrompt = mode === 'single-flow' && !!collectionPrompt;
+  // Resolve category bubbles from selected category
+  const selectedCategoryData = useMemo(() => {
+    if (!selectedCategoryId || !categoryMap) return null;
+    const cat = categoryMap.get(selectedCategoryId);
+    if (!cat?.generationSettings?.defaultBubbles?.length) return null;
+    return { name: cat.name, bubbles: cat.generationSettings.defaultBubbles };
+  }, [selectedCategoryId, categoryMap]);
+
+  // Collection prompt is now shown inside CollectionSettingsSection only
 
   return (
     <aside
-      className={cn('flex h-full w-80 shrink-0 flex-col border-r border-border bg-card/30', className)}
+      className={cn(
+        'flex h-full w-80 shrink-0 flex-col border-r border-border bg-card/30',
+        className
+      )}
       data-testid={buildTestId('unified-config-panel')}
     >
       {/* Header with Tabs */}
@@ -197,40 +200,6 @@ function ConfigPanelContent({
         className="flex-none border-b border-border"
         data-testid={buildTestId('unified-config-panel', 'header')}
       >
-        <div className="flex items-center justify-between p-3">
-          <h2 className="text-sm font-semibold">Configuration</h2>
-          <button
-            onClick={async () => {
-              if (isDirty && onSave) {
-                try {
-                  await onSave();
-                  markClean(); // Reset dirty state after successful save
-                } catch (error) {
-                  // onSave failed, keep dirty state
-                  console.error('Save failed:', error);
-                }
-              }
-            }}
-            disabled={isSaving || !isDirty}
-            className={cn(
-              'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
-              isDirty
-                ? 'text-amber-500 hover:bg-amber-500/10'
-                : 'text-green-500 hover:bg-green-500/10'
-            )}
-            data-testid={buildTestId('unified-config-panel', 'save-indicator')}
-            title={isDirty ? 'Unsaved changes' : 'Saved'}
-          >
-            {isSaving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isDirty ? (
-              <Save className="h-4 w-4" />
-            ) : (
-              <Check className="h-4 w-4" />
-            )}
-          </button>
-        </div>
-
         {/* Tabs */}
         <div className="flex border-t border-border">
           <button
@@ -272,12 +241,17 @@ function ConfigPanelContent({
           <CollectionSettingsSection
             collectionSessionId={collectionSessionId}
             collectionName={collectionName!}
-            collectionPrompt={collectionSettings?.userPrompt}
+            collectionPrompt={collectionSettings?.userPrompt || collectionPrompt}
             generalInspiration={collectionSettings?.generalInspiration}
-            sceneTypeInspiration={collectionSettings?.sceneTypeInspiration}
+            inspirationSections={collectionSettings?.inspirationSections}
             flowSceneType={flowSceneType}
-            applyCollectionSettings={state.applyCollectionPrompt ?? false}
-            onToggleApply={setApplyCollectionPrompt}
+            flowBubbles={state.generalInspiration}
+            categoryBubbles={selectedCategoryData?.bubbles}
+            selectedCategoryName={selectedCategoryData?.name}
+            applyCollectionInspiration={state.applyCollectionInspiration ?? true}
+            onToggleApplyInspiration={setApplyCollectionInspiration}
+            applyCollectionPrompt={state.applyCollectionPrompt ?? true}
+            onToggleApplyPrompt={setApplyCollectionPrompt}
             className="mb-6"
           />
         )}
@@ -291,56 +265,33 @@ function ConfigPanelContent({
             sceneTypes={sceneTypes}
             selectedSceneType={selectedSceneType}
             onSceneTypeChange={onSceneTypeChange}
+            categories={productCategories}
+            selectedCategoryId={selectedCategoryId}
+            onCategoryChange={onCategoryChange}
             className="mb-6"
           />
         )}
 
         {/* Inspire Section */}
         <InspireSection
+          categories={categories}
           sceneTypes={displaySceneTypes}
-          activeSceneType={activeSceneType}
-          onSceneTypeClick={onSceneTypeClick}
-          onProductBadgeClick={onProductBadgeClick}
-          onBubbleClick={onBubbleClick}
-          showProductBadges={showProductBadges}
-          showBaseImageSelector={false}
-          baseImages={[]}
-          selectedBaseImageId=""
-          onBaseImageSelect={undefined}
           isSingleFlowMode={mode === 'single-flow'}
           selectedSceneType={selectedSceneType}
+          selectedCategoryIds={categories?.map((c) => c.id) ?? []}
+          onBubbleClick={onBubbleClick}
+          onOpenCategoryWizard={onOpenCategoryWizard}
+          categoryProductImages={categoryProductImages}
         />
 
         {/* Prompt Section (Bottom) */}
-        <section className="mt-6" data-testid={buildTestId('unified-config-panel', 'prompt-section')}>
+        <section
+          className="mt-6"
+          data-testid={buildTestId('unified-config-panel', 'prompt-section')}
+        >
           <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Prompt
           </h3>
-
-          {/* Collection Prompt (read-only, single-flow mode) */}
-          {showCollectionPrompt && (
-            <div className="mb-3" data-testid={buildTestId('unified-config-panel', 'collection-prompt-display')}>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="apply-collection-prompt"
-                  checked={state.applyCollectionPrompt}
-                  onCheckedChange={(checked) => setApplyCollectionPrompt(!!checked)}
-                  data-testid={buildTestId('unified-config-panel', 'collection-prompt-toggle')}
-                />
-                <label
-                  htmlFor="apply-collection-prompt"
-                  className="text-xs text-muted-foreground"
-                >
-                  Apply collection prompt
-                </label>
-              </div>
-              {state.applyCollectionPrompt && (
-                <div className="mt-2 rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
-                  {collectionPrompt}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* User Prompt */}
           <div data-testid={buildTestId('unified-config-panel', 'user-prompt')}>
@@ -348,7 +299,7 @@ function ConfigPanelContent({
               placeholder="Add additional prompt details..."
               value={state.userPrompt}
               onChange={(e) => setUserPrompt(e.target.value)}
-              className="min-h-[80px] resize-none text-sm"
+              className="min-h-[120px] resize-none border-border text-sm"
             />
           </div>
         </section>

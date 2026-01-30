@@ -3,6 +3,7 @@ import type { DrizzleClient } from '../client';
 import { generatedAsset, generatedAssetProduct, favoriteImage } from '../schema/generated-images';
 import { product } from '../schema/products';
 import { storeSyncLog } from '../schema/store-sync';
+import { generationFlow, collectionSession } from '../schema/sessions';
 import type {
   GeneratedAsset,
   GeneratedAssetCreate,
@@ -49,6 +50,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
         generationFlowId: data.generationFlowId ?? null,
         chatSessionId: data.chatSessionId ?? null,
         assetUrl: data.assetUrl,
+        originalAssetUrl: data.originalAssetUrl ?? null,
         assetType: data.assetType ?? 'image',
         status: data.status ?? 'pending',
         prompt: data.prompt ?? null,
@@ -86,6 +88,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
         generationFlowId: data.generationFlowId ?? null,
         chatSessionId: data.chatSessionId ?? null,
         assetUrl: data.assetUrl,
+        originalAssetUrl: data.originalAssetUrl ?? null,
         assetType: data.assetType ?? 'image',
         status: data.status ?? 'pending',
         prompt: data.prompt ?? null,
@@ -124,6 +127,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
           generationFlowId: entry.generationFlowId ?? null,
           chatSessionId: entry.chatSessionId ?? null,
           assetUrl: entry.assetUrl,
+          originalAssetUrl: entry.originalAssetUrl ?? null,
           assetType: entry.assetType ?? 'image',
           status: entry.status ?? 'pending',
           prompt: entry.prompt ?? null,
@@ -455,6 +459,90 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
 
   async listByProductId(clientId: string, productId: string, limit = 100): Promise<GeneratedAsset[]> {
     return this.listWithFilters(clientId, { productId, limit });
+  }
+
+  /**
+   * List assets by product ID with enriched data:
+   * - isFavorite (from favorite_image table)
+   * - prompt, syncedAt (from generated_asset)
+   * - collectionId, collectionName (via generation_flow → collection_session)
+   */
+  /**
+   * List assets by product ID with enriched data:
+   * - isFavorite (from favorite_image table)
+   * - prompt, syncedAt (from generated_asset)
+   * - collectionId, collectionName (via generation_flow → collection_session)
+   */
+  async listByProductIdEnriched(
+    clientId: string,
+    productId: string,
+    limit = 100
+  ): Promise<
+    Array<
+      GeneratedAsset & {
+        isFavorite: boolean;
+        syncedAt: Date | null;
+        collectionId: string | null;
+        collectionName: string | null;
+      }
+    >
+  > {
+    const result = await this.drizzle.execute(sql`
+      SELECT
+        ga.*,
+        CASE WHEN fi.id IS NOT NULL THEN true ELSE false END as is_favorite,
+        cs.id as collection_id,
+        cs.name as collection_name
+      FROM ${generatedAsset} ga
+      LEFT JOIN ${favoriteImage} fi
+        ON fi.generated_asset_id = ga.id AND fi.client_id = ${clientId}
+      LEFT JOIN ${generationFlow} gf
+        ON gf.id = ga.generation_flow_id
+      LEFT JOIN ${collectionSession} cs
+        ON cs.id = gf.collection_session_id
+      WHERE ga.client_id = ${clientId}
+        AND ga.product_ids @> ${JSON.stringify([productId])}::jsonb
+        AND ga.deleted_at IS NULL
+      ORDER BY ga.created_at DESC
+      LIMIT ${limit}
+    `);
+
+    return (result.rows as any[]).map((row) => ({
+      ...this.mapRawRowToEntity(row),
+      isFavorite: row.is_favorite ?? false,
+      syncedAt: row.synced_at ? new Date(row.synced_at) : null,
+      collectionId: row.collection_id ?? null,
+      collectionName: row.collection_name ?? null,
+    }));
+  }
+
+  private mapRawRowToEntity(row: any): GeneratedAsset {
+    return {
+      id: row.id,
+      clientId: row.client_id,
+      generationFlowId: row.generation_flow_id ?? null,
+      chatSessionId: row.chat_session_id ?? null,
+      assetUrl: row.asset_url,
+      originalAssetUrl: row.original_asset_url ?? null,
+      assetType: row.asset_type,
+      status: row.status,
+      prompt: row.prompt ?? null,
+      settings: row.settings ?? null,
+      productIds: row.product_ids ?? null,
+      jobId: row.job_id ?? null,
+      error: row.error ?? null,
+      assetAnalysis: row.asset_analysis ?? null,
+      analysisVersion: row.analysis_version ?? null,
+      approvalStatus: row.approval_status,
+      approvedAt: row.approved_at ? new Date(row.approved_at) : null,
+      approvedBy: row.approved_by ?? null,
+      externalImageId: row.external_image_id ?? null,
+      pinned: row.pinned,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+      completedAt: row.completed_at ? new Date(row.completed_at) : null,
+      deletedAt: row.deleted_at ? new Date(row.deleted_at) : null,
+    };
   }
 
   // ===== OPTIMIZED: GET STATS BY PRODUCT ID (single query) =====
@@ -866,6 +954,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
     jobId: string,
     data: {
       assetUrl: string;
+      originalAssetUrl?: string;
       prompt?: string;
       settings?: Record<string, unknown>;
     }
@@ -889,6 +978,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
       .update(generatedAsset)
       .set({
         assetUrl: data.assetUrl,
+        originalAssetUrl: data.originalAssetUrl ?? null,
         status: 'completed',
         prompt: data.prompt ?? null,
         settings: data.settings as FlowGenerationSettings | null | undefined,
@@ -1036,6 +1126,7 @@ export class GeneratedAssetRepository extends BaseRepository<GeneratedAsset> {
         analysisData: null,
         analysisVersion: null,
         analyzedAt: null,
+        defaultGenerationSettings: null,
         price: null,
         metadata: null,
         createdAt: new Date(),

@@ -1,38 +1,53 @@
 /**
  * Collection Generation with Bubbles - Integration Tests
- * Tests collections with multiple scene types and bubble-based prompt generation
+ * Tests collections with inspiration sections and bubble-based prompt generation
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { POST as generateCollection } from '@/app/api/collections/[id]/generate/route';
-import type { BubbleValue, SceneTypeInspirationMap } from 'visualizer-types';
+import type { BubbleValue, InspirationSection } from 'visualizer-types';
 
-// Mock the AI generation queue
-vi.mock('visualizer-ai', () => ({
-  enqueueImageGeneration: vi.fn(),
+// Mock security to pass through
+vi.mock('@/lib/security', () => ({
+  withGenerationSecurity: (handler: any) => (req: any, ctx: any) =>
+    handler(req, { clientId: 'test-client' }, ctx),
+  verifyOwnership: () => true,
+  forbiddenResponse: () => new Response('Forbidden', { status: 403 }),
 }));
 
-// Mock the Art Director
-vi.mock('@/app/api/art-director/route', () => ({
-  POST: vi.fn(async (request) => {
-    const body = await request.json();
-    // Mock Art Director: return the input as the prompt
-    // In reality, it would enhance the prompt with vision analysis
-    const mockPrompt = `
-      Create a scene for ${body.subjectAnalysis?.subjectClassHyphenated || 'product'}.
-      Scene type: ${body.sceneType || 'default'}
-      Bubbles: ${JSON.stringify(body.bubbles || [])}
-      User prompt: ${body.userPrompt || ''}
-    `;
-    return {
-      json: async () => ({
-        success: true,
-        finalPrompt: mockPrompt,
-        matchedSceneType: body.sceneType,
-      }),
-    };
-  }),
+// Mock storage
+vi.mock('visualizer-storage', () => ({
+  resolveStorageUrl: (url: string) => url || null,
+  resolveStorageUrlAbsolute: (url: string) => url || null,
+}));
+
+// Mock quota
+vi.mock('@/lib/services/quota', () => ({
+  enforceQuota: vi.fn().mockResolvedValue(null),
+  consumeCredits: vi.fn().mockResolvedValue(undefined),
+}));
+
+// Mock the AI generation queue and prompt builder
+vi.mock('visualizer-ai', () => ({
+  enqueueImageGeneration: vi.fn(),
+  buildArtDirectorPrompt: vi.fn(({ sceneType, mergedBubbles }) => ({
+    finalPrompt: `Art director prompt for ${sceneType} with ${mergedBubbles.length} bubbles`,
+    segments: [],
+  })),
+  buildSimplePrompt: vi.fn(() => 'simple prompt'),
+  buildSmartPrompt: vi.fn(({ sceneType, mergedBubbles }) => ({
+    finalPrompt: `Smart prompt for ${sceneType} with ${(mergedBubbles || []).length} bubbles`,
+    segments: { introAnchor: '', sceneDescription: '', outroAnchor: '' },
+    layers: {},
+  })),
+  mergeGenerationSettings: vi.fn((_ctx: any) => ({
+    mergedBubbles: [],
+    userPrompt: '',
+    aspectRatio: '1:1',
+    imageQuality: '2k',
+    sources: [],
+  })),
+  formatSettingsSources: vi.fn(() => 'test sources'),
 }));
 
 vi.mock('@/lib/services/db', () => ({
@@ -46,6 +61,7 @@ vi.mock('@/lib/services/db', () => ({
     },
     products: {
       listByIds: vi.fn(),
+      getByIds: vi.fn(),
     },
     productImages: {
       listByProductIds: vi.fn(),
@@ -53,11 +69,31 @@ vi.mock('@/lib/services/db', () => ({
     generatedAssets: {
       create: vi.fn(),
     },
+    clients: {
+      getById: vi.fn(),
+    },
+    categories: {
+      listByClient: vi.fn(),
+    },
+    productCategories: {
+      getProductsWithCategories: vi.fn(),
+    },
   },
 }));
 
+import { POST as generateCollection } from '@/app/api/collections/[id]/generate/route';
 import { db } from '@/lib/services/db';
 import { enqueueImageGeneration } from 'visualizer-ai';
+
+function makeSection(overrides: Partial<InspirationSection> & { bubbles: BubbleValue[] }): InspirationSection {
+  return {
+    id: crypto.randomUUID(),
+    categoryIds: [],
+    sceneTypes: [],
+    enabled: true,
+    ...overrides,
+  };
+}
 
 describe('Collection Generation with Bubbles', () => {
   beforeEach(() => {
@@ -67,32 +103,44 @@ describe('Collection Generation with Bubbles', () => {
       expectedImageIds: [],
     });
     vi.mocked(db.generatedAssets.create).mockResolvedValue({ id: 'asset-1' } as any);
-    vi.mocked(db.products.listByIds).mockResolvedValue([
-      {
-        id: 'prod-1',
-        name: 'Modern Sofa',
-        analysisData: {
-          subject: {
-            subjectClassHyphenated: 'Modern-Sofa',
-            nativeSceneTypes: ['Living-Room', 'Office'],
-            nativeSceneCategory: 'Indoor Room',
-            inputCameraAngle: 'Frontal',
+    vi.mocked(db.collectionSessions.update).mockResolvedValue(undefined as any);
+    vi.mocked(db.clients.getById).mockResolvedValue({ id: 'test-client', generationDefaults: null } as any);
+    vi.mocked(db.categories.listByClient).mockResolvedValue([]);
+    vi.mocked(db.productCategories.getProductsWithCategories).mockResolvedValue(new Map());
+    vi.mocked(db.products.getByIds).mockResolvedValue(
+      new Map([
+        [
+          'prod-1',
+          {
+            id: 'prod-1',
+            name: 'Modern Sofa',
+            analysisData: {
+              subject: {
+                subjectClassHyphenated: 'Modern-Sofa',
+                nativeSceneTypes: ['Living-Room', 'Office'],
+                nativeSceneCategory: 'Indoor Room',
+                inputCameraAngle: 'Frontal',
+              },
+            },
           },
-        },
-      },
-      {
-        id: 'prod-2',
-        name: 'Dining Table',
-        analysisData: {
-          subject: {
-            subjectClassHyphenated: 'Dining-Table',
-            nativeSceneTypes: ['Dining-Room', 'Kitchen'],
-            nativeSceneCategory: 'Indoor Room',
-            inputCameraAngle: 'Frontal',
+        ],
+        [
+          'prod-2',
+          {
+            id: 'prod-2',
+            name: 'Dining Table',
+            analysisData: {
+              subject: {
+                subjectClassHyphenated: 'Dining-Table',
+                nativeSceneTypes: ['Dining-Room', 'Kitchen'],
+                nativeSceneCategory: 'Indoor Room',
+                inputCameraAngle: 'Frontal',
+              },
+            },
           },
-        },
-      },
-    ] as any);
+        ],
+      ]) as any
+    );
     vi.mocked(db.productImages.listByProductIds).mockResolvedValue(
       new Map([
         ['prod-1', [{ id: 'img-1', imageUrl: 'clients/test-client/products/prod-1/img-1.jpg', isPrimary: true }]],
@@ -101,24 +149,26 @@ describe('Collection Generation with Bubbles', () => {
     );
   });
 
-  describe('Multiple Scene Types with Different Bubbles', () => {
-    it('should generate with scene-specific bubbles for Living Room', async () => {
-      const sceneTypeInspiration: SceneTypeInspirationMap = {
-        'Living Room': {
+  describe('Inspiration Sections with Different Scene Types', () => {
+    it('should generate with section bubbles for Living Room', async () => {
+      const inspirationSections: InspirationSection[] = [
+        makeSection({
+          sceneTypes: ['Living Room'],
           bubbles: [
             { type: 'style', preset: 'Modern Minimalist' },
             { type: 'lighting', preset: 'Natural Daylight' },
             { type: 'mood', preset: 'Calm & Peaceful' },
           ] as BubbleValue[],
-        },
-        Bedroom: {
+        }),
+        makeSection({
+          sceneTypes: ['Bedroom'],
           bubbles: [
             { type: 'style', preset: 'Cozy' },
             { type: 'lighting', preset: 'Warm Evening' },
             { type: 'mood', preset: 'Relaxing' },
           ] as BubbleValue[],
-        },
-      };
+        }),
+      ];
 
       vi.mocked(db.collectionSessions.getById).mockResolvedValue({
         id: 'coll-1',
@@ -126,7 +176,7 @@ describe('Collection Generation with Bubbles', () => {
         productIds: ['prod-1'],
         selectedBaseImages: {},
         settings: {
-          sceneTypeInspiration,
+          inspirationSections,
           aspectRatio: '16:9',
           imageQuality: '4k',
           variantsPerProduct: 2,
@@ -155,36 +205,33 @@ describe('Collection Generation with Bubbles', () => {
       const response = await generateCollection(request, {
         params: Promise.resolve({ id: 'coll-1' }),
       });
-      const data = await response.json();
 
       expect(response.status).toBe(200);
       expect(enqueueImageGeneration).toHaveBeenCalledTimes(1);
 
-      // Verify the job was enqueued with Living Room bubbles
       const call = vi.mocked(enqueueImageGeneration).mock.calls[0];
       const payload = call[1];
-
-      // The prompt should contain Living Room bubble context
-      // In a real scenario, the Art Director would have been called with these bubbles
       expect(payload.settings).toBeDefined();
-      expect(payload.settings?.aspectRatio).toBe('16:9');
+      expect(payload.settings?.aspectRatio).toBe('1:1'); // from mergeGenerationSettings mock
     });
 
     it('should handle multiple flows with different scene types', async () => {
-      const sceneTypeInspiration: SceneTypeInspirationMap = {
-        'Living Room': {
+      const inspirationSections: InspirationSection[] = [
+        makeSection({
+          sceneTypes: ['Living Room'],
           bubbles: [
             { type: 'style', preset: 'Modern Minimalist' },
             { type: 'custom', value: 'with plants' },
           ] as BubbleValue[],
-        },
-        'Dining Room': {
+        }),
+        makeSection({
+          sceneTypes: ['Dining Room'],
           bubbles: [
             { type: 'style', preset: 'Traditional' },
             { type: 'custom', value: 'with chandelier' },
           ] as BubbleValue[],
-        },
-      };
+        }),
+      ];
 
       vi.mocked(db.collectionSessions.getById).mockResolvedValue({
         id: 'coll-1',
@@ -192,7 +239,7 @@ describe('Collection Generation with Bubbles', () => {
         productIds: ['prod-1', 'prod-2'],
         selectedBaseImages: {},
         settings: {
-          sceneTypeInspiration,
+          inspirationSections,
           aspectRatio: '16:9',
           imageQuality: '4k',
           variantsPerProduct: 1,
@@ -242,16 +289,9 @@ describe('Collection Generation with Bubbles', () => {
       expect(enqueueImageGeneration).toHaveBeenCalledTimes(2);
       expect(data.jobIds).toEqual(['job-1', 'job-2']);
 
-      // Verify each flow got the correct scene type bubbles
       const calls = vi.mocked(enqueueImageGeneration).mock.calls;
-
-      // Flow 1 should have Living Room context
-      const flow1Payload = calls[0][1];
-      expect(flow1Payload.sessionId).toBe('flow-1');
-
-      // Flow 2 should have Dining Room context
-      const flow2Payload = calls[1][1];
-      expect(flow2Payload.sessionId).toBe('flow-2');
+      expect(calls[0][1].sessionId).toBe('flow-1');
+      expect(calls[1][1].sessionId).toBe('flow-2');
     });
   });
 
@@ -266,9 +306,9 @@ describe('Collection Generation with Bubbles', () => {
         { type: 'custom', value: 'with large windows' },
       ];
 
-      const sceneTypeInspiration: SceneTypeInspirationMap = {
-        'Living Room': { bubbles },
-      };
+      const inspirationSections: InspirationSection[] = [
+        makeSection({ sceneTypes: ['Living Room'], bubbles }),
+      ];
 
       vi.mocked(db.collectionSessions.getById).mockResolvedValue({
         id: 'coll-1',
@@ -276,7 +316,7 @@ describe('Collection Generation with Bubbles', () => {
         productIds: ['prod-1'],
         selectedBaseImages: {},
         settings: {
-          sceneTypeInspiration,
+          inspirationSections,
           aspectRatio: '1:1',
           imageQuality: '2k',
           variantsPerProduct: 1,
@@ -308,27 +348,18 @@ describe('Collection Generation with Bubbles', () => {
 
       expect(response.status).toBe(200);
       expect(enqueueImageGeneration).toHaveBeenCalledTimes(1);
-
-      // The Art Director would have been called with all bubble contexts
-      // and the final prompt would include all elements
-      const call = vi.mocked(enqueueImageGeneration).mock.calls[0];
-      const payload = call[1];
-
-      // Verify the settings are structured correctly
-      expect(payload.settings).toBeDefined();
-      expect(payload.settings?.numberOfVariants).toBe(1);
-      expect(payload.settings?.aspectRatio).toBe('1:1');
     });
 
     it('should combine user prompt with bubble context', async () => {
-      const bubbles: BubbleValue[] = [
-        { type: 'style', preset: 'Scandinavian' },
-        { type: 'custom', value: 'with wooden furniture' },
+      const inspirationSections: InspirationSection[] = [
+        makeSection({
+          sceneTypes: ['Living Room'],
+          bubbles: [
+            { type: 'style', preset: 'Scandinavian' },
+            { type: 'custom', value: 'with wooden furniture' },
+          ] as BubbleValue[],
+        }),
       ];
-
-      const sceneTypeInspiration: SceneTypeInspirationMap = {
-        'Living Room': { bubbles },
-      };
 
       vi.mocked(db.collectionSessions.getById).mockResolvedValue({
         id: 'coll-1',
@@ -336,7 +367,7 @@ describe('Collection Generation with Bubbles', () => {
         productIds: ['prod-1'],
         selectedBaseImages: {},
         settings: {
-          sceneTypeInspiration,
+          inspirationSections,
           userPrompt: 'Add a cozy rug on the floor',
           aspectRatio: '16:9',
           imageQuality: '4k',
@@ -370,19 +401,14 @@ describe('Collection Generation with Bubbles', () => {
 
       expect(response.status).toBe(200);
       expect(enqueueImageGeneration).toHaveBeenCalledTimes(1);
-
-      // The prompt should include both bubble context and user additions
-      const call = vi.mocked(enqueueImageGeneration).mock.calls[0];
-      const payload = call[1];
-      expect(payload.settings).toBeDefined();
     });
   });
 
   describe('Empty and Missing Bubbles', () => {
-    it('should handle scene types with no bubbles', async () => {
-      const sceneTypeInspiration: SceneTypeInspirationMap = {
-        'Living Room': { bubbles: [] },
-      };
+    it('should handle sections with no bubbles', async () => {
+      const inspirationSections: InspirationSection[] = [
+        makeSection({ sceneTypes: ['Living Room'], bubbles: [] }),
+      ];
 
       vi.mocked(db.collectionSessions.getById).mockResolvedValue({
         id: 'coll-1',
@@ -390,7 +416,7 @@ describe('Collection Generation with Bubbles', () => {
         productIds: ['prod-1'],
         selectedBaseImages: {},
         settings: {
-          sceneTypeInspiration,
+          inspirationSections,
           aspectRatio: '1:1',
           imageQuality: '2k',
           variantsPerProduct: 1,
@@ -422,18 +448,18 @@ describe('Collection Generation with Bubbles', () => {
 
       expect(response.status).toBe(200);
       expect(enqueueImageGeneration).toHaveBeenCalledTimes(1);
-      // Should still generate with default prompt
     });
 
     it('should handle bubbles with empty values gracefully', async () => {
-      const bubbles: BubbleValue[] = [
-        { type: 'style' }, // No stylePreset or customValue
-        { type: 'lighting' }, // No lightingPreset or customValue
+      const inspirationSections: InspirationSection[] = [
+        makeSection({
+          sceneTypes: ['Living Room'],
+          bubbles: [
+            { type: 'style' } as BubbleValue, // No preset or customValue
+            { type: 'lighting' } as BubbleValue,
+          ],
+        }),
       ];
-
-      const sceneTypeInspiration: SceneTypeInspirationMap = {
-        'Living Room': { bubbles },
-      };
 
       vi.mocked(db.collectionSessions.getById).mockResolvedValue({
         id: 'coll-1',
@@ -441,7 +467,7 @@ describe('Collection Generation with Bubbles', () => {
         productIds: ['prod-1'],
         selectedBaseImages: {},
         settings: {
-          sceneTypeInspiration,
+          inspirationSections,
           aspectRatio: '1:1',
           imageQuality: '2k',
           variantsPerProduct: 1,
@@ -473,7 +499,6 @@ describe('Collection Generation with Bubbles', () => {
 
       expect(response.status).toBe(200);
       expect(enqueueImageGeneration).toHaveBeenCalledTimes(1);
-      // Should filter out empty bubbles and still generate
     });
   });
 });

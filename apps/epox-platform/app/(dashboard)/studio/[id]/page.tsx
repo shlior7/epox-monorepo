@@ -11,9 +11,9 @@ import { ImageEditOverlay } from '@/components/ui/image-edit-overlay';
 import { ImageEditorModal } from '@/components/studio/modals/ImageEditorModal';
 import {
   UnifiedStudioConfigPanel,
-  ConfigPanelProvider,
   type SceneTypeInfo,
 } from '@/components/studio';
+import type { ConfigPanelState } from '@/components/studio/config-panel/ConfigPanelContext';
 import type { GeneratedAsset } from '@/lib/api-client';
 import { apiClient } from '@/lib/api-client';
 import { useGenerationPolling } from '@/lib/hooks/use-generation-polling';
@@ -38,11 +38,10 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type {
-  FlowGenerationSettings,
-  SceneTypeInspirationMap,
+  Category,
+  InspirationSection,
   SubjectAnalysis,
   VideoPromptSettings,
-  BubbleValue,
 } from 'visualizer-types';
 import {
   CAMERA_MOTION_OPTIONS,
@@ -186,10 +185,7 @@ export default function StudioPage({ params }: StudioPageProps) {
     [router, pathname, searchParams]
   );
 
-  // Section 1: Scene Style
-  const [generalInspiration, setGeneralInspiration] = useState<BubbleValue[]>([]);
-  const [sceneTypeInspiration, setSceneTypeInspiration] = useState<SceneTypeInspirationMap>({});
-  const [useSceneTypeInspiration, setUseSceneTypeInspiration] = useState(true);
+  // Section 1: Scene Style (scene type kept as useState - UI-only state)
   const [sceneType, setSceneType] = useState<string>('');
   const [customSceneType, setCustomSceneType] = useState('');
 
@@ -200,16 +196,8 @@ export default function StudioPage({ params }: StudioPageProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedBaseImageId, setSelectedBaseImageId] = useState<string | null>(null);
 
-  // Section 3: User Prompt
-  const [userPrompt, setUserPrompt] = useState('');
+  // Section 3: User Prompt (preview only)
   const [generatedPromptPreview, setGeneratedPromptPreview] = useState<string | null>(null);
-
-  // Section 4: Output Settings
-  const [settings, setSettings] = useState({
-    aspectRatio: '1:1' as ImageAspectRatio,
-    quality: '2k' as '1k' | '2k' | '4k',
-    variantsCount: 1,
-  });
 
   // Video Settings
   const [videoPrompt, setVideoPrompt] = useState('');
@@ -261,6 +249,31 @@ export default function StudioPage({ params }: StudioPageProps) {
     staleTime: 60 * 1000,
   });
 
+  // Fetch client categories (for category selector)
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await fetch('/api/categories');
+      if (!response.ok) return { categories: [] };
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Build category map for resolving category bubbles
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, Category>();
+    if (categoriesData?.categories) {
+      for (const cat of categoriesData.categories) {
+        map.set(cat.id, cat);
+      }
+    }
+    return map;
+  }, [categoriesData?.categories]);
+
+  // Selected category state
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+
   // Fetch generated images for THIS flow only
   const { data: generatedImagesData } = useQuery({
     queryKey: [
@@ -286,6 +299,62 @@ export default function StudioPage({ params }: StudioPageProps) {
     refetchInterval: isGenerating || isGeneratingVideo ? 3000 : false,
   });
 
+  // ===== CONFIG PANEL STATE (ref as single source of draft state) =====
+  const configPanelStateRef = useRef<ConfigPanelState | null>(null);
+  const hasInitializedRef = useRef(false);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Compute initialState from query data — by the time we render past the loading guard,
+  // flowData IS available, so this eliminates the race condition.
+  // When the flow has no custom settings and no collection, merge product's defaultGenerationSettings.
+  const configPanelInitialState = useMemo((): ConfigPanelState => {
+    const s = flowData?.settings as any;
+    const hasFlowSettings =
+      (Array.isArray(s?.generalInspiration) && s.generalInspiration.length > 0) ||
+      (Array.isArray(s?.inspirationSections) && s.inspirationSections.length > 0) ||
+      s?.userPrompt;
+    const isStandalone = !flowData?.collectionSessionId;
+
+    // If flow has no custom settings and is standalone, try product defaults
+    const firstProduct = products?.[0] as any;
+    const productDefaults = firstProduct?.defaultGenerationSettings;
+    const useProductDefaults = !hasFlowSettings && isStandalone && productDefaults;
+
+    const source = useProductDefaults ? productDefaults : s;
+
+    return {
+      generalInspiration: Array.isArray(source?.generalInspiration) ? source.generalInspiration : [],
+      inspirationSections: Array.isArray(source?.inspirationSections) ? source.inspirationSections : [],
+      userPrompt: source?.userPrompt ?? '',
+      applyCollectionInspiration: !!flowData?.collectionSessionId,
+      applyCollectionPrompt: !!flowData?.collectionSessionId,
+      outputSettings: {
+        aspectRatio: source?.aspectRatio ?? s?.aspectRatio ?? '1:1',
+        quality: (source?.imageQuality ?? s?.imageQuality as '1k' | '2k' | '4k') ?? '2k',
+        variantsCount: source?.variantsPerProduct ?? s?.variantsPerProduct ?? 1,
+      },
+    };
+  }, [flowData?.settings, flowData?.collectionSessionId, products]);
+
+  // Use a ref for saveSettings so the callback doesn't need it in deps
+  const saveSettingsRef = useRef<(() => Promise<void>) | undefined>(undefined);
+
+  const handleConfigStateChange = useCallback((configState: ConfigPanelState) => {
+    configPanelStateRef.current = configState;
+
+    // Skip auto-save until first real user interaction (not the initial mount)
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      return;
+    }
+
+    // Debounced auto-save
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      saveSettingsRef.current?.();
+    }, 1000);
+  }, []);
+
   // ===== COMPUTED VALUES =====
 
   const currentProduct = useMemo(() => {
@@ -299,6 +368,28 @@ export default function StudioPage({ params }: StudioPageProps) {
   const subjectAnalysis: SubjectAnalysis | null = useMemo(() => {
     return currentProduct?.analysis?.subject || null;
   }, [currentProduct]);
+
+  // Product categories (from product's linkedCategories)
+  const productCategories = useMemo(() => {
+    if (!currentProduct?.linkedCategories) return [];
+    return currentProduct.linkedCategories.map((lc: any) => ({
+      id: lc.categoryId,
+      name: lc.categoryName,
+      isPrimary: lc.isPrimary,
+    }));
+  }, [currentProduct?.linkedCategories]);
+
+  // Auto-select primary category when product loads
+  useEffect(() => {
+    if (!selectedCategoryId && currentProduct?.linkedCategories?.length > 0) {
+      const primary = currentProduct.linkedCategories.find((lc: any) => lc.isPrimary);
+      if (primary) {
+        setSelectedCategoryId(primary.categoryId);
+      } else {
+        setSelectedCategoryId(currentProduct.linkedCategories[0].categoryId);
+      }
+    }
+  }, [currentProduct?.linkedCategories, selectedCategoryId]);
 
   const selectedBaseImageUrl = useMemo(() => {
     if (!currentProduct?.baseImages) return null;
@@ -349,27 +440,32 @@ export default function StudioPage({ params }: StudioPageProps) {
     return Math.max(generationProgress, progressFromAssets);
   }, [generationProgress, imageGenerationTracker, isGenerating, newGeneratedImageCount]);
 
-  // Scene type groups from inspiration
+  // Scene type groups from inspiration sections (read from query data)
   const sceneTypeGroups = useMemo(() => {
+    const sections = configPanelInitialState.inspirationSections;
     const groups: Record<string, number> = {};
-    for (const [sceneType, data] of Object.entries(sceneTypeInspiration)) {
-      groups[sceneType] = data.bubbles?.length ?? 0;
+    for (const section of sections) {
+      for (const st of section.sceneTypes) {
+        groups[st] = (groups[st] || 0) + section.bubbles.length;
+      }
     }
     return groups;
-  }, [sceneTypeInspiration]);
+  }, [configPanelInitialState.inspirationSections]);
 
   // Matched scene type for current product
   const matchedSceneType = useMemo(() => {
-    if (!subjectAnalysis?.nativeSceneTypes || Object.keys(sceneTypeInspiration).length === 0) {
+    const sections = configPanelInitialState.inspirationSections;
+    if (!subjectAnalysis?.nativeSceneTypes || sections.length === 0) {
       return null;
     }
+    const sectionSceneTypes = new Set(sections.flatMap((s) => s.sceneTypes));
     for (const sceneType of subjectAnalysis.nativeSceneTypes) {
-      if (sceneTypeInspiration[sceneType]) {
+      if (sectionSceneTypes.has(sceneType)) {
         return sceneType;
       }
     }
-    return Object.keys(sceneTypeInspiration)[0] || null;
-  }, [subjectAnalysis, sceneTypeInspiration]);
+    return sectionSceneTypes.size > 0 ? Array.from(sectionSceneTypes)[0] : null;
+  }, [subjectAnalysis, configPanelInitialState.inspirationSections]);
 
   // Current tab assets
   const currentAssets = activeTab === 'images' ? imageAssets : videoAssets;
@@ -378,10 +474,10 @@ export default function StudioPage({ params }: StudioPageProps) {
   const assetConfiguration = useMemo(
     () => ({
       sceneType: matchedSceneType ?? undefined,
-      aspectRatio: settings.aspectRatio,
-      quality: settings.quality,
+      aspectRatio: configPanelInitialState.outputSettings.aspectRatio,
+      quality: configPanelInitialState.outputSettings.quality,
     }),
-    [matchedSceneType, settings.aspectRatio, settings.quality]
+    [matchedSceneType, configPanelInitialState.outputSettings.aspectRatio, configPanelInitialState.outputSettings.quality]
   );
 
   // ===== EFFECTS =====
@@ -423,15 +519,13 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   // No longer needed - multi-open accordions don't need tab-based reset
 
-  // Initialize from flow settings
+  // Initialize scene type and video settings from flow data
+  // (config panel settings are now computed directly via configPanelInitialState)
   useEffect(() => {
     if (flowData?.settings) {
       const s = flowData.settings as any;
-      if (Array.isArray(s.generalInspiration)) setGeneralInspiration(s.generalInspiration);
-      if (s.sceneTypeInspiration) setSceneTypeInspiration(s.sceneTypeInspiration as SceneTypeInspirationMap);
-      if (typeof s.useSceneTypeInspiration === 'boolean') setUseSceneTypeInspiration(s.useSceneTypeInspiration);
 
-      // Handle sceneType
+      // Handle sceneType (UI-only state)
       if (s.sceneType) {
         const nativeTypes = products?.[0]?.analysis?.subject?.nativeSceneTypes || [];
         if (nativeTypes.includes(s.sceneType)) {
@@ -442,11 +536,7 @@ export default function StudioPage({ params }: StudioPageProps) {
         }
       }
 
-      if (s.userPrompt) setUserPrompt(s.userPrompt);
-      if (s.aspectRatio) setSettings((prev) => ({ ...prev, aspectRatio: s.aspectRatio }));
-      if (s.imageQuality)
-        setSettings((prev) => ({ ...prev, quality: s.imageQuality as '1k' | '2k' | '4k' }));
-      if (s.variantsPerProduct) setSettings((prev) => ({ ...prev, variantsCount: s.variantsPerProduct! }));
+      // Video settings (remain as useState — not part of config panel)
       if (s.video) {
         setVideoPrompt(s.video.prompt ?? '');
         setVideoSettings({
@@ -531,6 +621,10 @@ export default function StudioPage({ params }: StudioPageProps) {
 
   const saveSettings = useCallback(async () => {
     try {
+      // Read the latest draft state from the config panel ref
+      const panelState = configPanelStateRef.current;
+      if (!panelState) return;
+
       const normalizedVideoSettings: VideoPromptSettings = {
         videoType: videoSettings.videoType,
         cameraMotion: videoSettings.cameraMotion,
@@ -544,14 +638,13 @@ export default function StudioPage({ params }: StudioPageProps) {
 
       // Create settings object for comparison
       const currentSettings = JSON.stringify({
-        generalInspiration,
-        sceneTypeInspiration,
-        useSceneTypeInspiration,
+        generalInspiration: panelState.generalInspiration,
+        inspirationSections: panelState.inspirationSections,
         sceneType: effectiveSceneType,
-        userPrompt,
-        aspectRatio: settings.aspectRatio,
-        quality: settings.quality,
-        variantsCount: settings.variantsCount,
+        userPrompt: panelState.userPrompt,
+        aspectRatio: panelState.outputSettings.aspectRatio,
+        quality: panelState.outputSettings.quality,
+        variantsCount: panelState.outputSettings.variantsCount,
         videoPrompt,
         videoSettings: normalizedVideoSettings,
         videoPresetId,
@@ -564,14 +657,13 @@ export default function StudioPage({ params }: StudioPageProps) {
       prevSettingsRef.current = currentSettings;
 
       await apiClient.updateStudioSettings(studioId, {
-        generalInspiration: generalInspiration as any,
-        sceneTypeInspiration: sceneTypeInspiration as any,
-        useSceneTypeInspiration,
+        generalInspiration: panelState.generalInspiration as any,
+        inspirationSections: panelState.inspirationSections as any,
         sceneType: effectiveSceneType || undefined,
-        userPrompt: userPrompt || undefined,
-        aspectRatio: settings.aspectRatio,
-        imageQuality: settings.quality,
-        variantsPerProduct: settings.variantsCount,
+        userPrompt: panelState.userPrompt || undefined,
+        aspectRatio: panelState.outputSettings.aspectRatio,
+        imageQuality: panelState.outputSettings.quality,
+        variantsPerProduct: panelState.outputSettings.variantsCount,
         video: {
           prompt: videoPrompt || undefined,
           settings: normalizedVideoSettings,
@@ -583,19 +675,14 @@ export default function StudioPage({ params }: StudioPageProps) {
     }
   }, [
     studioId,
-    generalInspiration,
-    sceneTypeInspiration,
-    useSceneTypeInspiration,
     sceneType,
     customSceneType,
-    userPrompt,
-    settings.aspectRatio,
-    settings.quality,
-    settings.variantsCount,
     videoPrompt,
     videoSettings,
     videoPresetId,
   ]);
+  // Keep saveSettings ref in sync for debounced auto-save
+  saveSettingsRef.current = saveSettings;
 
   // Auto-save video settings when they change
   useEffect(() => {
@@ -729,15 +816,47 @@ export default function StudioPage({ params }: StudioPageProps) {
     }
 
     try {
+      // Read the latest draft state from the config panel ref
+      const panelState = configPanelStateRef.current ?? configPanelInitialState;
+      const currentGeneralInspiration = panelState.generalInspiration;
+      const currentInspirationSections = panelState.inspirationSections;
+      const currentUserPrompt = panelState.userPrompt;
+      const currentApplyCollectionInspiration = panelState.applyCollectionInspiration;
+      const currentApplyCollectionPrompt = panelState.applyCollectionPrompt;
+
+      // Merge collection settings for preview too
+      const collectionSettings = flowData?.collectionSettings;
+      const shouldMergeInspiration = currentApplyCollectionInspiration && !!collectionSettings;
+      const shouldMergePrompt = currentApplyCollectionPrompt && !!collectionSettings;
+
+      let previewGeneralInspiration = [...currentGeneralInspiration];
+      if (shouldMergeInspiration && Array.isArray(collectionSettings.generalInspiration)) {
+        previewGeneralInspiration = [...collectionSettings.generalInspiration, ...currentGeneralInspiration];
+      }
+
+      let previewInspirationSections = [...currentInspirationSections];
+      if (shouldMergeInspiration && Array.isArray(collectionSettings.inspirationSections)) {
+        const flowSceneType = flowData?.flowSceneType || selectedSceneTypeValue;
+        const collectionSections = collectionSettings.inspirationSections.filter(
+          (section: InspirationSection) =>
+            section.sceneTypes.length === 0 || section.sceneTypes.includes(flowSceneType)
+        );
+        previewInspirationSections = [...collectionSections, ...currentInspirationSections];
+      }
+
+      let previewUserPrompt = currentUserPrompt;
+      if (shouldMergePrompt && collectionSettings.userPrompt) {
+        previewUserPrompt = [collectionSettings.userPrompt, currentUserPrompt].filter(Boolean).join('\n\n');
+      }
+
       const response = await fetch('/api/art-director', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subjectAnalysis,
-          generalInspiration,
-          sceneTypeInspiration,
-          useSceneTypeInspiration,
-          userPrompt: userPrompt || undefined,
+          generalInspiration: previewGeneralInspiration,
+          inspirationSections: previewInspirationSections,
+          userPrompt: previewUserPrompt || undefined,
         }),
       });
 
@@ -759,18 +878,55 @@ export default function StudioPage({ params }: StudioPageProps) {
 
     try {
       manualImageCompletionRef.current = false;
+
+      // Read the latest draft state from the config panel ref
+      const panelState = configPanelStateRef.current ?? configPanelInitialState;
+      const currentGeneralInspiration = panelState.generalInspiration;
+      const currentInspirationSections = panelState.inspirationSections;
+      const currentUserPrompt = panelState.userPrompt;
+      const currentApplyCollectionInspiration = panelState.applyCollectionInspiration;
+      const currentApplyCollectionPrompt = panelState.applyCollectionPrompt;
+      const currentOutputSettings = panelState.outputSettings;
+
+      // Merge collection settings based on separate toggles
+      const collectionSettings = flowData?.collectionSettings;
+      const shouldMergeInspiration = currentApplyCollectionInspiration && !!collectionSettings;
+      const shouldMergePrompt = currentApplyCollectionPrompt && !!collectionSettings;
+
+      // Merge general inspiration: collection bubbles first, then flow-specific
+      let mergedGeneralInspiration = [...currentGeneralInspiration];
+      if (shouldMergeInspiration && Array.isArray(collectionSettings.generalInspiration)) {
+        mergedGeneralInspiration = [...collectionSettings.generalInspiration, ...currentGeneralInspiration];
+      }
+
+      // Merge inspiration sections: collection sections (filtered by scene type) + flow sections
+      let mergedInspirationSections = [...currentInspirationSections];
+      if (shouldMergeInspiration && Array.isArray(collectionSettings.inspirationSections)) {
+        const flowSceneType = flowData?.flowSceneType || selectedSceneTypeValue;
+        const collectionSections = collectionSettings.inspirationSections.filter(
+          (section: InspirationSection) =>
+            section.sceneTypes.length === 0 || section.sceneTypes.includes(flowSceneType)
+        );
+        mergedInspirationSections = [...collectionSections, ...currentInspirationSections];
+      }
+
+      // Merge user prompt: collection prompt + flow prompt
+      let mergedUserPrompt = currentUserPrompt;
+      if (shouldMergePrompt && collectionSettings.userPrompt) {
+        mergedUserPrompt = [collectionSettings.userPrompt, currentUserPrompt].filter(Boolean).join('\n\n');
+      }
+
       // First, generate the prompt via Art Director
       let prompt = '';
-      if (subjectAnalysis && (generalInspiration.length > 0 || Object.keys(sceneTypeInspiration).length > 0)) {
+      if (subjectAnalysis && (mergedGeneralInspiration.length > 0 || mergedInspirationSections.length > 0)) {
         const artDirectorResponse = await fetch('/api/art-director', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             subjectAnalysis,
-            generalInspiration,
-            sceneTypeInspiration,
-            useSceneTypeInspiration,
-            userPrompt: userPrompt || undefined,
+            generalInspiration: mergedGeneralInspiration,
+            inspirationSections: mergedInspirationSections,
+            userPrompt: mergedUserPrompt || undefined,
           }),
         });
 
@@ -781,13 +937,13 @@ export default function StudioPage({ params }: StudioPageProps) {
       }
 
       // Fall back to user prompt if no Art Director prompt
-      if (!prompt && userPrompt) {
-        prompt = userPrompt;
+      if (!prompt && mergedUserPrompt) {
+        prompt = mergedUserPrompt;
       }
 
-      // Extract reference image URLs from reference bubbles
+      // Extract reference image URLs from reference bubbles (merged)
       const referenceImageUrls: string[] = [];
-      for (const bubble of generalInspiration) {
+      for (const bubble of mergedGeneralInspiration) {
         if (bubble.type === 'reference' && bubble.image?.url) {
           referenceImageUrls.push(bubble.image.url);
         }
@@ -800,9 +956,9 @@ export default function StudioPage({ params }: StudioPageProps) {
         productImageUrls: selectedBaseImageUrl ? [selectedBaseImageUrl] : undefined,
         inspirationImageUrls: referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
         settings: {
-          aspectRatio: settings.aspectRatio,
-          imageQuality: settings.quality.toLowerCase() as '1k' | '2k' | '4k',
-          variantsPerProduct: settings.variantsCount,
+          aspectRatio: currentOutputSettings.aspectRatio,
+          imageQuality: currentOutputSettings.quality.toLowerCase() as '1k' | '2k' | '4k',
+          variantsPerProduct: currentOutputSettings.variantsCount,
         },
       });
 
@@ -810,7 +966,7 @@ export default function StudioPage({ params }: StudioPageProps) {
 
       if (result.status === 'queued' && result.jobId) {
         setImageGenerationTracker({
-          expectedCount: result.expectedImageCount ?? products.length * settings.variantsCount,
+          expectedCount: result.expectedImageCount ?? products.length * currentOutputSettings.variantsCount,
           baselineIds: imageAssets.map((asset) => asset.id),
         });
         startGeneration(result.jobId);
@@ -1102,20 +1258,6 @@ export default function StudioPage({ params }: StudioPageProps) {
   // ===== RENDER =====
 
   return (
-    <ConfigPanelProvider
-      initialState={{
-        generalInspiration,
-        sceneTypeInspiration,
-        useSceneTypeInspiration,
-        userPrompt,
-        applyCollectionPrompt: !!flowData?.collectionSessionId,
-        outputSettings: {
-          aspectRatio: settings.aspectRatio,
-          quality: settings.quality,
-          variantsCount: settings.variantsCount,
-        },
-      }}
-    >
       <div className="flex h-screen flex-col overflow-hidden">
       {/* Header */}
       <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur-xl">
@@ -1151,6 +1293,7 @@ export default function StudioPage({ params }: StudioPageProps) {
                   src={primaryImageUrl}
                   alt={currentProduct?.name || ''}
                   fill
+                  sizes="32px"
                   className="object-cover"
                   unoptimized
                 />
@@ -1208,6 +1351,8 @@ export default function StudioPage({ params }: StudioPageProps) {
           collectionSettings={flowData?.collectionSettings}
           flowSceneType={flowData?.flowSceneType ?? undefined}
           collectionPrompt={flowData?.collectionSettings?.userPrompt}
+          initialState={configPanelInitialState}
+          onStateChange={handleConfigStateChange}
           onSave={saveSettings}
           onGenerate={() => {
             if (activeTab === 'images') {
@@ -1221,6 +1366,10 @@ export default function StudioPage({ params }: StudioPageProps) {
           baseImages={configPanelBaseImages}
           selectedBaseImageId={selectedBaseImageId || ''}
           onBaseImageSelect={handleBaseImageSelect}
+          productCategories={productCategories}
+          selectedCategoryId={selectedCategoryId || undefined}
+          onCategoryChange={setSelectedCategoryId}
+          categoryMap={categoryMap}
           className="h-full"
         />
         {/* Main Content Area */}
@@ -1359,6 +1508,7 @@ export default function StudioPage({ params }: StudioPageProps) {
                           src={asset.url}
                           alt="Generated"
                           fill
+                          sizes="(max-width: 768px) 50vw, 33vw"
                           className="object-cover"
                           unoptimized
                         />
@@ -1420,6 +1570,5 @@ export default function StudioPage({ params }: StudioPageProps) {
         />
       )}
       </div>
-    </ConfigPanelProvider>
   );
 }

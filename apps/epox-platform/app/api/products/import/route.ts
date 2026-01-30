@@ -8,6 +8,7 @@ import { withSecurity } from '@/lib/security';
 import { db } from '@/lib/services/db';
 import { storage, storagePaths } from '@/lib/services/storage';
 import { getStoreService } from '@/lib/services/erp';
+import { resolveStorageUrlAbsolute } from 'visualizer-storage';
 
 async function downloadImage(url: string): Promise<{ blob: Blob; contentType: string } | null> {
   try {
@@ -92,6 +93,26 @@ export const POST = withSecurity(async (request, context) => {
       JSON.stringify(validProducts, null, 2)
     );
 
+    // Pre-create all unique categories sequentially to avoid race conditions
+    const categoryNameToId = new Map<string, { id: string; name: string; hasSettings: boolean }>();
+    const categoryProductCount = new Map<string, number>();
+    for (const storeProduct of validProducts) {
+      if (!storeProduct.categories) continue;
+      for (const storeCat of storeProduct.categories) {
+        if (!storeCat.name) continue;
+        const key = storeCat.name.toLowerCase().trim();
+        categoryProductCount.set(key, (categoryProductCount.get(key) ?? 0) + 1);
+        if (!categoryNameToId.has(key)) {
+          const cat = await db.categories.getOrCreate(clientId, storeCat.name);
+          categoryNameToId.set(key, {
+            id: cat.id,
+            name: cat.name,
+            hasSettings: !!cat.generationSettings,
+          });
+        }
+      }
+    }
+
     // Import products into database
     const importedProducts = await Promise.all(
       validProducts.map(async (storeProduct) => {
@@ -163,11 +184,42 @@ export const POST = withSecurity(async (request, context) => {
           }
         }
 
+        // Link product to pre-created categories
+        if (storeProduct.categories && storeProduct.categories.length > 0) {
+          for (let ci = 0; ci < storeProduct.categories.length; ci++) {
+            const storeCat = storeProduct.categories[ci];
+            if (!storeCat.name) continue;
+            const key = storeCat.name.toLowerCase().trim();
+            const catInfo = categoryNameToId.get(key);
+            if (!catInfo) continue;
+            try {
+              await db.productCategories.link(product.id, catInfo.id, ci === 0);
+            } catch (catError) {
+              console.error(`Failed to link category "${storeCat.name}" to product ${product.name}:`, catError);
+            }
+          }
+        }
+
         return product;
       })
     );
 
-    console.log(`✅ Imported ${importedProducts.length} products for client ${clientId}`);
+    // Find categories without generation settings (new categories needing wizard)
+    const allCategories = Array.from(categoryNameToId.entries()).map(([key, c]) => ({
+      ...c,
+      productCount: categoryProductCount.get(key) ?? 0,
+    }));
+    const unconfiguredCategories = allCategories.filter((c) => !c.hasSettings);
+
+    console.log(`✅ Imported ${importedProducts.length} products for client ${clientId}, ${allCategories.length} categories linked, ${unconfiguredCategories.length} unconfigured`);
+
+    // Fire-and-forget: trigger background analysis for newly imported products
+    const newProductIds = importedProducts.map(p => p.id);
+    if (newProductIds.length > 0) {
+      analyzeImportedProducts(newProductIds).catch(err =>
+        console.warn('⚠️ Background product analysis failed:', err)
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -177,9 +229,73 @@ export const POST = withSecurity(async (request, context) => {
         name: p.name,
         storeId: p.storeId,
       })),
+      categories: allCategories.map((c) => ({ id: c.id, name: c.name, productCount: c.productCount })),
+      unconfiguredCategories: unconfiguredCategories.map((c) => ({ id: c.id, name: c.name, productCount: c.productCount })),
     });
   } catch (error: any) {
     console.error('❌ Failed to import products:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 });
+
+/**
+ * Background analysis for imported products.
+ * Runs sequentially to avoid overwhelming the AI API.
+ */
+async function analyzeImportedProducts(productIds: string[]) {
+  const { getProductAnalysisService } = await import('visualizer-ai');
+  const analysisService = getProductAnalysisService();
+
+  for (const productId of productIds) {
+    try {
+      const product = await db.products.getById(productId);
+      if (!product) continue;
+
+      // Get primary image URL
+      const imagesMap = await db.productImages.listByProductIds([productId]);
+      const images = imagesMap.get(productId) || [];
+      const primaryImage = images.find(img => img.isPrimary) ?? images[0];
+      const imageUrl = primaryImage?.imageUrl
+        ? (resolveStorageUrlAbsolute(primaryImage.imageUrl) ?? undefined)
+        : undefined;
+
+      const result = await analysisService.analyzeProductWithAI({
+        productId,
+        name: product.name,
+        description: product.description ?? undefined,
+        category: product.category ?? undefined,
+        imageUrl,
+      });
+
+      const importPrimaryColor = result.colorSchemes?.[0]?.colors[0] || '#000000';
+      await db.products.update(productId, {
+        analysisData: {
+          analyzedAt: new Date().toISOString(),
+          productType: result.productType || 'product',
+          materials: result.materials || [],
+          colors: result.colorSchemes?.[0]
+            ? { primary: importPrimaryColor, accent: result.colorSchemes[0].colors.slice(1) }
+            : { primary: '#000000' },
+          dominantColorHex: importPrimaryColor,
+          style: result.styles || [],
+          sceneTypes: result.sceneTypes || ['Living Room'],
+          scaleHints: { width: result.size?.type || 'medium', height: result.size?.dimensions || 'medium' },
+          promptKeywords: [],
+          version: '1.0',
+          subject: {
+            subjectClassHyphenated: result.productType?.replace(/\s+/g, '-') || 'product',
+            nativeSceneTypes: result.sceneTypes || ['Living Room'],
+            nativeSceneCategory: 'Indoor Room' as const,
+            inputCameraAngle: 'Frontal' as const,
+            dominantColors: result.colorSchemes?.[0]?.colors,
+            materialTags: result.materials,
+          },
+        },
+        analyzedAt: new Date(),
+      });
+      console.log(`✅ Analyzed imported product: ${product.name}`);
+    } catch (err) {
+      console.warn(`⚠️ Analysis failed for product ${productId}:`, err);
+    }
+  }
+}

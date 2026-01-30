@@ -33,6 +33,7 @@ export interface AddBubbleButtonProps {
   disabled?: boolean;
   maxBubbles?: number;
   currentCount?: number;
+  variant?: 'grid' | 'header';
   className?: string;
 }
 
@@ -44,6 +45,7 @@ export function AddBubbleButton({
   disabled = false,
   maxBubbles = 5,
   currentCount = 0,
+  variant = 'grid',
   className,
 }: AddBubbleButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -64,14 +66,55 @@ export function AddBubbleButton({
     setIsOpen(false);
   };
 
-  return (
-    <div className={cn('group', className)} data-testid={buildTestId('add-bubble-button', sceneType)}>
+  if (variant === 'header') {
+    return (
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           <button
             disabled={disabled || isMaxReached}
             className={cn(
-              'flex h-14 w-14 items-center justify-center rounded-lg border-2 border-dashed transition-colors',
+              'flex h-6 w-6 items-center justify-center rounded-md transition-all',
+              disabled || isMaxReached
+                ? 'bg-muted text-muted-foreground opacity-50'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90',
+              className
+            )}
+            data-testid={buildTestId('add-bubble-button', 'trigger', sceneType)}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          {bubbleOptions.map((option) => (
+            <DropdownMenuItem
+              key={option.type}
+              onClick={() => handleSelect(option.type)}
+              className="flex items-start gap-3 py-2"
+              data-testid={buildTestId('add-bubble-option', option.type)}
+            >
+              <option.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">{option.label}</span>
+                <span className="text-xs text-muted-foreground">{option.description}</span>
+              </div>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
+  return (
+    <div
+      className={cn('group', className)}
+      data-testid={buildTestId('add-bubble-button', sceneType)}
+    >
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <DropdownMenuTrigger asChild>
+          <button
+            disabled={disabled || isMaxReached}
+            className={cn(
+              'flex aspect-square w-full flex-col items-center justify-center rounded-lg border-2 transition-all',
               disabled || isMaxReached
                 ? 'border-border/50 opacity-50'
                 : 'border-border hover:border-primary hover:bg-primary/5'

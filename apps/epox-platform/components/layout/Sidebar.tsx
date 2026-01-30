@@ -4,9 +4,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Home,
   FolderKanban,
+  FolderTree,
   Package,
   Settings,
   LogOut,
@@ -16,8 +18,9 @@ import {
   Wand2,
   Images,
   Store,
+  Clock,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatRelativeTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -29,12 +32,14 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { buildTestId } from '@/lib/testing/testid';
+import { apiClient } from '@/lib/api-client';
 
 const navigation = [
   { name: 'Home', href: '/home', icon: Home },
   { name: 'Studio', href: '/studio', icon: Wand2 },
   { name: 'Collections', href: '/collections', icon: FolderKanban },
   { name: 'Products', href: '/products', icon: Package },
+  { name: 'Categories', href: '/categories', icon: FolderTree },
   { name: 'Assets', href: '/assets', icon: Images },
   { name: 'Store', href: '/store', icon: Store },
 ];
@@ -65,6 +70,13 @@ export function Sidebar({
       .toUpperCase()
       .slice(0, 2);
   };
+
+  const { data: recentSessions } = useQuery({
+    queryKey: ['sidebar-recent-sessions'],
+    queryFn: () => apiClient.listCollections({ sort: 'recent', limit: 5 }),
+    staleTime: 60_000,
+    enabled: mounted,
+  });
 
   // Prevent hydration mismatch by using consistent fallback until mounted
   const userName = mounted ? user?.name || 'User' : 'User';
@@ -136,9 +148,11 @@ export function Sidebar({
         </Button>
       </div>
 
+      {/* Navigation + Recent Sessions wrapper (flex-1 to push user section to bottom) */}
+      <div className="flex min-h-0 flex-1 flex-col">
       {/* Navigation */}
       <nav
-        className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3"
+        className="shrink-0 space-y-0.5 px-2 py-3"
         data-testid={buildTestId(testId, 'nav')}
       >
         {navigation.map((item) => {
@@ -200,8 +214,60 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* Quick Action */}
-      {!collapsed && <div className="px-2 pb-3"></div>}
+      {/* Recent Studio Sessions */}
+      {!collapsed && recentSessions && recentSessions.collections.length > 0 && (
+        <div
+          className="min-h-0 flex-1 overflow-y-auto border-t border-border/50 px-2 py-3"
+          data-testid={buildTestId(testId, 'recent-sessions')}
+        >
+          <div
+            className="mb-2 flex items-center gap-1.5 px-2.5"
+            data-testid={buildTestId(testId, 'recent-sessions', 'header')}
+          >
+            <Clock className="h-3.5 w-3.5 text-muted-foreground/70" />
+            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+              Recent Sessions
+            </span>
+          </div>
+          <div className="space-y-0.5">
+            {recentSessions.collections.map((collection) => {
+              const isActive = pathname === `/studio/collections/${collection.id}`;
+              return (
+                <Link
+                  key={collection.id}
+                  href={`/studio/collections/${collection.id}`}
+                  className={cn(
+                    'flex items-center gap-2.5',
+                    'rounded-lg px-2.5 py-1.5',
+                    'transition-all duration-200',
+                    isActive
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
+                  )}
+                  data-testid={buildTestId(testId, 'recent-session', collection.id)}
+                >
+                  <FolderKanban className="h-3.5 w-3.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium">{collection.name}</p>
+                    <p className="text-[10px] text-muted-foreground/60">
+                      {collection.productCount} product{collection.productCount !== 1 ? 's' : ''}
+                      {' \u00b7 '}
+                      {formatRelativeTime(collection.updatedAt)}
+                    </p>
+                  </div>
+                  {collection.status === 'generating' && (
+                    <div
+                      className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-amber-400"
+                      data-testid={buildTestId(testId, 'recent-session', collection.id, 'generating')}
+                    />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      </div>
 
       {/* User Section */}
       <div
