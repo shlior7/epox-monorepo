@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/services/db';
 import { withSecurity } from '@/lib/security/middleware';
 import { resolveStorageUrl } from 'visualizer-storage';
-import type { CollectionSessionStatus, FlowGenerationSettings } from 'visualizer-types';
+import type { CollectionSessionStatus, FlowGenerationSettings, InspirationSection } from 'visualizer-types';
 
 // Force dynamic rendering since security middleware reads headers
 export const dynamic = 'force-dynamic';
@@ -108,7 +108,7 @@ export const POST = withSecurity(async (request, context) => {
   }
   try {
     const body = await request.json();
-    const { name, productIds, inspirationImages, promptTags } = body;
+    const { name, productIds, inspirationImages, promptTags, settings: incomingSettings } = body;
 
     // Validate name
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -153,8 +153,7 @@ export const POST = withSecurity(async (request, context) => {
       generalInspiration.length > 0
         ? {
             generalInspiration,
-            sceneTypeInspiration: {},
-            useSceneTypeInspiration: true,
+            inspirationSections: [],
             aspectRatio: '1:1',
             imageQuality: '2k' as import('visualizer-types').ImageQuality,
             variantsPerProduct: 1,
@@ -172,13 +171,100 @@ export const POST = withSecurity(async (request, context) => {
       }
     });
 
+    // Auto-populate inspirationSections from category defaults
+    // For each product, find its categories and check for generationSettings.defaultBubbles
+    const autoSections: InspirationSection[] = [];
+    const processedCategoryIds = new Set<string>();
+
+    try {
+      // Batch: get all product-category links for all products
+      const categoryLinksPerProduct = await Promise.all(
+        productIds.map((pid) => db.productCategories.listByProduct(pid))
+      );
+
+      // Collect unique category IDs
+      const uniqueCategoryIds = new Set<string>();
+      for (const links of categoryLinksPerProduct) {
+        for (const link of links) {
+          uniqueCategoryIds.add(link.categoryId);
+        }
+      }
+
+      // Fetch categories with generation settings
+      if (uniqueCategoryIds.size > 0) {
+        const categoryFetches = await Promise.all(
+          Array.from(uniqueCategoryIds).map((catId) => db.categories.getById(catId))
+        );
+
+        for (const category of categoryFetches) {
+          if (
+            category &&
+            category.generationSettings?.defaultBubbles &&
+            category.generationSettings.defaultBubbles.length > 0 &&
+            !processedCategoryIds.has(category.id)
+          ) {
+            processedCategoryIds.add(category.id);
+            autoSections.push({
+              id: crypto.randomUUID(),
+              categoryIds: [category.id],
+              sceneTypes: [],
+              bubbles: category.generationSettings.defaultBubbles,
+              enabled: true,
+            });
+            console.log(
+              `✅ Auto-populated section for category "${category.name}" with ${category.generationSettings.defaultBubbles.length} generation settings`
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to auto-populate category sections:', error);
+    }
+
+    // Merge auto-populated sections into collection settings
+    // Priority: incomingSettings (from config panel) > collectionSettings (from wizard) > autoSections
+    let finalSettings: import('visualizer-types').CollectionGenerationSettings | undefined;
+
+    if (incomingSettings) {
+      // Config panel settings provided — use as base, merge auto sections that don't overlap
+      const existingSectionCategoryIds = new Set<string>();
+      (incomingSettings.inspirationSections || []).forEach((s: InspirationSection) => {
+        s.categoryIds?.forEach((cid: string) => existingSectionCategoryIds.add(cid));
+      });
+      const newAutoSections = autoSections.filter(
+        (s) => !s.categoryIds?.some((cid) => existingSectionCategoryIds.has(cid))
+      );
+
+      finalSettings = {
+        generalInspiration: incomingSettings.generalInspiration || [],
+        inspirationSections: [...(incomingSettings.inspirationSections || []), ...newAutoSections],
+        userPrompt: incomingSettings.userPrompt || '',
+        aspectRatio: incomingSettings.aspectRatio || '1:1',
+        imageQuality: (incomingSettings.imageQuality || '2k') as import('visualizer-types').ImageQuality,
+        variantsPerProduct: incomingSettings.variantsPerProduct || 1,
+      };
+    } else if (collectionSettings) {
+      finalSettings = {
+        ...collectionSettings,
+        inspirationSections: [...collectionSettings.inspirationSections, ...autoSections],
+      };
+    } else if (autoSections.length > 0) {
+      finalSettings = {
+        generalInspiration: [],
+        inspirationSections: autoSections,
+        aspectRatio: '1:1',
+        imageQuality: '2k' as import('visualizer-types').ImageQuality,
+        variantsPerProduct: 1,
+      };
+    }
+
     // Create collection in database
     const collection = await db.collectionSessions.create(clientId, {
       name: name.trim(),
       productIds,
       status: 'draft',
       selectedBaseImages: inspirationImages || {},
-      settings: collectionSettings,
+      settings: finalSettings || undefined,
     });
 
     // Create dedicated generation flows for each product in the collection
@@ -190,7 +276,7 @@ export const POST = withSecurity(async (request, context) => {
 
         // Merge collection settings with product-specific scene type
         const flowSettings = {
-          ...(collectionSettings || {
+          ...(finalSettings || {
             aspectRatio: '1:1' as const,
             imageQuality: '2k' as import('visualizer-types').ImageQuality,
             variantsPerProduct: 1,

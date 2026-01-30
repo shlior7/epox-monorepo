@@ -73,38 +73,58 @@ export const GET = withSecurity(async (request, context) => {
 
     const totalPages = Math.ceil(total / limit);
 
+    // Fetch linked categories for all products in batch
+    const productIds = products.map((p) => p.id);
+    const [productCategoryMap, allClientCategories] = await Promise.all([
+      db.productCategories.getProductsWithCategories(productIds),
+      db.categories.listByClient(clientId),
+    ]);
+
+    // Build category name lookup
+    const categoryNameMap = new Map(allClientCategories.map((c) => [c.id, c.name]));
+
     // Map to frontend format
-    const mappedProducts = products.map((p) => ({
-      id: p.id,
-      name: p.name,
-      sku: p.storeSku || `SKU-${p.id.slice(0, 8)}`,
-      category: p.category || 'Uncategorized',
-      description: p.description || '',
-      sceneTypes: p.sceneTypes ?? [],
-      selectedSceneType: p.selectedSceneType,
-      source: p.source,
-      analyzed: p.analyzedAt !== null,
-      price: p.price ? parseFloat(p.price) : 0,
-      isFavorite: p.isFavorite,
+    const mappedProducts = products.map((p) => {
+      const linkedCats = productCategoryMap.get(p.id) || [];
+      return {
+        id: p.id,
+        name: p.name,
+        sku: p.storeSku || `SKU-${p.id.slice(0, 8)}`,
+        category: p.category || 'Uncategorized',
+        description: p.description || '',
+        sceneTypes: p.sceneTypes ?? [],
+        selectedSceneType: p.selectedSceneType,
+        source: p.source,
+        analyzed: p.analyzedAt !== null,
+        price: p.price ? parseFloat(p.price) : 0,
+        isFavorite: p.isFavorite,
 
-      // Return ALL images with proper URLs converted from storage keys
-      images: p.images.map((img) => ({
-        id: img.id,
-        baseUrl: storage.getPublicUrl(img.imageUrl),
-        previewUrl: img.previewUrl ? storage.getPublicUrl(img.previewUrl) : null,
-        sortOrder: img.sortOrder,
-        isPrimary: img.isPrimary,
-      })),
+        // Linked categories from product_categories table
+        linkedCategories: linkedCats.map((lc) => ({
+          categoryId: lc.categoryId,
+          categoryName: categoryNameMap.get(lc.categoryId) || 'Unknown',
+          isPrimary: lc.isPrimary,
+        })),
 
-      // Backward compatibility: primary image URL (or first if none marked)
-      imageUrl: (() => {
-        const primary = p.images.find((img) => img.isPrimary) ?? p.images[0];
-        return primary ? storage.getPublicUrl(primary.imageUrl) : '';
-      })(),
+        // Return ALL images with proper URLs converted from storage keys
+        images: p.images.map((img) => ({
+          id: img.id,
+          baseUrl: storage.getPublicUrl(img.imageUrl),
+          previewUrl: img.previewUrl ? storage.getPublicUrl(img.previewUrl) : null,
+          sortOrder: img.sortOrder,
+          isPrimary: img.isPrimary,
+        })),
 
-      createdAt: p.createdAt.toISOString(),
-      updatedAt: p.updatedAt.toISOString(),
-    }));
+        // Backward compatibility: primary image URL (or first if none marked)
+        imageUrl: (() => {
+          const primary = p.images.find((img) => img.isPrimary) ?? p.images[0];
+          return primary ? storage.getPublicUrl(primary.imageUrl) : '';
+        })(),
+
+        createdAt: p.createdAt.toISOString(),
+        updatedAt: p.updatedAt.toISOString(),
+      };
+    });
 
     const response = NextResponse.json({
       products: mappedProducts,

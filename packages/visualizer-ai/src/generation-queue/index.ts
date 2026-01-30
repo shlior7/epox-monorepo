@@ -149,6 +149,30 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResult | nul
 }
 
 /**
+ * Get multiple job statuses by IDs (batch).
+ */
+export async function getJobStatusBatch(jobIds: string[]): Promise<JobStatusResult[]> {
+  if (jobIds.length === 0) return [];
+  const jobs = await getJobs().getByIds(jobIds);
+  return jobs.map((job) => ({
+    id: job.id,
+    clientId: job.clientId,
+    type: job.type,
+    status: job.status,
+    progress: job.progress,
+    imageIds: job.result?.imageIds,
+    result: job.result,
+    error: job.error,
+    attempts: job.attempts,
+    maxAttempts: job.maxAttempts,
+    createdAt: job.createdAt,
+    updatedAt: job.completedAt ?? job.startedAt ?? job.createdAt,
+    startedAt: job.startedAt,
+    completedAt: job.completedAt,
+  }));
+}
+
+/**
  * Get job statuses by flow ID.
  */
 export async function getJobsByFlow(flowId: string): Promise<JobStatusResult[]> {

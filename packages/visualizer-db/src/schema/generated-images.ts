@@ -40,6 +40,7 @@ export const generatedAsset = pgTable(
 
     // Asset storage and metadata
     assetUrl: text('asset_url').notNull(), // WebP URL for CDN (renamed from r2_key)
+    originalAssetUrl: text('original_asset_url'), // PNG original for downloads
     assetType: text('asset_type').$type<AssetType>().notNull().default('image'),
     status: text('status').$type<AssetStatus>().notNull().default('pending'),
 

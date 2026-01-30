@@ -7,4 +7,4 @@ export { useStoreAssets, type StoreFilters } from './hooks/useStoreAssets';
 export { useStoreActions } from './hooks/useStoreActions';
 export { ProductMappingModal } from './modals/ProductMappingModal';
 export { SyncSettingsModal } from './modals/SyncSettingsModal';
-export { ImportProductsModal } from './modals/ImportProductsModal';
+export { ImportProductsModal, type ImportResult } from './modals/ImportProductsModal';

@@ -71,6 +71,7 @@
     "tailwind-merge": "^2.2.0",
     "visualizer-ai": "1.0.0",
     "visualizer-auth": "1.0.0",
+    "visualizer-client": "1.0.0",
     "visualizer-db": "1.0.0",
     "visualizer-storage": "1.0.0",
     "visualizer-types": "1.0.0",

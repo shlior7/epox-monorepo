@@ -28,6 +28,9 @@ export {
 export { product, productImage, productRelations, productImageRelations } from './products';
 export type { ProductSource, ProductAnalysis } from './products';
 
+// Category tables (open, multi-category system)
+export { category, productCategory, categoryRelations, productCategoryRelations } from './categories';
+
 // Session tables
 export {
   chatSession,

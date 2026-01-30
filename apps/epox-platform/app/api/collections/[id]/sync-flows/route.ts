@@ -41,7 +41,6 @@ export const PATCH = withSecurity(async (_request, context, routeContext) => {
 
     // Get collection settings
     const collectionSettings = collection.settings;
-    const sceneTypeInspiration = collectionSettings?.sceneTypeInspiration;
 
     // Get all flows for this collection
     const existingFlows = await db.generationFlows.listByCollectionSession(collectionId);
@@ -67,16 +66,8 @@ export const PATCH = withSecurity(async (_request, context, routeContext) => {
       const product = productsMap.get(productId);
       const productSceneTypes = product?.sceneTypes || [];
 
-      // Find matching scene type
-      let matchedSceneType: string | undefined;
-      if (sceneTypeInspiration && productSceneTypes.length > 0) {
-        for (const sceneType of productSceneTypes) {
-          if (sceneTypeInspiration[sceneType]) {
-            matchedSceneType = sceneType;
-            break;
-          }
-        }
-      }
+      // Use first available scene type from product
+      const matchedSceneType = productSceneTypes[0];
 
       // Build updated flow settings - inherit collection settings but preserve flow's own sceneType
       const updatedSettings: FlowGenerationSettings = {

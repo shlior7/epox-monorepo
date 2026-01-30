@@ -53,6 +53,7 @@ export const GET = withSecurity(async (_request, context, routeContext) => {
         id: flow.id,
         productId: flow.productIds[0],
         productName: flow.product?.name || 'Unknown Product',
+        productSku: flow.product?.storeSku || null,
         productCategory: flow.product?.category,
         productSceneTypes: flow.product?.sceneTypes,
         status: effectiveStatus,
@@ -69,6 +70,8 @@ export const GET = withSecurity(async (_request, context, routeContext) => {
           approvalStatus: asset.approvalStatus,
           aspectRatio: asset.aspectRatio,
           jobId: asset.jobId,
+          prompt: asset.prompt,
+          settings: asset.settings,
         })),
       };
     });
@@ -109,7 +112,6 @@ export const POST = withSecurity(async (_request, context, routeContext) => {
 
     // Get collection settings
     const collectionSettings = collection.settings;
-    const sceneTypeInspiration = collectionSettings?.sceneTypeInspiration;
 
     // Get existing flows for this collection
     const existingFlows = await db.generationFlows.listByCollectionSession(collectionId);
@@ -139,18 +141,10 @@ export const POST = withSecurity(async (_request, context, routeContext) => {
       const product = productsMap.get(productId);
       const productSceneTypes = product?.sceneTypes || [];
 
-      // Find matching scene type from collection settings based on product's scene types
-      let matchedSceneType: string | undefined;
-      if (sceneTypeInspiration && productSceneTypes.length > 0) {
-        for (const sceneType of productSceneTypes) {
-          if (sceneTypeInspiration[sceneType]) {
-            matchedSceneType = sceneType;
-            break;
-          }
-        }
-      }
+      // Use first available scene type from product
+      const matchedSceneType = productSceneTypes[0];
 
-      // Build flow settings - scene type specific bubbles are resolved at generation time
+      // Build flow settings - section-based bubbles are resolved at generation time
       const flowSettings: Partial<FlowGenerationSettings> = {
         ...collectionSettings,
         ...(matchedSceneType && { sceneType: matchedSceneType }),

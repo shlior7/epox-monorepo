@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Check, RefreshCw } from 'lucide-react';
+import { Check, RefreshCw, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTestId } from '@/lib/testing/testid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -29,6 +29,14 @@ const COMMON_SCENE_TYPES = [
   'Entertainment Room',
 ];
 
+// ===== CATEGORY INFO =====
+
+export interface ProductCategoryInfo {
+  id: string;
+  name: string;
+  isPrimary?: boolean;
+}
+
 // ===== PROPS =====
 
 export interface ProductSectionProps {
@@ -40,6 +48,10 @@ export interface ProductSectionProps {
   sceneTypes: Array<{ sceneType: string }>;
   selectedSceneType?: string;
   onSceneTypeChange?: (sceneType: string) => void;
+  // Categories
+  categories?: ProductCategoryInfo[];
+  selectedCategoryId?: string;
+  onCategoryChange?: (categoryId: string) => void;
   className?: string;
 }
 
@@ -52,14 +64,20 @@ export function ProductSection({
   sceneTypes,
   selectedSceneType,
   onSceneTypeChange,
+  categories = [],
+  selectedCategoryId,
+  onCategoryChange,
   className,
 }: ProductSectionProps) {
   const [baseImageModalOpen, setBaseImageModalOpen] = useState(false);
   const [sceneTypeModalOpen, setSceneTypeModalOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
 
   const selectedBaseImage = baseImages.find((img) => img.id === selectedBaseImageId);
   const hasMultipleBaseImages = baseImages.length > 1;
   const hasMultipleSceneTypes = sceneTypes.length > 1;
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+  const hasCategories = categories.length > 0;
 
   // Combine product scene types with common scene types
   const allSceneTypes = Array.from(
@@ -86,6 +104,15 @@ export function ProductSection({
     setSceneTypeModalOpen(false);
   };
 
+  const handleCategoryClick = () => {
+    setCategoryModalOpen(true);
+  };
+
+  const handleCategorySelect = (categoryId: string) => {
+    onCategoryChange?.(categoryId);
+    setCategoryModalOpen(false);
+  };
+
   return (
     <>
       <section className={className} data-testid={buildTestId('product-section')}>
@@ -93,56 +120,92 @@ export function ProductSection({
           Product
         </h3>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 md:grid-cols-3">
           {/* Base Image Bubble */}
           {selectedBaseImage && (
-            <button
-              onClick={handleBaseImageClick}
-              className="group relative aspect-square h-16 w-16 cursor-pointer overflow-hidden rounded-lg border-2 border-primary ring-2 ring-primary/20 transition-all hover:ring-primary/40"
-              data-testid={buildTestId('product-section', 'base-image-bubble')}
-            >
-              <Image
-                src={selectedBaseImage.thumbnailUrl || selectedBaseImage.url}
-                alt="Base"
-                fill
-                sizes="64px"
-                className="object-cover"
-                unoptimized
-              />
-              {/* Always show hover effect */}
-              <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-80">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/40 shadow-lg">
-                  <RefreshCw className="h-4 w-4 text-gray-900" />
+            <div className="group relative" data-testid={buildTestId('product-section', 'base-image-wrapper')}>
+              <button
+                onClick={handleBaseImageClick}
+                className="relative aspect-square w-full cursor-pointer overflow-hidden rounded-lg border-2 border-primary ring-2 ring-primary/20 transition-all hover:ring-primary/40"
+                data-testid={buildTestId('product-section', 'base-image-bubble')}
+              >
+                <Image
+                  src={selectedBaseImage.thumbnailUrl || selectedBaseImage.url}
+                  alt="Base"
+                  fill
+                  sizes="120px"
+                  className="object-cover"
+                  unoptimized
+                />
+                <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-80">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/40 shadow-lg">
+                    <RefreshCw className="h-4 w-4 text-gray-900" />
+                  </div>
                 </div>
+              </button>
+              <div className="mt-1 text-center">
+                <span className="text-[12px] text-muted-foreground">Product Image</span>
               </div>
-            </button>
+            </div>
           )}
 
           {/* Scene Type Bubble */}
-          {selectedSceneType ? (
-            <button
-              onClick={handleSceneTypeClick}
-              className={cn(
-                'group relative flex h-16 min-w-[64px] items-center justify-center rounded-lg border-2 px-3 transition-all',
-                hasMultipleSceneTypes
-                  ? 'cursor-pointer border-primary bg-primary/5 ring-2 ring-primary/20 hover:bg-primary/10 hover:ring-primary/40'
-                  : 'cursor-pointer border-primary bg-primary/5 ring-2 ring-primary/20 hover:bg-primary/10 hover:ring-primary/40'
+          <div className="group relative" data-testid={buildTestId('product-section', 'scene-type-wrapper')}>
+            {selectedSceneType ? (
+              <button
+                onClick={handleSceneTypeClick}
+                className="flex aspect-square w-full items-center justify-center rounded-lg border-2 border-primary bg-primary/5 ring-2 ring-primary/20 transition-all hover:bg-primary/10 hover:ring-primary/40"
+                data-testid={buildTestId('product-section', 'scene-type-bubble')}
+              >
+                <span className="px-2 text-xs font-medium text-foreground">{selectedSceneType}</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleSceneTypeClick}
+                className="flex aspect-square w-full items-center justify-center rounded-lg border-2 border-dashed border-border transition-all hover:border-primary/50 hover:bg-accent"
+                data-testid={buildTestId('product-section', 'scene-type-empty')}
+              >
+                <span className="px-2 text-xs font-medium text-muted-foreground">Click to add</span>
+              </button>
+            )}
+            <div className="mt-1 text-center">
+              <span className="text-[12px] text-muted-foreground">Scene Type</span>
+            </div>
+          </div>
+
+          {/* Category Bubble */}
+          {hasCategories && (
+            <div className="group relative" data-testid={buildTestId('product-section', 'category-wrapper')}>
+              {selectedCategory ? (
+                <button
+                  onClick={handleCategoryClick}
+                  className="flex aspect-square w-full items-center justify-center rounded-lg border-2 border-primary bg-primary/5 ring-2 ring-primary/20 transition-all hover:bg-primary/10 hover:ring-primary/40"
+                  data-testid={buildTestId('product-section', 'category-bubble')}
+                >
+                  <div className="flex flex-col items-center gap-1 px-2">
+                    <Tag className="h-4 w-4 text-foreground" />
+                    <span className="text-[11px] font-medium leading-tight text-foreground">
+                      {selectedCategory.name}
+                    </span>
+                  </div>
+                </button>
+              ) : (
+                <button
+                  onClick={handleCategoryClick}
+                  className="flex aspect-square w-full items-center justify-center rounded-lg border-2 border-dashed border-border transition-all hover:border-primary/50 hover:bg-accent"
+                  data-testid={buildTestId('product-section', 'category-empty')}
+                >
+                  <div className="flex flex-col items-center gap-1 px-2">
+                    <Tag className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-[11px] font-medium text-muted-foreground">Select</span>
+                  </div>
+                </button>
               )}
-              data-testid={buildTestId('product-section', 'scene-type-bubble')}
-            >
-              <span className="text-xs font-medium text-foreground">{selectedSceneType}</span>
-            </button>
-          ) : (
-            <button
-              onClick={handleSceneTypeClick}
-              className={cn(
-                'group relative flex h-16 min-w-[64px] items-center justify-center rounded-lg border-2 border-dashed border-border px-3 transition-all hover:border-primary/50 hover:bg-accent'
-              )}
-              data-testid={buildTestId('product-section', 'scene-type-empty')}
-            >
-              <span className="text-xs font-medium text-muted-foreground">Select Scene Type</span>
-            </button>
+              <div className="mt-1 text-center">
+                <span className="text-[12px] text-muted-foreground">Category</span>
+              </div>
+            </div>
           )}
         </div>
       </section>
@@ -215,6 +278,41 @@ export function ProductSection({
               >
                 <span>{sceneType}</span>
                 {selectedSceneType === sceneType && <Check className="h-4 w-4 text-primary" />}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Selection Modal */}
+      <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
+        <DialogContent className="sm:max-w-md max-h-[600px] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Select Category</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-2">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => handleCategorySelect(cat.id)}
+                className={cn(
+                  'flex items-center justify-between rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all',
+                  selectedCategoryId === cat.id
+                    ? 'border-primary bg-primary/5 text-primary ring-2 ring-primary/20'
+                    : 'border-border hover:border-primary/50 hover:bg-accent'
+                )}
+                data-testid={buildTestId('product-section', 'modal-category', cat.id)}
+              >
+                <div className="flex items-center gap-2">
+                  <Tag className="h-4 w-4" />
+                  <span>{cat.name}</span>
+                  {cat.isPrimary && (
+                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+                      Primary
+                    </span>
+                  )}
+                </div>
+                {selectedCategoryId === cat.id && <Check className="h-4 w-4 text-primary" />}
               </button>
             ))}
           </div>

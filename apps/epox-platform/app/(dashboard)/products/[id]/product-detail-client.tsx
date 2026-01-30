@@ -14,7 +14,13 @@ import {
 import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/spinner';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { apiClient, GeneratedAsset } from '@/lib/api-client';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -22,30 +28,41 @@ import {
   ArrowLeft,
   Check,
   Clock,
+  CloudUpload,
   Download,
   Edit2,
   Eye,
+  Filter,
   FolderKanban,
   Grid,
+  Heart,
   Home,
   ImageIcon,
   List,
+  MessageSquare,
   Package,
   Pin,
   Plus,
   RefreshCw,
+  Save,
+  Search,
+  Settings2,
   Sparkles,
   Star,
   Trash2,
   Upload,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/contexts/auth-context';
+import { SCENE_TYPES } from '@/lib/constants';
+import { InspirationBubblesGrid } from '@/components/studio/config-panel/InspirationBubblesGrid';
+import type { BubbleValue, BubbleType, FlowGenerationSettings } from 'visualizer-types';
 
 interface ProductDetailClientProps {
   productId: string;
@@ -56,7 +73,10 @@ export function ProductDetailClient({ productId }: ProductDetailClientProps) {
   const { clientId } = useAuth();
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [activeTab, setActiveTab] = useState('all');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showSyncedOnly, setShowSyncedOnly] = useState(false);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<any>(null);
@@ -168,12 +188,34 @@ export function ProductDetailClient({ productId }: ProductDetailClientProps) {
   }
 
   const isEditable = product.source === 'uploaded';
-  const generatedAssets = product.generatedAssets || [];
-  const pinnedAssets = generatedAssets.filter((a: any) => a.isPinned);
-  const approvedAssets = generatedAssets.filter((a: any) => a.approvalStatus === 'approved');
+  const generatedAssets: GeneratedAsset[] = product.generatedAssets || [];
 
-  const filteredAssets =
-    activeTab === 'all' ? generatedAssets : activeTab === 'pinned' ? pinnedAssets : approvedAssets;
+  // Derive unique collections from assets for dropdown
+  const assetCollections = generatedAssets.reduce<Array<{ id: string; name: string }>>((acc, a) => {
+    if (a.collectionId && a.collectionName && !acc.some((c) => c.id === a.collectionId)) {
+      acc.push({ id: a.collectionId, name: a.collectionName });
+    }
+    return acc;
+  }, []);
+
+  // Counts for toggle buttons
+  const favoritesCount = generatedAssets.filter((a) => a.isFavorite).length;
+  const syncedCount = generatedAssets.filter((a) => a.syncedAt).length;
+
+  // Apply all filters in sequence (AND logic)
+  const filteredAssets = generatedAssets.filter((a) => {
+    if (showFavoritesOnly && !a.isFavorite) return false;
+    if (showSyncedOnly && !a.syncedAt) return false;
+    if (selectedCollectionId && a.collectionId !== selectedCollectionId) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const promptMatch = a.prompt?.toLowerCase().includes(q);
+      return !!promptMatch;
+    }
+    return true;
+  });
+
+  const hasActiveFilters = showFavoritesOnly || showSyncedOnly || !!selectedCollectionId || !!searchQuery.trim();
 
   return (
     <div className="min-h-screen">
@@ -327,41 +369,10 @@ export function ProductDetailClient({ productId }: ProductDetailClientProps) {
             </Card>
 
             {/* Product Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Package className="h-4 w-4" />
-                  Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Description</p>
-                  <p className="mt-1 text-sm">{product.description || 'No description'}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Price</p>
-                    <p className="font-medium">${product.price?.toFixed(2) || '—'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Category</p>
-                    <p className="font-medium">{product.category}</p>
-                  </div>
-                </div>
-                <div>
-                  <p className="mb-2 text-sm text-muted-foreground">Scene Types</p>
-                  <div className="flex flex-wrap gap-1">
-                    {(product.sceneTypes ?? product.sceneTypes ?? []).map((room: string) => (
-                      <Badge key={room} variant="secondary">
-                        <Home className="mr-1 h-3 w-3" />
-                        {room}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <ProductDetailsCard
+              product={product}
+              onSaved={() => queryClient.invalidateQueries({ queryKey: ['product', productId] })}
+            />
 
             {/* AI Analysis */}
             {product.analysis && (
@@ -390,24 +401,69 @@ export function ProductDetailClient({ productId }: ProductDetailClientProps) {
                   <div>
                     <p className="mb-2 text-sm text-muted-foreground">Colors</p>
                     <div className="flex items-center gap-2">
-                      <div
-                        className="h-6 w-6 rounded-full border"
-                        style={{ backgroundColor: product.analysis.dominantColorHex }}
-                      />
-                      <div className="flex flex-wrap gap-1">
-                        {Array.isArray(product.analysis.colors)
-                          ? product.analysis.colors.map((c: string) => (
-                              <Badge key={c} variant="outline">
-                                {c}
-                              </Badge>
-                            ))
-                          : product.analysis.colors &&
-                            Object.values(product.analysis.colors).map((c: any) => (
-                              <Badge key={String(c)} variant="outline">
-                                {String(c)}
-                              </Badge>
+                      {(() => {
+                        // Normalize a color value to hex (handles legacy non-hex names)
+                        const COLOR_NAME_TO_HEX: Record<string, string> = {
+                          neutral: '#B0A899', white: '#FFFFFF', black: '#000000',
+                          red: '#CC3333', blue: '#3366CC', green: '#339933',
+                          yellow: '#CCCC33', orange: '#CC7733', purple: '#7733CC',
+                          pink: '#CC6699', brown: '#8B4513', gray: '#808080', grey: '#808080',
+                          beige: '#D4C5A9', cream: '#FFFDD0', ivory: '#FFFFF0',
+                          tan: '#D2B48C', gold: '#CFB53B', silver: '#C0C0C0',
+                          navy: '#001F3F', teal: '#008080', charcoal: '#36454F',
+                          walnut: '#5C3317', oak: '#C19A6B', mahogany: '#4E1609',
+                          espresso: '#3C1414', chocolate: '#3D1C02', taupe: '#483C32',
+                          slate: '#708090', sand: '#C2B280', olive: '#556B2F',
+                          rust: '#B7410E', burgundy: '#800020', maroon: '#800000',
+                          coral: '#FF7F50', salmon: '#FA8072', peach: '#FFCBA4',
+                          lavender: '#B57EDC', mint: '#98FB98', turquoise: '#40E0D0',
+                          copper: '#B87333', natural: '#C8B88A',
+                        };
+                        const toHex = (c: string): string | null => {
+                          const t = c.trim();
+                          if (/^#[0-9a-fA-F]{3,8}$/.test(t)) return t;
+                          const mapped = COLOR_NAME_TO_HEX[t.toLowerCase()];
+                          if (mapped) return mapped;
+                          // partial match
+                          for (const [name, hex] of Object.entries(COLOR_NAME_TO_HEX)) {
+                            if (t.toLowerCase().includes(name)) return hex;
+                          }
+                          return null;
+                        };
+
+                        // Collect all color values from analysis
+                        const rawColors: string[] = [];
+                        if (product.analysis.dominantColorHex) {
+                          rawColors.push(product.analysis.dominantColorHex);
+                        }
+                        if (Array.isArray(product.analysis.colors)) {
+                          rawColors.push(...product.analysis.colors);
+                        } else if (product.analysis.colors && typeof product.analysis.colors === 'object') {
+                          const colorsObj = product.analysis.colors as { primary?: string; accent?: string[] };
+                          if (colorsObj.primary) rawColors.push(colorsObj.primary);
+                          if (Array.isArray(colorsObj.accent)) rawColors.push(...colorsObj.accent);
+                        }
+
+                        // Normalize and deduplicate
+                        const hexColors = rawColors.map(toHex).filter((c): c is string => c !== null);
+                        const uniqueColors = [...new Set(hexColors)];
+
+                        return uniqueColors.length > 0 ? (
+                          <div className="flex gap-1.5">
+                            {uniqueColors.map((c) => (
+                              <div
+                                key={c}
+                                className="h-6 w-6 rounded-full border border-border"
+                                style={{ backgroundColor: c }}
+                                title={c}
+                                data-testid={`product-detail-color-${c}`}
+                              />
                             ))}
-                      </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No colors detected</span>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div>
@@ -423,6 +479,12 @@ export function ProductDetailClient({ productId }: ProductDetailClientProps) {
                 </CardContent>
               </Card>
             )}
+
+            {/* Default Generation Settings */}
+            <DefaultGenerationSettingsCard
+              product={product}
+              onSaved={() => queryClient.invalidateQueries({ queryKey: ['product', productId] })}
+            />
 
             {/* Stats */}
             <Card>
@@ -541,37 +603,97 @@ export function ProductDetailClient({ productId }: ProductDetailClientProps) {
                     </div>
                   </div>
                 </div>
-                {/* Tabs */}
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-                  <TabsList>
-                    <TabsTrigger value="all">All ({generatedAssets.length})</TabsTrigger>
-                    <TabsTrigger value="pinned">
-                      <Pin className="mr-1 h-3.5 w-3.5" />
-                      Pinned ({pinnedAssets.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="approved">
-                      <Check className="mr-1 h-3.5 w-3.5" />
-                      Approved ({approvedAssets.length})
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                {/* Filter Bar */}
+                <div className="mt-4 flex flex-wrap items-center gap-2" data-testid="asset-filter-bar">
+                  {/* Favorites Toggle */}
+                  <Button
+                    variant={showFavoritesOnly ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setShowFavoritesOnly((v) => !v)}
+                    data-testid="filter-favorites"
+                  >
+                    <Heart className={cn('mr-1.5 h-3.5 w-3.5', showFavoritesOnly && 'fill-current')} />
+                    Favorites{favoritesCount > 0 ? ` (${favoritesCount})` : ''}
+                  </Button>
+
+                  {/* Uploaded to Store Toggle */}
+                  <Button
+                    variant={showSyncedOnly ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setShowSyncedOnly((v) => !v)}
+                    data-testid="filter-uploaded"
+                  >
+                    <CloudUpload className="mr-1.5 h-3.5 w-3.5" />
+                    Uploaded{syncedCount > 0 ? ` (${syncedCount})` : ''}
+                  </Button>
+
+                  {/* Collection Filter Dropdown */}
+                  {assetCollections.length > 0 && (
+                    <Select
+                      value={selectedCollectionId ?? 'all'}
+                      onValueChange={(v) => setSelectedCollectionId(v === 'all' ? null : v)}
+                    >
+                      <SelectTrigger className="h-8 w-[180px] text-sm" data-testid="filter-collection">
+                        <Filter className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                        <SelectValue placeholder="Collection" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Collections</SelectItem>
+                        {assetCollections.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  {/* Search by Prompt */}
+                  <div className="relative" data-testid="filter-search">
+                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search prompts..."
+                      className="h-8 w-[200px] pl-8 text-sm"
+                    />
+                  </div>
+
+                  {/* Clear All Filters */}
+                  {hasActiveFilters && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowFavoritesOnly(false);
+                        setShowSyncedOnly(false);
+                        setSelectedCollectionId(null);
+                        setSearchQuery('');
+                      }}
+                      data-testid="filter-clear"
+                    >
+                      <X className="mr-1 h-3.5 w-3.5" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {filteredAssets.length === 0 ? (
                   <EmptyState
                     icon={ImageIcon}
                     title={
-                      activeTab === 'all' ? 'No generated images yet' : `No ${activeTab} images`
+                      hasActiveFilters ? 'No matching images' : 'No generated images yet'
                     }
                     description={
-                      activeTab === 'all'
-                        ? 'Start a studio session to generate beautiful product visualizations.'
-                        : `You haven't ${activeTab === 'pinned' ? 'pinned' : 'approved'} any images yet.`
+                      hasActiveFilters
+                        ? 'Try adjusting your filters to see more results.'
+                        : 'Start a studio session to generate beautiful product visualizations.'
                     }
                     action={
-                      activeTab === 'all'
-                        ? { label: 'Start Studio', onClick: handleStartStudio }
-                        : undefined
+                      hasActiveFilters
+                        ? undefined
+                        : { label: 'Start Studio', onClick: handleStartStudio }
                     }
                   />
                 ) : viewMode === 'grid' ? (
@@ -650,6 +772,597 @@ export function ProductDetailClient({ productId }: ProductDetailClientProps) {
     </div>
   );
 }
+
+// ===== EDITABLE TAGS INPUT =====
+
+function EditableTagsField({
+  label,
+  tags,
+  suggestions,
+  onTagsChange,
+}: {
+  label: string;
+  tags: string[];
+  suggestions: readonly string[] | string[];
+  onTagsChange: (tags: string[]) => void;
+}) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [customValue, setCustomValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const unusedSuggestions = (suggestions as string[]).filter((s) => !tags.includes(s));
+
+  useEffect(() => {
+    if (isAdding && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isAdding]);
+
+  const addTag = (tag: string) => {
+    const trimmed = tag.trim();
+    if (trimmed && !tags.includes(trimmed)) {
+      onTagsChange([...tags, trimmed]);
+    }
+  };
+
+  const removeTag = (index: number) => {
+    const next = [...tags];
+    next.splice(index, 1);
+    onTagsChange(next);
+  };
+
+  const handleCustomSubmit = () => {
+    if (customValue.trim()) {
+      addTag(customValue);
+      setCustomValue('');
+    }
+  };
+
+  return (
+    <div data-testid={`editable-tags-${label.toLowerCase().replace(/\s+/g, '-')}`}>
+      <p className="mb-2 text-sm text-muted-foreground">{label}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {tags.map((tag, i) => (
+          <Badge key={tag} variant="secondary" className="gap-1 pr-1" data-testid={`tag-${tag}`}>
+            <Home className="h-3 w-3" />
+            {tag}
+            <button
+              onClick={() => removeTag(i)}
+              className="ml-0.5 rounded-full p-0.5 opacity-50 transition-opacity hover:bg-destructive/20 hover:opacity-100"
+              data-testid={`tag-remove-${tag}`}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        ))}
+        {!isAdding ? (
+          <button
+            onClick={() => setIsAdding(true)}
+            className="flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+            data-testid={`tag-add-${label.toLowerCase().replace(/\s+/g, '-')}`}
+          >
+            <Plus className="h-3 w-3" />
+            Add
+          </button>
+        ) : (
+          <div className="flex items-center gap-1">
+            <input
+              ref={inputRef}
+              type="text"
+              value={customValue}
+              onChange={(e) => setCustomValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCustomSubmit();
+                if (e.key === 'Escape') { setIsAdding(false); setCustomValue(''); }
+              }}
+              placeholder="Type custom..."
+              className="w-24 rounded-md border border-border bg-background px-2 py-0.5 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              data-testid={`tag-custom-input-${label.toLowerCase().replace(/\s+/g, '-')}`}
+            />
+            <button
+              onClick={() => { setIsAdding(false); setCustomValue(''); }}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+      {/* Suggestions */}
+      {isAdding && unusedSuggestions.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1" data-testid={`tag-suggestions-${label.toLowerCase().replace(/\s+/g, '-')}`}>
+          {unusedSuggestions.map((suggestion) => (
+            <button
+              key={suggestion}
+              onClick={() => addTag(suggestion)}
+              className="rounded-md border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:bg-primary/5 hover:text-foreground"
+              data-testid={`tag-suggestion-${suggestion}`}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== EDITABLE CATEGORIES (multi-select with API) =====
+
+function EditableCategoriesField({
+  productId,
+  linkedCategories,
+  primaryCategory,
+  onSaved,
+}: {
+  productId: string;
+  linkedCategories: Array<{ categoryId: string; categoryName: string; isPrimary: boolean }>;
+  primaryCategory: string;
+  onSaved: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [isAdding, setIsAdding] = useState(false);
+  const [customValue, setCustomValue] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch all available categories
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories-list'],
+    queryFn: async () => {
+      const res = await fetch('/api/categories');
+      if (!res.ok) return { categories: [] };
+      return res.json() as Promise<{ categories: Array<{ id: string; name: string }> }>;
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const allCategories = categoriesData?.categories || [];
+  const linkedIds = new Set(linkedCategories.map((lc) => lc.categoryId));
+
+  // Filter suggestions: not already linked, and matching search
+  const unusedCategories = allCategories.filter(
+    (c) => !linkedIds.has(c.id) &&
+      (!customValue || c.name.toLowerCase().includes(customValue.toLowerCase()))
+  );
+
+  useEffect(() => {
+    if (isAdding && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isAdding]);
+
+  const addCategoryById = async (categoryId: string) => {
+    setIsSaving(true);
+    try {
+      await fetch(`/api/products/${productId}/categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId }),
+      });
+      queryClient.invalidateQueries({ queryKey: ['product', productId] });
+      queryClient.invalidateQueries({ queryKey: ['categories-list'] });
+      onSaved();
+    } catch {
+      toast.error('Failed to add category');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const addCategoryByName = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    // Check if it already exists
+    const existing = allCategories.find((c) => c.name.toLowerCase() === trimmed.toLowerCase());
+    if (existing) {
+      await addCategoryById(existing.id);
+      setCustomValue('');
+      return;
+    }
+
+    // Create new category, then link it
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (!res.ok) throw new Error('Failed to create category');
+      const { category: newCat } = await res.json();
+      await fetch(`/api/products/${productId}/categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categoryId: newCat.id }),
+      });
+      queryClient.invalidateQueries({ queryKey: ['product', productId] });
+      queryClient.invalidateQueries({ queryKey: ['categories-list'] });
+      setCustomValue('');
+      onSaved();
+    } catch {
+      toast.error('Failed to create category');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const removeCategory = async (categoryId: string) => {
+    const remaining = linkedCategories.filter((lc) => lc.categoryId !== categoryId);
+    setIsSaving(true);
+    try {
+      await fetch(`/api/products/${productId}/categories`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryIds: remaining.map((lc) => lc.categoryId),
+          primaryCategoryId: remaining.find((lc) => lc.isPrimary)?.categoryId || remaining[0]?.categoryId,
+        }),
+      });
+      queryClient.invalidateQueries({ queryKey: ['product', productId] });
+      onSaved();
+    } catch {
+      toast.error('Failed to remove category');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Combine primary category text with linked categories for display
+  const displayCategories = linkedCategories.length > 0
+    ? linkedCategories
+    : primaryCategory
+      ? [{ categoryId: '_primary', categoryName: primaryCategory, isPrimary: true }]
+      : [];
+
+  return (
+    <div data-testid="editable-categories-field">
+      <p className="mb-2 text-sm text-muted-foreground">Categories</p>
+      <div className="flex flex-wrap gap-1.5">
+        {displayCategories.map((lc) => (
+          <Badge
+            key={lc.categoryId}
+            variant={lc.isPrimary ? 'default' : 'secondary'}
+            className="gap-1 pr-1"
+            data-testid={`category-tag-${lc.categoryName}`}
+          >
+            {lc.categoryName}
+            {lc.categoryId !== '_primary' && (
+              <button
+                onClick={() => removeCategory(lc.categoryId)}
+                disabled={isSaving}
+                className="ml-0.5 rounded-full p-0.5 opacity-50 transition-opacity hover:bg-destructive/20 hover:opacity-100"
+                data-testid={`category-remove-${lc.categoryName}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </Badge>
+        ))}
+        {!isAdding ? (
+          <button
+            onClick={() => setIsAdding(true)}
+            className="flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+            data-testid="category-add-btn"
+          >
+            <Plus className="h-3 w-3" />
+            Add
+          </button>
+        ) : (
+          <div className="flex items-center gap-1">
+            <input
+              ref={inputRef}
+              type="text"
+              value={customValue}
+              onChange={(e) => setCustomValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') addCategoryByName(customValue);
+                if (e.key === 'Escape') { setIsAdding(false); setCustomValue(''); }
+              }}
+              placeholder="Type category..."
+              disabled={isSaving}
+              className="w-28 rounded-md border border-border bg-background px-2 py-0.5 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              data-testid="category-custom-input"
+            />
+            <button
+              onClick={() => { setIsAdding(false); setCustomValue(''); }}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+      {/* Suggestions */}
+      {isAdding && unusedCategories.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1" data-testid="category-suggestions">
+          {unusedCategories.slice(0, 8).map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => addCategoryById(cat.id)}
+              disabled={isSaving}
+              className="rounded-md border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:bg-primary/5 hover:text-foreground"
+              data-testid={`category-suggestion-${cat.name}`}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===== PRODUCT DETAILS CARD =====
+
+function ProductDetailsCard({
+  product,
+  onSaved,
+}: {
+  product: any;
+  onSaved: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [sceneTypes, setSceneTypes] = useState<string[]>(product.sceneTypes || []);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const sceneTypesChanged =
+    JSON.stringify(sceneTypes) !== JSON.stringify(product.sceneTypes || []);
+
+  const handleSaveSceneTypes = async () => {
+    setIsSaving(true);
+    try {
+      await apiClient.updateProduct(product.id, { sceneTypes });
+      toast.success('Scene types updated');
+      onSaved();
+    } catch {
+      toast.error('Failed to update scene types');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Card data-testid="product-details-card">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Package className="h-4 w-4" />
+          Details
+          {sceneTypesChanged && (
+            <Button
+              variant="glow"
+              size="sm"
+              className="ml-auto h-7 text-xs"
+              onClick={handleSaveSceneTypes}
+              isLoading={isSaving}
+              data-testid="product-details-save"
+            >
+              <Save className="mr-1 h-3 w-3" />
+              Save
+            </Button>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <p className="text-sm text-muted-foreground">Description</p>
+          <p className="mt-1 text-sm">{product.description || 'No description'}</p>
+        </div>
+        <EditableCategoriesField
+          productId={product.id}
+          linkedCategories={product.linkedCategories || []}
+          primaryCategory={product.category || ''}
+          onSaved={onSaved}
+        />
+        <EditableTagsField
+          label="Scene Types"
+          tags={sceneTypes}
+          suggestions={SCENE_TYPES}
+          onTagsChange={setSceneTypes}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ===== DEFAULT GENERATION SETTINGS CARD =====
+
+function DefaultGenerationSettingsCard({
+  product,
+  onSaved,
+}: {
+  product: any;
+  onSaved: () => void;
+}) {
+  const settings: FlowGenerationSettings | null = product.defaultGenerationSettings || null;
+  const [isEditing, setIsEditing] = useState(false);
+  const [bubbles, setBubbles] = useState<BubbleValue[]>(settings?.generalInspiration || []);
+  const [userPrompt, setUserPrompt] = useState(settings?.userPrompt || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const hasContent = bubbles.length > 0 || userPrompt.trim().length > 0;
+  const originalBubbles = settings?.generalInspiration || [];
+  const originalPrompt = settings?.userPrompt || '';
+  const hasChanges =
+    JSON.stringify(bubbles) !== JSON.stringify(originalBubbles) ||
+    userPrompt !== originalPrompt;
+
+  const handleAddBubble = useCallback((type: BubbleType) => {
+    setBubbles((prev) => [...prev, { type } as BubbleValue]);
+  }, []);
+
+  const handleRemoveBubble = useCallback((_index: number) => {
+    setBubbles((prev) => {
+      const next = [...prev];
+      next.splice(_index, 1);
+      return next;
+    });
+  }, []);
+
+  const handleUpdateBubble = useCallback((index: number, bubble: BubbleValue) => {
+    setBubbles((prev) => {
+      const next = [...prev];
+      next[index] = bubble;
+      return next;
+    });
+  }, []);
+
+  const handleAddMultipleBubbles = useCallback((newBubbles: BubbleValue[]) => {
+    setBubbles((prev) => [...prev, ...newBubbles]);
+  }, []);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const newSettings: FlowGenerationSettings = {
+        ...(settings || {}),
+        aspectRatio: settings?.aspectRatio || '1:1',
+        generalInspiration: bubbles,
+        userPrompt: userPrompt.trim() || undefined,
+      };
+      await apiClient.updateProduct(product.id, {
+        defaultGenerationSettings: newSettings,
+      });
+      toast.success('Generation settings saved');
+      setIsEditing(false);
+      onSaved();
+    } catch {
+      toast.error('Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const sceneType = product.sceneTypes?.[0] || 'General';
+
+  return (
+    <Card data-testid="product-gen-settings-card">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Settings2 className="h-4 w-4" />
+          Default Settings
+          <div className="ml-auto flex items-center gap-1">
+            {isEditing && hasChanges && (
+              <Button
+                variant="glow"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={handleSave}
+                isLoading={isSaving}
+                data-testid="product-gen-settings-save"
+              >
+                <Save className="mr-1 h-3 w-3" />
+                Save
+              </Button>
+            )}
+            {!isEditing && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setIsEditing(true)}
+                data-testid="product-gen-settings-edit"
+              >
+                <Edit2 className="mr-1 h-3 w-3" />
+                Edit
+              </Button>
+            )}
+            {isEditing && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  setBubbles(originalBubbles);
+                  setUserPrompt(originalPrompt);
+                  setIsEditing(false);
+                }}
+                data-testid="product-gen-settings-cancel"
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {!isEditing && !hasContent ? (
+          <div className="py-3 text-center" data-testid="product-gen-settings-empty">
+            <Settings2 className="mx-auto mb-2 h-8 w-8 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">No default settings configured</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => setIsEditing(true)}
+              data-testid="product-gen-settings-configure"
+            >
+              <Plus className="mr-1 h-3 w-3" />
+              Configure Defaults
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Default Prompt */}
+            <div data-testid="product-gen-settings-prompt-section">
+              <p className="mb-1.5 text-sm text-muted-foreground">
+                <MessageSquare className="mr-1 inline h-3.5 w-3.5" />
+                Default Prompt
+              </p>
+              {isEditing ? (
+                <textarea
+                  value={userPrompt}
+                  onChange={(e) => setUserPrompt(e.target.value)}
+                  placeholder="Describe how you want this product visualized..."
+                  rows={3}
+                  className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  data-testid="product-gen-settings-prompt-input"
+                />
+              ) : (
+                <p className="text-sm" data-testid="product-gen-settings-prompt-display">
+                  {userPrompt || <span className="text-muted-foreground">No default prompt</span>}
+                </p>
+              )}
+            </div>
+
+            {/* Inspiration Bubbles */}
+            {isEditing ? (
+              <InspirationBubblesGrid
+                bubbles={bubbles}
+                sceneType={sceneType}
+                headerLabel="Inspiration"
+                onAddBubble={handleAddBubble}
+                onRemoveBubble={handleRemoveBubble}
+                onUpdateBubble={handleUpdateBubble}
+                onAddMultipleBubbles={handleAddMultipleBubbles}
+                maxBubbles={6}
+                columns={3}
+                compact
+              />
+            ) : bubbles.length > 0 ? (
+              <div data-testid="product-gen-settings-bubbles-display">
+                <p className="mb-2 text-sm text-muted-foreground">
+                  <Sparkles className="mr-1 inline h-3.5 w-3.5" />
+                  Inspiration ({bubbles.length})
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {bubbles.map((b, i) => (
+                    <Badge key={i} variant="secondary" className="text-xs" data-testid={`gen-bubble-${i}`}>
+                      {(b as any).label || b.type}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ===== ASSET CARDS =====
 
 function AssetCard({
   asset,

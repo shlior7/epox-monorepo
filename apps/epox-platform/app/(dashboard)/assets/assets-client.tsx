@@ -274,6 +274,7 @@ export function AssetsClient() {
                                         src={product.imageUrl}
                                         alt={product.name}
                                         fill
+                                        sizes="40px"
                                         className="object-cover"
                                       />
                                     ) : (
@@ -345,6 +346,7 @@ export function AssetsClient() {
                                         src={collection.thumbnails[0]}
                                         alt={collection.name}
                                         fill
+                                        sizes="40px"
                                         className="object-cover"
                                       />
                                     ) : (
@@ -449,6 +451,7 @@ export function AssetsClient() {
                   src={selectedAsset.url}
                   alt="Asset preview"
                   fill
+                  sizes="(max-width: 1024px) 100vw, 900px"
                   className="object-contain"
                 />
               </div>
@@ -634,6 +637,7 @@ function AssetThumbnail({ asset, onClick }: { asset: GeneratedAsset; onClick: ()
         src={asset.url}
         alt=""
         fill
+        sizes="(max-width: 768px) 50vw, 25vw"
         className="object-cover transition-transform group-hover:scale-105"
       />
       {/* Status indicators */}

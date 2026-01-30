@@ -220,6 +220,14 @@ export function validateUrl(
     return { valid: false, error: `${errorPrefix}: URL is required` };
   }
 
+  // Handle relative URLs (e.g. /api/local-s3/...) — allowed in development
+  if (urlString.startsWith('/')) {
+    if (process.env.NODE_ENV === 'development') {
+      return { valid: true };
+    }
+    return { valid: false, error: `${errorPrefix}: Relative URLs are not allowed in production` };
+  }
+
   // Handle data URLs FIRST (they have different length limits)
   if (urlString.startsWith('data:')) {
     if (!allowDataUrls) {

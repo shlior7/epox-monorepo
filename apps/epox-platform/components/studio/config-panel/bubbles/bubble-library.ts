@@ -124,7 +124,7 @@ export function getBubblesByCategory() {
 }
 
 /**
- * Get available bubble types (for "Add Bubble" menu)
+ * Get available bubble types (for "Add" menu)
  */
 export function getAvailableBubbleTypes(): string[] {
   return Object.keys(BUBBLE_LIBRARY);

@@ -406,7 +406,7 @@ export function InspirationBubbleModal({ isOpen, onClose, bubbleValue, onSave }:
           <div className="mb-4">
             <h2 className="text-lg font-semibold">Add Inspiration Images</h2>
             <p className="text-sm text-muted-foreground">
-              Choose from explore, saved images, or upload your own. Select multiple to add as separate bubbles.
+              Choose from explore, saved images, or upload your own. Select multiple to add as separate references.
             </p>
           </div>
           <InspirationStep

@@ -10,6 +10,12 @@
  * Priority: CDN_URL > R2_PUBLIC_URL > fallback
  */
 export function getStorageBaseUrl(): string {
+  // When using filesystem storage, serve via local API route
+  const driver = (process.env.STORAGE_DRIVER ?? process.env.NEXT_PUBLIC_S3_DRIVER ?? '').toLowerCase();
+  if (driver === 'fs' || driver === 'filesystem') {
+    return '/api/local-s3';
+  }
+
   // Check for CDN first (for future use)
   if (process.env.CDN_URL) {
     return process.env.CDN_URL;
@@ -48,9 +54,13 @@ export function resolveStorageUrl(storageKey: string | null | undefined): string
 
   const baseUrl = getStorageBaseUrl();
 
-  // Ensure no double slashes
+  // If already prefixed with the base URL, return as-is (avoid double-prefixing)
   const cleanKey = storageKey.startsWith('/') ? storageKey.slice(1) : storageKey;
   const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const basePrefix = cleanBase.startsWith('/') ? cleanBase.slice(1) : cleanBase;
+  if (basePrefix && cleanKey.startsWith(basePrefix + '/')) {
+    return storageKey;
+  }
 
   return `${cleanBase}/${cleanKey}`;
 }
@@ -65,6 +75,33 @@ export function resolveStorageUrls(storageKeys: (string | null | undefined)[]): 
   return storageKeys
     .map(resolveStorageUrl)
     .filter((url): url is string => url !== null);
+}
+
+/**
+ * Resolve a storage URL to an absolute URL suitable for server-to-server use
+ * (e.g., sending to a background worker that can't resolve relative paths).
+ * Uses WORKER_STORAGE_BASE_URL env var for filesystem storage.
+ */
+export function resolveStorageUrlAbsolute(storageKey: string | null | undefined): string | null {
+  if (!storageKey) return null;
+
+  // If already absolute, return as-is
+  if (storageKey.startsWith('http://') || storageKey.startsWith('https://')) {
+    return storageKey;
+  }
+
+  const driver = (process.env.STORAGE_DRIVER ?? process.env.NEXT_PUBLIC_S3_DRIVER ?? '').toLowerCase();
+  if (driver === 'fs' || driver === 'filesystem') {
+    const workerBase = process.env.WORKER_STORAGE_BASE_URL;
+    if (workerBase) {
+      const cleanKey = storageKey.startsWith('/') ? storageKey.slice(1) : storageKey;
+      const cleanBase = workerBase.endsWith('/') ? workerBase.slice(0, -1) : workerBase;
+      return `${cleanBase}/${cleanKey}`;
+    }
+  }
+
+  // Fall through to standard resolution
+  return resolveStorageUrl(storageKey);
 }
 
 /**

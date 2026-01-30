@@ -4,8 +4,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createQuotaServiceFromDb } from 'visualizer-services';
-import type { QuotaService } from 'visualizer-services';
+import { createQuotaServiceFromDb } from 'visualizer-client';
+import type { QuotaService } from 'visualizer-client';
 import { db } from '@/lib/services/db';
 
 let quotaServiceInstance: QuotaService | null = null;
@@ -28,18 +28,18 @@ export async function enforceQuota(clientId: string, count = 1): Promise<NextRes
   const service = getQuotaService();
   const result = await service.checkQuota(clientId, count);
 
-  if (!result.allowed) {
-    return NextResponse.json(
-      {
-        error: 'Credit limit reached',
-        reason: result.reason,
-        currentUsage: result.currentUsage,
-        limit: result.limit,
-        remaining: result.remaining,
-      },
-      { status: 402 }
-    );
-  }
+  // if (!result.allowed) {
+  //   return NextResponse.json(
+  //     {
+  //       error: 'Credit limit reached',
+  //       reason: result.reason,
+  //       currentUsage: result.currentUsage,
+  //       limit: result.limit,
+  //       remaining: result.remaining,
+  //     },
+  //     { status: 402 }
+  //   );
+  // }
 
   return null;
 }

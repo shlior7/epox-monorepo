@@ -139,7 +139,7 @@ export function InspirationPickerModal({
           <div className="py-4" data-testid={buildTestId('inspiration-picker-modal', 'upload-tab')}>
             {uploadedUrl ? (
               <div className="relative mx-auto aspect-video max-w-sm overflow-hidden rounded-lg border">
-                <Image src={uploadedUrl} alt="Uploaded" fill className="object-cover" />
+                <Image src={uploadedUrl} alt="Uploaded" fill sizes="384px" className="object-cover" />
                 <button
                   onClick={() => setUploadedUrl(null)}
                   className="absolute right-2 top-2 rounded-md bg-background/80 px-2 py-1 text-xs hover:bg-background"

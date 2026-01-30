@@ -89,7 +89,7 @@ export type {
 } from './product-analysis';
 
 // Generation Queue Facade
-export { enqueueImageGeneration, enqueueVideoGeneration, enqueueImageEdit, getJobStatus, getJobsByFlow } from './generation-queue';
+export { enqueueImageGeneration, enqueueVideoGeneration, enqueueImageEdit, getJobStatus, getJobStatusBatch, getJobsByFlow } from './generation-queue';
 export type { EnqueueImageResult, EnqueueVideoResult, EnqueueImageEditResult, JobStatusResult } from './generation-queue';
 export type {
   ImageGenerationPayload,
@@ -114,3 +114,31 @@ export {
   initRedisRateLimiter,
 } from './rate-limit';
 export type { RateLimitResult, RateLimitConfig, RedisClient } from './rate-limit';
+
+// Flow Orchestration (prompt building, art-director, settings merger)
+export {
+  buildPromptFromTags,
+  buildPromptFromContext,
+  generatePromptVariations,
+  // Art Director prompt builder
+  buildArtDirectorPrompt,
+  buildSimplePrompt,
+  buildSmartPrompt,
+  STYLE_CASCADE,
+  // Hierarchical settings merger
+  mergeGenerationSettings,
+  formatSettingsSources,
+} from './flow-orchestration';
+export type {
+  PromptBuilderContext,
+  // Art Director types
+  ArtDirectorInput,
+  ArtDirectorResult,
+  ProductContext,
+  SmartPromptInput,
+  SmartPromptResult,
+  // Settings merger types
+  MergeContext,
+  MergedSettings,
+  BubbleSource,
+} from './flow-orchestration';

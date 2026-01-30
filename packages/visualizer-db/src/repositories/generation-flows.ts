@@ -289,6 +289,7 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
               name: product.name,
               category: product.category,
               sceneTypes: product.sceneTypes,
+              storeSku: product.storeSku,
             })
             .from(product)
             .where(inArray(product.id, allProductIds))
@@ -316,6 +317,7 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
               status: generatedAsset.status,
               approvalStatus: generatedAsset.approvalStatus,
               settings: generatedAsset.settings,
+              prompt: generatedAsset.prompt,
               createdAt: generatedAsset.createdAt,
               jobId: generatedAsset.jobId,
             })
@@ -357,6 +359,7 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
               name: (productData as any).name,
               category: (productData as any).category,
               sceneTypes: (productData as any).sceneTypes as string[] | null,
+              storeSku: (productData as any).storeSku as string | null,
             }
           : null,
         baseImages: images
@@ -372,6 +375,8 @@ export class GenerationFlowRepository extends BaseRepository<GenerationFlow> {
           status: a.status as GenerationFlowWithDetails['generatedAssets'][0]['status'],
           approvalStatus: a.approvalStatus as GenerationFlowWithDetails['generatedAssets'][0]['approvalStatus'],
           aspectRatio: (a.settings as { aspectRatio?: string } | null)?.aspectRatio ?? null,
+          prompt: a.prompt,
+          settings: a.settings,
           createdAt: a.createdAt,
           jobId: a.jobId,
         })),

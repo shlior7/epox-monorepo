@@ -33,6 +33,7 @@ export interface BubbleChipProps {
   onClick?: () => void;
   onRemove?: () => void;
   isActive?: boolean;
+  compact?: boolean;
   className?: string;
 }
 
@@ -45,6 +46,7 @@ export function BubbleChip({
   onClick,
   onRemove,
   isActive = false,
+  compact = false,
   className,
 }: BubbleChipProps) {
   const definition = getBubbleDefinition(value.type);
@@ -69,7 +71,8 @@ export function BubbleChip({
       <button
         onClick={onClick}
         className={cn(
-          'flex h-14 w-14 flex-col items-center justify-center rounded-lg border-2 transition-all',
+          'flex w-full flex-col items-center justify-center rounded-lg border-2 transition-all',
+          compact ? 'aspect-[4/3]' : 'aspect-square',
           hasContent
             ? cn(colors.bgColor, colors.borderColor, 'hover:opacity-80')
             : 'border-dashed border-border hover:border-primary hover:bg-primary/5',
@@ -83,8 +86,8 @@ export function BubbleChip({
         ) : (
           // Empty state
           <div className="flex flex-col items-center">
-            <Icon className="h-4 w-4 text-muted-foreground" />
-            <span className="mt-0.5 text-center text-[9px] leading-tight text-muted-foreground">
+            <Icon className={cn(compact ? 'h-4 w-4' : 'h-6 w-6', 'text-muted-foreground')} />
+            <span className={cn('mt-0.5 text-center leading-tight text-muted-foreground', compact ? 'text-[9px]' : 'text-[10px]')}>
               Click to add
             </span>
           </div>
@@ -98,16 +101,18 @@ export function BubbleChip({
             e.stopPropagation();
             onRemove();
           }}
-          className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
+          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
           data-testid={buildTestId('inspiration-bubble', 'remove', sceneType, index)}
         >
-          <X className="h-2.5 w-2.5" />
+          <X className="h-3 w-3" />
         </button>
       )}
 
       {/* Type label */}
-      <div className="mt-1 text-center">
-        <span className="text-[10px] text-muted-foreground">{(value as any).label || definition.label}</span>
+      <div className={cn('text-center', compact ? 'mt-0.5' : 'mt-1')}>
+        <span className={cn('text-muted-foreground', compact ? 'text-[10px]' : 'text-[12px]')}>
+          {(value as any).label || definition.label}
+        </span>
       </div>
     </div>
   );

@@ -112,17 +112,24 @@ export interface VideoGenerationSettings {
   presetId?: string | null;
 }
 
+// ===== INSPIRATION SECTION (Category × Scene Type combos) =====
+
+export interface InspirationSection {
+  id: string;
+  categoryIds: string[];   // empty = matches all categories
+  sceneTypes: string[];    // empty = matches all scene types
+  bubbles: import('./bubbles').BubbleValue[];
+  enabled: boolean;
+}
+
 // ===== COLLECTION GENERATION SETTINGS =====
 
 export interface CollectionGenerationSettings {
-  // General inspiration bubbles (apply to all scene types)
+  // Collection-level defaults — applies to ALL products as baseline
   generalInspiration?: import('./bubbles').BubbleValue[];
 
-  // Inspiration bubbles organized by scene type
-  sceneTypeInspiration: SceneTypeInspirationMap;
-
-  // Whether to use scene-type-specific inspiration (vs only general)
-  useSceneTypeInspiration?: boolean;
+  // Category/scene-type specific overrides — later sections override earlier
+  inspirationSections: InspirationSection[];
 
   // Shared settings
   userPrompt?: string;
@@ -142,7 +149,7 @@ export interface FlowGenerationSettings {
 
   // ===== INSPIRATION =====
   generalInspiration?: import('./bubbles').BubbleValue[];
-  sceneTypeInspiration?: SceneTypeInspirationMap;
+  inspirationSections?: InspirationSection[];
 
   // ===== USER PROMPT =====
   userPrompt?: string;
@@ -313,17 +320,3 @@ export interface InspirationImage {
   sourceType: InspirationSourceType;
 }
 
-// ===== SCENE-TYPE INSPIRATION ENTRY =====
-
-// Per scene type inspiration configuration
-export interface SceneTypeInspirationEntry {
-  bubbles: import('./bubbles').BubbleValue[];
-}
-
-// Inspiration configuration map keyed by scene type
-export type SceneTypeInspirationMap = Record<string, SceneTypeInspirationEntry>;
-
-// Default empty inspiration entry
-export const DEFAULT_SCENE_TYPE_INSPIRATION_ENTRY: SceneTypeInspirationEntry = {
-  bubbles: [],
-};

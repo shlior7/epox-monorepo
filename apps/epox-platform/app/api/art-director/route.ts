@@ -5,13 +5,12 @@
  */
 
 import { NextResponse } from 'next/server';
-import type {
-  SubjectAnalysis,
-  VisionAnalysisResult,
-  BubbleValue,
-} from 'visualizer-types';
+import type { SubjectAnalysis, VisionAnalysisResult, BubbleValue } from 'visualizer-types';
 import { withSecurity } from '@/lib/security';
-import { extractPromptContextFromBubbles, groupBubbleContextByCategory } from '@/lib/services/bubble-prompt-extractor';
+import {
+  extractPromptContextFromBubbles,
+  groupBubbleContextByCategory,
+} from '@/lib/services/bubble-prompt-extractor';
 
 // ===== REQUEST/RESPONSE TYPES =====
 
@@ -78,7 +77,6 @@ function deriveGeometricDescription(cameraAngle: SubjectAnalysis['inputCameraAng
   }
 }
 
-
 /**
  * Extract style and lighting from bubbles for scene narrative
  */
@@ -99,9 +97,7 @@ function extractStyleAndLighting(bubbles: BubbleValue[]): {
   return result;
 }
 
-
 // ===== MAIN HANDLER =====
-
 
 // Force dynamic rendering since security middleware reads headers
 export const dynamic = 'force-dynamic';
@@ -135,7 +131,9 @@ export const POST = withSecurity(async (request): Promise<NextResponse<ArtDirect
   // P1: Scene narrative with quality framing + geometric perspective (P2)
   const styleAndLighting = extractStyleAndLighting(bubbles ?? []);
   const narrativeParts: string[] = [];
-  narrativeParts.push(`Professional ${environmentType} ${subjectAnalysis.nativeSceneCategory.toLowerCase()} photograph, editorial catalog style, ultra-realistic, 8k resolution.`);
+  narrativeParts.push(
+    `Professional ${environmentType} ${subjectAnalysis.nativeSceneCategory.toLowerCase()} photograph, editorial catalog style, ultra-realistic, 8k resolution.`
+  );
   narrativeParts.push(geometricDescription);
   if (styleAndLighting.style) {
     narrativeParts.push(`${styleAndLighting.style} style.`);
@@ -145,7 +143,7 @@ export const POST = withSecurity(async (request): Promise<NextResponse<ArtDirect
   }
   // Remaining bubble context (excluding style/lighting already handled)
   const nonStyleContext = bubbleContext.filter(
-    ctx => !ctx.endsWith(' style') && !ctx.endsWith(' lighting')
+    (ctx) => !ctx.endsWith(' style') && !ctx.endsWith(' lighting')
   );
   if (nonStyleContext.length > 0) {
     narrativeParts.push(nonStyleContext.join('. '));
@@ -159,7 +157,7 @@ export const POST = withSecurity(async (request): Promise<NextResponse<ArtDirect
 
   const promptParts = [introAnchor, bubbleSection];
   if (userAdditions) {
-    promptParts.push(userAdditions);
+    promptParts.push(`user provided prompt: ${userAdditions}`);
   }
   promptParts.push(outroAnchor);
 

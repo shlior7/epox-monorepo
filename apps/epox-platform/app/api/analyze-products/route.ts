@@ -140,7 +140,7 @@ export const POST = withSecurity(async (request) => {
           return {
             productType: p.category?.toLowerCase() || 'furniture',
             sceneTypes: ['Living Room'],
-            colorSchemes: [{ name: 'Default', colors: ['neutral'] }],
+            colorSchemes: [{ name: 'Default', colors: ['#B0A899'] }],
             materials: [],
             size: { type: 'medium' as const },
             styles: ['Modern'],

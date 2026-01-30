@@ -1,4 +1,4 @@
-import { and, desc, eq, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 import type { DrizzleClient } from '../client';
 import {
   generationJob,
@@ -243,6 +243,15 @@ export class GenerationJobRepository extends BaseRepository<GenerationJob> {
   /**
    * List jobs by flow
    */
+  async getByIds(ids: string[]): Promise<GenerationJob[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.drizzle
+      .select()
+      .from(generationJob)
+      .where(inArray(generationJob.id, ids));
+    return rows.map((row) => this.mapToEntity(row));
+  }
+
   async listByFlow(flowId: string): Promise<GenerationJob[]> {
     const rows = await this.drizzle
       .select()
@@ -315,6 +324,39 @@ export class GenerationJobRepository extends BaseRepository<GenerationJob> {
       .returning({ id: generationJob.id });
 
     return result.length;
+  }
+
+  /**
+   * Timeout stale jobs that are stuck in processing or pending states.
+   * - Processing jobs older than 10 minutes → failed with "Job timed out"
+   * - Pending jobs older than 30 minutes → failed with "Job expired"
+   * Returns the number of jobs timed out.
+   */
+  async timeoutStaleJobs(): Promise<number> {
+    const now = new Date();
+    const processingCutoff = new Date(now.getTime() - 10 * 60 * 1000); // 10 minutes
+    const pendingCutoff = new Date(now.getTime() - 30 * 60 * 1000); // 30 minutes
+
+    const result = await this.drizzle.execute(sql`
+      UPDATE generation_job
+      SET
+        status = 'failed',
+        error = CASE
+          WHEN status = 'processing' THEN 'Job timed out after 10 minutes'
+          ELSE 'Job expired after 30 minutes'
+        END,
+        completed_at = NOW(),
+        locked_by = NULL,
+        locked_at = NULL
+      WHERE (
+        (status = 'processing' AND started_at <= ${processingCutoff})
+        OR
+        (status = 'pending' AND created_at <= ${pendingCutoff})
+      )
+      RETURNING id
+    `);
+
+    return (result.rows as Array<{ id: string }>).length;
   }
 
   /**

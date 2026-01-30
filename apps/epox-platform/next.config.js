@@ -23,6 +23,11 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'pub-b173dd19ec2840a5b068d4748260373f.r2.dev',
       },
+      // Local storage in development
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
     ],
   },
   // Increase body size limit for API routes handling large image data URLs

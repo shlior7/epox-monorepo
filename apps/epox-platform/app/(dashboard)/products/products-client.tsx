@@ -69,6 +69,7 @@ import { buildTestId } from '@/lib/testing/testid';
 import { toast } from 'sonner';
 import type { Product } from '@/lib/api-client';
 import { ImportProductsModal } from '@/components/store/modals/ImportProductsModal';
+import { AddProductModal } from '@/components/modals/add-product';
 
 type ViewMode = 'table' | 'grid';
 
@@ -85,6 +86,7 @@ function ProductsPageContent() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [productsToDelete, setProductsToDelete] = useState<string[]>([]);
+  const [addProductModalOpen, setAddProductModalOpen] = useState(false);
   const { openModal, closeModal, isOpen } = useModal();
 
   // Fetch products - will use prefetched data if available
@@ -180,7 +182,10 @@ function ProductsPageContent() {
       return old;
     };
 
-    queryClient.setQueryData(['products', { search: searchQuery, category: categoryFilter, source: sourceFilter }], updateProductData);
+    queryClient.setQueryData(
+      ['products', { search: searchQuery, category: categoryFilter, source: sourceFilter }],
+      updateProductData
+    );
 
     try {
       await apiClient.updateProduct(productId, { selectedSceneType: sceneType });
@@ -288,8 +293,7 @@ function ProductsPageContent() {
                     <p className="text-sm text-muted-foreground">
                       {storeStatus?.connected
                         ? `Import from ${storeStatus.connection?.storeName || 'your store'}`
-                        : 'Connect Shopify, WooCommerce, or other platforms'
-                      }
+                        : 'Connect Shopify, WooCommerce, or other platforms'}
                     </p>
                   </div>
                 </Button>
@@ -298,7 +302,7 @@ function ProductsPageContent() {
                   className="h-auto justify-start p-4"
                   onClick={() => {
                     setAddDialogOpen(false);
-                    openModal('add-product');
+                    setAddProductModalOpen(true);
                   }}
                   testId={buildTestId('products-add-dialog', 'upload-manual')}
                 >
@@ -318,7 +322,10 @@ function ProductsPageContent() {
 
       <div className="p-8" data-testid="products-page">
         {/* Filters */}
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between" data-testid="products-filters">
+        <div
+          className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+          data-testid="products-filters"
+        >
           <div className="flex flex-col gap-4 sm:flex-row">
             <SearchInput
               placeholder="Search products..."
@@ -362,7 +369,10 @@ function ProductsPageContent() {
           </div>
 
           {/* View Toggle */}
-          <div className="flex items-center gap-1 rounded-lg border p-1" data-testid="products-view-toggle">
+          <div
+            className="flex items-center gap-1 rounded-lg border p-1"
+            data-testid="products-view-toggle"
+          >
             <Button
               variant={viewMode === 'table' ? 'secondary' : 'ghost'}
               size="icon"
@@ -393,10 +403,19 @@ function ProductsPageContent() {
               <div className="space-y-4">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <div key={i} className="flex items-center gap-4">
-                    <Skeleton className="h-10 w-10 rounded" testId={buildTestId('products-loading', `item-${i}`, 'image')} />
+                    <Skeleton
+                      className="h-10 w-10 rounded"
+                      testId={buildTestId('products-loading', `item-${i}`, 'image')}
+                    />
                     <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-48" testId={buildTestId('products-loading', `item-${i}`, 'title')} />
-                      <Skeleton className="h-3 w-24" testId={buildTestId('products-loading', `item-${i}`, 'subtitle')} />
+                      <Skeleton
+                        className="h-4 w-48"
+                        testId={buildTestId('products-loading', `item-${i}`, 'title')}
+                      />
+                      <Skeleton
+                        className="h-3 w-24"
+                        testId={buildTestId('products-loading', `item-${i}`, 'subtitle')}
+                      />
                     </div>
                   </div>
                 ))}
@@ -404,7 +423,10 @@ function ProductsPageContent() {
             </div>
           ) : error ? (
             <div className="py-12 text-center" data-testid="products-error">
-              <p className="mb-4 text-destructive" data-testid={buildTestId('products-error', 'message')}>
+              <p
+                className="mb-4 text-destructive"
+                data-testid={buildTestId('products-error', 'message')}
+              >
                 {error instanceof Error ? error.message : 'Failed to load products'}
               </p>
               <Button
@@ -422,11 +444,14 @@ function ProductsPageContent() {
                   <table className="w-full" data-testid={buildTestId('products-table', 'table')}>
                     <thead>
                       <tr className="border-b border-border">
-                        <th className="w-12 p-4" data-testid={buildTestId('products-table', 'header', 'checkbox')}>
+                        <th
+                          className="w-12 p-4"
+                          data-testid={buildTestId('products-table', 'header', 'checkbox')}
+                        >
                           <div className="flex items-center justify-center">
                             <div
                               className={cn(
-                                'flex h-5 w-5 items-center justify-center rounded border-2 transition-all cursor-pointer',
+                                'flex h-5 w-5 cursor-pointer items-center justify-center rounded border-2 transition-all',
                                 selectedProductIds.length > 0
                                   ? 'border-primary bg-primary text-primary-foreground'
                                   : 'border-muted-foreground/40 hover:border-primary'
@@ -501,7 +526,10 @@ function ProductsPageContent() {
                             )}
                             data-testid={productTestId}
                           >
-                            <td className="p-4" data-testid={buildTestId(productTestId, 'checkbox')}>
+                            <td
+                              className="p-4"
+                              data-testid={buildTestId(productTestId, 'checkbox')}
+                            >
                               <div
                                 className="flex items-center justify-center"
                                 onClick={(e) => {
@@ -568,12 +596,21 @@ function ProductsPageContent() {
                               data-testid={buildTestId(productTestId, 'category')}
                               onClick={() => router.push(`/products/${product.id}`)}
                             >
-                              <Badge variant="secondary" testId={buildTestId(productTestId, 'category-badge')}>
+                              <Badge
+                                variant="secondary"
+                                testId={buildTestId(productTestId, 'category-badge')}
+                              >
                                 {product.category}
                               </Badge>
                             </td>
-                            <td className="p-4" data-testid={buildTestId(productTestId, 'scene-types')}>
-                              <div className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
+                            <td
+                              className="p-4"
+                              data-testid={buildTestId(productTestId, 'scene-types')}
+                            >
+                              <div
+                                className="flex flex-wrap gap-1"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 {availableSceneTypes.length > 0 ? (
                                   <SceneTypeDropdown
                                     product={product}
@@ -582,7 +619,9 @@ function ProductsPageContent() {
                                     productTestId={productTestId}
                                   />
                                 ) : (
-                                  <span className="text-xs text-muted-foreground">No scene types</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    No scene types
+                                  </span>
                                 )}
                               </div>
                             </td>
@@ -592,7 +631,7 @@ function ProductsPageContent() {
                               onClick={() => router.push(`/products/${product.id}`)}
                             >
                               <Badge
-                                variant={product.source === 'imported' ? 'default' : 'outline'}
+                                variant={'outline'}
                                 testId={buildTestId(productTestId, 'source-badge')}
                               >
                                 {product.source === 'imported' ? (
@@ -647,7 +686,11 @@ function ProductsPageContent() {
                                       <>
                                         <DropdownMenuItem
                                           onClick={() => window.open(product.storeUrl!, '_blank')}
-                                          testId={buildTestId(productTestId, 'menu', 'view-product-page')}
+                                          testId={buildTestId(
+                                            productTestId,
+                                            'menu',
+                                            'view-product-page'
+                                          )}
                                         >
                                           <ExternalLink className="mr-2 h-4 w-4" />
                                           Go to Product Page
@@ -659,7 +702,9 @@ function ProductsPageContent() {
                                     )}
                                     {product.source === 'imported' && (
                                       <>
-                                        <DropdownMenuItem testId={buildTestId(productTestId, 'menu', 'view-store')}>
+                                        <DropdownMenuItem
+                                          testId={buildTestId(productTestId, 'menu', 'view-store')}
+                                        >
                                           <Store className="mr-2 h-4 w-4" />
                                           View in Store
                                         </DropdownMenuItem>
@@ -687,7 +732,10 @@ function ProductsPageContent() {
                   </table>
                 </div>
               ) : (
-                <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-testid="products-grid">
+                <div
+                  className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                  data-testid="products-grid"
+                >
                   {filteredProducts.map((product, index) => {
                     const productImageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
                     const productTestId = buildTestId('product-card', product.id);
@@ -717,7 +765,10 @@ function ProductsPageContent() {
               {filteredProducts.length === 0 && (
                 <div className="py-12 text-center" data-testid="products-empty">
                   <Package className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                  <p className="mb-4 text-muted-foreground" data-testid={buildTestId('products-empty', 'message')}>
+                  <p
+                    className="mb-4 text-muted-foreground"
+                    data-testid={buildTestId('products-empty', 'message')}
+                  >
                     No products found
                   </p>
                   <Button
@@ -765,11 +816,11 @@ function ProductsPageContent() {
             <AlertDialogTitle data-testid={buildTestId('products-delete-dialog', 'title')}>
               Are you sure?
             </AlertDialogTitle>
-            <AlertDialogDescription data-testid={buildTestId('products-delete-dialog', 'description')}>
+            <AlertDialogDescription
+              data-testid={buildTestId('products-delete-dialog', 'description')}
+            >
               This action cannot be undone. This will permanently delete{' '}
-              {productsToDelete.length > 0
-                ? `${productsToDelete.length} products`
-                : 'the product'}{' '}
+              {productsToDelete.length > 0 ? `${productsToDelete.length} products` : 'the product'}{' '}
               from your catalog.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -797,6 +848,15 @@ function ProductsPageContent() {
         onImportComplete={() => {
           queryClient.invalidateQueries({ queryKey: ['products'] });
           toast.success('Products imported successfully');
+        }}
+      />
+
+      {/* Add Product Modal (new multi-phase modal) */}
+      <AddProductModal
+        open={addProductModalOpen}
+        onOpenChange={setAddProductModalOpen}
+        onProductsCreated={() => {
+          queryClient.invalidateQueries({ queryKey: ['products'] });
         }}
       />
     </>
@@ -829,7 +889,7 @@ function SelectionActionIsland({
         className={cn(
           'flex items-center gap-4 rounded-full border border-border',
           'bg-card/95 px-6 py-3 shadow-xl backdrop-blur',
-          'animate-in fade-in slide-in-from-bottom-4 duration-300'
+          'duration-300 animate-in fade-in slide-in-from-bottom-4'
         )}
       >
         {/* Close button */}
@@ -871,10 +931,22 @@ function SelectionActionIsland({
             <Download className="mr-2 h-4 w-4" />
             Download
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onPin} testId="selection-island-pin">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
+            onClick={onPin}
+            testId="selection-island-pin"
+          >
             <Heart className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onApprove} testId="selection-island-approve">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
+            onClick={onApprove}
+            testId="selection-island-approve"
+          >
             <CheckCircle className="h-4 w-4" />
           </Button>
           <Button
@@ -974,7 +1046,7 @@ function SceneTypeDropdown({
                 }}
                 className={cn(
                   (product as any).selectedSceneType === type ||
-                    (!((product as any).selectedSceneType) && type === product.sceneTypes?.[0])
+                    (!(product as any).selectedSceneType && type === product.sceneTypes?.[0])
                     ? 'bg-primary/10 font-medium text-primary'
                     : ''
                 )}
@@ -1036,10 +1108,19 @@ function ProductGridCard({
       testId={productTestId}
     >
       {/* Image Section */}
-      <div className="relative aspect-square bg-white" data-testid={buildTestId(productTestId, 'image')}>
+      <div
+        className="relative aspect-square bg-white"
+        data-testid={buildTestId(productTestId, 'image')}
+      >
         {productImageUrl ? (
           <div className="relative h-full w-full p-4">
-            <Image src={productImageUrl} alt={product.name} fill className="object-contain p-2" sizes="300px" />
+            <Image
+              src={productImageUrl}
+              alt={product.name}
+              fill
+              className="object-contain p-2"
+              sizes="300px"
+            />
           </div>
         ) : (
           <div className="flex h-full items-center justify-center">
@@ -1086,7 +1167,10 @@ function ProductGridCard({
 
       {/* Info Section */}
       <div className="p-3" data-testid={buildTestId(productTestId, 'content')}>
-        <h3 className="truncate text-sm font-medium" data-testid={buildTestId(productTestId, 'name')}>
+        <h3
+          className="truncate text-sm font-medium"
+          data-testid={buildTestId(productTestId, 'name')}
+        >
           {product.name}
         </h3>
         <p
@@ -1096,9 +1180,23 @@ function ProductGridCard({
           {product.sku}
         </p>
         <div className="mt-2 flex flex-wrap gap-1">
-          <Badge variant="secondary" className="text-xs" testId={buildTestId(productTestId, 'category')}>
+          <Badge
+            variant="secondary"
+            className="text-xs"
+            testId={buildTestId(productTestId, 'category')}
+          >
             {product.category}
           </Badge>
+          {product.linkedCategories?.map((lc) => (
+            <Badge
+              key={lc.categoryId}
+              variant={lc.isPrimary ? 'default' : 'outline'}
+              className="text-xs"
+              testId={buildTestId(productTestId, 'linked-category', lc.categoryId)}
+            >
+              {lc.categoryName}
+            </Badge>
+          ))}
           {availableSceneTypes.length > 0 && (
             <div onClick={(e) => e.stopPropagation()}>
               <SceneTypeDropdown
@@ -1151,7 +1249,9 @@ function ProductGridCard({
                     <ExternalLink className="mr-2 h-4 w-4" />
                     Go to Product Page
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator data-testid={buildTestId(productTestId, 'menu', 'separator-1')} />
+                  <DropdownMenuSeparator
+                    data-testid={buildTestId(productTestId, 'menu', 'separator-1')}
+                  />
                 </>
               )}
               {product.source === 'imported' && (
@@ -1160,7 +1260,9 @@ function ProductGridCard({
                     <Store className="mr-2 h-4 w-4" />
                     View in Store
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator testId={buildTestId(productTestId, 'menu', 'separator-2')} />
+                  <DropdownMenuSeparator
+                    testId={buildTestId(productTestId, 'menu', 'separator-2')}
+                  />
                 </>
               )}
               <DropdownMenuItem

@@ -60,11 +60,7 @@ export function OutputSettingsPanel({ className }: OutputSettingsPanelProps) {
   const selectedQuality = QUALITY_OPTIONS.find((opt) => opt.value === state.outputSettings.quality);
 
   return (
-    <section className={cn('mt-6', className)} data-testid={buildTestId('output-settings')}>
-      <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        Output
-      </h3>
-
+    <section className={cn('mt-2', className)} data-testid={buildTestId('output-settings')}>
       {/* One-line settings row */}
       <div className="items-left flex gap-2">
         {/* Aspect Ratio */}

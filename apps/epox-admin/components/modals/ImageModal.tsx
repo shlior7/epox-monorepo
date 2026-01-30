@@ -284,6 +284,7 @@ export function ImageModal({ isOpen, imageUrl, previewUrl, onClose, cssFilter }:
                 src={previewUrl}
                 alt="Preview"
                 fill
+                sizes="90vw"
                 style={{
                   ...styles.previewImage,
                   opacity: isPreviewLoaded ? 1 : 0,
@@ -299,6 +300,7 @@ export function ImageModal({ isOpen, imageUrl, previewUrl, onClose, cssFilter }:
               src={imageUrl}
               alt="Full size view"
               fill
+              sizes="90vw"
               style={{
                 ...styles.fullImage,
                 opacity: isImageLoading ? 0 : 1,

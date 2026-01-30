@@ -37,6 +37,12 @@ vi.mock('@/lib/services/db', () => ({
     productImages: {
       list: vi.fn(),
     },
+    productCategories: {
+      listByProduct: vi.fn(),
+    },
+    categories: {
+      getById: vi.fn(),
+    },
     generatedAssets: {
       list: vi.fn(),
       countByGenerationFlowIds: vi.fn(),
@@ -257,6 +263,161 @@ describe('Collections API - POST /api/collections', () => {
     expect(response.status).toBe(400);
     const data = await response.json();
     expect(data.error).toContain('All productIds must be strings');
+  });
+
+  it('should auto-populate inspirationSections from category defaults', async () => {
+    const mockCollection = {
+      id: 'coll-1',
+      clientId: 'test-client',
+      name: 'Auto-populated Collection',
+      productIds: ['prod-1'],
+      selectedBaseImages: {},
+      settings: null,
+      status: 'draft' as const,
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    vi.mocked(db.collectionSessions.create).mockResolvedValue(mockCollection);
+    vi.mocked(db.products.listByIds).mockResolvedValue([]);
+    vi.mocked(db.productImages.list).mockResolvedValue([]);
+
+    // Product has a category link
+    vi.mocked(db.productCategories.listByProduct).mockResolvedValue([
+      { productId: 'prod-1', categoryId: 'cat-1' } as any,
+    ]);
+
+    // Category has default bubbles
+    vi.mocked(db.categories.getById).mockResolvedValue({
+      id: 'cat-1',
+      name: 'Ladders',
+      clientId: 'test-client',
+      generationSettings: {
+        defaultBubbles: [
+          { type: 'style', preset: 'Industrial' },
+          { type: 'lighting', preset: 'Studio Light' },
+        ],
+      },
+    } as any);
+
+    const request = new NextRequest('http://localhost:3000/api/collections', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Auto-populated Collection',
+        productIds: ['prod-1'],
+      }),
+    });
+
+    const response = await createCollection(request);
+    expect(response.status).toBe(201);
+
+    // Verify collection was created with auto-populated settings
+    const createCall = vi.mocked(db.collectionSessions.create).mock.calls[0];
+    const settingsArg = createCall[1].settings as any;
+
+    expect(settingsArg).toBeDefined();
+    expect(settingsArg.inspirationSections).toHaveLength(1);
+    expect(settingsArg.inspirationSections[0].categoryIds).toEqual(['cat-1']);
+    expect(settingsArg.inspirationSections[0].bubbles).toHaveLength(2);
+    expect(settingsArg.inspirationSections[0].bubbles[0]).toEqual({ type: 'style', preset: 'Industrial' });
+    expect(settingsArg.inspirationSections[0].enabled).toBe(true);
+  });
+
+  it('should not auto-populate sections for categories without defaultBubbles', async () => {
+    const mockCollection = {
+      id: 'coll-1',
+      clientId: 'test-client',
+      name: 'No Defaults Collection',
+      productIds: ['prod-1'],
+      selectedBaseImages: {},
+      settings: null,
+      status: 'draft' as const,
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    vi.mocked(db.collectionSessions.create).mockResolvedValue(mockCollection);
+    vi.mocked(db.products.listByIds).mockResolvedValue([]);
+    vi.mocked(db.productImages.list).mockResolvedValue([]);
+
+    vi.mocked(db.productCategories.listByProduct).mockResolvedValue([
+      { productId: 'prod-1', categoryId: 'cat-1' } as any,
+    ]);
+
+    // Category has no default bubbles
+    vi.mocked(db.categories.getById).mockResolvedValue({
+      id: 'cat-1',
+      name: 'Unconfigured',
+      clientId: 'test-client',
+      generationSettings: null,
+    } as any);
+
+    const request = new NextRequest('http://localhost:3000/api/collections', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'No Defaults Collection',
+        productIds: ['prod-1'],
+      }),
+    });
+
+    const response = await createCollection(request);
+    expect(response.status).toBe(201);
+
+    // Settings should be undefined (no sections to auto-populate, no inspiration images)
+    const createCall = vi.mocked(db.collectionSessions.create).mock.calls[0];
+    const settingsArg = createCall[1].settings;
+    expect(settingsArg).toBeUndefined();
+  });
+
+  it('should deduplicate categories across multiple products', async () => {
+    const mockCollection = {
+      id: 'coll-1',
+      clientId: 'test-client',
+      name: 'Multi-product',
+      productIds: ['prod-1', 'prod-2'],
+      selectedBaseImages: {},
+      settings: null,
+      status: 'draft' as const,
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    vi.mocked(db.collectionSessions.create).mockResolvedValue(mockCollection);
+    vi.mocked(db.products.listByIds).mockResolvedValue([]);
+    vi.mocked(db.productImages.list).mockResolvedValue([]);
+
+    // Both products share the same category
+    vi.mocked(db.productCategories.listByProduct)
+      .mockResolvedValueOnce([{ productId: 'prod-1', categoryId: 'cat-1' } as any])
+      .mockResolvedValueOnce([{ productId: 'prod-2', categoryId: 'cat-1' } as any]);
+
+    vi.mocked(db.categories.getById).mockResolvedValue({
+      id: 'cat-1',
+      name: 'Shared Category',
+      clientId: 'test-client',
+      generationSettings: {
+        defaultBubbles: [{ type: 'style', preset: 'Modern' }],
+      },
+    } as any);
+
+    const request = new NextRequest('http://localhost:3000/api/collections', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Multi-product',
+        productIds: ['prod-1', 'prod-2'],
+      }),
+    });
+
+    const response = await createCollection(request);
+    expect(response.status).toBe(201);
+
+    // Should only create ONE section despite both products sharing the category
+    const createCall = vi.mocked(db.collectionSessions.create).mock.calls[0];
+    const settingsArg = createCall[1].settings as any;
+    expect(settingsArg.inspirationSections).toHaveLength(1);
   });
 });
 

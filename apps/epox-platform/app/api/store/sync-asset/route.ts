@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { withSecurity } from '@/lib/security';
 import { db } from '@/lib/services/db';
 import { getStoreService } from '@/lib/services/erp';
+import { resolveStorageUrlAbsolute } from 'visualizer-storage';
 
 // Force dynamic rendering since security middleware reads headers
 export const dynamic = 'force-dynamic';
@@ -67,9 +68,22 @@ export const POST = withSecurity(async (request, context) => {
     });
 
     try {
+      // Resolve asset URL to an absolute URL for the external store.
+      // In filesystem/dev mode, assetUrl is a relative path like "/api/local-s3/..."
+      // which WooCommerce/Shopify cannot reach. We need a full URL.
+      let imageSourceUrl = resolveStorageUrlAbsolute(asset.assetUrl) || asset.assetUrl;
+
+      // If still relative (no WORKER_STORAGE_BASE_URL set), build from request origin
+      if (imageSourceUrl.startsWith('/')) {
+        const origin = request.headers.get('origin')
+          || request.headers.get('x-forwarded-host') && `${request.headers.get('x-forwarded-proto') || 'https'}://${request.headers.get('x-forwarded-host')}`
+          || `${request.headers.get('x-forwarded-proto') || 'http'}://${request.headers.get('host') || 'localhost:3000'}`;
+        imageSourceUrl = `${origin}${imageSourceUrl}`;
+      }
+
       // Sync to store (upload image)
       const uploadedImages = await storeService.updateProductImages(clientId, product.storeId, [
-        { src: asset.assetUrl, name: '', alt: '' },
+        { src: imageSourceUrl, name: '', alt: '' },
       ]);
 
       const externalImageId = uploadedImages[0]?.id?.toString();
@@ -130,7 +144,11 @@ export const POST = withSecurity(async (request, context) => {
       });
 
       console.error('❌ Store sync failed:', syncError);
-      return NextResponse.json({ error: 'Failed to sync asset to store' }, { status: 500 });
+      // Surface the underlying error for debugging
+      const message = syncError?.response?.data?.message
+        || syncError?.message
+        || 'Failed to sync asset to store';
+      return NextResponse.json({ error: message }, { status: 500 });
     }
   } catch (error: any) {
     console.error('❌ Failed to sync asset:', error);

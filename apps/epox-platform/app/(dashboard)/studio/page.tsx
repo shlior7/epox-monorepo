@@ -1,45 +1,99 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Loader2,
-  X,
-  Download,
-  Heart,
-  CheckCircle,
-  Trash2,
-  Eye,
-  EyeOff,
-  Sparkles,
-  Filter,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { PageHeader } from '@/components/layout';
-import {
-  UnifiedStudioConfigPanel,
-  ConfigPanelProvider,
   ProductGrid,
+  UnifiedStudioConfigPanel,
+  type ConfigPanelState,
   type SceneTypeInfo,
-  useConfigPanelContext,
 } from '@/components/studio';
-import { apiClient, type Product } from '@/lib/api-client';
+import { Button } from '@/components/ui/button';
+import { apiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  CheckCircle,
+  Download,
+  Eye,
+  Filter,
+  Heart,
+  Loader2,
+  Sparkles,
+  Trash2,
+  X,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import type {
-  SceneTypeInspirationMap,
-} from 'visualizer-types';
+import type { CategoryGenerationSettings, InspirationSection } from 'visualizer-types';
+import type { CategoryInfo } from '@/components/studio/config-panel/InspireSection';
 
 type StudioTab = 'images' | 'video';
 
-// Inner component with access to ConfigPanelContext
 function StudioPageContent() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { state: configState } = useConfigPanelContext();
+
+  // Fetch categories for the config panel
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await fetch('/api/categories');
+      if (!res.ok) return { categories: [] };
+      return res.json() as Promise<{
+        categories: Array<{
+          id: string;
+          name: string;
+          productCount: number;
+          generationSettings?: CategoryGenerationSettings;
+        }>;
+      }>;
+    },
+  });
+
+  const configPanelCategories: CategoryInfo[] = useMemo(() => {
+    return (categoriesData?.categories ?? []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      productCount: c.productCount,
+    }));
+  }, [categoriesData?.categories]);
+
+  // Build initial inspiration sections from category defaults
+  const initialConfigState: ConfigPanelState | undefined = useMemo(() => {
+    const cats = categoriesData?.categories;
+    if (!cats || cats.length === 0) return undefined;
+
+    const sections: InspirationSection[] = cats.map((cat) => ({
+      id: crypto.randomUUID(),
+      categoryIds: [cat.id],
+      sceneTypes: [],
+      bubbles: cat.generationSettings?.defaultBubbles ?? [{ type: 'style' }, { type: 'lighting' }],
+      enabled: true,
+    }));
+
+    return {
+      generalInspiration: [],
+      inspirationSections: sections,
+      userPrompt: '',
+      applyCollectionInspiration: true,
+      applyCollectionPrompt: true,
+      outputSettings: { aspectRatio: '1:1' as const, quality: '2k' as const, variantsCount: 1 },
+    };
+  }, [categoriesData?.categories]);
+
+  // Track config panel state via onStateChange callback (inner provider → outer page)
+  const configStateRef = useRef<ConfigPanelState>({
+    generalInspiration: [],
+    inspirationSections: [],
+    userPrompt: '',
+    applyCollectionInspiration: true,
+    applyCollectionPrompt: true,
+    outputSettings: { aspectRatio: '1:1', quality: '2k', variantsCount: 1 },
+  });
+  const handleConfigStateChange = useCallback((state: ConfigPanelState) => {
+    configStateRef.current = state;
+  }, []);
 
   // Selection state
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
@@ -64,6 +118,20 @@ function StudioPageContent() {
   });
 
   const products = productsData?.products ?? [];
+
+  // Map category ID → first product image URL for category bubble previews
+  const categoryProductImages = useMemo(() => {
+    const cats = categoriesData?.categories;
+    if (!cats || !products.length) return {};
+    const map: Record<string, string> = {};
+    for (const cat of cats) {
+      const product = products.find((p) => p.category === cat.name && p.imageUrl);
+      if (product) {
+        map[cat.id] = product.imageUrl;
+      }
+    }
+    return map;
+  }, [categoriesData?.categories, products]);
 
   // Detect if selected products match any collection
   useEffect(() => {
@@ -99,6 +167,9 @@ function StudioPageContent() {
     mutationFn: async (params: { productIds: string[]; autoGenerate?: boolean }) => {
       const { productIds, autoGenerate = false } = params;
 
+      // Read latest config panel state from ref (bridges inner provider to outer page)
+      const configState = configStateRef.current;
+
       if (productIds.length === 1) {
         // Single product - create generation flow
         const product = products.find((p) => p.id === productIds[0]);
@@ -110,19 +181,12 @@ function StudioPageContent() {
         return { type: 'flow' as const, id: flow.id, autoGenerate };
       } else {
         // Multiple products - create collection with settings
-
-        // Create collection first
         const collection = await apiClient.createCollection({
           name: `Collection ${new Date().toLocaleDateString()}`,
           productIds,
-        });
-
-        // Update collection with full settings
-        await apiClient.updateCollection(collection.id, {
           settings: {
             generalInspiration: configState.generalInspiration || [],
-            sceneTypeInspiration: configState.sceneTypeInspiration || {},
-            useSceneTypeInspiration: configState.useSceneTypeInspiration,
+            inspirationSections: configState.inspirationSections || [],
             userPrompt: configState.userPrompt || '',
             aspectRatio: configState.outputSettings.aspectRatio,
             imageQuality: configState.outputSettings.quality,
@@ -137,8 +201,7 @@ function StudioPageContent() {
               productIds,
               settings: {
                 generalInspiration: configState.generalInspiration || [],
-                sceneTypeInspiration: configState.sceneTypeInspiration || {},
-                useSceneTypeInspiration: configState.useSceneTypeInspiration,
+                inspirationSections: configState.inspirationSections || [],
                 userPrompt: configState.userPrompt || '',
                 aspectRatio: configState.outputSettings.aspectRatio,
                 imageQuality: configState.outputSettings.quality,
@@ -279,163 +342,156 @@ function StudioPageContent() {
 
   return (
     <div className="flex h-screen flex-col">
-        {/* Header */}
-        <div className="flex-none border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex h-14 items-center px-6">
-            <div>
-              <h1 className="text-lg font-semibold">Studio</h1>
-              <p className="text-xs text-muted-foreground">
-                Select products to create a collection
-              </p>
-            </div>
+      {/* Header */}
+      <div className="flex-none border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="flex h-14 items-center px-6">
+          <div>
+            <h1 className="text-lg font-semibold">Studio</h1>
+            <p className="text-xs text-muted-foreground">Select products to create a collection</p>
           </div>
         </div>
+      </div>
 
-        {/* Main Content */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Config Panel Sidebar */}
-          <UnifiedStudioConfigPanel
-            mode="studio-home"
-            sceneTypes={sceneTypes}
-            onGenerate={() => handleCreateCollection(true)}
-            isGenerating={createFlowMutation.isPending}
-          />
+      {/* Main Content */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Config Panel Sidebar */}
+        <UnifiedStudioConfigPanel
+          key={initialConfigState ? 'loaded' : 'loading'}
+          mode="studio-home"
+          sceneTypes={sceneTypes}
+          categories={configPanelCategories}
+          categoryProductImages={categoryProductImages}
+          initialState={initialConfigState}
+          onGenerate={() => handleCreateCollection(true)}
+          isGenerating={createFlowMutation.isPending}
+          onStateChange={handleConfigStateChange}
+        />
 
-          {/* Products Grid Area */}
-          <main className="flex flex-1 flex-col overflow-hidden">
-            {/* Products Grid with integrated collection filters */}
-            <ProductGrid
-              selectedIds={selectedProductIds}
-              onSelectionChange={setSelectedProductIds}
-              onSceneTypeChange={handleSceneTypeChange}
-              filterToIds={showSelectedOnly ? selectedProductIds : undefined}
-              selectionMode="card"
-              showGeneratedAssets={true}
-              showFilters={true}
-              showViewToggle={true}
-              className="h-full"
-              testId="studio-product-grid"
-              // Collection filter header to render after search
-              collectionFilterHeader={
-                <div className="flex items-center justify-between gap-4 border-b border-border bg-card/30 px-6 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-muted-foreground">Collections:</span>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant={activeCollectionFilter === null && !matchedCollectionId ? 'secondary' : 'ghost'}
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => {
-                          setActiveCollectionFilter(null);
-                          setSelectedProductIds([]);
-                        }}
-                      >
-                        All Products
-                      </Button>
-                      {collections.slice(0, 6).map((collection) => (
-                        <Button
-                          key={collection.id}
-                          variant={matchedCollectionId === collection.id ? 'default' : 'ghost'}
-                          size="sm"
-                          className={cn(
-                            'h-7 text-xs',
-                            matchedCollectionId === collection.id &&
-                            'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20'
-                          )}
-                          onClick={() => handleCollectionClick(collection.id)}
-                        >
-                          {collection.name}
-                        </Button>
-                      ))}
-                      {collections.length > 6 && (
-                        <Link href="/collections">
-                          <Button variant="ghost" size="sm" className="h-7 text-xs">
-                            +{collections.length - 6} more
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    variant="glow"
-                    size="sm"
-                    onClick={() => {
-                      if (matchedCollectionId) {
-                        router.push(`/studio/collections/${matchedCollectionId}`);
-                      } else {
-                        handleCreateCollection(false); // Don't auto-generate from this button
+        {/* Products Grid Area */}
+        <main className="flex flex-1 flex-col overflow-hidden">
+          {/* Products Grid with integrated collection filters */}
+          <ProductGrid
+            selectedIds={selectedProductIds}
+            onSelectionChange={setSelectedProductIds}
+            onSceneTypeChange={handleSceneTypeChange}
+            filterToIds={showSelectedOnly ? selectedProductIds : undefined}
+            selectionMode="card"
+            showGeneratedAssets={true}
+            showFilters={true}
+            showViewToggle={true}
+            className="h-full"
+            testId="studio-product-grid"
+            // Collection filter header to render after search
+            collectionFilterHeader={
+              <div className="flex items-center justify-between gap-4 border-b border-border bg-card/30 px-6 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">Collections:</span>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant={
+                        activeCollectionFilter === null && !matchedCollectionId
+                          ? 'secondary'
+                          : 'ghost'
                       }
-                    }}
-                    disabled={selectedProductIds.length === 0 || createFlowMutation.isPending}
-                    data-testid="selection-island-create-button"
-                  >
-                    {createFlowMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                        Creating...
-                      </>
-                    ) : matchedCollectionId ? (
-                      <>
-                        <Sparkles className="mr-2 h-3.5 w-3.5" />
-                        Go to Collection
-                      </>
-                    ) : selectedProductIds.length === 1 ? (
-                      <>
-                        <Sparkles className="mr-2 h-3.5 w-3.5" />
-                        Open in Studio
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-3.5 w-3.5" />
-                        Create Collection {selectedProductIds.length > 0 ? `(${selectedProductIds.length})` : ''}
-                      </>
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        setActiveCollectionFilter(null);
+                        setSelectedProductIds([]);
+                      }}
+                    >
+                      All Products
+                    </Button>
+                    {collections.slice(0, 6).map((collection) => (
+                      <Button
+                        key={collection.id}
+                        variant={matchedCollectionId === collection.id ? 'default' : 'ghost'}
+                        size="sm"
+                        className={cn(
+                          'h-7 text-xs',
+                          matchedCollectionId === collection.id &&
+                            'bg-primary text-primary-foreground shadow-md ring-2 ring-primary/20'
+                        )}
+                        onClick={() => handleCollectionClick(collection.id)}
+                      >
+                        {collection.name}
+                      </Button>
+                    ))}
+                    {collections.length > 6 && (
+                      <Link href="/collections">
+                        <Button variant="ghost" size="sm" className="h-7 text-xs">
+                          +{collections.length - 6} more
+                        </Button>
+                      </Link>
                     )}
-                  </Button>
+                  </div>
                 </div>
-              }
-            />
-          </main>
-        </div>
-
-        {/* Selection Action Island */}
-        {selectedProductIds.length > 0 && (
-          <SelectionActionIsland
-            selectedCount={selectedProductIds.length}
-            showSelectedOnly={showSelectedOnly}
-            onShowSelectedToggle={() => setShowSelectedOnly(!showSelectedOnly)}
-            onDownload={handleDownloadSelected}
-            onPin={handlePinSelected}
-            onApprove={handleApproveSelected}
-            onDelete={handleDeleteSelected}
-            onClear={handleClearSelection}
+                <Button
+                  variant="glow"
+                  size="sm"
+                  onClick={() => {
+                    if (matchedCollectionId) {
+                      router.push(`/studio/collections/${matchedCollectionId}`);
+                    } else {
+                      handleCreateCollection(false); // Don't auto-generate from this button
+                    }
+                  }}
+                  disabled={selectedProductIds.length === 0 || createFlowMutation.isPending}
+                  data-testid="selection-island-create-button"
+                >
+                  {createFlowMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                      Creating...
+                    </>
+                  ) : matchedCollectionId ? (
+                    <>
+                      <Sparkles className="mr-2 h-3.5 w-3.5" />
+                      Go to Collection
+                    </>
+                  ) : selectedProductIds.length === 1 ? (
+                    <>
+                      <Sparkles className="mr-2 h-3.5 w-3.5" />
+                      Open in Studio
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-3.5 w-3.5" />
+                      Create Collection{' '}
+                      {selectedProductIds.length > 0 ? `(${selectedProductIds.length})` : ''}
+                    </>
+                  )}
+                </Button>
+              </div>
+            }
           />
-        )}
+        </main>
+      </div>
+
+      {/* Selection Action Island */}
+      {selectedProductIds.length > 0 && (
+        <SelectionActionIsland
+          selectedCount={selectedProductIds.length}
+          showSelectedOnly={showSelectedOnly}
+          onShowSelectedToggle={() => setShowSelectedOnly(!showSelectedOnly)}
+          onDownload={handleDownloadSelected}
+          onPin={handlePinSelected}
+          onApprove={handleApproveSelected}
+          onDelete={handleDeleteSelected}
+          onClear={handleClearSelection}
+        />
+      )}
     </div>
   );
 }
 
-// Main export with ConfigPanelProvider wrapper
+// Main export — no outer ConfigPanelProvider needed;
+// UnifiedStudioConfigPanel creates its own, and we bridge state via onStateChange + ref.
 export default function StudioPage() {
-  return (
-    <ConfigPanelProvider
-      initialState={{
-        generalInspiration: [],
-        sceneTypeInspiration: {},
-        useSceneTypeInspiration: true,
-        userPrompt: '',
-        applyCollectionPrompt: true,
-        outputSettings: {
-          aspectRatio: '1:1',
-          quality: '2k',
-          variantsCount: 1,
-        },
-      }}
-    >
-      <StudioPageContent />
-    </ConfigPanelProvider>
-  );
+  return <StudioPageContent />;
 }
 
+// TODO: move to a shared SelectionActionIsland component
 // Selection Action Island Component
 function SelectionActionIsland({
   selectedCount,
@@ -462,7 +518,7 @@ function SelectionActionIsland({
         className={cn(
           'flex items-center gap-4 rounded-full border border-border',
           'bg-card/95 px-6 py-3 shadow-xl backdrop-blur',
-          'animate-in fade-in slide-in-from-bottom-4 duration-300'
+          'duration-300 animate-in fade-in slide-in-from-bottom-4'
         )}
       >
         {/* Close button */}
@@ -500,14 +556,31 @@ function SelectionActionIsland({
 
         {/* Action buttons */}
         <div className="flex items-center gap-1 border-l border-border pl-4">
-          <Button variant="ghost" size="sm" onClick={onDownload} data-testid="selection-island-download">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDownload}
+            data-testid="selection-island-download"
+          >
             <Download className="mr-2 h-4 w-4" />
             Download
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onPin} data-testid="selection-island-pin">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
+            onClick={onPin}
+            data-testid="selection-island-pin"
+          >
             <Heart className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onApprove} data-testid="selection-island-approve">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
+            onClick={onApprove}
+            data-testid="selection-island-approve"
+          >
             <CheckCircle className="h-4 w-4" />
           </Button>
           <Button

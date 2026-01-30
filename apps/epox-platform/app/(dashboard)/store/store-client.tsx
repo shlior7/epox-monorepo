@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Package, Import, Settings } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17,9 +18,11 @@ import {
   useStoreAssets,
   useStoreActions,
   ImportProductsModal,
+  type ImportResult,
   type StoreFilters,
   type StoreProductViewWithUrls,
 } from '@/components/store';
+import { CategoryWizardModal, type CategoryWizardCategory } from '@/components/wizard';
 import type { StoreProductView } from 'visualizer-types';
 
 const DEFAULT_FILTERS: StoreFilters = {
@@ -38,9 +41,11 @@ interface Collection {
 function StoreAssetsContent({
   storeUrl,
   storeType,
+  onImportClick,
 }: {
   storeUrl: string;
   storeType: string;
+  onImportClick: () => void;
 }) {
   const queryClient = useQueryClient();
 
@@ -332,7 +337,7 @@ function StoreAssetsContent({
           description="Import products from your store or create them manually to get started."
           action={{
             label: 'Import Products',
-            href: '/products',
+            onClick: onImportClick,
           }}
           testId="store-empty-state"
         />
@@ -409,8 +414,35 @@ function StoreAssetsContent({
 }
 
 function StorePageContent() {
+  const searchParams = useSearchParams();
   // Modal states
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [wizardCategories, setWizardCategories] = useState<CategoryWizardCategory[]>([]);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+
+  // Auto-open import modal after store connection
+  const justConnected = searchParams.get('connected') === 'true';
+  useEffect(() => {
+    if (justConnected) {
+      setIsImportModalOpen(true);
+    }
+  }, [justConnected]);
+
+  const handleImportComplete = useCallback((result: ImportResult) => {
+    toast.success(`Imported ${result.imported} products`);
+
+    // If there are unconfigured categories, show the wizard
+    if (result.unconfiguredCategories.length > 0) {
+      setWizardCategories(
+        result.unconfiguredCategories.map((c) => ({
+          id: c.id,
+          name: c.name,
+          productCount: c.productCount,
+        }))
+      );
+      setIsWizardOpen(true);
+    }
+  }, []);
 
   // Check store connection status
   const {
@@ -523,13 +555,27 @@ function StorePageContent() {
       <StoreAssetsContent
         storeUrl={connectionData?.connection?.storeUrl ?? ''}
         storeType={connectionData?.connection?.storeType ?? 'store'}
+        onImportClick={() => setIsImportModalOpen(true)}
       />
 
       {/* Import Products Modal */}
       <ImportProductsModal
         open={isImportModalOpen}
         onOpenChange={setIsImportModalOpen}
+        onImportComplete={handleImportComplete}
         testId="store-import-modal"
+      />
+
+      {/* Category Wizard Modal — shown after import if unconfigured categories exist */}
+      <CategoryWizardModal
+        open={isWizardOpen}
+        onOpenChange={setIsWizardOpen}
+        categories={wizardCategories}
+        onComplete={() => {
+          // Wizard saves defaults to categories via API internally
+          toast.success('Category defaults saved');
+        }}
+        saveToCategories
       />
     </div>
   );

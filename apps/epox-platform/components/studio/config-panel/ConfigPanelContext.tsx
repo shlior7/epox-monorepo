@@ -3,7 +3,7 @@
 import { createContext, useContext, useReducer, useCallback, useMemo, type ReactNode } from 'react';
 import type {
   BubbleValue,
-  SceneTypeInspirationMap,
+  InspirationSection,
   ImageAspectRatio,
   ImageQuality,
 } from 'visualizer-types';
@@ -17,16 +17,16 @@ export interface OutputSettingsConfig {
 }
 
 export interface ConfigPanelState {
-  // General inspiration bubbles - apply to all scene types
+  // General inspiration bubbles - apply to all products as baseline
   generalInspiration: BubbleValue[];
-  // Inspiration bubbles per scene type
-  sceneTypeInspiration: SceneTypeInspirationMap;
-  // Whether to use scene-type-specific inspiration
-  useSceneTypeInspiration: boolean;
+  // Category/scene-type specific inspiration sections
+  inspirationSections: InspirationSection[];
   // User prompt
   userPrompt: string;
   // Collection prompt (read-only in single-flow mode)
   collectionPrompt?: string;
+  // Whether to apply collection inspiration in single-flow mode
+  applyCollectionInspiration: boolean;
   // Whether to apply collection prompt in single-flow mode
   applyCollectionPrompt: boolean;
   // Output settings
@@ -43,22 +43,20 @@ export interface ConfigPanelContextValue {
   addGeneralInspiration: (bubble: BubbleValue) => void;
   updateGeneralInspiration: (index: number, bubble: BubbleValue) => void;
   removeGeneralInspiration: (index: number) => void;
-  moveGeneralInspirationToScene: (bubbleIndex: number, targetSceneType: string) => void;
   initializeDefaultGeneralInspiration: () => void;
-  // Scene-specific inspiration actions
-  addBubble: (sceneType: string, bubble: BubbleValue) => void;
-  updateBubble: (sceneType: string, index: number, bubble: BubbleValue) => void;
-  removeBubble: (sceneType: string, index: number) => void;
-  moveSceneBubbleToGeneral: (sceneType: string, bubbleIndex: number) => void;
-  moveSceneBubbleToScene: (fromSceneType: string, toSceneType: string, bubbleIndex: number) => void;
-  initializeDefaultBubbles: (sceneType: string) => void;
-  migrateBubbles: (fromSceneType: string, toSceneType: string) => void;
+  // Section actions
+  addSection: (section: InspirationSection) => void;
+  removeSection: (sectionId: string) => void;
+  toggleSection: (sectionId: string) => void;
+  addSectionBubble: (sectionId: string, bubble: BubbleValue) => void;
+  updateSectionBubble: (sectionId: string, index: number, bubble: BubbleValue) => void;
+  removeSectionBubble: (sectionId: string, index: number) => void;
   // Other actions
   setUserPrompt: (prompt: string) => void;
+  setApplyCollectionInspiration: (apply: boolean) => void;
   setApplyCollectionPrompt: (apply: boolean) => void;
   setOutputSettings: (settings: Partial<OutputSettingsConfig>) => void;
   setSelectedBaseImage: (imageId: string | undefined) => void;
-  setUseSceneTypeInspiration: (use: boolean) => void;
   markClean: () => void;
   resetState: (state: ConfigPanelState) => void;
 }
@@ -70,22 +68,20 @@ type ConfigPanelAction =
   | { type: 'ADD_GENERAL_INSPIRATION'; bubble: BubbleValue }
   | { type: 'UPDATE_GENERAL_INSPIRATION'; index: number; bubble: BubbleValue }
   | { type: 'REMOVE_GENERAL_INSPIRATION'; index: number }
-  | { type: 'MOVE_GENERAL_INSPIRATION_TO_SCENE'; bubbleIndex: number; targetSceneType: string }
   | { type: 'INITIALIZE_DEFAULT_GENERAL_INSPIRATION' }
-  // Scene-specific bubbles actions
-  | { type: 'ADD_BUBBLE'; sceneType: string; bubble: BubbleValue }
-  | { type: 'UPDATE_BUBBLE'; sceneType: string; index: number; bubble: BubbleValue }
-  | { type: 'REMOVE_BUBBLE'; sceneType: string; index: number }
-  | { type: 'MOVE_SCENE_BUBBLE_TO_GENERAL'; sceneType: string; bubbleIndex: number }
-  | { type: 'MOVE_SCENE_BUBBLE_TO_SCENE'; fromSceneType: string; toSceneType: string; bubbleIndex: number }
-  | { type: 'INITIALIZE_DEFAULT_BUBBLES'; sceneType: string }
-  | { type: 'MIGRATE_BUBBLES'; fromSceneType: string; toSceneType: string }
+  // Section actions
+  | { type: 'ADD_SECTION'; section: InspirationSection }
+  | { type: 'REMOVE_SECTION'; sectionId: string }
+  | { type: 'TOGGLE_SECTION'; sectionId: string }
+  | { type: 'ADD_SECTION_BUBBLE'; sectionId: string; bubble: BubbleValue }
+  | { type: 'UPDATE_SECTION_BUBBLE'; sectionId: string; index: number; bubble: BubbleValue }
+  | { type: 'REMOVE_SECTION_BUBBLE'; sectionId: string; index: number }
   // Other actions
   | { type: 'SET_USER_PROMPT'; prompt: string }
+  | { type: 'SET_APPLY_COLLECTION_INSPIRATION'; apply: boolean }
   | { type: 'SET_APPLY_COLLECTION_PROMPT'; apply: boolean }
   | { type: 'SET_OUTPUT_SETTINGS'; settings: Partial<OutputSettingsConfig> }
   | { type: 'SET_SELECTED_BASE_IMAGE'; imageId: string | undefined }
-  | { type: 'SET_USE_SCENE_TYPE_INSPIRATION'; use: boolean }
   | { type: 'MARK_CLEAN' }
   | { type: 'RESET_STATE'; state: ConfigPanelState };
 
@@ -93,9 +89,9 @@ type ConfigPanelAction =
 
 export const DEFAULT_CONFIG_PANEL_STATE: ConfigPanelState = {
   generalInspiration: [],
-  sceneTypeInspiration: {},
-  useSceneTypeInspiration: true,
+  inspirationSections: [],
   userPrompt: '',
+  applyCollectionInspiration: true,
   applyCollectionPrompt: true,
   outputSettings: {
     aspectRatio: '1:1',
@@ -143,110 +139,6 @@ function reducer(state: ReducerState, action: ConfigPanelAction): ReducerState {
       return { ...state, current: newCurrent, isDirty: true };
     }
 
-    case 'MOVE_GENERAL_INSPIRATION_TO_SCENE': {
-      const bubble = state.current.generalInspiration[action.bubbleIndex];
-      if (!bubble) return state;
-
-      const currentSceneBubbles = state.current.sceneTypeInspiration[action.targetSceneType]?.bubbles || [];
-      const newCurrent = {
-        ...state.current,
-        generalInspiration: state.current.generalInspiration.filter((_, i) => i !== action.bubbleIndex),
-        sceneTypeInspiration: {
-          ...state.current.sceneTypeInspiration,
-          [action.targetSceneType]: {
-            bubbles: [...currentSceneBubbles, bubble],
-          },
-        },
-      };
-      return { ...state, current: newCurrent, isDirty: true };
-    }
-
-    // ===== SCENE-SPECIFIC BUBBLES ACTIONS =====
-
-    case 'MOVE_SCENE_BUBBLE_TO_GENERAL': {
-      const bubble = state.current.sceneTypeInspiration[action.sceneType]?.bubbles[action.bubbleIndex];
-      if (!bubble) return state;
-
-      const currentSceneBubbles = state.current.sceneTypeInspiration[action.sceneType]?.bubbles || [];
-      const newCurrent = {
-        ...state.current,
-        generalInspiration: [...state.current.generalInspiration, bubble],
-        sceneTypeInspiration: {
-          ...state.current.sceneTypeInspiration,
-          [action.sceneType]: {
-            bubbles: currentSceneBubbles.filter((_, i) => i !== action.bubbleIndex),
-          },
-        },
-      };
-      return { ...state, current: newCurrent, isDirty: true };
-    }
-
-    case 'MOVE_SCENE_BUBBLE_TO_SCENE': {
-      const bubble = state.current.sceneTypeInspiration[action.fromSceneType]?.bubbles[action.bubbleIndex];
-      if (!bubble) return state;
-
-      const fromBubbles = state.current.sceneTypeInspiration[action.fromSceneType]?.bubbles || [];
-      const toBubbles = state.current.sceneTypeInspiration[action.toSceneType]?.bubbles || [];
-      const newCurrent = {
-        ...state.current,
-        sceneTypeInspiration: {
-          ...state.current.sceneTypeInspiration,
-          [action.fromSceneType]: {
-            bubbles: fromBubbles.filter((_, i) => i !== action.bubbleIndex),
-          },
-          [action.toSceneType]: {
-            bubbles: [...toBubbles, bubble],
-          },
-        },
-      };
-      return { ...state, current: newCurrent, isDirty: true };
-    }
-
-    case 'ADD_BUBBLE': {
-      const currentBubbles = state.current.sceneTypeInspiration[action.sceneType]?.bubbles || [];
-      const newCurrent = {
-        ...state.current,
-        sceneTypeInspiration: {
-          ...state.current.sceneTypeInspiration,
-          [action.sceneType]: {
-            bubbles: [...currentBubbles, action.bubble],
-          },
-        },
-      };
-      return { ...state, current: newCurrent, isDirty: true };
-    }
-
-    case 'UPDATE_BUBBLE': {
-      const currentBubbles = state.current.sceneTypeInspiration[action.sceneType]?.bubbles || [];
-      const newBubbles = [...currentBubbles];
-      newBubbles[action.index] = action.bubble;
-      const newCurrent = {
-        ...state.current,
-        sceneTypeInspiration: {
-          ...state.current.sceneTypeInspiration,
-          [action.sceneType]: {
-            bubbles: newBubbles,
-          },
-        },
-      };
-      return { ...state, current: newCurrent, isDirty: true };
-    }
-
-    case 'REMOVE_BUBBLE': {
-      const currentBubbles = state.current.sceneTypeInspiration[action.sceneType]?.bubbles || [];
-      const newBubbles = currentBubbles.filter((_, i) => i !== action.index);
-      const newCurrent = {
-        ...state.current,
-        sceneTypeInspiration: {
-          ...state.current.sceneTypeInspiration,
-          [action.sceneType]: {
-            bubbles: newBubbles,
-          },
-        },
-      };
-      return { ...state, current: newCurrent, isDirty: true };
-    }
-
     case 'INITIALIZE_DEFAULT_GENERAL_INSPIRATION': {
       // Only initialize if general inspiration is empty
       if (state.current.generalInspiration.length > 0) {
@@ -267,59 +159,76 @@ function reducer(state: ReducerState, action: ConfigPanelAction): ReducerState {
       return { ...state, current: newCurrent };
     }
 
-    case 'INITIALIZE_DEFAULT_BUBBLES': {
-      // Only initialize if scene type doesn't have bubbles yet
-      if (state.current.sceneTypeInspiration[action.sceneType]?.bubbles?.length > 0) {
-        return state;
-      }
+    // ===== SECTION ACTIONS =====
 
-      const defaultBubbles: BubbleValue[] = [
-        { type: 'custom', label: action.sceneType, value: action.sceneType },
-        { type: 'style' },
-        { type: 'reference' },
-        { type: 'lighting' },
-      ];
-
+    case 'ADD_SECTION': {
       const newCurrent = {
         ...state.current,
-        sceneTypeInspiration: {
-          ...state.current.sceneTypeInspiration,
-          [action.sceneType]: {
-            bubbles: defaultBubbles,
-          },
-        },
+        inspirationSections: [...state.current.inspirationSections, action.section],
       };
-      // Don't mark as dirty for default initialization
-      return { ...state, current: newCurrent };
+      return { ...state, current: newCurrent, isDirty: true };
     }
 
-    case 'MIGRATE_BUBBLES': {
-      const fromBubbles = state.current.sceneTypeInspiration[action.fromSceneType]?.bubbles || [];
-
-      if (fromBubbles.length === 0) {
-        return state;
-      }
-
-      const newSceneTypeInspiration = { ...state.current.sceneTypeInspiration };
-
-      newSceneTypeInspiration[action.toSceneType] = {
-        bubbles: [...fromBubbles],
-      };
-
-      if (action.fromSceneType !== '') {
-        delete newSceneTypeInspiration[action.fromSceneType];
-      }
-
+    case 'REMOVE_SECTION': {
       const newCurrent = {
         ...state.current,
-        sceneTypeInspiration: newSceneTypeInspiration,
+        inspirationSections: state.current.inspirationSections.filter((s) => s.id !== action.sectionId),
       };
+      return { ...state, current: newCurrent, isDirty: true };
+    }
 
+    case 'TOGGLE_SECTION': {
+      const newCurrent = {
+        ...state.current,
+        inspirationSections: state.current.inspirationSections.map((s) =>
+          s.id === action.sectionId ? { ...s, enabled: !s.enabled } : s
+        ),
+      };
+      return { ...state, current: newCurrent, isDirty: true };
+    }
+
+    case 'ADD_SECTION_BUBBLE': {
+      const newCurrent = {
+        ...state.current,
+        inspirationSections: state.current.inspirationSections.map((s) =>
+          s.id === action.sectionId ? { ...s, bubbles: [...s.bubbles, action.bubble] } : s
+        ),
+      };
+      return { ...state, current: newCurrent, isDirty: true };
+    }
+
+    case 'UPDATE_SECTION_BUBBLE': {
+      const newCurrent = {
+        ...state.current,
+        inspirationSections: state.current.inspirationSections.map((s) => {
+          if (s.id !== action.sectionId) return s;
+          const newBubbles = [...s.bubbles];
+          newBubbles[action.index] = action.bubble;
+          return { ...s, bubbles: newBubbles };
+        }),
+      };
+      return { ...state, current: newCurrent, isDirty: true };
+    }
+
+    case 'REMOVE_SECTION_BUBBLE': {
+      const newCurrent = {
+        ...state.current,
+        inspirationSections: state.current.inspirationSections.map((s) =>
+          s.id === action.sectionId
+            ? { ...s, bubbles: s.bubbles.filter((_, i) => i !== action.index) }
+            : s
+        ),
+      };
       return { ...state, current: newCurrent, isDirty: true };
     }
 
     case 'SET_USER_PROMPT': {
       const newCurrent = { ...state.current, userPrompt: action.prompt };
+      return { ...state, current: newCurrent, isDirty: true };
+    }
+
+    case 'SET_APPLY_COLLECTION_INSPIRATION': {
+      const newCurrent = { ...state.current, applyCollectionInspiration: action.apply };
       return { ...state, current: newCurrent, isDirty: true };
     }
 
@@ -338,11 +247,6 @@ function reducer(state: ReducerState, action: ConfigPanelAction): ReducerState {
 
     case 'SET_SELECTED_BASE_IMAGE': {
       const newCurrent = { ...state.current, selectedBaseImageId: action.imageId };
-      return { ...state, current: newCurrent, isDirty: true };
-    }
-
-    case 'SET_USE_SCENE_TYPE_INSPIRATION': {
-      const newCurrent = { ...state.current, useSceneTypeInspiration: action.use };
       return { ...state, current: newCurrent, isDirty: true };
     }
 
@@ -391,45 +295,41 @@ export function ConfigPanelProvider({ children, initialState }: ConfigPanelProvi
     dispatch({ type: 'REMOVE_GENERAL_INSPIRATION', index });
   }, []);
 
-  const moveGeneralInspirationToScene = useCallback((bubbleIndex: number, targetSceneType: string) => {
-    dispatch({ type: 'MOVE_GENERAL_INSPIRATION_TO_SCENE', bubbleIndex, targetSceneType });
-  }, []);
-
-  // Scene-specific bubbles actions
-  const addBubble = useCallback((sceneType: string, bubble: BubbleValue) => {
-    dispatch({ type: 'ADD_BUBBLE', sceneType, bubble });
-  }, []);
-
-  const updateBubble = useCallback((sceneType: string, index: number, bubble: BubbleValue) => {
-    dispatch({ type: 'UPDATE_BUBBLE', sceneType, index, bubble });
-  }, []);
-
-  const removeBubble = useCallback((sceneType: string, index: number) => {
-    dispatch({ type: 'REMOVE_BUBBLE', sceneType, index });
-  }, []);
-
-  const moveSceneBubbleToGeneral = useCallback((sceneType: string, bubbleIndex: number) => {
-    dispatch({ type: 'MOVE_SCENE_BUBBLE_TO_GENERAL', sceneType, bubbleIndex });
-  }, []);
-
-  const moveSceneBubbleToScene = useCallback((fromSceneType: string, toSceneType: string, bubbleIndex: number) => {
-    dispatch({ type: 'MOVE_SCENE_BUBBLE_TO_SCENE', fromSceneType, toSceneType, bubbleIndex });
-  }, []);
-
   const initializeDefaultGeneralInspiration = useCallback(() => {
     dispatch({ type: 'INITIALIZE_DEFAULT_GENERAL_INSPIRATION' });
   }, []);
 
-  const initializeDefaultBubbles = useCallback((sceneType: string) => {
-    dispatch({ type: 'INITIALIZE_DEFAULT_BUBBLES', sceneType });
+  // Section actions
+  const addSection = useCallback((section: InspirationSection) => {
+    dispatch({ type: 'ADD_SECTION', section });
   }, []);
 
-  const migrateBubbles = useCallback((fromSceneType: string, toSceneType: string) => {
-    dispatch({ type: 'MIGRATE_BUBBLES', fromSceneType, toSceneType });
+  const removeSection = useCallback((sectionId: string) => {
+    dispatch({ type: 'REMOVE_SECTION', sectionId });
+  }, []);
+
+  const toggleSection = useCallback((sectionId: string) => {
+    dispatch({ type: 'TOGGLE_SECTION', sectionId });
+  }, []);
+
+  const addSectionBubble = useCallback((sectionId: string, bubble: BubbleValue) => {
+    dispatch({ type: 'ADD_SECTION_BUBBLE', sectionId, bubble });
+  }, []);
+
+  const updateSectionBubble = useCallback((sectionId: string, index: number, bubble: BubbleValue) => {
+    dispatch({ type: 'UPDATE_SECTION_BUBBLE', sectionId, index, bubble });
+  }, []);
+
+  const removeSectionBubble = useCallback((sectionId: string, index: number) => {
+    dispatch({ type: 'REMOVE_SECTION_BUBBLE', sectionId, index });
   }, []);
 
   const setUserPrompt = useCallback((prompt: string) => {
     dispatch({ type: 'SET_USER_PROMPT', prompt });
+  }, []);
+
+  const setApplyCollectionInspiration = useCallback((apply: boolean) => {
+    dispatch({ type: 'SET_APPLY_COLLECTION_INSPIRATION', apply });
   }, []);
 
   const setApplyCollectionPrompt = useCallback((apply: boolean) => {
@@ -442,10 +342,6 @@ export function ConfigPanelProvider({ children, initialState }: ConfigPanelProvi
 
   const setSelectedBaseImage = useCallback((imageId: string | undefined) => {
     dispatch({ type: 'SET_SELECTED_BASE_IMAGE', imageId });
-  }, []);
-
-  const setUseSceneTypeInspiration = useCallback((use: boolean) => {
-    dispatch({ type: 'SET_USE_SCENE_TYPE_INSPIRATION', use });
   }, []);
 
   const markClean = useCallback(() => {
@@ -464,20 +360,18 @@ export function ConfigPanelProvider({ children, initialState }: ConfigPanelProvi
       addGeneralInspiration,
       updateGeneralInspiration,
       removeGeneralInspiration,
-      moveGeneralInspirationToScene,
       initializeDefaultGeneralInspiration,
-      addBubble,
-      updateBubble,
-      removeBubble,
-      moveSceneBubbleToGeneral,
-      moveSceneBubbleToScene,
-      initializeDefaultBubbles,
-      migrateBubbles,
+      addSection,
+      removeSection,
+      toggleSection,
+      addSectionBubble,
+      updateSectionBubble,
+      removeSectionBubble,
       setUserPrompt,
+      setApplyCollectionInspiration,
       setApplyCollectionPrompt,
       setOutputSettings,
       setSelectedBaseImage,
-      setUseSceneTypeInspiration,
       markClean,
       resetState,
     }),
@@ -486,20 +380,18 @@ export function ConfigPanelProvider({ children, initialState }: ConfigPanelProvi
       addGeneralInspiration,
       updateGeneralInspiration,
       removeGeneralInspiration,
-      moveGeneralInspirationToScene,
       initializeDefaultGeneralInspiration,
-      addBubble,
-      updateBubble,
-      removeBubble,
-      moveSceneBubbleToGeneral,
-      moveSceneBubbleToScene,
-      initializeDefaultBubbles,
-      migrateBubbles,
+      addSection,
+      removeSection,
+      toggleSection,
+      addSectionBubble,
+      updateSectionBubble,
+      removeSectionBubble,
       setUserPrompt,
+      setApplyCollectionInspiration,
       setApplyCollectionPrompt,
       setOutputSettings,
       setSelectedBaseImage,
-      setUseSceneTypeInspiration,
       markClean,
       resetState,
     ]
