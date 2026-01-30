@@ -2,7 +2,7 @@
  * Quota Service Types
  */
 
-export type PlanType = 'free' | 'starter' | 'pro' | 'enterprise';
+export type PlanType = 'free' | 'starter' | 'pro' | 'basic' | 'growth' | 'scale' | 'enterprise';
 
 export interface PlanLimits {
   plan: PlanType;
@@ -29,6 +29,24 @@ export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
     monthlyGenerations: 2000,
     storageMb: 20000, // 20GB
     maxProductsPerSession: 200,
+  },
+  basic: {
+    plan: 'basic',
+    monthlyGenerations: 2000,
+    storageMb: 5000, // 5GB
+    maxProductsPerSession: 100,
+  },
+  growth: {
+    plan: 'growth',
+    monthlyGenerations: 4500,
+    storageMb: 20000, // 20GB
+    maxProductsPerSession: 500,
+  },
+  scale: {
+    plan: 'scale',
+    monthlyGenerations: 7000,
+    storageMb: 50000, // 50GB
+    maxProductsPerSession: 1000,
   },
   enterprise: {
     plan: 'enterprise',

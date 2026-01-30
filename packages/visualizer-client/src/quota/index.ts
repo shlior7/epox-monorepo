@@ -3,3 +3,5 @@ export type { QuotaServiceDependencies } from './service';
 export type { PlanType, PlanLimits, QuotaStatus, QuotaCheckResult } from './types';
 export { PLAN_LIMITS } from './types';
 export { createQuotaServiceFromDb } from './factory';
+export { CREDIT_COSTS, getCreditCost } from './credit-costs';
+export type { CreditOperationType } from './credit-costs';

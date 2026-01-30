@@ -44,7 +44,7 @@ export const usageRecordRelations = relations(usageRecord, ({ one }) => ({
 // ===== QUOTA LIMIT =====
 // Defines quota limits per client based on plan
 
-export type PlanType = 'free' | 'starter' | 'pro' | 'enterprise';
+export type PlanType = 'free' | 'starter' | 'pro' | 'basic' | 'growth' | 'scale' | 'enterprise';
 
 export const quotaLimit = pgTable(
   'quota_limit',
@@ -56,6 +56,8 @@ export const quotaLimit = pgTable(
       .references(() => client.id, { onDelete: 'cascade' }),
     plan: text('plan').$type<PlanType>().notNull().default('free'),
     monthlyGenerationLimit: integer('monthly_generation_limit').notNull().default(100),
+    creditBalance: integer('credit_balance').notNull().default(0),
+    lifetimeCredits: integer('lifetime_credits').notNull().default(0),
     storageQuotaMb: integer('storage_quota_mb').notNull().default(1000),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),

@@ -72,6 +72,17 @@ export type { NotificationSettings, DefaultGenerationSettings } from './user-set
 export { usageRecord, quotaLimit, aiCostTracking, creditAuditLog, usageRecordRelations, quotaLimitRelations, aiCostTrackingRelations, creditAuditLogRelations } from './usage';
 export type { PlanType, AIOperationType, AuditAction } from './usage';
 
+// Billing tables
+export {
+  subscriptionPlans,
+  subscriptions,
+  billingTransactions,
+  creditPacks,
+  subscriptionsRelations,
+  billingTransactionsRelations,
+} from './billing';
+export type { SubscriptionStatus, BillingCycle, TransactionType, TransactionStatus } from './billing';
+
 // Generation Jobs (PostgreSQL queue)
 export { generationJob, generationJobRelations } from './jobs';
 export type {

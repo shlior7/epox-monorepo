@@ -43,8 +43,8 @@ export type {
   MergedInspirationSettings,
 } from './inspiration';
 
-export { QuotaService, createQuotaService, createQuotaServiceFromDb, PLAN_LIMITS } from './quota';
-export type { QuotaServiceDependencies, PlanType, PlanLimits, QuotaStatus, QuotaCheckResult } from './quota';
+export { QuotaService, createQuotaService, createQuotaServiceFromDb, PLAN_LIMITS, CREDIT_COSTS, getCreditCost } from './quota';
+export type { QuotaServiceDependencies, PlanType, PlanLimits, QuotaStatus, QuotaCheckResult, CreditOperationType } from './quota';
 
 export { NotificationService, getNotificationService, resetNotificationService, DEFAULT_NOTIFICATION_PREFERENCES } from './notification';
 export type {
