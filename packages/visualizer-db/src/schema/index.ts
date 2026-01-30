@@ -66,8 +66,8 @@ export { userSettings, userSettingsRelations, DEFAULT_NOTIFICATION_SETTINGS, DEF
 export type { NotificationSettings, DefaultGenerationSettings } from './user-settings';
 
 // Usage/Quota tables
-export { usageRecord, quotaLimit, aiCostTracking, usageRecordRelations, quotaLimitRelations, aiCostTrackingRelations } from './usage';
-export type { PlanType, AIOperationType } from './usage';
+export { usageRecord, quotaLimit, aiCostTracking, creditAuditLog, usageRecordRelations, quotaLimitRelations, aiCostTrackingRelations, creditAuditLogRelations } from './usage';
+export type { PlanType, AIOperationType, AuditAction } from './usage';
 
 // Generation Jobs (PostgreSQL queue)
 export { generationJob, generationJobRelations } from './jobs';

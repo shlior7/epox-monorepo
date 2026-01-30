@@ -117,3 +117,34 @@ export const aiCostTrackingRelations = relations(aiCostTracking, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+// ===== CREDIT AUDIT LOG =====
+// Tracks admin credit management actions for audit trail
+
+export type AuditAction = 'plan_change' | 'credit_grant' | 'limit_change' | 'usage_reset';
+
+export const creditAuditLog = pgTable(
+  'credit_audit_log',
+  {
+    id: text('id').primaryKey(),
+    clientId: text('client_id')
+      .notNull()
+      .references(() => client.id, { onDelete: 'cascade' }),
+    adminId: text('admin_id').notNull(),
+    action: text('action').$type<AuditAction>().notNull(),
+    details: jsonb('details'),
+    previousValue: text('previous_value'),
+    newValue: text('new_value'),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('credit_audit_log_client_created_idx').on(table.clientId, table.createdAt),
+  ]
+);
+
+export const creditAuditLogRelations = relations(creditAuditLog, ({ one }) => ({
+  client: one(client, {
+    fields: [creditAuditLog.clientId],
+    references: [client.id],
+  }),
+}));

@@ -116,10 +116,10 @@ export function DashboardClient() {
       p.sku.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const creditsUsed = stats ? Math.max(0, 1000 - stats.creditsRemaining) : 0;
-  const creditsTotal = 1000;
-  const creditsPercent = (creditsUsed / creditsTotal) * 100;
-  const creditsResetAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const creditsTotal = stats?.creditsTotal ?? 0;
+  const creditsUsed = stats ? Math.max(0, creditsTotal - stats.creditsRemaining) : 0;
+  const creditsPercent = creditsTotal > 0 ? (creditsUsed / creditsTotal) * 100 : 0;
+  const creditsResetAt = stats?.resetDate ? new Date(stats.resetDate) : new Date();
 
   if (isLoading) {
     return (

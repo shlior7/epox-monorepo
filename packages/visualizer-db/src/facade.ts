@@ -20,6 +20,7 @@ import {
   UsageRecordRepository,
   QuotaLimitRepository,
   AICostTrackingRepository,
+  CreditAuditLogRepository,
   StoreConnectionRepository,
   StoreSyncLogRepository,
 } from './repositories/index';
@@ -47,6 +48,7 @@ export interface DatabaseFacade {
   readonly usageRecords: UsageRecordRepository;
   readonly quotaLimits: QuotaLimitRepository;
   readonly aiCostTracking: AICostTrackingRepository;
+  readonly creditAuditLogs: CreditAuditLogRepository;
   readonly storeConnections: StoreConnectionRepository;
   readonly storeSyncLogs: StoreSyncLogRepository;
   /**
@@ -82,6 +84,7 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
   const usageRecords = new UsageRecordRepository(drizzle);
   const quotaLimits = new QuotaLimitRepository(drizzle);
   const aiCostTracking = new AICostTrackingRepository(drizzle);
+  const creditAuditLogs = new CreditAuditLogRepository(drizzle);
   const storeConnections = new StoreConnectionRepository(drizzle);
   const storeSyncLogs = new StoreSyncLogRepository(drizzle);
 
@@ -135,6 +138,7 @@ export function createDatabaseFacade(drizzle: DrizzleClient): DatabaseFacade {
     usageRecords,
     quotaLimits,
     aiCostTracking,
+    creditAuditLogs,
     storeConnections,
     storeSyncLogs,
     transaction,

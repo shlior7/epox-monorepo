@@ -121,19 +121,43 @@ export const POST = withSecurity(async (request): Promise<NextResponse<ArtDirect
   }
 
   // Build prompt with bubble context
+  // P0: Pure Reference Constraint — only use the generic class name for the product.
+  // Never include material/color/shape adjectives; the model must rely on the attached image pixels.
   const subjectClass = subjectAnalysis.subjectClassHyphenated;
   const { environmentType } = deriveEnvironmentContext(subjectAnalysis.nativeSceneCategory);
 
-  const introAnchor = `Create an ${environmentType} ${subjectClass} scene with this ${subjectClass} from the attached image and keep the visual integrity of the ${subjectClass} from the attached image exactly as it is.`;
+  // P2: Wire geometric description into the prompt
+  const geometricDescription = deriveGeometricDescription(subjectAnalysis.inputCameraAngle);
 
-  const bubbleSection = bubbleContext.length > 0 ? bubbleContext.join('. ') : '';
-  const userAdditions = userPrompt?.trim() ?? '';
-  const outroAnchor = `keep the visual integrity of the ${subjectClass} from the attached image exactly as it is`;
+  // P1: Strengthened intro anchor — explicitly itemise preserved attributes
+  const introAnchor = `Create an ${environmentType} ${subjectClass} scene with this ${subjectClass} from the attached image and keep the visual integrity of the ${subjectClass} from the attached image exactly as it is in terms of shape, size, proportion, material, color, texture, and camera angle. Do not alter any aspect of the ${subjectClass}; simply place it into the scene as described below.`;
 
-  const promptParts = [introAnchor];
-  if (bubbleSection) {
-    promptParts.push(`Style guidance: ${bubbleSection}`);
+  // P1: Scene narrative with quality framing + geometric perspective (P2)
+  const styleAndLighting = extractStyleAndLighting(bubbles ?? []);
+  const narrativeParts: string[] = [];
+  narrativeParts.push(`Professional ${environmentType} ${subjectAnalysis.nativeSceneCategory.toLowerCase()} photograph, editorial catalog style, ultra-realistic, 8k resolution.`);
+  narrativeParts.push(geometricDescription);
+  if (styleAndLighting.style) {
+    narrativeParts.push(`${styleAndLighting.style} style.`);
   }
+  if (styleAndLighting.lighting) {
+    narrativeParts.push(`${styleAndLighting.lighting} lighting.`);
+  }
+  // Remaining bubble context (excluding style/lighting already handled)
+  const nonStyleContext = bubbleContext.filter(
+    ctx => !ctx.endsWith(' style') && !ctx.endsWith(' lighting')
+  );
+  if (nonStyleContext.length > 0) {
+    narrativeParts.push(nonStyleContext.join('. '));
+  }
+  const bubbleSection = narrativeParts.join(' ');
+
+  const userAdditions = userPrompt?.trim() ?? '';
+
+  // P1: Strengthened outro anchor — mirror the explicit attribute list from intro
+  const outroAnchor = `Keep the visual integrity of the ${subjectClass} from the attached image exactly as it is in terms of shape, size, proportion, material, color, texture, and camera angle. Do not change any aspect of the ${subjectClass}.`;
+
+  const promptParts = [introAnchor, bubbleSection];
   if (userAdditions) {
     promptParts.push(userAdditions);
   }

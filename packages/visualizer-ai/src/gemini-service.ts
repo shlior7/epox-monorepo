@@ -38,9 +38,9 @@ Your response must be a valid JSON object with this structure:
 
 {
   "components": [
-    { "id": "1", "name": "floor", "description": "hardwood flooring in light oak tone" },
-    { "id": "2", "name": "wall", "description": "off-white painted wall" },
-    { "id": "3", "name": "sofa", "description": "gray modern sectional sofa" }
+    { "id": "1", "name": "floor", "description": "hardwood flooring in light oak tone", "centerPoint": { "x": 500, "y": 800 }, "context": "concrete subfloor or lower surface not visible" },
+    { "id": "2", "name": "wall", "description": "off-white painted wall", "centerPoint": { "x": 500, "y": 300 }, "context": "structural wall behind, not removable" },
+    { "id": "3", "name": "sofa", "description": "gray modern sectional sofa", "centerPoint": { "x": 400, "y": 550 }, "context": "hardwood floor and back wall visible behind and underneath" }
   ],
   "overallDescription": "A modern living room with natural lighting",
   "suggestedAdjustments": [
@@ -62,6 +62,8 @@ Component rules:
 - Include any plants or accessories
 - Limit to 10-15 most prominent components
 - Order by visual prominence (most prominent first)
+- centerPoint: estimate the center of the component on a 0-1000 scale (0,0 = top-left, 1000,1000 = bottom-right)
+- context: describe what is behind or underneath the component — what would be revealed if this object were removed (e.g., "wooden floor and white wall", "garden visible through window")
 
 Adjustment hint rules:
 - Suggest 2-5 improvements based on actual issues detected
