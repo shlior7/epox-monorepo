@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { buildTestId } from '@/lib/testing/testid';
 import { apiClient } from '@/lib/api-client';
 import type { Product } from '@/lib/api-client';
+import { uploadFileAction } from '@/app/actions/upload-file';
 import type { BubbleValue, FlowGenerationSettings, ImageAspectRatio } from 'visualizer-types';
 import { InspirationBubblesGrid } from '@/components/studio/config-panel/InspirationBubblesGrid';
 
@@ -195,19 +196,32 @@ export function AddProductModal({ open, onOpenChange, onProductsCreated }: AddPr
           description: entry.description.trim() || undefined,
         });
 
-        // Upload images sequentially
+        // Upload images sequentially via Server Action (supports 12MB body limit)
         for (let j = 0; j < entry.files.length; j++) {
           setCreationProgress({
             current: i + 1,
             total: validEntries.length,
             status: `Uploading image ${j + 1}/${entry.files.length} for ${entry.name}...`,
           });
-          await apiClient.uploadFile(entry.files[j], 'product', { productId: product.id });
+          const uploadForm = new FormData();
+          uploadForm.append('file', entry.files[j]);
+          uploadForm.append('type', 'product');
+          uploadForm.append('productId', product.id);
+          const uploadResult = await uploadFileAction(uploadForm);
+          if (!uploadResult.success) {
+            throw new Error(uploadResult.error || 'Upload failed');
+          }
         }
 
         created.push({ id: product.id, name: product.name, entry });
       } catch (error) {
-        console.error(`Failed to create product ${entry.name}:`, error);
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`Failed to create product ${entry.name}: ${message}`, {
+          productName: entry.name,
+          fileCount: entry.files.length,
+          fileSizes: entry.files.map((f) => `${f.name} (${(f.size / 1024 / 1024).toFixed(1)}MB)`),
+          error,
+        });
         // Continue with other products
       }
     }

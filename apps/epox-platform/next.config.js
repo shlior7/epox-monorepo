@@ -30,7 +30,7 @@ const nextConfig = {
       },
     ],
   },
-  // Increase body size limit for API routes handling large image data URLs
+  // Increase body size limit for uploads (12MB)
   experimental: {
     serverActions: {
       bodySizeLimit: '12mb',
