@@ -312,8 +312,9 @@ export const POST = withSecurity(async (request, context) => {
         const productImages = await db.productImages.list(productId);
         const primaryImage = productImages.find((img) => img.isPrimary);
 
-        // Resolve storage key to public URL
-        const imageUrl = primaryImage?.imageUrl || productImages[0]?.imageUrl;
+        // Resolve storage key to public URL — prefer WebP preview
+        const img = primaryImage || productImages[0];
+        const imageUrl = img?.previewUrl || img?.imageUrl;
         if (imageUrl) {
           const fullUrl = resolveStorageUrl(imageUrl);
           if (fullUrl) {

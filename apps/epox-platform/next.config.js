@@ -14,27 +14,7 @@ const nextConfig = {
   // Required to build with Turbopack when webpack config is present.
   turbopack: {},
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'pub-b173dd19ec2840a5b068d4748260373f.r2.dev',
-      },
-      // Local storage in development
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-      },
-    ],
-  },
-  // Increase body size limit for uploads (12MB)
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '12mb',
-    },
+    unoptimized: true,
   },
   // Webpack configuration to exclude server-only modules from browser bundle
   webpack: (config, { isServer }) => {

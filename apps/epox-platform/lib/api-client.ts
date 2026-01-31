@@ -562,6 +562,56 @@ export interface StoreConnectionStatusResponse {
   connection: StoreConnection | null;
 }
 
+// ===== Image Compression =====
+
+const MAX_DIMENSION = 2048;
+const COMPRESS_QUALITY = 0.85;
+const COMPRESS_THRESHOLD = 1 * 1024 * 1024; // Only compress files > 1MB
+
+/**
+ * Compresses an image client-side using Canvas.
+ * Converts to WebP, caps dimensions at 2048px, quality 0.85.
+ * A 7MB PNG typically becomes ~300-600KB WebP.
+ */
+async function compressImage(file: File): Promise<File> {
+  // Skip non-image files or small files
+  if (!file.type.startsWith('image/') || file.size <= COMPRESS_THRESHOLD) {
+    return file;
+  }
+
+  // Skip GIFs (animated)
+  if (file.type === 'image/gif') {
+    return file;
+  }
+
+  const bitmap = await createImageBitmap(file);
+  const { width, height } = bitmap;
+
+  // Calculate target dimensions (cap at MAX_DIMENSION, preserve aspect ratio)
+  let targetW = width;
+  let targetH = height;
+  if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+    const scale = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
+    targetW = Math.round(width * scale);
+    targetH = Math.round(height * scale);
+  }
+
+  const canvas = new OffscreenCanvas(targetW, targetH);
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+  bitmap.close();
+
+  const blob = await canvas.convertToBlob({ type: 'image/webp', quality: COMPRESS_QUALITY });
+
+  // Only use compressed version if it's actually smaller
+  if (blob.size >= file.size) {
+    return file;
+  }
+
+  const compressedName = file.name.replace(/\.[^.]+$/, '.webp');
+  return new File([blob], compressedName, { type: 'image/webp' });
+}
+
 // ===== API Client Class =====
 
 class ApiClient {
@@ -963,27 +1013,93 @@ class ApiClient {
     return this.listCollections(params);
   }
 
-  // ===== File Upload =====
+  // ===== File Upload (Presigned URL flow) =====
   async uploadFile(
     file: File,
     type?: 'product' | 'collection' | 'inspiration',
-    options?: { productId?: string; collectionId?: string }
+    options?: {
+      productId?: string;
+      collectionId?: string;
+      onProgress?: (event: { step: 'uploading' | 'processing'; percent?: number }) => void;
+    }
   ): Promise<UploadResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (type) {
-      formData.append('type', type);
-    }
-    if (options?.productId) {
-      formData.append('productId', options.productId);
-    }
-    if (options?.collectionId) {
-      formData.append('collectionId', options.collectionId);
-    }
+    // Step 0: Compress image client-side (7MB PNG → ~500KB WebP)
+    const compressed = await compressImage(file);
 
-    return this.request<UploadResponse>('/api/upload', {
+    // Step 1: Get presigned URL(s)
+    // For product images the server returns two slots: original + webp
+    const presign = await this.request<{
+      uploadUrl: string;
+      key: string;
+      publicUrl: string;
+      expiresAt: string;
+      original?: { uploadUrl: string; key: string };
+    }>('/api/upload/presign', {
       method: 'POST',
-      body: formData,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: file.type, // original content type for presigning
+        size: file.size,
+        type,
+        productId: options?.productId,
+        collectionId: options?.collectionId,
+      }),
+    });
+
+    // Step 2: Upload files to R2
+    options?.onProgress?.({ step: 'uploading', percent: 0 });
+
+    // WebP upload (the primary/working version) — tracked with progress
+    const webpUpload = new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', presign.uploadUrl);
+      xhr.setRequestHeader('Content-Type', 'image/webp');
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          options?.onProgress?.({ step: 'uploading', percent });
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`WebP upload failed: ${xhr.status} ${xhr.statusText}`));
+      };
+
+      xhr.onerror = () => reject(new Error('WebP upload failed: network error'));
+      xhr.send(compressed);
+    });
+
+    // Original upload (PNG/JPG for downloads) — fire in parallel, no progress tracking
+    const originalUpload = presign.original
+      ? fetch(presign.original.uploadUrl, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type },
+        }).then((res) => {
+          if (!res.ok) throw new Error(`Original upload failed: ${res.status}`);
+        })
+      : Promise.resolve();
+
+    await Promise.all([webpUpload, originalUpload]);
+
+    // Step 3: Register in DB
+    options?.onProgress?.({ step: 'processing' });
+    return this.request<UploadResponse>('/api/upload/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        key: presign.key,
+        originalKey: presign.original?.key,
+        filename: file.name,
+        size: file.size,
+        contentType: file.type,
+        type,
+        productId: options?.productId,
+        collectionId: options?.collectionId,
+      }),
     });
   }
 

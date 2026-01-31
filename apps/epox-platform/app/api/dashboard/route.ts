@@ -130,7 +130,9 @@ export const GET = withSecurity(async (request, context) => {
       .slice(0, 6)
       .map((p) => {
         const primary = p.images.find((img) => img.isPrimary) ?? p.images[0];
-        const imageUrl = primary ? resolveStorageUrl(primary.imageUrl) : null;
+        const imageUrl = primary
+          ? resolveStorageUrl(primary.previewUrl ?? primary.imageUrl)
+          : null;
         return {
           id: p.id,
           name: p.name,

@@ -21,7 +21,7 @@ function resolveFilesystemRoot(): string {
 }
 
 function resolvePublicUrl(): string | undefined {
-  return process.env.R2_PUBLIC_URL ?? process.env.NEXT_PUBLIC_STORAGE_PUBLIC_URL;
+  return process.env.CDN_URL ?? process.env.R2_PUBLIC_URL ?? process.env.NEXT_PUBLIC_STORAGE_PUBLIC_URL;
 }
 
 export function getStorageAdapter(): StorageAdapter {

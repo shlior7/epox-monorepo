@@ -114,7 +114,7 @@ function ProductGridCard({
   const [customSceneType, setCustomSceneType] = React.useState('');
 
   const productTestId = buildTestId('product-card', product.id);
-  const imageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
+  const imageUrl = product.images?.[0]?.previewUrl || product.images?.[0]?.baseUrl || product.imageUrl;
 
   // Merge all scene types (product's scene types + all available scene types)
   const availableSceneTypes = React.useMemo(() => {
@@ -332,7 +332,7 @@ function ProductListRow({
   const [customSceneType, setCustomSceneType] = React.useState('');
 
   const productTestId = buildTestId('product-card', product.id);
-  const imageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
+  const imageUrl = product.images?.[0]?.previewUrl || product.images?.[0]?.baseUrl || product.imageUrl;
   const baseImages = product.images || [];
 
   // Merge all scene types (product's scene types + all available scene types)
@@ -415,7 +415,7 @@ function ProductListRow({
             >
               <div className="relative h-full w-full p-1">
                 <Image
-                  src={img.baseUrl || img.previewUrl || ''}
+                  src={img.previewUrl || img.baseUrl || ''}
                   alt={`${product.name} - ${idx + 2}`}
                   fill
                   className="object-contain"

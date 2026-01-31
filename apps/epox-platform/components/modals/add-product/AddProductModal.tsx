@@ -26,7 +26,6 @@ import { cn } from '@/lib/utils';
 import { buildTestId } from '@/lib/testing/testid';
 import { apiClient } from '@/lib/api-client';
 import type { Product } from '@/lib/api-client';
-import { uploadFileAction } from '@/app/actions/upload-file';
 import type { BubbleValue, FlowGenerationSettings, ImageAspectRatio } from 'visualizer-types';
 import { InspirationBubblesGrid } from '@/components/studio/config-panel/InspirationBubblesGrid';
 
@@ -96,7 +95,13 @@ export function AddProductModal({ open, onOpenChange, onProductsCreated }: AddPr
   const [createdProducts, setCreatedProducts] = useState<CreatedProduct[]>([]);
   const [analysisResults, setAnalysisResults] = useState<Map<string, AnalysisResult>>(new Map());
   const [reviewProducts, setReviewProducts] = useState<ReviewProduct[]>([]);
-  const [creationProgress, setCreationProgress] = useState({ current: 0, total: 0, status: '' });
+  const [creationProgress, setCreationProgress] = useState({
+    current: 0,
+    total: 0,
+    status: '',
+    step: 'idle' as 'idle' | 'uploading' | 'processing',
+    uploadPercent: 0,
+  });
 
   const reset = useCallback(() => {
     setPhase('entry');
@@ -104,7 +109,7 @@ export function AddProductModal({ open, onOpenChange, onProductsCreated }: AddPr
     setCreatedProducts([]);
     setAnalysisResults(new Map());
     setReviewProducts([]);
-    setCreationProgress({ current: 0, total: 0, status: '' });
+    setCreationProgress({ current: 0, total: 0, status: '', step: 'idle', uploadPercent: 0 });
   }, []);
 
   const handleClose = useCallback(() => {
@@ -177,7 +182,7 @@ export function AddProductModal({ open, onOpenChange, onProductsCreated }: AddPr
     if (validEntries.length === 0) return;
 
     setPhase('creating');
-    setCreationProgress({ current: 0, total: validEntries.length, status: 'Starting...' });
+    setCreationProgress({ current: 0, total: validEntries.length, status: 'Starting...', step: 'idle', uploadPercent: 0 });
 
     const created: CreatedProduct[] = [];
 
@@ -187,6 +192,8 @@ export function AddProductModal({ open, onOpenChange, onProductsCreated }: AddPr
         current: i + 1,
         total: validEntries.length,
         status: `Creating ${entry.name}...`,
+        step: 'idle',
+        uploadPercent: 0,
       });
 
       try {
@@ -196,21 +203,32 @@ export function AddProductModal({ open, onOpenChange, onProductsCreated }: AddPr
           description: entry.description.trim() || undefined,
         });
 
-        // Upload images sequentially via Server Action (supports 12MB body limit)
+        // Upload images sequentially via presigned URLs (bypasses Vercel body limit)
         for (let j = 0; j < entry.files.length; j++) {
-          setCreationProgress({
-            current: i + 1,
-            total: validEntries.length,
-            status: `Uploading image ${j + 1}/${entry.files.length} for ${entry.name}...`,
+          const imageLabel = entry.files.length > 1
+            ? `image ${j + 1}/${entry.files.length} for ${entry.name}`
+            : entry.name;
+
+          await apiClient.uploadFile(entry.files[j], 'product', {
+            productId: product.id,
+            onProgress: ({ step, percent }) => {
+              if (step === 'uploading') {
+                setCreationProgress((prev) => ({
+                  ...prev,
+                  status: `Uploading ${imageLabel}`,
+                  step: 'uploading',
+                  uploadPercent: percent ?? 0,
+                }));
+              } else {
+                setCreationProgress((prev) => ({
+                  ...prev,
+                  status: `Processing ${imageLabel}`,
+                  step: 'processing',
+                  uploadPercent: 0,
+                }));
+              }
+            },
           });
-          const uploadForm = new FormData();
-          uploadForm.append('file', entry.files[j]);
-          uploadForm.append('type', 'product');
-          uploadForm.append('productId', product.id);
-          const uploadResult = await uploadFileAction(uploadForm);
-          if (!uploadResult.success) {
-            throw new Error(uploadResult.error || 'Upload failed');
-          }
         }
 
         created.push({ id: product.id, name: product.name, entry });
@@ -686,11 +704,17 @@ function ProductEntryCard({
 // ===== PHASE 2: CREATION PROGRESS =====
 
 interface CreationPhaseProps {
-  progress: { current: number; total: number; status: string };
+  progress: {
+    current: number;
+    total: number;
+    status: string;
+    step: 'idle' | 'uploading' | 'processing';
+    uploadPercent: number;
+  };
 }
 
 function CreationPhase({ progress }: CreationPhaseProps) {
-  const percent = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
+  const isProcessing = progress.step === 'processing';
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 p-8" data-testid="add-product-creating-phase">
@@ -705,14 +729,22 @@ function CreationPhase({ progress }: CreationPhaseProps) {
       </div>
       <div className="w-full max-w-xs">
         <div className="h-2 overflow-hidden rounded-full bg-secondary" data-testid="add-product-creating-progress-bar">
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-500"
-            style={{ width: `${percent}%` }}
-            data-testid="add-product-creating-progress-fill"
-          />
+          {isProcessing ? (
+            <div
+              className="h-full w-1/3 rounded-full bg-primary animate-[indeterminate_1.5s_ease-in-out_infinite]"
+              data-testid="add-product-creating-progress-fill"
+            />
+          ) : (
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-300"
+              style={{ width: `${progress.uploadPercent}%` }}
+              data-testid="add-product-creating-progress-fill"
+            />
+          )}
         </div>
         <p className="mt-1 text-center text-xs text-muted-foreground" data-testid="add-product-creating-count">
-          {progress.current} / {progress.total}
+          {progress.step === 'uploading' && `${progress.uploadPercent}% · `}
+          Product {progress.current} / {progress.total}
         </p>
       </div>
     </div>

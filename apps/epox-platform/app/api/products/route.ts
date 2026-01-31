@@ -115,10 +115,12 @@ export const GET = withSecurity(async (request, context) => {
           isPrimary: img.isPrimary,
         })),
 
-        // Backward compatibility: primary image URL (or first if none marked)
+        // Primary image URL — prefer WebP preview for fast loading
         imageUrl: (() => {
           const primary = p.images.find((img) => img.isPrimary) ?? p.images[0];
-          return primary ? storage.getPublicUrl(primary.imageUrl) : '';
+          if (!primary) return '';
+          if (primary.previewUrl) return storage.getPublicUrl(primary.previewUrl);
+          return storage.getPublicUrl(primary.imageUrl);
         })(),
 
         createdAt: p.createdAt.toISOString(),

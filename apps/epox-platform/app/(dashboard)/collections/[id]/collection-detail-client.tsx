@@ -399,7 +399,7 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                     data-testid={buildTestId('collection-detail-products', 'grid')}
                   >
                     {collectionProducts.map((product) => {
-                      const imageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
+                      const imageUrl = product.images?.[0]?.previewUrl || product.images?.[0]?.baseUrl || product.imageUrl;
                       const productTestId = buildTestId('product-card', product.id);
                       return (
                         <Link key={product.id} href={`/products/${product.id}`}>
@@ -451,7 +451,7 @@ export function CollectionDetailClient({ collectionId }: CollectionDetailClientP
                     data-testid={buildTestId('collection-detail-products', 'list')}
                   >
                     {collectionProducts.map((product) => {
-                      const imageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
+                      const imageUrl = product.images?.[0]?.previewUrl || product.images?.[0]?.baseUrl || product.imageUrl;
                       const productTestId = buildTestId('product-card', product.id);
                       return (
                         <Link key={product.id} href={`/products/${product.id}`}>

@@ -60,7 +60,8 @@ export const GET = withSecurity(async (request, context, { params }) => {
       // Return ALL images with proper URLs from storage keys
       baseImages: product.images.map((img) => ({
         id: img.id,
-        url: storage.getPublicUrl(img.imageUrl),
+        url: img.previewUrl ? storage.getPublicUrl(img.previewUrl) : storage.getPublicUrl(img.imageUrl),
+        originalUrl: storage.getPublicUrl(img.imageUrl),
         isPrimary: img.isPrimary,
         sortOrder: img.sortOrder,
       })),

@@ -100,13 +100,28 @@ export function createR2Adapter(config: R2AdapterConfig): StorageAdapter {
 
   async function getUploadUrl(key: string, options?: UploadOptions): Promise<PresignedUrl> {
     const expiresIn = options?.expiresIn ?? 60;
+
+    // Create a separate client without default checksums for presigned URLs.
+    // AWS SDK v3.900+ adds CRC32 checksum params by default, but browsers
+    // doing a direct PUT won't include the matching headers, causing R2 to 500.
+    const presignClient = new S3Client({
+      region: config.region ?? 'auto',
+      endpoint: config.endpoint,
+      credentials: {
+        accessKeyId: config.accessKeyId,
+        secretAccessKey: config.secretAccessKey,
+      },
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
+    });
+
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: key,
       ContentType: options?.contentType,
     });
 
-    const url = await getSignedUrl(client, command, { expiresIn });
+    const url = await getSignedUrl(presignClient, command, { expiresIn });
     return {
       url,
       key,

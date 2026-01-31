@@ -4,7 +4,7 @@ export const storagePaths = {
   productImageBase: (clientId: string, productId: string, imageId: string) =>
     `${CLIENT_PREFIX}/${clientId}/products/${productId}/media/images/base/${imageId}.png`,
   productImagePreview: (clientId: string, productId: string, imageId: string) =>
-    `${CLIENT_PREFIX}/${clientId}/products/${productId}/media/images/preview/${imageId}.jpg`,
+    `${CLIENT_PREFIX}/${clientId}/products/${productId}/media/images/preview/${imageId}.webp`,
   productModel: (clientId: string, productId: string, filename: string) =>
     `${CLIENT_PREFIX}/${clientId}/products/${productId}/media/models/${filename}`,
   collectionAsset: (clientId: string, collectionId: string, assetId: string, extension = 'webp') =>

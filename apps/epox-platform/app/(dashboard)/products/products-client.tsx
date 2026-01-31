@@ -508,7 +508,7 @@ function ProductsPageContent() {
                     </thead>
                     <tbody>
                       {filteredProducts.map((product, index) => {
-                        const productImageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
+                        const productImageUrl = product.images?.[0]?.previewUrl || product.images?.[0]?.baseUrl || product.imageUrl;
                         const productTestId = buildTestId('product-card', product.id);
                         const isSelected = selectedProductIds.includes(product.id);
                         const availableSceneTypes = Array.from(
@@ -737,7 +737,7 @@ function ProductsPageContent() {
                   data-testid="products-grid"
                 >
                   {filteredProducts.map((product, index) => {
-                    const productImageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
+                    const productImageUrl = product.images?.[0]?.previewUrl || product.images?.[0]?.baseUrl || product.imageUrl;
                     const productTestId = buildTestId('product-card', product.id);
                     const isSelected = selectedProductIds.includes(product.id);
                     const availableSceneTypes = Array.from(
@@ -1094,7 +1094,7 @@ function ProductGridCard({
   index: number;
   productTestId?: string;
 }) {
-  const productImageUrl = product.images?.[0]?.baseUrl || product.imageUrl;
+  const productImageUrl = product.images?.[0]?.previewUrl || product.images?.[0]?.baseUrl || product.imageUrl;
 
   return (
     <Card

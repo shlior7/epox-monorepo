@@ -40,8 +40,8 @@ export const GET = withSecurity(async (request, context) => {
       ...productView,
       baseImages: productView.baseImages.map((img) => ({
         ...img,
-        // Add public URL for the image
-        url: storage.getPublicUrl(img.imageUrl),
+        url: img.previewUrl ? storage.getPublicUrl(img.previewUrl) : storage.getPublicUrl(img.imageUrl),
+        originalUrl: storage.getPublicUrl(img.imageUrl),
       })),
     }));
 
